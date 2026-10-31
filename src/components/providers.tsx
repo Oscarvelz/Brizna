@@ -5,6 +5,7 @@ import { I18nProvider, useI18n } from "@/lib/i18n";
 import { NameJumpHost } from "@/components/name-jump-host";
 import { NoteLeaveGuard } from "@/components/note-leave-guard";
 import { ThemeBoot } from "@/components/theme-boot";
+import { keepScreens, restoreScreens } from "@/lib/query-snapshot";
 
 function makeQueryClient() {
   const client = new QueryClient({
@@ -23,6 +24,10 @@ function makeQueryClient() {
       },
     },
   });
+  if (typeof window !== "undefined") {
+    restoreScreens(client);
+    keepScreens(client);
+  }
   if (typeof window !== "undefined" && "BroadcastChannel" in window) {
     const channel = new BroadcastChannel("ols-live");
     const original = client.invalidateQueries.bind(client);
