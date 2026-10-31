@@ -3,7 +3,7 @@ import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, CloudOff, Eye, EyeOff
 import { BrandMark } from "@/components/brand-mark";
 import { DEFAULT_BUSINESS_NAME, PRODUCT_NAME } from "@/lib/format";
 import { useI18n, useTx } from "@/lib/i18n";
-import { emitUser, rememberUser, supabase } from "./cloud";
+import { emitUser, keepSignedIn, rememberUser, setKeepSignedIn, supabase } from "./cloud";
 import { LawnScene } from "./lawn-scene";
 
 type Mode = "in" | "up" | "forgot" | "reset";
@@ -28,6 +28,7 @@ export function Login({ recovery, note }: { recovery?: boolean; note?: string })
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [show, setShow] = useState(false);
+  const [keep, setKeep] = useState(keepSignedIn);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState(note ?? "");
@@ -58,12 +59,14 @@ export function Login({ recovery, note }: { recovery?: boolean; note?: string })
         return;
       }
       if (mode === "up") {
+        setKeepSignedIn(keep);
         const { data, error: e } = await supabase.auth.signUp({ email: email.trim(), password, options: { data: { name: name.trim() || email.trim() }, emailRedirectTo: here } });
         if (e) throw e;
         if (!data.session) { setInfo(tx("Revisa tu correo para confirmar la cuenta y luego entra.", "Check your email to confirm the account, then sign in.")); setMode("in"); return; }
         emitUser(rememberUser(data.session));
         return;
       }
+      setKeepSignedIn(keep);
       const { data, error: e } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (e) throw e;
       emitUser(rememberUser(data.session));
@@ -165,6 +168,12 @@ export function Login({ recovery, note }: { recovery?: boolean; note?: string })
                   <input id="bz-confirm" className="bz-input" type={passType} autoComplete="new-password" required minLength={8} placeholder={tx("Otra vez, igual", "Same again")} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
                 </div>
               </div>
+            ) : null}
+            {mode === "in" || mode === "up" ? (
+              <label className="bz-keep">
+                <input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} />
+                <span>{tx("Mantener sesión abierta", "Keep me signed in")}</span>
+              </label>
             ) : null}
             {info ? <p className="bz-msg bz-msg-info" role="status"><CheckCircle2 aria-hidden />{info}</p> : null}
             {error ? <p className="bz-msg bz-msg-error" role="alert"><AlertCircle aria-hidden />{error}</p> : null}

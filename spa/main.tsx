@@ -11,7 +11,7 @@ import { getPglite, getSql, setDbUser } from "@/lib/db";
 import { I18nProvider } from "@/lib/i18n";
 import { lockCredential, unlock } from "@/lib/device-lock";
 import { saveBackupNow } from "@/lib/server/lawn";
-import { CLOUD_READY, emitUser, getUser, lastUser, onUser, rememberUser, supabase, type BriznaUser } from "@/spa/cloud";
+import { CLOUD_READY, emitUser, keepSignedIn, setSessionGone, getUser, lastUser, onUser, rememberUser, supabase, type BriznaUser } from "@/spa/cloud";
 import { setKeepCopy, startSync } from "@/spa/sync";
 import { signOutHere } from "@/spa/session";
 import { Locked, Login, Splash } from "@/spa/login";
@@ -68,7 +68,17 @@ function Gate() {
   const user = useUser();
   const [booted, setBooted] = useState(false);
   const [recovery, setRecovery] = useState(() => /type=recovery/.test(location.hash));
-  const [expired, setExpired] = useState(false);
+  const [expiredRaw, setExpired] = useState(false);
+  const [relogin, setRelogin] = useState(false);
+  // "Mantener sesión abierta": an ended cloud session doesn't block the app; Ajustes offers to sign in again.
+  const softExpired = expiredRaw && keepSignedIn() && !relogin;
+  const expired = expiredRaw && !softExpired;
+  useEffect(() => { setSessionGone(expiredRaw); }, [expiredRaw]);
+  useEffect(() => {
+    const go = () => setRelogin(true);
+    window.addEventListener("brizna-relogin", go);
+    return () => window.removeEventListener("brizna-relogin", go);
+  }, []);
   const [open, setOpen] = useState(false);
   const [failed, setFailed] = useState(false);
   const hiddenAt = useRef(0);
@@ -77,7 +87,7 @@ function Gate() {
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") setRecovery(true);
-      if (session) { setExpired(false); emitUser(rememberUser(session)); }
+      if (session) { setExpired(false); setRelogin(false); emitUser(rememberUser(session)); }
     });
     void (async () => {
       try {

@@ -3,6 +3,7 @@ import { Cloud, CloudOff, RefreshCw } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { useTx } from "@/lib/i18n";
 import { onSyncStatus, syncInfo, syncNow } from "@/spa/sync";
+import { askSignInAgain, sessionGone } from "@/spa/cloud";
 
 function when(iso: string, es: boolean): string {
   if (!iso) return es ? "todavía no" : "not yet";
@@ -27,10 +28,29 @@ export function SyncStatusCard() {
   useEffect(() => {
     const off = onSyncStatus(() => setInfo(syncInfo()));
     const t = window.setInterval(() => setInfo(syncInfo()), 20000);
-    return () => { off(); window.clearInterval(t); };
+    const onSess = () => setInfo(syncInfo());
+    window.addEventListener("brizna-session", onSess);
+    return () => { off(); window.clearInterval(t); window.removeEventListener("brizna-session", onSess); };
   }, []);
 
   if (!user || user.isDevFallback || user.id === "local" || !info.on) return null;
+
+  if (sessionGone()) {
+    return (
+      <div className="mb-3 rounded-md bg-surface p-4 shadow-card">
+        <div className="flex items-start gap-3">
+          <CloudOff className="mt-0.5 size-6 shrink-0 text-muted" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">{tx("Tu sesión en la nube terminó", "Your cloud session ended")}</p>
+            <p className="mt-1 text-xs text-muted">{tx("Tus datos siguen en este equipo. Entra de nuevo para volver a sincronizar.", "Your data is still on this device. Sign in again to sync.")}</p>
+            <button type="button" onClick={askSignInAgain} className="mt-3 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-fg">
+              {tx("Entrar de nuevo", "Sign in again")}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const busy = info.status === "syncing";
   const safe = info.status === "idle" && !info.pending && Boolean(info.cloudAt);
