@@ -1,0 +1,96 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { Pause, Play } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Hint } from "@/components/hint";
+import { invalidateLawn } from "@/components/job-card";
+import { useTx } from "@/lib/i18n";
+import { setServicePaused } from "@/lib/server/lawn";
+import { cn } from "@/lib/utils";
+
+export function ServicePause({
+  id,
+  name,
+  paused,
+  labeled = false,
+}: {
+  id: number;
+  name: string;
+  paused: boolean;
+  labeled?: boolean;
+}) {
+  const tx = useTx();
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const hint = paused
+    ? tx(
+        "En pausa: no hay cortes ni trabajos hasta que decidas Continuar. El caso vive en En espera.",
+        "Paused: no cuts or jobs until you tap Play. The case lives in Waiting.",
+      )
+    : tx(
+        "La función Pausa deja el patio quieto mientras pagan la deuda. No se agenda hasta que decidas Continuar.",
+        "The Pause function holds the yard while they pay the debt. It is not scheduled until you choose Play.",
+      );
+
+  async function confirm() {
+    setBusy(true);
+    try {
+      await setServicePaused({ data: { id, paused: !paused } });
+      toast.success(
+        paused
+          ? tx(`${name} vuelve a la agenda`, `${name} is back on the schedule`)
+          : tx(`${name} quedó en pausa`, `${name} is paused`),
+      );
+      await invalidateLawn(qc);
+      setOpen(false);
+    } catch {
+      toast.error(tx("No se pudo cambiar la pausa", "The pause could not be changed"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      <button
+        type="button"
+        aria-pressed={paused}
+        aria-label={paused ? tx(`Reanudar a ${name}`, `Resume ${name}`) : tx(`Pausar a ${name}`, `Pause ${name}`)}
+        onClick={() => setOpen(true)}
+        className={cn(
+          "inline-flex touch-manipulation items-center justify-center gap-1.5 rounded-full bg-hold-bg font-semibold text-hold",
+          labeled ? "h-11 px-3 text-sm" : "size-9",
+        )}
+      >
+        {paused ? <Play className="size-4 fill-current" /> : <Pause className="size-4" />}
+        {labeled ? (paused ? tx("Continuar", "Play") : tx("Pausa", "Pause")) : null}
+      </button>
+      <Hint compact manual="pausa" text={hint} />
+      <ConfirmDialog
+        open={open}
+        title={
+          paused
+            ? tx(`¿Reanudar el patio de ${name}?`, `Resume ${name}'s yard?`)
+            : tx(`¿Pausar el patio de ${name}?`, `Pause ${name}'s yard?`)
+        }
+        description={
+          paused
+            ? tx(
+                "Vuelve a la agenda automática. Un trabajo de una vez que estaba pendiente no se recupera solo.",
+                "They go back on the automatic schedule. A one-time job that was pending does not come back on its own.",
+              )
+            : tx(
+                "No se le hará cortes ni trabajos hasta que decidas Continuar. Lo que debe se queda en Por cobrar y el caso queda en En espera.",
+                "No cuts or jobs until you choose to continue. What they owe stays in To collect and the case stays in Waiting.",
+              )
+        }
+        confirmLabel={paused ? tx("Sí, reanudar", "Yes, resume") : tx("Sí, pausar", "Yes, pause")}
+        pending={busy}
+        onConfirm={() => void confirm()}
+        onCancel={() => setOpen(false)}
+      />
+    </span>
+  );
+}

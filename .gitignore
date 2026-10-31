@@ -1,0 +1,17 @@
+node_modules
+.data
+.grok
+.vercel
+.tanstack
+artifacts
+attachments
+screenshots
+rollback
+dist
+.output
+*.log
+*.tar.gz
+.rollback
+.rollbacks
+.node_modules.lock
+.project_id
