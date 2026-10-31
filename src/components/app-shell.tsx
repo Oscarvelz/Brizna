@@ -944,7 +944,9 @@ function AccountChip() {
   const tx = useTx();
   const user = useCurrentUser();
   if (!user) return <div className="h-12 rounded-md bg-surface-2" />;
-  const label = user.displayName ?? user.primaryEmail ?? tx("Cuenta", "Account");
+  const label = user.isDevFallback
+    ? tx("Solo en este equipo", "This device only")
+    : (user.displayName ?? user.primaryEmail ?? tx("Cuenta", "Account"));
   const avatar = user.profileImageUrl ? (
     <img src={user.profileImageUrl} alt="" className="size-8 rounded-full object-cover" />
   ) : (
