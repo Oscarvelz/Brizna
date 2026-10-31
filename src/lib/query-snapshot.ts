@@ -11,7 +11,8 @@ const MAX_TOTAL = 2_500_000;
 
 function storeKey(): string | null {
   try {
-    const u = JSON.parse(localStorage.getItem("brizna.lastUser") || "null") as { id?: string } | null;
+    const raw = localStorage.getItem("brizna.lastUser") || sessionStorage.getItem("brizna.lastUser") || "null";
+    const u = JSON.parse(raw) as { id?: string } | null;
     return `brizna.screens.${u && typeof u.id === "string" ? u.id : "local"}`;
   } catch {
     return null;
@@ -57,7 +58,9 @@ export function keepScreens(client: QueryClient) {
       const all = client
         .getQueryCache()
         .getAll()
-        .filter((q) => !NEVER.has(String(q.queryKey[0])) && q.state.status === "success" && q.state.data !== undefined && q.state.dataUpdatedAt > 1)
+        .filter((q) => !NEVER.has(String(q.queryKey[0])) && q.state.status === "success" && q.state.data !== undefined)
+        // Restored screens (updatedAt 1) are kept too: leaving before the database answers
+        // must not wipe the snapshot. Fresh answers come first.
         .sort((a, b) => b.state.dataUpdatedAt - a.state.dataUpdatedAt);
       for (const q of all) {
         const text = JSON.stringify([q.queryKey, q.state.data]);
@@ -65,6 +68,7 @@ export function keepScreens(client: QueryClient) {
         total += text.length;
         out.push(JSON.parse(text) as [unknown[], unknown]);
       }
+      if (!out.length) return; // never replace a good snapshot with an empty one
       localStorage.setItem(key, JSON.stringify({ v: 1, at: Date.now(), q: out } satisfies Saved));
     } catch {
       /* storage full or data not serialisable: skip this save */
