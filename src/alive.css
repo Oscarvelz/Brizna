@@ -1,0 +1,137 @@
+/* ───────────────────────── Jardín vivo ─────────────────────────
+   Only for the default day theme (Jardín: no data-palette, not dark).
+   Motion = transform/opacity only (cheap on phones). Everything stops
+   with prefers-reduced-motion (rule in styles.css + below). */
+
+@keyframes alive-sprout {
+  from { opacity: 0; transform: translateY(14px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes alive-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes alive-grow {
+  0%   { opacity: 0; transform: scaleY(.82) translateY(10px); }
+  60%  { opacity: 1; transform: scaleY(1.02) translateY(-1px); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes alive-pop {
+  0%   { transform: scale(.7); opacity: .2; }
+  65%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: none; }
+}
+@keyframes alive-sway {
+  0%, 100% { transform: rotate(-2.2deg); }
+  50%      { transform: rotate(2.2deg); }
+}
+@keyframes alive-breath {
+  0%, 100% { transform: scale(1); opacity: .0; }
+  45%      { opacity: .35; }
+  70%      { transform: scale(1.55); opacity: 0; }
+}
+@keyframes alive-sun {
+  0%   { transform: translate3d(-8%, -6%, 0) scale(1); }
+  50%  { transform: translate3d(6%, 4%, 0) scale(1.12); }
+  100% { transform: translate3d(-8%, -6%, 0) scale(1); }
+}
+@keyframes alive-blades {
+  0%, 100% { transform: skewX(-6deg); }
+  50%      { transform: skewX(6deg); }
+}
+@keyframes alive-leaf {
+  0%   { transform: scale(.6) rotate(-14deg); }
+  60%  { transform: scale(1.15) rotate(6deg); }
+  100% { transform: none; }
+}
+
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) {
+  /* Soft sunlight drifting slowly behind everything. */
+  & body::before {
+    content: "";
+    position: fixed;
+    inset: -20% -20% auto auto;
+    width: 90vmax;
+    height: 90vmax;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, #f6cf6a 22%, transparent) 0%, transparent 62%);
+    mix-blend-mode: multiply;
+    pointer-events: none;
+    z-index: 1;
+    animation: alive-sun 26s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  /* Each screen grows in from below, its sections one after another. */
+  & .alive-page > * {
+    animation: alive-sprout .55s cubic-bezier(.22, 1, .36, 1) backwards;
+  }
+  /* Sections holding fixed buttons only fade (a moving parent would drag them along). */
+  & .alive-page > *:has(.fixed) { animation-name: alive-fade; }
+  & .alive-page > *:nth-child(2) { animation-delay: .05s; }
+  & .alive-page > *:nth-child(3) { animation-delay: .1s; }
+  & .alive-page > *:nth-child(4) { animation-delay: .15s; }
+  & .alive-page > *:nth-child(5) { animation-delay: .2s; }
+  & .alive-page > *:nth-child(n + 6) { animation-delay: .24s; }
+
+  /* Hoy cards sprout like stems (from their base), staggered. */
+  & .alive-stat {
+    transform-origin: 50% 100%;
+    animation: alive-grow .7s cubic-bezier(.22, 1, .36, 1) backwards;
+  }
+  & .alive-stat:nth-child(2) { animation-delay: .08s; }
+  & .alive-stat:nth-child(3) { animation-delay: .16s; }
+  & .alive-stat:nth-child(4) { animation-delay: .24s; }
+  & .alive-stat:active { transform: scale(.97); transition-duration: .08s; }
+
+  /* A number blooms when it arrives or changes. */
+  & .alive-num {
+    display: inline-block;
+    transform-origin: 0% 70%;
+    animation: alive-pop .5s cubic-bezier(.34, 1.56, .64, 1) backwards;
+  }
+
+  /* The logo sways like grass in a light breeze. */
+  & .alive-brand {
+    transform-origin: 50% 92%;
+    animation: alive-sway 6.5s ease-in-out infinite;
+  }
+
+  /* The + button breathes: a soft ring every few seconds. */
+  & .alive-fab { isolation: isolate; }
+  & .alive-fab::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--color-primary);
+    z-index: -1;
+    animation: alive-breath 4.2s ease-out infinite;
+  }
+  & .alive-fab:active { transform: scale(.92); }
+
+  /* The chosen tab's icon unfurls like a new leaf. */
+  & .alive-nav.bg-sun .alive-nav-icon {
+    animation: alive-leaf .45s cubic-bezier(.34, 1.56, .64, 1) backwards;
+  }
+
+  /* A strip of grass swaying along the top of the bottom bar. */
+  & .pod-dock::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -9px;
+    height: 10px;
+    pointer-events: none;
+    opacity: .55;
+    transform-origin: 50% 100%;
+    background-repeat: repeat-x;
+    background-size: 46px 10px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='10' viewBox='0 0 46 10'%3E%3Cg fill='%232f6b3f'%3E%3Cpath d='M2 10 Q4 4 3 0 Q6 5 6 10Z'/%3E%3Cpath d='M12 10 Q13 6 15 3 Q15 7 16 10Z'/%3E%3Cpath d='M22 10 Q23 5 21 1 Q26 5 26 10Z'/%3E%3Cpath d='M31 10 Q33 6 35 4 Q34 7 35 10Z'/%3E%3Cpath d='M39 10 Q40 4 42 0 Q42 6 44 10Z'/%3E%3C/g%3E%3C/svg%3E");
+    animation: alive-blades 5.5s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-palette]):not(.theme-dark):not(.theme-amoled) {
+    & body::before, & .alive-brand, & .alive-fab::after, & .pod-dock::before { animation: none; }
+  }
+}

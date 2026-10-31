@@ -354,7 +354,7 @@ export function AppShell({
             )}
           >
             <div className={cn("flex min-h-10 min-w-0 items-center gap-2 lg:hidden", embedded && "hidden", bare && !embedded && "lg:flex")}>
-              <BrandMark className="size-8 shrink-0" />
+              <BrandMark className="alive-brand size-8 shrink-0" />
               <div className="flex shrink-0 items-center gap-1.5">
                 <span className="font-display text-lg font-semibold leading-none tracking-tight">{PRODUCT_NAME}</span>
                 <span className="h-3.5 w-px shrink-0 bg-border" aria-hidden />
@@ -395,7 +395,7 @@ export function AppShell({
           <main className={cn("mx-auto w-full min-w-0 max-w-3xl flex-1 overflow-x-clip px-3 py-4 sm:px-5 sm:py-5 lg:max-w-4xl lg:px-6 lg:py-6", split && "overflow-y-auto", embedded && "px-2.5 py-3 sm:px-4 lg:px-4 lg:py-4")}>
             <OfflineBanner />
             <BackupWatch />
-            {children}
+            <div key={pathname.split("/")[1] || "hoy"} className="alive-page">{children}</div>
           </main>
         </div>
   );
@@ -431,7 +431,7 @@ export function AppShell({
           ) : (
             <>
           <div className="flex min-w-0 items-center gap-3 px-5 pt-6 pb-4">
-            <BrandMark className="size-10 shrink-0" />
+            <BrandMark className="alive-brand size-10 shrink-0" />
             <div className="flex min-w-0 items-center gap-2">
               <span className="shrink-0 font-display text-lg font-semibold leading-none">{PRODUCT_NAME}</span>
               <span className="h-4 w-px shrink-0 bg-border" aria-hidden />
@@ -863,12 +863,12 @@ function NavLink({
     <Link
       to={to}
       className={cn(
-        "flex min-w-0 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors duration-150",
+        "alive-nav flex min-w-0 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors duration-150",
         compact ? "min-h-14 flex-col justify-center gap-1 px-1 py-2 text-xs" : "min-h-12 py-3",
         active ? "bg-sun text-primary" : "text-muted hover:bg-surface-2 hover:text-fg",
       )}
     >
-      <Icon className={cn("size-5 shrink-0", active && "text-primary")} strokeWidth={active ? 2.3 : 1.9} />
+      <Icon className={cn("alive-nav-icon size-5 shrink-0", active && "text-primary")} strokeWidth={active ? 2.3 : 1.9} />
       <span className="truncate">{label}</span>
     </Link>
   );

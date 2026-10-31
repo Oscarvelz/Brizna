@@ -333,7 +333,7 @@ function Home() {
 
       <Link
         to="/nuevo"
-        className="fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-20 grid size-14 place-items-center rounded-full bg-primary text-primary-fg shadow-card md:hidden"
+        className="alive-fab fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-20 grid size-14 place-items-center rounded-full bg-primary text-primary-fg shadow-card md:hidden"
         aria-label={tx("Añadir cliente", "Add client")}
       >
         <Plus className="size-6" />
@@ -726,7 +726,7 @@ function StatLink({
     soil: "border-l-4 border-soil bg-soil-bg",
   };
   const className = cn(
-    "relative block w-full min-h-24 min-w-0 touch-manipulation rounded-xl p-3 text-left shadow-card transition-[transform,box-shadow] duration-150 hover:shadow-card-hover active:scale-[0.98] sm:p-4",
+    "alive-stat relative block w-full min-h-24 min-w-0 touch-manipulation rounded-xl p-3 text-left shadow-card transition-[transform,box-shadow] duration-150 hover:shadow-card-hover active:scale-[0.98] sm:p-4",
     tones[tone],
     warn && "ring-2 ring-late",
   );
@@ -737,8 +737,9 @@ function StatLink({
         {label}
       </p>
       <p
+        key={value}
         className={cn(
-          "mt-1 font-display text-2xl font-semibold tabular-nums",
+          "alive-num mt-1 font-display text-2xl font-semibold tabular-nums",
           (warn || tone === "late") && "text-late",
           tone === "money" && "text-money",
           tone === "due" && "text-due",
