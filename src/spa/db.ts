@@ -44,6 +44,8 @@ async function open(): Promise<PGlite> {
     parsers: { [OID_INT8]: Number, [OID_DATE]: identity, [OID_INTERVAL]: identity },
   });
   await pg.waitReady;
+  // Day boundaries (payments "this month", "last paid") must follow Miami time, not UTC.
+  await pg.exec("set time zone 'America/New_York'").catch(() => undefined);
   (globalThis as any).__bzTrace?.push(["db-ready", "", Date.now()]);
   await pg.exec("create table if not exists _migrations (name text primary key, applied_at timestamptz not null default now())");
   const migrations = import.meta.glob("../../migrations/*.sql", { query: "?raw", import: "default", eager: true }) as Record<string, string>;

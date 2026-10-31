@@ -391,7 +391,7 @@ async function loadClients(
   else if (filter === "regular") list = list.filter((c) => c.isActive && c.kind === "regular");
   else if (filter === "one_time") list = list.filter((c) => c.isActive && c.kind === "one_time");
   else if (filter === "inactive") list = list.filter((c) => !c.isActive);
-  else if (filter === "owing") list = list.filter((c) => c.isActive && c.balance > 0);
+  else if (filter === "owing") list = list.filter((c) => c.balance > 0);
   else if (filter === "triple") list = list.filter((c) => c.isActive && (c.tripleCut || c.hasExtra));
   else if (filter === "blacklist") list = list.filter((c) => c.blacklisted);
   else if (filter === "risk") list = list.filter((c) => c.isActive && c.highRisk && !c.blacklisted);
@@ -470,7 +470,14 @@ async function collectBackup(userId: string) {
   });
 }
 
-async function snapshotBackup(userId: string): Promise<void> {
+const BACKUP_GAP_MS = 10 * 60 * 1000;
+let lastSnapshotAt = 0;
+
+// Automatic safety copies: at most one every 10 minutes during normal work (a full copy of
+// years of records on every tap made "Hecho" slow). Risky actions pass force = true.
+async function snapshotBackup(userId: string, force = false): Promise<void> {
+  if (!force && Date.now() - lastSnapshotAt < BACKUP_GAP_MS) return;
+  lastSnapshotAt = Date.now();
   const sql = await getSql();
   const payload = await collectBackup(userId);
   await sql.query(`insert into backups (user_id, payload) values ($1, $2::jsonb)`, [userId, JSON.stringify(payload)]);
@@ -548,6 +555,28 @@ async function ensureScheduleForUserInner(userId: string): Promise<void> {
   const untilPart = addMonths(year, month, Math.max(0, horizon - 1));
   const until = lastDayOfMonthISO(untilPart.year, untilPart.month);
 
+  // One read of every future cut for all clients (instead of three queries per client).
+  const futureRows = await sql.query<{
+    id: number;
+    client_id: number;
+    scheduled_date: unknown;
+    status: string;
+    postpone_reason: string | null;
+    origin_date: unknown;
+  }>(
+    `select id, client_id, scheduled_date, status, postpone_reason, origin_date from jobs
+      where user_id = $1 and kind = 'cut' and scheduled_date >= $2::date`,
+    [userId, today],
+  );
+  const futureByClient = new Map<number, typeof futureRows>();
+  for (const row of futureRows) {
+    const key = intId(row.client_id);
+    const list = futureByClient.get(key);
+    if (list) list.push(row);
+    else futureByClient.set(key, [row]);
+  }
+  const dropIds: number[] = [];
+
   for (const client of clients) {
     const generated: string[] = [];
     for (let step = 0; step < horizon; step += 1) {
@@ -590,16 +619,7 @@ async function ensureScheduleForUserInner(userId: string): Promise<void> {
       });
       planned = [...new Set([...outside, ...seasonal])];
     }
-    const keptRows = await sql.query<{
-      scheduled_date: unknown;
-      postpone_reason: string | null;
-      origin_date: unknown;
-    }>(
-      `select scheduled_date, postpone_reason, origin_date from jobs
-        where user_id = $1 and client_id = $2 and kind = 'cut' and status = 'pending'
-          and scheduled_date >= $3::date`,
-      [userId, client.id, today],
-    );
+    const keptRows = (futureByClient.get(intId(client.id)) ?? []).filter((r) => r.status === "pending");
     const claimed = new Set<string>();
     const sticky = new Set<string>();
     const shifted: string[] = [];
@@ -619,15 +639,10 @@ async function ensureScheduleForUserInner(userId: string): Promise<void> {
         return d < m && m <= addDaysISO(d, 10);
       });
     }))];
-    const uniqueDates = [...new Set([...insertDates, ...sticky])];
+    const uniqueDates = new Set([...insertDates, ...sticky]);
     const amount = money(client.price_per_cut);
     const arrival = asTime(client.arrival_time);
-    const haveRows = await sql.query<{ scheduled_date: unknown }>(
-      `select scheduled_date from jobs
-        where user_id = $1 and client_id = $2 and kind = 'cut' and scheduled_date >= $3::date`,
-      [userId, client.id, today],
-    );
-    const have = new Set(haveRows.map((r) => asIsoDate(r.scheduled_date)));
+    const have = new Set((futureByClient.get(intId(client.id)) ?? []).map((r) => asIsoDate(r.scheduled_date)));
     for (const date of insertDates) {
       if (have.has(date)) continue;
       await sql.query(
@@ -640,20 +655,24 @@ async function ensureScheduleForUserInner(userId: string): Promise<void> {
         [userId, client.id, date, amount, arrival],
       );
     }
-    if (uniqueDates.length > 0) {
-      const placeholders = uniqueDates.map((_, i) => `$${i + 4}::date`).join(", ");
-      await sql.query(
-        `delete from jobs
-          where user_id = $1 and client_id = $2 and kind = 'cut' and status = 'pending'
-            and scheduled_date >= $3::date
-            and scheduled_date not in (${placeholders})`,
-        [userId, client.id, today, ...uniqueDates],
-      );
+    if (uniqueDates.size > 0) {
+      for (const row of keptRows) {
+        if (!uniqueDates.has(asIsoDate(row.scheduled_date))) dropIds.push(intId(row.id));
+      }
     }
+  }
+  if (dropIds.length > 0) {
+    await sql.query(
+      `delete from jobs
+        where user_id = $1 and status = 'pending' and kind = 'cut' and id = any($2::int[])`,
+      [userId, dropIds],
+    );
   }
 }
 
 async function loadJobsForIds(userId: string, today: string): Promise<JobRow[]> {
+  // Only open jobs plus this week's history: years of finished cuts never reach the dashboard.
+  const since = startOfWeekISO(today);
   const sql = await getSql();
   const rows = await sql.query<JobDb>(
     `select j.id, j.client_id, c.name as client_name, c.phone as client_phone,
@@ -664,8 +683,9 @@ async function loadJobsForIds(userId: string, today: string): Promise<JobRow[]> 
        join clients c on c.id = j.client_id
       where j.user_id = $1 and c.user_id = $1 and c.is_active = true and c.blacklisted = false
         and (j.status <> 'pending' or c.service_paused = false)
+        and (j.status = 'pending' or j.scheduled_date >= $2::date)
       order by j.pinned desc, j.sort_order asc, j.scheduled_date asc, c.name asc`,
-    [userId],
+    [userId, since],
   );
   return rows.map((r) => mapJob(r, today));
 }
@@ -964,7 +984,7 @@ export const getDashboard = createServerFn({ method: "GET" })
          (select count(*) from clients where user_id = $1 and is_active = true) as active_clients,
          (select count(*) from clients where user_id = $1 and is_active = true and kind = 'regular') as regular_clients,
          (select count(*) from clients where user_id = $1 and is_active = true and kind = 'one_time') as onetime_clients,
-         (select coalesce(sum(balance),0) from clients where user_id = $1 and is_active = true) as outstanding,
+         (select coalesce(sum(balance),0) from clients where user_id = $1) as outstanding,
          (select coalesce(sum(amount),0) from payments
            where user_id = $1 and kind in ('paid','prepaid') and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')) as collected_month,
          (select coalesce(sum(amount),0) from jobs
@@ -1499,6 +1519,13 @@ export const setClientActive = createServerFn({ method: "POST" })
         where user_id = $1 and id = $2`,
       [context.userId, data.id, data.isActive],
     );
+    if (!data.isActive) {
+      // An archived client gets no more visits: drop their open (pending) cuts.
+      await sql.query(
+        `delete from jobs where user_id = $1 and client_id = $2 and status = 'pending'`,
+        [context.userId, data.id],
+      );
+    }
     if (data.isActive) await ensureScheduleForUser(context.userId);
     await snapshotBackup(context.userId).catch(() => undefined);
     return { ok: true };
@@ -1509,7 +1536,7 @@ export const deleteClient = createServerFn({ method: "POST" })
   .validator((data: unknown) => z.object({ id: z.coerce.number().int() }).parse(data))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    await snapshotBackup(context.userId).catch(() => undefined);
+    await snapshotBackup(context.userId, true).catch(() => undefined);
     await sql.query(`delete from clients where user_id = $1 and id = $2`, [
       context.userId,
       data.id,
@@ -2228,7 +2255,7 @@ export const listBalances = createServerFn({ method: "GET" })
       cuts_year: unknown;
     }>(
       `select
-         (select coalesce(sum(balance),0) from clients where user_id = $1 and is_active = true) as outstanding,
+         (select coalesce(sum(balance),0) from clients where user_id = $1) as outstanding,
          (select coalesce(sum(amount),0) from payments
            where user_id = $1 and kind in ('paid','prepaid') and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')) as collected_month,
          (select coalesce(sum(amount),0) from payments
@@ -2650,7 +2677,7 @@ export const updateSettings = createServerFn({ method: "POST" })
 export const exportBackup = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    await snapshotBackup(context.userId);
+    await snapshotBackup(context.userId, true);
     const payload = await collectBackup(context.userId);
     return { json: JSON.stringify(payload) };
   });
@@ -2659,33 +2686,32 @@ export const listBackups = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<BackupSummary[]> => {
     const sql = await getSql();
+    // Count inside Postgres: parsing a dozen multi-megabyte copies just to count them was slow.
     const rows = await sql.query<{
       id: number;
       created_at: unknown;
-      payload: unknown;
+      client_count: unknown;
+      job_count: unknown;
     }>(
-      `select id, created_at, payload from backups where user_id = $1
+      `select id, created_at,
+              case when jsonb_typeof(payload->'clients') = 'array' then jsonb_array_length(payload->'clients') else 0 end as client_count,
+              case when jsonb_typeof(payload->'jobs') = 'array' then jsonb_array_length(payload->'jobs') else 0 end as job_count
+         from backups where user_id = $1
         order by created_at desc, id desc limit 12`,
       [context.userId],
     );
-    return rows.map((r) => {
-      const payload = (typeof r.payload === "string" ? JSON.parse(r.payload) : r.payload) as {
-        clients?: unknown[];
-        jobs?: unknown[];
-      };
-      return {
-        id: intId(r.id),
-        createdAt: asIsoStamp(r.created_at),
-        clientCount: payload?.clients?.length ?? 0,
-        jobCount: payload?.jobs?.length ?? 0,
-      };
-    });
+    return rows.map((r) => ({
+      id: intId(r.id),
+      createdAt: asIsoStamp(r.created_at),
+      clientCount: intId(r.client_count),
+      jobCount: intId(r.job_count),
+    }));
   });
 
 export const saveBackupNow = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    await snapshotBackup(context.userId);
+    await snapshotBackup(context.userId, true);
     return { ok: true as const, at: new Date().toISOString() };
   });
 
@@ -2732,7 +2758,7 @@ function strField(row: Record<string, unknown>, ...keys: string[]): string | nul
 
 async function applyBackup(userId: string, payload: BackupPayload): Promise<{ clients: number; jobs: number }> {
   const sql = await getSql();
-  await snapshotBackup(userId);
+  await snapshotBackup(userId, true);
   await sql.query(`delete from payments where user_id = $1`, [userId]);
   await sql.query(`delete from jobs where user_id = $1`, [userId]);
   await sql.query(`delete from clients where user_id = $1`, [userId]);
@@ -3295,7 +3321,7 @@ export const bulkClients = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    await snapshotBackup(context.userId).catch(() => undefined);
+    await snapshotBackup(context.userId, true).catch(() => undefined);
     if (data.action === "delete") {
       await sql.query(`delete from clients where user_id = $1 and id = any($2::int[])`, [
         context.userId,
@@ -3311,6 +3337,12 @@ export const bulkClients = createServerFn({ method: "POST" })
         where user_id = $1 and id = any($2::int[])`,
       [context.userId, data.ids, active],
     );
+    if (!active) {
+      await sql.query(
+        `delete from jobs where user_id = $1 and client_id = any($2::int[]) and status = 'pending'`,
+        [context.userId, data.ids],
+      );
+    }
     if (active) await ensureScheduleForUser(context.userId);
     return { ok: true as const, count: data.ids.length };
   });
