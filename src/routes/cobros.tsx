@@ -424,6 +424,7 @@ function CobrosPage() {
                             {c.payDueDay ? ` · ${payDueLabel(c.payDueDay)}` : ""}
                             {late ? tx(" · atrasado", " · late") : ""}
                             {c.servicePaused ? tx(" · en pausa", " · paused") : ""}
+                            {!c.isActive ? tx(" · archivado", " · archived") : ""}
                             {c.payTier === "espera" ? tx(" · en espera", " · waiting") : ""}
                             {c.highRisk ? tx(" · alto riesgo", " · high risk") : ""}
                           </p>
