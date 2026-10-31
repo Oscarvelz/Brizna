@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { CloudRain, Droplets, MapPin, SunMedium, Wind } from "lucide-react";
+import { CloudRain, Crosshair, Droplets, MapPin, Search, SunMedium, Wind } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -14,12 +14,11 @@ import { formatLongDay } from "@/lib/format";
 import { reasonLabel, useI18n, useTx } from "@/lib/i18n";
 import { shiftForRain } from "@/lib/server/lawn";
 import { STOP_REASONS } from "@/lib/types";
+import { askGps, findPlace, gpsAlreadyAllowed, readWeatherPlace, saveWeatherPlace, type WeatherPlace } from "@/lib/weather-place";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/clima")({ component: ClimaPage });
 
-const MIAMI = { lat: 25.7617, lon: -80.1918 };
-const PLACE_KEY = "ols-weather-place";
 
 type Hour = { time: string; temp: number; pop: number; rain: number; code: number; wind: number };
 type Day = { date: string; max: number; min: number; pop: number; rain: number; code: number; uv: number };
@@ -33,7 +32,6 @@ type Pack = {
   days: Day[];
 };
 type Frame = { time: number; path: string };
-type Place = { lat: number; lon: number; here: boolean };
 
 function sky(code: number, en: boolean) {
   const es =
@@ -63,18 +61,6 @@ function wet(code: number) {
   return (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95;
 }
 
-function readPlace(): Place | null {
-  try {
-    const raw = sessionStorage.getItem(PLACE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Place;
-    if (typeof parsed.lat === "number" && typeof parsed.lon === "number") return parsed;
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
 function ClimaPage() {
   const tx = useTx();
   const { locale, t } = useI18n();
@@ -87,7 +73,48 @@ function ClimaPage() {
     text: string;
     people: { id: number; name: string; phone: string | null }[];
   } | null>(null);
-  const [place, setPlace] = useState<Place>(MIAMI.lat ? { ...MIAMI, here: false } : { ...MIAMI, here: false });
+  const [place, setPlace] = useState<WeatherPlace>(() => readWeatherPlace());
+  const [editPlace, setEditPlace] = useState(false);
+  const [placeText, setPlaceText] = useState("");
+  const [placeBusy, setPlaceBusy] = useState(false);
+  const [gpsNote, setGpsNote] = useState("");
+
+  function usePlace(next: WeatherPlace) {
+    setPlace(next);
+    saveWeatherPlace(next);
+    setEditPlace(false);
+    setGpsNote("");
+  }
+
+  async function tapGps() {
+    setPlaceBusy(true);
+    setGpsNote("");
+    const got = await askGps();
+    setPlaceBusy(false);
+    if ("error" in got) {
+      setEditPlace(true);
+      setGpsNote(
+        got.error === 1
+          ? tx(
+              "Chrome tiene la ubicación bloqueada para Brizna. Escribe tu código postal abajo y listo. (Para desbloquearla: Ajustes de Android › Apps › Chrome › Permisos › Ubicación, y en Chrome › Configuración de sitios › Ubicación › oscarvelz.github.io.)",
+              "Chrome has location blocked for Brizna. Type your ZIP code below and you're set. (To unblock: Android Settings › Apps › Chrome › Permissions › Location, and Chrome › Site settings › Location › oscarvelz.github.io.)",
+            )
+          : got.error === 2
+            ? tx("El teléfono no da la ubicación ahora (¿GPS apagado?). Escribe tu código postal.", "The phone can't give a location now (GPS off?). Type your ZIP code.")
+            : tx("La ubicación tardó demasiado. Escribe tu código postal.", "Location took too long. Type your ZIP code."),
+      );
+      return;
+    }
+    usePlace({ ...got, name: tx("Tu ubicación", "Your location") });
+  }
+
+  async function searchPlace() {
+    setPlaceBusy(true);
+    const found = await findPlace(placeText, !en);
+    setPlaceBusy(false);
+    if (found) usePlace(found);
+    else setGpsNote(tx("No encontré ese lugar. Prueba un código postal de 5 números o una ciudad.", "Couldn't find that place. Try a 5-digit ZIP code or a city."));
+  }
   const [pack, setPack] = useState<Pack | null>(null);
   const [frames, setFrames] = useState<Frame[]>([]);
   const [host, setHost] = useState("");
@@ -95,22 +122,19 @@ function ClimaPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const saved = readPlace();
-    if (saved) setPlace(saved);
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const next = { lat: pos.coords.latitude, lon: pos.coords.longitude, here: true };
-        setPlace(next);
-        try {
-          sessionStorage.setItem(PLACE_KEY, JSON.stringify(next));
-        } catch {
-          /* ignore */
+    // Refresh GPS silently only when Chrome already allowed it; never pop the prompt on open.
+    if (place.source !== "gps") return;
+    void gpsAlreadyAllowed().then((ok) => {
+      if (!ok) return;
+      void askGps().then((got) => {
+        if (!("error" in got)) {
+          const next = { ...got, name: place.name };
+          setPlace(next);
+          saveWeatherPlace(next);
         }
-      },
-      () => undefined,
-      { enableHighAccuracy: false, maximumAge: 10 * 60 * 1000, timeout: 12000 },
-    );
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -211,10 +235,34 @@ function ClimaPage() {
 
   return (
     <AppShell title={tx("Clima", "Weather")}>
-      <p className="mb-3 flex items-center gap-1.5 text-sm text-muted">
-        <MapPin className="size-3.5" />
-        {place.here ? tx("Tu zona", "Your area") : tx("Miami, hasta que permitas la ubicación", "Miami, until you allow location")}
-      </p>
+      <div className="mb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="flex min-w-0 basis-full items-center gap-1.5 text-sm text-muted">
+            <MapPin className="size-3.5 shrink-0" />
+            <span className="truncate">{place.source === "default" ? tx("Miami (cámbialo aquí)", "Miami (change it here)") : place.name || tx("Tu zona", "Your area")}</span>
+          </p>
+          <button type="button" disabled={placeBusy} onClick={() => void tapGps()} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-fg disabled:opacity-60">
+            <Crosshair className="size-3.5" /> {tx("Mi ubicación", "My location")}
+          </button>
+          <button type="button" onClick={() => { setEditPlace((v) => !v); setGpsNote(""); }} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-fg">
+            <Search className="size-3.5" /> {tx("Código postal", "ZIP code")}
+          </button>
+        </div>
+        {gpsNote ? <p className="mt-2 rounded-lg bg-surface-2 px-3 py-2 text-xs leading-snug text-fg">{gpsNote}</p> : null}
+        {editPlace ? (
+          <form className="mt-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); void searchPlace(); }}>
+            <input
+              value={placeText}
+              onChange={(e) => setPlaceText(e.target.value)}
+              inputMode="search"
+              autoFocus
+              placeholder={tx("Ej. 33157 o Kendall", "e.g. 33157 or Kendall")}
+              className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg"
+            />
+            <Button type="submit" disabled={placeBusy || !placeText.trim()}>{tx("Usar", "Use")}</Button>
+          </form>
+        ) : null}
+      </div>
 
       <section className={cn("rounded-xl px-4 py-4", tone === "alert" ? "bg-late-bg" : tone === "wait" ? "bg-sun" : "bg-done-bg")}>
         <p className="text-xs font-semibold tracking-wide uppercase text-muted">{tx("Para el trabajo", "For the work")}</p>

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTx } from "@/lib/i18n";
+import { PLACE_EVENT, readWeatherPlace } from "@/lib/weather-place";
 
 const CACHE = "ols-weather";
-const MIAMI = { lat: 25.7617, lon: -80.1918 };
 
 function skyLabel(code: number): string {
   if (code >= 95) return "tormenta";
@@ -52,6 +52,15 @@ export function WeatherChip() {
   }
 
   useEffect(() => {
+    const again = () => {
+      const p = readWeatherPlace();
+      load(p.lat, p.lon);
+    };
+    window.addEventListener(PLACE_EVENT, again);
+    return () => window.removeEventListener(PLACE_EVENT, again);
+  }, []);
+
+  useEffect(() => {
     try {
       const raw = sessionStorage.getItem(CACHE);
       if (raw) {
@@ -64,7 +73,8 @@ export function WeatherChip() {
     } catch {
       /* ignore */
     }
-    load(MIAMI.lat, MIAMI.lon);
+    const p = readWeatherPlace();
+    load(p.lat, p.lon);
   }, []);
 
   return (
