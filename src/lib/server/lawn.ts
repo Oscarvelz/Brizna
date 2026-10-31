@@ -5408,7 +5408,7 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
       ? await sql.query<{ client_id: number; scheduled_date: unknown; amount: unknown }>(
           `select j.client_id, j.scheduled_date, j.amount
              from jobs j join clients c on c.id = j.client_id and c.user_id = j.user_id
-            where j.user_id = $1 and j.status = 'done' and c.is_active = true and c.balance > 0
+            where j.user_id = $1 and j.status = 'done' and c.balance > 0
             order by j.client_id, coalesce(j.completed_at, j.scheduled_date::timestamptz) desc, j.id desc`,
           [uid],
         )
@@ -5455,7 +5455,7 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
       unpaid.set(c.id, n);
     }
     const dueRows = await sql.query<{ pay_due_day: number | null; balance: unknown }>(
-      `select pay_due_day, balance from clients where user_id = $1 and is_active = true and balance > 0`,
+      `select pay_due_day, balance from clients where user_id = $1 and balance > 0`,
       [uid],
     );
     const waitPeople = owing.filter((c) => c.payTier === "espera").length;
@@ -5478,7 +5478,7 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
     };
     void owingIds;
     const outstandingRows = await sql.query<{ v: unknown; n: unknown }>(
-      `select coalesce(sum(balance),0) as v, count(*) filter (where balance > 0) as n from clients where user_id = $1 and is_active = true`,
+      `select coalesce(sum(balance),0) as v, count(*) filter (where balance > 0) as n from clients where user_id = $1`,
       [uid],
     );
 
