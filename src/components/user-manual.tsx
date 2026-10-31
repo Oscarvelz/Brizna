@@ -15,7 +15,7 @@ import type { LocaleName, PaletteName, ThemeName } from "@/lib/types";
 const GROUPS = [
   { es: "Día de trabajo", en: "Work day", ids: ["hoy", "vistas", "hecho", "lluvia", "horas", "todos", "sonidos"] },
   { es: "Dinero", en: "Money", ids: ["cobros", "propina", "precio"] },
-  { es: "Clientes", en: "Clients", ids: ["fotos", "una-vez"] },
+  { es: "Clientes", en: "Clients", ids: ["una-vez"] },
   { es: "Agenda", en: "Schedule", ids: ["agenda"] },
   { es: "Bloc de notas", en: "Notepad", ids: ["notas"] },
   { es: "Cifras", en: "Figures", ids: ["cifras", "ritmo"] },

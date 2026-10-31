@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { shrinkPhoto } from "@/lib/photo";
+import { PHOTOS_ENABLED } from "@/lib/photos-flag";
 
 export function PhotoPicker({
   onPick,
@@ -14,6 +15,7 @@ export function PhotoPicker({
   label?: string;
   bare?: boolean;
 }) {
+  if (!PHOTOS_ENABLED) return null;
   const { t } = useI18n();
   const galleryId = useId();
   const cameraId = useId();

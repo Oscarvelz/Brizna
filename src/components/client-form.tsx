@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, NativeSelect } from "@/components/ui/input";
 import { pickPhoneContacts } from "@/lib/contacts";
 import { PhotoPicker } from "@/components/photo-picker";
+import { PHOTOS_ENABLED } from "@/lib/photos-flag";
 import { previewUpcomingCuts, todayISO, weekdayFromISO } from "@/lib/dates";
 import { formatDay, mapsHref, money, weekdayLabel, weekdayOptions } from "@/lib/format";
 import { useTx } from "@/lib/i18n";
@@ -385,7 +386,7 @@ export function ClientForm({
         <CueField value={value.cue} onChange={(next) => set("cue", next)} presets={settingsQ.data?.cuePresets ?? DEFAULT_CUE_PRESETS} />
       </Field>
 
-      <Field
+      {PHOTOS_ENABLED ? <Field
         label={tx("Fotos de la ficha", "File photos")}
         hint={tx(
           "Opcional. Productos o indicaciones visuales. No es la foto del patio al marcar Hecho.",
@@ -405,7 +406,7 @@ export function ClientForm({
             )}
           </p>
         ) : null}
-      </Field>
+      </Field> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={tx("Teléfono", "Phone")}>

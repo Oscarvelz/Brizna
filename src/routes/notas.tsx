@@ -9,6 +9,7 @@ import { AppShell } from "@/components/app-shell";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Hint } from "@/components/hint";
 import { PhotoPicker } from "@/components/photo-picker";
+import { PHOTOS_ENABLED } from "@/lib/photos-flag";
 import { CalcButton, QuickPad } from "@/components/money-calc";
 import { noteReaderHtml, RichNotes } from "@/components/rich-notes";
 import { Button } from "@/components/ui/button";
@@ -829,6 +830,7 @@ function NotePhotos({
   pending?: string[];
   onPending?: (next: string[]) => void;
 }) {
+  if (!PHOTOS_ENABLED) return null;
   const tx = useTx();
   const qc = useQueryClient();
   const push = useUndo((s) => s.push);

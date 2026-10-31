@@ -17,6 +17,7 @@ import {
   weekdayFromISO,
 } from "@/lib/dates";
 import { DEFAULT_BUSINESS_NAME } from "@/lib/format";
+import { PHOTOS_ENABLED } from "@/lib/photos-flag";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { smartHit } from "@/lib/fuzzy";
 import { checksumMatches, idsToKeep, withChecksum } from "@/lib/backup-plan";
@@ -1548,7 +1549,7 @@ async function markJobDone(
       where user_id = $1 and id = $2`,
     [userId, jobId],
   );
-  if (photo.startsWith("data:image/") && photo.length <= 180_000) {
+  if (PHOTOS_ENABLED && photo.startsWith("data:image/") && photo.length <= 180_000) {
     await sql.query(`update jobs set photo = $3 where user_id = $1 and id = $2`, [
       userId,
       jobId,
@@ -4505,7 +4506,7 @@ export const addClientPhoto = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ context, data }) => {
-    if (!data.data.startsWith("data:image/")) return { ok: false as const };
+    if (!PHOTOS_ENABLED || !data.data.startsWith("data:image/")) return { ok: false as const };
     const sql = await getSql();
     const owned = await sql.query<{ id: number }>(
       `select id from clients where user_id = $1 and id = $2`,
@@ -4558,7 +4559,7 @@ export const addPadPhoto = createServerFn({ method: "POST" })
     z.object({ pageId: z.coerce.number().int(), data: z.string().max(180000) }).parse(data),
   )
   .handler(async ({ context, data }) => {
-    if (!data.data.startsWith("data:image/")) return { ok: false as const };
+    if (!PHOTOS_ENABLED || !data.data.startsWith("data:image/")) return { ok: false as const };
     const sql = await getSql();
     const owned = await sql.query<{ id: number }>(
       `select id from pad_pages where user_id = $1 and id = $2`,

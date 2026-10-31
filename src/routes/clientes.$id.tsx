@@ -38,6 +38,7 @@ import { noteMatches, notePlain } from "@/lib/note-search";
 import { DensityScope, DensityToggle, useDensity, useQuadCols } from "@/components/density-toggle";
 import { methodLabel } from "@/components/method-field";
 import { PhotoPicker } from "@/components/photo-picker";
+import { PHOTOS_ENABLED } from "@/lib/photos-flag";
 import { ServicePause } from "@/components/service-pause";
 import {
   addClientPhoto,
@@ -449,7 +450,7 @@ function ClientDetailPage() {
             </p>
           </section>
 
-          <ClientPhotos clientId={client.id} photos={data?.photos ?? []} />
+          {PHOTOS_ENABLED ? <ClientPhotos clientId={client.id} photos={data?.photos ?? []} /> : null}
 
           <section className="mt-8">
             <h2 className="mb-1 font-display text-lg font-semibold">{tx("Próximos cortes", "Upcoming cuts")}</h2>
