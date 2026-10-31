@@ -741,7 +741,7 @@ function PadBody({
       <button
         type="button"
         onClick={() => startBlank()}
-        className="fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-20 grid size-14 place-items-center rounded-full bg-primary text-primary-fg shadow-card md:bottom-6"
+        className="fixed right-4 bottom-[calc(5.25rem+var(--bz-chin))] z-20 grid size-14 place-items-center rounded-full bg-primary text-primary-fg shadow-card md:bottom-6"
         aria-label={t("notes.new")}
       >
         <Plus className="size-6" />

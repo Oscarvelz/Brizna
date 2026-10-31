@@ -64,11 +64,11 @@ const DAY_THEMES: { id: DayPalette; es: string; en: string; swatch: string }[] =
 ];
 
 const NIGHT_THEMES: { id: NightPalette; es: string; en: string; swatch: string }[] = [
-  { id: "bosque", es: "Bosque", en: "Forest", swatch: "swatch-bosque" },
-  { id: "mar", es: "Mar", en: "Sea", swatch: "swatch-mar" },
-  { id: "brasa", es: "Brasa", en: "Ember", swatch: "swatch-brasa" },
-  { id: "tinta", es: "Tinta", en: "Ink", swatch: "swatch-tinta" },
-  { id: "luna", es: "Luna", en: "Moon", swatch: "swatch-luna" },
+  { id: "noche", es: "Noche", en: "Night", swatch: "swatch-noche" },
+  { id: "medianoche", es: "Medianoche", en: "Midnight", swatch: "swatch-medianoche" },
+  { id: "ciruela", es: "Ciruela", en: "Plum", swatch: "swatch-ciruela" },
+  { id: "grafito", es: "Grafito", en: "Graphite", swatch: "swatch-grafito" },
+  { id: "luciernaga", es: "Luciérnaga", en: "Firefly", swatch: "swatch-luciernaga" },
   { id: "amoled", es: "AMOLED", en: "AMOLED", swatch: "swatch-amoled" },
 ];
 
@@ -384,7 +384,7 @@ function AjustesPage() {
           id="aj-pantalla"
           order="order-2"
           query={query}
-          blob="tema pantalla dia noche automatico idioma language colores jardin costa barro pino cielo lima arena flor bosque mar brasa tinta luna amoled theme screen day night"
+          blob="tema pantalla dia noche automatico idioma language colores jardin costa barro pino cielo lima arena flor noche medianoche ciruela grafito luciernaga luciérnaga amoled theme screen day night"
           title={
             <span className="flex items-center gap-2">
               <Palette className="size-5 shrink-0 text-primary" />

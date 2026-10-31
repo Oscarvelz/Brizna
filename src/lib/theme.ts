@@ -10,7 +10,12 @@ const DAY_KEY = "ols-palette-day";
 const NIGHT_KEY = "ols-palette-night";
 
 export const DAY_PALETTES = ["jardin", "costa", "barro", "pino", "cielo", "lima", "arena", "flor"] as const;
-export const NIGHT_PALETTES = ["bosque", "mar", "brasa", "tinta", "luna", "amoled"] as const;
+export const NIGHT_PALETTES = ["noche", "medianoche", "ciruela", "grafito", "luciernaga", "amoled"] as const;
+/** Night themes before Nov 2026, mapped to their closest new one. */
+const OLD_NIGHT: Record<string, string> = { bosque: "noche", mar: "medianoche", tinta: "medianoche", brasa: "grafito", luna: "grafito" };
+function newNight(v: string | null | undefined): string | null | undefined {
+  return v && OLD_NIGHT[v] ? OLD_NIGHT[v] : v;
+}
 
 export type DayPalette = (typeof DAY_PALETTES)[number];
 export type NightPalette = (typeof NIGHT_PALETTES)[number];
@@ -33,11 +38,11 @@ const STATUS_BAR: Record<string, string> = {
   "day:lima": "#eef6d4",
   "day:arena": "#f6efe2",
   "day:flor": "#f8eef1",
-  "night:bosque": "#07140e",
-  "night:mar": "#06141c",
-  "night:brasa": "#140e0a",
-  "night:tinta": "#0c1220",
-  "night:luna": "#171917",
+  "night:noche": "#0c110e",
+  "night:medianoche": "#0a0f1a",
+  "night:ciruela": "#120d16",
+  "night:grafito": "#111112",
+  "night:luciernaga": "#0d0f0a",
   "night:amoled": "#000000",
 };
 
@@ -50,7 +55,7 @@ function isNightPalette(value: string | null | undefined): value is NightPalette
 }
 
 function statusBarColor(useNight: boolean, palette: string) {
-  return STATUS_BAR[`${useNight ? "night" : "day"}:${palette}`] ?? (useNight ? "#07140e" : "#efe8d6");
+  return STATUS_BAR[`${useNight ? "night" : "day"}:${palette}`] ?? (useNight ? "#0c110e" : "#efe8d6");
 }
 
 function paintStatusBar(color: string) {
@@ -81,11 +86,11 @@ export function readStoredLocale(): LocaleName {
 }
 
 export function readAppearance(): Appearance {
-  if (typeof window === "undefined") return { mode: "day", day: "jardin", night: "bosque" };
+  if (typeof window === "undefined") return { mode: "day", day: "jardin", night: "noche" };
   try {
     const raw = JSON.parse(window.localStorage.getItem(LOOK_KEY) || "null") as Partial<Appearance> | null;
-    if (raw && (raw.mode === "day" || raw.mode === "night" || raw.mode === "auto") && isDayPalette(raw.day) && isNightPalette(raw.night)) {
-      return { mode: raw.mode, day: raw.day, night: raw.night };
+    if (raw && (raw.mode === "day" || raw.mode === "night" || raw.mode === "auto") && isDayPalette(raw.day) && isNightPalette(newNight(raw.night))) {
+      return { mode: raw.mode, day: raw.day, night: newNight(raw.night) as NightPalette };
     }
   } catch {
     /* fall through to the older keys */
@@ -93,9 +98,9 @@ export function readAppearance(): Appearance {
   const modeRaw = window.localStorage.getItem(MODE_KEY);
   const mode: AppearanceMode = modeRaw === "night" || modeRaw === "auto" || modeRaw === "day" ? modeRaw : readStoredTheme() === "amoled" ? "night" : "day";
   const dayRaw = window.localStorage.getItem(DAY_KEY);
-  const nightRaw = window.localStorage.getItem(NIGHT_KEY);
+  const nightRaw = newNight(window.localStorage.getItem(NIGHT_KEY));
   const day = isDayPalette(dayRaw) ? dayRaw : isDayPalette(readStoredPalette()) ? readStoredPalette() : "jardin";
-  const night = isNightPalette(nightRaw) ? nightRaw : readStoredTheme() === "amoled" ? "amoled" : "bosque";
+  const night = isNightPalette(nightRaw) ? nightRaw : readStoredTheme() === "amoled" ? "amoled" : "noche";
   return { mode, day, night };
 }
 
@@ -158,9 +163,9 @@ mode=localStorage.getItem("ols-appearance-mode");
 if(mode!=="day"&&mode!=="night"&&mode!=="auto")mode=localStorage.getItem("ols-theme")==="amoled"?"night":"day";
 }
 var days=["jardin","costa","barro","pino","cielo","lima","arena","flor"];
-var nights=["bosque","mar","brasa","tinta","luna","amoled"];
+var nights=["noche","medianoche","ciruela","grafito","luciernaga","amoled"];var old={bosque:"noche",mar:"medianoche",tinta:"medianoche",brasa:"grafito",luna:"grafito"};if(old[night])night=old[night];
 if(days.indexOf(day)<0){day=localStorage.getItem("ols-palette-day")||localStorage.getItem("ols-palette")||"jardin";if(days.indexOf(day)<0)day="jardin";}
-if(nights.indexOf(night)<0){night=localStorage.getItem("ols-palette-night");if(nights.indexOf(night)<0)night=localStorage.getItem("ols-theme")==="amoled"?"amoled":"bosque";}
+if(nights.indexOf(night)<0){night=localStorage.getItem("ols-palette-night");if(old[night])night=old[night];if(nights.indexOf(night)<0)night=localStorage.getItem("ols-theme")==="amoled"?"amoled":"noche";}
 var mins=new Date().getHours()*60+new Date().getMinutes();
 var useNight=mode==="night"||(mode==="auto"&&(mins<390||mins>=1110));
 var p=useNight?night:day,r=document.documentElement;
@@ -168,8 +173,8 @@ r.classList.toggle("theme-amoled",!!(useNight&&p==="amoled"));
 r.classList.toggle("theme-dark",!!(useNight&&p!=="amoled"));
 if((useNight&&p==="amoled")||(!useNight&&p==="jardin"))r.removeAttribute("data-palette");else r.dataset.palette=p;
 r.style.colorScheme=useNight?"dark":"light";
-var bars={jardin:"#efe8d6",costa:"#e5f1f0",barro:"#f6eee6",pino:"#e7eee9",cielo:"#e8eef6",lima:"#eef6d4",arena:"#f6efe2",flor:"#f8eef1",bosque:"#07140e",mar:"#06141c",brasa:"#140e0a",tinta:"#0c1220",luna:"#171917",amoled:"#000000"};
-var bar=bars[p]||(useNight?"#07140e":"#efe8d6");
+var bars={jardin:"#efe8d6",costa:"#e5f1f0",barro:"#f6eee6",pino:"#e7eee9",cielo:"#e8eef6",lima:"#eef6d4",arena:"#f6efe2",flor:"#f8eef1",noche:"#0c110e",medianoche:"#0a0f1a",ciruela:"#120d16",grafito:"#111112",luciernaga:"#0d0f0a",amoled:"#000000"};
+var bar=bars[p]||(useNight?"#0c110e":"#efe8d6");
 var meta=document.querySelector('meta[name="theme-color"]');
 if(!meta){meta=document.createElement("meta");meta.setAttribute("name","theme-color");document.head.appendChild(meta);}
 meta.setAttribute("content",bar);
@@ -197,7 +202,7 @@ export function ensureAppearance(serverTheme?: ThemeName, serverPalette?: string
     applyAppearance({
       mode: serverTheme === "amoled" ? "night" : "day",
       day: isDayPalette(serverPalette) ? serverPalette : "jardin",
-      night: serverTheme === "amoled" ? "amoled" : "bosque",
+      night: serverTheme === "amoled" ? "amoled" : "noche",
     });
     return;
   }

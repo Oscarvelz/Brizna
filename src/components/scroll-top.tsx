@@ -21,7 +21,7 @@ export function ScrollTop({ lift = false, aboveFab = false }: { lift?: boolean; 
       className={cn(
         "fixed right-2 z-30 grid size-10 place-items-center rounded-full bg-surface/90 text-muted shadow-card ring-1 ring-border",
         aboveFab
-          ? "right-6 bottom-[calc(9.25rem+env(safe-area-inset-bottom))]"
+          ? "right-6 bottom-[calc(9.25rem+var(--bz-chin))]"
           : lift
             ? "right-2 bottom-36"
             : "right-2 bottom-24",

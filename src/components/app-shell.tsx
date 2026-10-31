@@ -322,7 +322,7 @@ export function AppShell({
           key="live"
           className={cn(
             "flex min-w-0 flex-col",
-            embedded ? "min-h-full pb-0" : split ? "min-h-0 flex-1 overflow-hidden" : keyboard ? "min-h-dvh pb-2 lg:pb-0" : "min-h-dvh pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-0",
+            embedded ? "min-h-full pb-0" : split ? "min-h-0 flex-1 overflow-hidden" : keyboard ? "min-h-dvh pb-2 lg:pb-0" : "min-h-dvh pb-[calc(4.75rem+var(--bz-chin))] lg:pb-0",
           )}
           onTouchStart={(e) => {
             const target = e.target as HTMLElement;
@@ -538,7 +538,7 @@ export function AppShell({
           )
         ) : null}
 
-        <nav ref={setDockEl} className={cn("pod-dock pointer-events-auto fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[color-mix(in_srgb,var(--color-primary)_32%,var(--color-border))] bg-bg px-0.5 pt-1 text-fg print:hidden lg:hidden pb-[env(safe-area-inset-bottom)]", (embedded || split || keyboard) && "hidden")}>
+        <nav ref={setDockEl} className={cn("pod-dock pointer-events-auto fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[color-mix(in_srgb,var(--color-primary)_32%,var(--color-border))] bg-surface px-0.5 pt-1 text-fg print:hidden lg:hidden pb-[var(--bz-chin)]", (embedded || split || keyboard) && "hidden")}>
           {nav.map((item) => (
             <NavLink key={item.to} to={item.to} icon={item.icon} label={t(item.label)} compact />
           ))}

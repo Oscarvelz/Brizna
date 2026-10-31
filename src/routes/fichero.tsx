@@ -403,7 +403,7 @@ function FicheroPage() {
         type="button"
         disabled={making}
         onClick={() => void addNote()}
-        className="fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-20 grid size-14 place-items-center rounded-full bg-primary text-primary-fg shadow-card disabled:opacity-60 md:bottom-6"
+        className="fixed right-4 bottom-[calc(5.25rem+var(--bz-chin))] z-20 grid size-14 place-items-center rounded-full bg-primary text-primary-fg shadow-card disabled:opacity-60 md:bottom-6"
         aria-label={carpeta ? tx("Nueva nota en esta carpeta", "New note in this folder") : tx("Nueva nota", "New note")}
       >
         <Plus className="size-6" />
