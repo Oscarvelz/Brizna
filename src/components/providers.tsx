@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Toaster } from "sonner";
 import { I18nProvider, useI18n } from "@/lib/i18n";
 import { NameJumpHost } from "@/components/name-jump-host";
@@ -122,9 +122,19 @@ function LocaleGuards() {
   return null;
 }
 
+const Nested = createContext(false);
+
 export function AppProviders({ children }: { children: ReactNode }) {
+  const nested = useContext(Nested);
+  // Extra screens render the app again inside the main one: reuse its providers (one cache, one toaster).
+  if (nested) return <>{children}</>;
+  return <RootProviders>{children}</RootProviders>;
+}
+
+function RootProviders({ children }: { children: ReactNode }) {
   const [client] = useState(makeQueryClient);
   return (
+    <Nested.Provider value={true}>
     <QueryClientProvider client={client}>
       <I18nProvider>
         <ThemeBoot />
@@ -141,5 +151,6 @@ export function AppProviders({ children }: { children: ReactNode }) {
         />
       </I18nProvider>
     </QueryClientProvider>
+    </Nested.Provider>
   );
 }

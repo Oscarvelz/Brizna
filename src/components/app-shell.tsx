@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   LogOut,
   NotebookPen,
+  PictureInPicture2,
   Rows2,
   Settings,
   Search,
@@ -49,6 +50,8 @@ import {
   type TabletLayout,
   type TabletTab,
 } from "@/lib/tablet-mode";
+import { PaneView, usePane } from "@/lib/pane-context";
+import { useFloatState } from "@/components/float-window";
 
 const nav = [
   { to: "/", label: "nav.today", icon: Home },
@@ -118,7 +121,9 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const swipe = useRef<{ x: number; y: number } | null>(null);
-  const [embedded, setEmbedded] = useState(false);
+  const pane = usePane();
+  const embedded = pane !== null;
+  const [float, saveFloat] = useFloatState();
   const [wide, setWide] = useState(false);
   const [tabletOn, setTabletOn] = useState(true);
   const [board, setBoard] = useState<TabletLayout>({ count: 1, flow: "side", slots: ["/", "/agenda", "/clientes", "/cobros", "/estadisticas"], phone: false, ratio: 0.5 });
@@ -176,7 +181,6 @@ export function AppShell({
 
   useLayoutEffect(() => {
     const sync = () => {
-      setEmbedded(window.name.startsWith("ols-pane"));
       setWide(window.matchMedia("(min-width: 1024px)").matches);
       setTabletOn(readTabletEnabled());
       setBoard(readTabletLayout());
@@ -194,14 +198,26 @@ export function AppShell({
   const onBoard = (TABLET_TABS as readonly string[]).includes(pathname);
   const phoneSplit = tabletOn && !wide && !embedded && board.phone === true && onBoard;
   const split = !embedded && tabletOn && onBoard && (phoneSplit || (wide && board.count > 1));
-  const flow = phoneSplit || board.flow === "stack" ? "stack" : "side";
+  const flow = phoneSplit ? "stack" : "side";
   const paneCount = phoneSplit ? 2 : board.count;
-  const cols = !split ? 1 : flow === "stack" ? 1 : paneCount === 4 ? 2 : paneCount;
+  const cols = !split ? 1 : flow === "stack" ? 1 : paneCount;
   const slotted = board.slots.slice(0, paneCount);
   const visible = slotted as TabletTab[];
   const bare = embedded || split;
-  const tunable = split && flow === "stack" && paneCount === 2;
-  const ratio = dragRatio ?? (typeof board.ratio === "number" ? board.ratio : 0.5);
+  const tunable = split && paneCount === 2;
+  const savedShare = flow === "stack" ? board.ratio : board.sideRatio;
+  const ratio = dragRatio ?? (typeof savedShare === "number" ? savedShare : 0.5);
+
+  function toggleFloat() {
+    if (float.open) {
+      saveFloat({ ...float, open: false, min: false });
+      return;
+    }
+    // Open on a different tab than the one in front, so the window adds something.
+    const here = (TABLET_TABS as readonly string[]).includes(pathname) ? (pathname as TabletTab) : "/";
+    const path = float.path === here ? (here === "/agenda" ? "/" : "/agenda") : float.path;
+    saveFloat({ ...float, open: true, min: false, path });
+  }
 
   function saveBoard(next: TabletLayout) {
     setBoard(next);
@@ -239,25 +255,11 @@ export function AppShell({
   }
 
   useEffect(() => {
-    if (!window.name.startsWith("ols-pane")) return;
+    if (!pane) return;
     const tab = (TABLET_TABS as readonly string[]).find((item) => (item === "/" ? pathname === "/" : pathname === item || pathname.startsWith(`${item}/`)));
-    if (!tab) return;
-    window.parent.postMessage({ type: "ols-pane", name: window.name, path: tab }, window.location.origin);
+    if (tab) pane.onPath(tab as TabletTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
-
-  useEffect(() => {
-    if (embedded) return;
-    const onMsg = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; name?: string; path?: string } | null;
-      if (!data || data.type !== "ols-pane" || !data.name || !data.path) return;
-      const index = Number(data.name.replace("ols-pane-", ""));
-      if (!Number.isInteger(index) || !(TABLET_TABS as readonly string[]).includes(data.path)) return;
-      assignPane(index, data.path as TabletTab);
-    };
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
-  });
 
   useEffect(() => {
     if (embedded) return;
@@ -275,6 +277,11 @@ export function AppShell({
         event.preventDefault();
         if (wide) saveBoard({ ...board, count: board.count > 1 ? 1 : 2 });
         else saveBoard({ ...board, phone: !board.phone });
+        return;
+      }
+      if (event.key === "f" || event.key === "F") {
+        event.preventDefault();
+        toggleFloat();
         return;
       }
       if (!event.shiftKey || !split) return;
@@ -302,8 +309,7 @@ export function AppShell({
           key="live"
           className={cn(
             "flex min-w-0 flex-col",
-            split ? "min-h-0 flex-1 overflow-hidden" : keyboard ? "min-h-dvh pb-2 lg:pb-0" : "min-h-dvh pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-0",
-            embedded && "pb-0",
+            embedded ? "min-h-full pb-0" : split ? "min-h-0 flex-1 overflow-hidden" : keyboard ? "min-h-dvh pb-2 lg:pb-0" : "min-h-dvh pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-0",
           )}
           onTouchStart={(e) => {
             const target = e.target as HTMLElement;
@@ -334,7 +340,7 @@ export function AppShell({
               split || embedded ? "pt-2" : "pt-[calc(0.5rem+env(safe-area-inset-top,0px))]",
             )}
           >
-            <div className={cn("flex min-h-10 min-w-0 items-center gap-2 lg:hidden", bare && !embedded && "lg:flex")}>
+            <div className={cn("flex min-h-10 min-w-0 items-center gap-2 lg:hidden", embedded && "hidden", bare && !embedded && "lg:flex")}>
               <BrandMark className="size-8 shrink-0" />
               <div className="flex shrink-0 items-center gap-1.5">
                 <span className="font-display text-lg font-semibold leading-none tracking-tight">{PRODUCT_NAME}</span>
@@ -360,7 +366,7 @@ export function AppShell({
               {pathname === "/agenda" ? null : <UndoBar confirm={pathname !== "/notas" && pathname !== "/fichero"} />}
               {action}
               {embedded ? (
-                <div className="ml-auto hidden shrink-0 items-center lg:flex">
+                <div className="ml-auto flex shrink-0 items-center">
                   <NotesDoor iconOnly />
                   <Link
                     to="/ajustes"
@@ -373,7 +379,7 @@ export function AppShell({
               ) : null}
             </div>
           </header>
-          <main className={cn("mx-auto w-full min-w-0 max-w-3xl flex-1 overflow-x-clip px-3 py-4 sm:px-5 sm:py-5 lg:max-w-4xl lg:px-6 lg:py-6", split && "overflow-y-auto")}>
+          <main className={cn("mx-auto w-full min-w-0 max-w-3xl flex-1 overflow-x-clip px-3 py-4 sm:px-5 sm:py-5 lg:max-w-4xl lg:px-6 lg:py-6", split && "overflow-y-auto", embedded && "px-2.5 py-3 sm:px-4 lg:px-4 lg:py-4")}>
             <OfflineBanner />
             <BackupWatch />
             {children}
@@ -437,11 +443,14 @@ export function AppShell({
           className={cn(
             "min-w-0",
             split && "grid h-dvh overflow-hidden",
-            split && !tunable && paneCount === 2 && (flow === "stack" ? "grid-cols-1 grid-rows-2" : "grid-cols-2"),
-            split && !tunable && paneCount === 3 && (flow === "stack" ? "grid-cols-1 grid-rows-3" : "grid-cols-3"),
-            split && !tunable && paneCount === 4 && (flow === "stack" ? "grid-cols-1 grid-rows-4" : "grid-cols-2 grid-rows-2"),
           )}
-          style={tunable ? { gridTemplateRows: `${ratio}fr auto ${1 - ratio}fr` } : undefined}
+          style={
+            tunable
+              ? flow === "stack"
+                ? { gridTemplateRows: `${ratio}fr auto ${1 - ratio}fr` }
+                : { gridTemplateColumns: `${ratio}fr auto ${1 - ratio}fr` }
+              : undefined
+          }
         >
         {split
           ? visible.map((path, index) => (
@@ -449,12 +458,18 @@ export function AppShell({
               <div
                 className={cn(
                   "flex min-h-0 min-w-0 flex-col ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_34%,var(--color-border))]",
-                  index % cols !== 0 && "border-l border-[color-mix(in_srgb,var(--color-primary)_34%,var(--color-border))]",
-                  index >= cols && !tunable && "border-t border-[color-mix(in_srgb,var(--color-primary)_34%,var(--color-border))]",
+
                 )}
               >
-                <div className="flex min-h-0 flex-1 flex-col">
-                  <PaneFrame index={index} path={path} />
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-bg">
+                  <PaneView
+                    id={`split-${index}`}
+                    path={path}
+                    onPath={(tab) => {
+                      setActivePane(index);
+                      assignPane(index, tab);
+                    }}
+                  />
                 </div>
                 {phoneSplit ? (
                   <PaneBar
@@ -469,11 +484,12 @@ export function AppShell({
               </div>
               {tunable && index === 0 ? (
                 <SplitHandle
+                  vertical={flow === "side"}
                   ratio={ratio}
                   onRatio={setDragRatio}
                   onCommit={(next) => {
                     setDragRatio(null);
-                    saveBoard({ ...board, ratio: next });
+                    saveBoard(flow === "stack" ? { ...board, ratio: next } : { ...board, sideRatio: next });
                   }}
                 />
               ) : null}
@@ -487,6 +503,8 @@ export function AppShell({
           <TabletDock
             open={boardOpen}
             layout={board}
+            floatOn={float.open}
+            onFloat={toggleFloat}
             onToggle={() => setBoardOpen((value) => !value)}
             onChange={(next) => {
               setBoard(next);
@@ -494,6 +512,20 @@ export function AppShell({
             }}
           />
           ) : (
+            <>
+            <button
+              type="button"
+              onClick={toggleFloat}
+              aria-pressed={float.open}
+              aria-label={float.open ? tx("Cerrar ventana flotante", "Close floating window") : tx("Ventana flotante", "Floating window")}
+              className={cn(
+                "fixed left-3 z-40 grid size-10 place-items-center rounded-full border border-border bg-surface/90 text-muted shadow-card ring-1 ring-border print:hidden",
+                "bottom-36",
+                float.open && "bg-sun text-primary",
+              )}
+            >
+              <PictureInPicture2 className="size-5" />
+            </button>
             <button
               type="button"
               onClick={() => saveBoard({ ...board, phone: !board.phone })}
@@ -506,6 +538,7 @@ export function AppShell({
             >
               <Rows2 className="size-5" />
             </button>
+            </>
           )
         ) : null}
 
@@ -516,35 +549,6 @@ export function AppShell({
         </nav>
       </div>
     </RequireAuth>
-  );
-}
-
-function PaneFrame({ index, path }: { index: number; path: TabletTab }) {
-  const ref = useRef<HTMLIFrameElement>(null);
-  const shown = useRef(path);
-  useEffect(() => {
-    const frame = ref.current;
-    if (!frame) return;
-    if (shown.current === path) return;
-    shown.current = path;
-    let here = "";
-    try {
-      here = frame.contentWindow?.location.pathname ?? "";
-    } catch {
-      here = "";
-    }
-    const same = path === "/" ? here === "/" : here === path || here.startsWith(`${path}/`);
-    if (same) return;
-    frame.src = path;
-  }, [path]);
-  return (
-    <iframe
-      ref={ref}
-      name={`ols-pane-${index}`}
-      title={tabletTabLabel(path)[0]}
-      src={path}
-      className="min-h-0 w-full flex-1 border-0 bg-bg"
-    />
   );
 }
 
@@ -586,20 +590,23 @@ function SplitHandle({
   ratio,
   onRatio,
   onCommit,
+  vertical,
 }: {
   ratio: number;
   onRatio: (next: number) => void;
   onCommit: (next: number) => void;
+  /** Side by side: a vertical bar you drag left and right. */
+  vertical?: boolean;
 }) {
   const tx = useTx();
-  const clamp = (value: number) => Math.min(0.93, Math.max(0.07, value));
+  const clamp = (value: number) => Math.min(vertical ? 0.8 : 0.93, Math.max(vertical ? 0.2 : 0.07, value));
   return (
     <div
       role="separator"
-      aria-orientation="horizontal"
+      aria-orientation={vertical ? "vertical" : "horizontal"}
       aria-label={tx("Ajustar la división", "Resize the split")}
-      aria-valuemin={7}
-      aria-valuemax={93}
+      aria-valuemin={vertical ? 20 : 7}
+      aria-valuemax={vertical ? 80 : 93}
       aria-valuenow={Math.round(ratio * 100)}
       tabIndex={0}
       data-no-swipe
@@ -609,13 +616,13 @@ function SplitHandle({
         if (!parent) return;
         event.preventDefault();
         el.setPointerCapture(event.pointerId);
-        const apply = (clientY: number) => {
+        const apply = (clientX: number, clientY: number) => {
           const rect = parent.getBoundingClientRect();
-          return clamp((clientY - rect.top) / rect.height);
+          return clamp(vertical ? (clientX - rect.left) / rect.width : (clientY - rect.top) / rect.height);
         };
-        const move = (ev: PointerEvent) => onRatio(apply(ev.clientY));
+        const move = (ev: PointerEvent) => onRatio(apply(ev.clientX, ev.clientY));
         const up = (ev: PointerEvent) => {
-          const next = apply(ev.clientY);
+          const next = apply(ev.clientX, ev.clientY);
           el.removeEventListener("pointermove", move);
           el.removeEventListener("pointerup", up);
           onCommit(next);
@@ -623,16 +630,31 @@ function SplitHandle({
         el.addEventListener("pointermove", move);
         el.addEventListener("pointerup", up);
       }}
+      onDoubleClick={() => onCommit(0.5)}
       onKeyDown={(event) => {
-        if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+        const back = vertical ? "ArrowLeft" : "ArrowUp";
+        const fwd = vertical ? "ArrowRight" : "ArrowDown";
+        if (event.key !== back && event.key !== fwd) return;
         event.preventDefault();
-        const next = clamp(ratio + (event.key === "ArrowDown" ? 0.04 : -0.04));
-        onCommit(next);
+        onCommit(clamp(ratio + (event.key === fwd ? 0.04 : -0.04)));
       }}
-      className="relative z-10 flex h-5 cursor-row-resize touch-none items-center justify-center bg-bg"
+      className={cn(
+        "relative z-10 flex touch-none items-center justify-center bg-bg",
+        vertical ? "w-4 cursor-col-resize flex-col" : "h-5 cursor-row-resize",
+      )}
     >
-      <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[color-mix(in_srgb,var(--color-primary)_42%,var(--color-border))]" />
-      <span className="relative h-1 w-8 rounded-full bg-[color-mix(in_srgb,var(--color-primary)_55%,var(--color-border))]" />
+      <span
+        className={cn(
+          "absolute bg-[color-mix(in_srgb,var(--color-primary)_42%,var(--color-border))]",
+          vertical ? "inset-y-0 left-1/2 w-px -translate-x-1/2" : "inset-x-0 top-1/2 h-px -translate-y-1/2",
+        )}
+      />
+      <span
+        className={cn(
+          "relative rounded-full bg-[color-mix(in_srgb,var(--color-primary)_55%,var(--color-border))]",
+          vertical ? "h-10 w-1.5" : "h-1 w-8",
+        )}
+      />
     </div>
   );
 }
@@ -640,87 +662,62 @@ function SplitHandle({
 function TabletDock({
   open,
   layout,
+  floatOn,
+  onFloat,
   onToggle,
   onChange,
 }: {
   open: boolean;
   layout: TabletLayout;
+  floatOn: boolean;
+  onFloat: () => void;
   onToggle: () => void;
   onChange: (next: TabletLayout) => void;
 }) {
   const tx = useTx();
-  function move(index: number, dir: -1 | 1) {
-    const next = [...layout.slots];
-    const to = index + dir;
-    if (to < 0 || to >= next.length) return;
-    const swap = next[index];
-    const other = next[to];
-    if (!swap || !other) return;
-    next[index] = other;
-    next[to] = swap;
-    onChange({ ...layout, slots: next });
-  }
+  const [left, right] = layout.slots;
   return (
     <div className="fixed right-4 bottom-4 z-40 print:hidden" data-no-swipe>
       {open ? (
         <div className="mb-2 w-72 rounded-2xl bg-surface p-3 shadow-card">
           <p className="text-sm font-semibold">{tx("Vista", "View")}</p>
-          <p className="mt-1 text-xs text-muted">
-            {tx(
-              "1 es una sola pantalla. 2, 3 y 4 la parten. Cada ventana tiene sus pestañas. Las flechas cambian una ventana con la de al lado o con la de abajo. Alt+1 a Alt+5 abre esa pestaña en la ventana activa. Alt+\\ parte o junta. Alt+Shift y una flecha intercambia ventanas.",
-              "1 is a single screen. 2, 3, and 4 split it. Each window has its own tabs. The arrows swap a window with the one beside it or the one below. Alt+1 through Alt+5 opens that tab in the active window. Alt+\\ splits or joins. Alt+Shift and an arrow swaps windows.",
-            )}
-          </p>
-          <div className="mt-2 grid grid-cols-4 gap-1">
-            {([1, 2, 3, 4] as const).map((count) => (
+          <div className="mt-2 grid grid-cols-2 gap-1">
+            {([1, 2] as const).map((count) => (
               <button
                 key={count}
                 type="button"
                 onClick={() => onChange({ ...layout, count })}
                 className={cn("h-11 rounded-full text-sm font-semibold", layout.count === count ? "bg-primary text-primary-fg" : "bg-bg text-muted")}
               >
-                {count}
+                {count === 1 ? tx("1 pantalla", "1 screen") : tx("2 pantallas", "2 screens")}
               </button>
             ))}
           </div>
-          {layout.count > 1 ? (
-            <div className="mt-2 grid grid-cols-2 gap-1">
-              <button
-                type="button"
-                onClick={() => onChange({ ...layout, flow: "side" })}
-                className={cn("h-11 rounded-full text-sm font-semibold", layout.flow !== "stack" ? "bg-sun text-primary" : "bg-bg text-muted")}
-              >
-                {tx("Lado a lado", "Side by side")}
-              </button>
-              <button
-                type="button"
-                onClick={() => onChange({ ...layout, flow: "stack" })}
-                className={cn("h-11 rounded-full text-sm font-semibold", layout.flow === "stack" ? "bg-sun text-primary" : "bg-bg text-muted")}
-              >
-                {tx("Arriba y abajo", "Top and bottom")}
-              </button>
-            </div>
+          {layout.count === 2 && left && right ? (
+            <button
+              type="button"
+              onClick={() => onChange({ ...layout, slots: [right, left, ...layout.slots.slice(2)] })}
+              className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-bg text-sm font-semibold text-muted"
+            >
+              <ArrowLeftRight className="size-4" />
+              {tx("Cambiar de lado", "Swap sides")}
+            </button>
           ) : null}
-          <ul className="mt-3 grid gap-1">
-            {layout.slots.map((path, index) => (
-              <li key={path} className={cn("flex items-center gap-1", index >= layout.count && "opacity-45")}>
-                <span className="min-w-0 flex-1 truncate text-sm">{tx(tabletTabLabel(path)[0], tabletTabLabel(path)[1])}</span>
-                <button type="button" aria-label={tx("Subir", "Move up")} className="grid size-10 place-items-center" onClick={() => move(index, -1)}>
-                  <ChevronUp className="size-4" />
-                </button>
-                <button type="button" aria-label={tx("Bajar", "Move down")} className="grid size-10 place-items-center" onClick={() => move(index, 1)}>
-                  <ChevronDown className="size-4" />
-                </button>
-                {index < layout.slots.length - 1 ? (
-                  <button type="button" aria-label={tx("Cambiar con la siguiente", "Swap with the next")} className="grid size-10 place-items-center" onClick={() => move(index, 1)}>
-                    <ArrowLeftRight className="size-4" />
-                  </button>
-                ) : (
-                  <span className="size-10" />
-                )}
-              </li>
-            ))}
-          </ul>
+          <button
+            type="button"
+            onClick={onFloat}
+            aria-pressed={floatOn}
+            className={cn("mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold", floatOn ? "bg-sun text-primary" : "bg-bg text-muted")}
+          >
+            <PictureInPicture2 className="size-4" />
+            {floatOn ? tx("Cerrar ventana flotante", "Close floating window") : tx("Ventana flotante", "Floating window")}
+          </button>
+          <p className="mt-2 text-xs text-muted">
+            {tx(
+              "Con 2 pantallas, arrastra la barra del medio para dar más espacio a un lado (doble toque la centra). La ventana flotante se mueve desde su barra de arriba, cambia de tamaño desde las esquinas de abajo y se pliega en una burbuja con –. Alt+\\ parte o junta. Alt+F abre o cierra la ventana flotante. Alt+1 a Alt+5 cambia de pestaña.",
+              "With 2 screens, drag the middle bar to give one side more room (double-tap centers it). Move the floating window by its top bar, resize it from the bottom corners, and fold it into a bubble with –. Alt+\\ splits or joins. Alt+F opens or closes the floating window. Alt+1 to Alt+5 switch tabs.",
+            )}
+          </p>
         </div>
       ) : null}
       <button

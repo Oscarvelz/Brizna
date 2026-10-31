@@ -5,6 +5,7 @@ import "@/styles.css";
 import { APPEARANCE_BOOT_SCRIPT } from "@/lib/theme";
 import { AppErrorComponent } from "@/lib/error-component";
 import { routeTree } from "@/routeTree.gen";
+import { setPaneRouteTree } from "@/lib/pane-context";
 import { getPglite, getSql, setDbUser } from "@/lib/db";
 import { I18nProvider } from "@/lib/i18n";
 import { lockCredential, unlock } from "@/lib/device-lock";
@@ -37,6 +38,8 @@ if (!g.Buffer) {
 }
 
 try { new Function(APPEARANCE_BOOT_SCRIPT)(); } catch { /* look defaults */ }
+
+setPaneRouteTree(routeTree);
 
 const router = createRouter({
   routeTree,

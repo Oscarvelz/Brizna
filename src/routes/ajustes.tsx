@@ -484,7 +484,7 @@ function AjustesPage() {
           id="aj-tableta"
           order="order-2"
           query={query}
-          blob="modo tableta multitarea cuadrantes pantalla grande tablet computer split"
+          blob="modo tableta multitarea pantalla dividida ventana flotante burbuja tablet computer split floating window"
           title={
             <span className="flex items-center gap-2">
               <LayoutGrid className="size-5 shrink-0 text-primary" />
@@ -495,8 +495,8 @@ function AjustesPage() {
             <Hint
               manual="ajustes"
               text={tx(
-                "En tableta o computadora parte la pantalla en dos, tres o cuatro. Cada ventana cambia de pestaña al tocarla, y lo que hagas en una se ve al momento en las otras.",
-                "On a tablet or computer it splits the screen into two, three, or four. Each window changes tab when you tap it, and what you do in one shows up right away in the others.",
+                "Parte la pantalla en dos (lado a lado en tableta o computadora, arriba y abajo en el teléfono) y añade una ventana flotante que puedes mover, agrandar y plegar en una burbuja. Lo que hagas en una se ve al momento en las otras.",
+                "Splits the screen in two (side by side on a tablet or computer, top and bottom on a phone) and adds a floating window you can move, resize, and fold into a bubble. What you do in one shows up right away in the others.",
               )}
             />
           }
