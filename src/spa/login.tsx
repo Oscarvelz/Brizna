@@ -11,7 +11,7 @@ type Mode = "in" | "up" | "forgot" | "reset";
 function friendly(err: unknown, tx: (es: string, en: string) => string) {
   const raw = err instanceof Error ? err.message : String((err as { message?: string })?.message ?? err ?? "");
   if (/invalid login|credential|invalid/i.test(raw)) return tx("Correo o contraseña incorrectos.", "Email or password is wrong.");
-  if (/already|registered|exist/i.test(raw)) return tx("Ese correo ya tiene cuenta (la misma de Faro y Vela). Entra con él.", "That email already has an account (the same as Faro and Vela). Sign in with it.");
+  if (/already|registered|exist/i.test(raw)) return tx("Ese correo ya tiene cuenta. Entra con él.", "That email already has an account. Sign in with it.");
   if (/not confirmed/i.test(raw)) return tx("Confirma tu correo y luego entra.", "Confirm your email, then sign in.");
   if (/rate|too many/i.test(raw)) return tx("Demasiados intentos. Espera un minuto.", "Too many tries. Wait a minute.");
   if (/password/i.test(raw)) return tx("La contraseña debe tener al menos 8 caracteres.", "The password needs at least 8 characters.");
@@ -82,7 +82,7 @@ export function Login({ recovery, note }: { recovery?: boolean; note?: string })
     </button>
   );
   const heading =
-    mode === "up" ? [tx("Crea tu cuenta", "Create your account"), tx("Una sola cuenta para Brizna, Faro y Vela.", "One account for Brizna, Faro, and Vela.")]
+    mode === "up" ? [tx("Crea tu cuenta", "Create your account"), tx("Tus clientes y cobros, guardados en tu cuenta.", "Your clients and payments, saved to your account.")]
     : mode === "forgot" ? [tx("Olvidé mi contraseña", "Forgot my password"), tx("Te enviamos un enlace para crear una nueva.", "We will send you a link to make a new one.")]
     : mode === "reset" ? [tx("Nueva contraseña", "New password"), tx("Escríbela dos veces para guardarla.", "Type it twice to save it.")]
     : [tx("Hola de nuevo", "Welcome back"), tx("Entra para ver tus patios de hoy.", "Sign in to see today's yards.")];
@@ -206,7 +206,7 @@ export function Login({ recovery, note }: { recovery?: boolean; note?: string })
         </section>
         <p className="bz-foot">
           <CloudOff aria-hidden />
-          {tx("La misma cuenta de Faro y Vela. Después funciona sin internet.", "The same account as Faro and Vela. After that it works without internet.")}
+          {tx("Tus datos se guardan en tu cuenta y funcionan sin internet.", "Your data is saved to your account and works offline.")}
         </p>
       </div>
     </main>

@@ -2756,6 +2756,51 @@ function strField(row: Record<string, unknown>, ...keys: string[]): string | nul
   return null;
 }
 
+// Restores rows exactly as the backup holds them (every column the table has), in bulk.
+const tableColsCache = new Map<string, string[]>();
+async function tableColumns(table: string): Promise<string[]> {
+  const hit = tableColsCache.get(table);
+  if (hit) return hit;
+  const sql = await getSql();
+  const rows = await sql.query<{ column_name: string }>(
+    `select column_name from information_schema.columns where table_schema = 'public' and table_name = $1`,
+    [table],
+  );
+  const cols = rows.map((r) => r.column_name);
+  tableColsCache.set(table, cols);
+  return cols;
+}
+
+async function bulkRestore(table: "jobs" | "payments", rows: Record<string, unknown>[]): Promise<void> {
+  if (!rows.length) return;
+  const sql = await getSql();
+  const tableCols = new Set(await tableColumns(table));
+  const keys = new Set<string>();
+  for (const row of rows) for (const k of Object.keys(row)) keys.add(k);
+  const cols = [...keys].filter((k) => k !== "id" && k !== "photo" && tableCols.has(k));
+  const list = cols.map((c) => `"${c}"`).join(", ");
+  for (let i = 0; i < rows.length; i += 800) {
+    const chunk = rows.slice(i, i + 800);
+    await sql.query(
+      `insert into ${table} (${list}) select ${list} from jsonb_populate_recordset(null::${table}, $1::jsonb)`,
+      [JSON.stringify(chunk)],
+    );
+  }
+}
+
+async function restoreClientExtras(clientId: number, row: Record<string, unknown>): Promise<void> {
+  const sql = await getSql();
+  const tableCols = new Set(await tableColumns("clients"));
+  const skip = new Set(["id", "user_id", "name", "balance", "credit", "rich_notes"]);
+  const cols = Object.keys(row).filter((k) => tableCols.has(k) && !skip.has(k));
+  if (!cols.length) return;
+  const sets = cols.map((c) => `"${c}" = r."${c}"`).join(", ");
+  await sql.query(
+    `update clients c set ${sets} from jsonb_populate_record(null::clients, $2::jsonb) r where c.id = $1`,
+    [clientId, JSON.stringify(row)],
+  );
+}
+
 async function applyBackup(userId: string, payload: BackupPayload): Promise<{ clients: number; jobs: number }> {
   const sql = await getSql();
   await snapshotBackup(userId, true);
@@ -2803,6 +2848,8 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
     );
     const newId = intId(inserted[0]?.id);
     if (oldId && newId) idMap.set(oldId, newId);
+    // Brizna's own backups carry every column: keep paused/blocked flags, season, cue, dates, etc.
+    if (newId && "user_id" in row) await restoreClientExtras(newId, row);
     if (newId && (row.service_paused === true || row.servicePaused === true)) {
       await sql.query(`update clients set service_paused = true where user_id = $1 and id = $2`, [
         userId,
@@ -2811,7 +2858,16 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
     }
   }
 
-  for (const row of payload.jobs ?? []) {
+  const fullJobs = (payload.jobs ?? []).filter((row) => "user_id" in row && "client_id" in row);
+  if (fullJobs.length) {
+    await bulkRestore(
+      "jobs",
+      fullJobs
+        .map((row) => ({ ...row, user_id: userId, client_id: idMap.get(intId(row.client_id)) }))
+        .filter((row) => row.client_id),
+    );
+  }
+  for (const row of (payload.jobs ?? []).filter((r) => !("user_id" in r && "client_id" in r))) {
     const clientId = idMap.get(intId(row.client_id ?? row.clientId));
     if (!clientId) continue;
     const status = row.status === "done" || row.status === "cancelled" ? String(row.status) : "pending";
@@ -2836,7 +2892,17 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
     );
   }
 
-  for (const row of payload.payments ?? []) {
+  const fullPayments = (payload.payments ?? []).filter((row) => "user_id" in row && "client_id" in row);
+  if (fullPayments.length) {
+    // Keeps kind (opening, prepaid...), method and tip, so totals and balances match the original.
+    await bulkRestore(
+      "payments",
+      fullPayments
+        .map((row) => ({ ...row, user_id: userId, client_id: idMap.get(intId(row.client_id)) }))
+        .filter((row) => row.client_id),
+    );
+  }
+  for (const row of (payload.payments ?? []).filter((r) => !("user_id" in r && "client_id" in r))) {
     const clientId = idMap.get(intId(row.client_id ?? row.clientId));
     if (!clientId) continue;
     await sql.query(
@@ -2936,7 +3002,7 @@ export const restoreBackup = createServerFn({ method: "POST" })
 
 export const importBackupJson = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((data: unknown) => z.object({ json: z.string().min(2).max(4_000_000) }).parse(data))
+  .validator((data: unknown) => z.object({ json: z.string().min(2).max(40_000_000) }).parse(data))
   .handler(async ({ context, data }) => {
     const counts = await applyBackup(context.userId, parseBackup(data.json));
     return { ok: true as const, ...counts };

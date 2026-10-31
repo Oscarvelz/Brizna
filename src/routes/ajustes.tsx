@@ -951,7 +951,7 @@ function AjustesPage() {
           <FingerprintControl />
           <SignOutControl full />
           <p className="mt-2 text-center text-xs text-muted">
-            {tx("La cuenta y los clientes quedan en la nube y en este equipo. Entras otra vez con el mismo correo de Faro y Vela.", "The account and the clients stay in the cloud and on this device. Sign in again with the same email as Faro and Vela.")}
+            {tx("La cuenta y los clientes quedan en la nube y en este equipo. Entras otra vez con el mismo correo.", "The account and the clients stay in the cloud and on this device. Sign in again with the same email.")}
           </p>
         </section>
         ) : null}
