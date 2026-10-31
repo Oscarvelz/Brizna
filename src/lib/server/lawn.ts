@@ -501,7 +501,42 @@ async function snapshotBackup(userId: string, force = false): Promise<void> {
   );
 }
 
+let ensureMemo: { key: string; run: Promise<void> } | null = null;
+
 async function ensureScheduleForUser(userId: string): Promise<void> {
+  // On the device, screens read the schedule many times; top it up once per day and
+  // again only after something was saved (or synced in). Writes always run it fresh.
+  const G = globalThis as { __bzWriteEpoch?: number; __bzInPost?: number; __bzDbKey?: string };
+  if (typeof G.__bzWriteEpoch === "number" && !G.__bzInPost) {
+    const today = todayISO();
+    const key = `${userId}|${today}|${G.__bzWriteEpoch}`;
+    if (ensureMemo?.key === key) return ensureMemo.run;
+    let store: Storage | null = null;
+    try { store = typeof localStorage === "undefined" ? null : localStorage; } catch { store = null; }
+    const stampKey = `brizna.ensured.${G.__bzDbKey ?? ""}.${userId}`;
+    const stamp = store?.getItem(stampKey) ?? null;
+    if (stamp === today) {
+      // Already topped up today on this device (saves top it up themselves).
+      ensureMemo = { key, run: Promise.resolve() };
+      return;
+    }
+    const run = ensureScheduleForUserInner(userId)
+      .then(() => { try { store?.setItem(stampKey, today); } catch { /* ignore */ } })
+      .catch((err) => {
+        console.error("[ensureSchedule]", err);
+        if (ensureMemo?.key === key) ensureMemo = null;
+      });
+    ensureMemo = { key, run };
+    if (stamp) {
+      // Topped up on an earlier day: today's visits already exist, so show the screen now
+      // and extend the far end of the schedule in the background.
+      void run.then(() => {
+        try { new BroadcastChannel("ols-live").postMessage({ all: true }); } catch { /* ignore */ }
+      });
+      return;
+    }
+    return run;
+  }
   try {
     await ensureScheduleForUserInner(userId);
   } catch (err) {

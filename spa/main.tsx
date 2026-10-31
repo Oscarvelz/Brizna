@@ -14,6 +14,7 @@ import { CLOUD_READY, emitUser, getUser, lastUser, onUser, rememberUser, supabas
 import { setKeepCopy, startSync } from "@/spa/sync";
 import { signOutHere } from "@/spa/session";
 import { Locked, Login, Splash } from "@/spa/login";
+import { warmPglite } from "@/spa/pg-warm";
 
 // Tiny Buffer stand-in for the two report exports that used Node's Buffer.
 const g = globalThis as any;
@@ -117,6 +118,8 @@ function Gate() {
     return <Login note={expired ? "Tu sesión venció. Entra de nuevo para sincronizar; tus datos siguen en este equipo. / Your session expired: sign in again to sync." : undefined} />;
   }
   if (!open) return <Locked failed={failed} onOpen={() => void tryUnlock()} onSignOut={() => void signOutHere()} />;
+  // The early-opened database belongs to someone else: reload so this account opens its own.
+  if (preopenedFor && preopenedFor !== user.id) { location.reload(); return <Splash />; }
   if (openedFor !== user.id) {
     openedFor = user.id;
     setDbUser(user.id);
@@ -127,10 +130,24 @@ function Gate() {
   return <RouterProvider router={router} />;
 }
 
+// Database opened early (before sign-in checks finish) for the account last used here.
+let preopenedFor: string | null = null;
+
 function start() {
+  void warmPglite();
+  if (CLOUD_READY) {
+    const last = lastUser();
+    if (last) {
+      preopenedFor = last.id;
+      setDbUser(last.id);
+      void getSql().catch(() => undefined);
+    }
+  }
   if (!CLOUD_READY) {
     emitUser({ id: "local", email: "", name: "Local" }); // local test copy: no accounts
     (globalThis as any).__bzSql = getSql; (globalThis as any).__bzPg = getPglite; // local test copy only (127.0.0.1): lets tests seed and check figures
+    const wait = Number(new URLSearchParams(location.search).get("bzwait") || 0); // tests: pretend a sign-in screen
+    if (wait > 0) { window.setTimeout(() => { void getSql(); root.render(<StrictMode><RouterProvider router={router} /></StrictMode>); }, wait); return; }
     void getSql();
     root.render(<StrictMode><RouterProvider router={router} /></StrictMode>);
     return;

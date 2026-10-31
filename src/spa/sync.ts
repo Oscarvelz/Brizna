@@ -99,6 +99,9 @@ async function apply(json: string) {
       if (Number(check.rows[0]?.n ?? 0) !== (data.tables.clients?.length ?? 0)) throw new Error("apply check failed");
     });
   });
+  (globalThis as any).__bzWriteEpoch = ((globalThis as any).__bzWriteEpoch ?? 0) + 1;
+  // New data from another device: let the schedule be checked again.
+  try { for (const k of Object.keys(localStorage)) if (k.startsWith("brizna.ensured.")) localStorage.removeItem(k); } catch { /* ignore */ }
   // Tell every screen to read again.
   try { new BroadcastChannel("ols-live").postMessage({ all: true }); } catch { /* ignore */ }
 }
@@ -153,6 +156,11 @@ async function once() {
     const head = await supabase.from("brizna_books").select("revision, updated_at, device_id").maybeSingle();
     if (head.error) throw head.error;
     const remote = head.data as { revision: number; updated_at: string; device_id: string } | null;
+    // Nothing edited here and nothing new in the cloud: no need to read the whole database.
+    if (remote && s.rev > 0 && !s.dirty && Number(remote.revision) === s.rev && remote.updated_at === s.at) {
+      setStatus("idle");
+      return;
+    }
     const mark = editCounter;
     const text = await dump();
     const hash = await digest(text);
@@ -214,7 +222,9 @@ export function startSync(userId: string) {
     });
     window.setInterval(() => { if (document.visibilityState === "visible") void syncNow(); }, 60_000);
   }
-  void syncNow();
+  // A device that already has its data lets the first screen load before syncing.
+  if (load(userId).rev === 0) void syncNow();
+  else window.setTimeout(() => void syncNow(), 2500);
 }
 export function stopSync() { uid = null; setStatus("off"); }
 export function hasPending(): boolean { return Boolean(uid && load(uid).dirty); }

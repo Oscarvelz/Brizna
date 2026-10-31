@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { CobrosCharts } from "@/components/cobros-charts";
-import { CifrasInsightsSections } from "@/components/cifras-insights";
+import { lazy, Suspense, useEffect, useState } from "react";
+// Charts load only when Cifras opens, so the app starts lighter.
+const CobrosCharts = lazy(() => import("@/components/cobros-charts").then((m) => ({ default: m.CobrosCharts })));
+const CifrasInsightsSections = lazy(() => import("@/components/cifras-insights").then((m) => ({ default: m.CifrasInsightsSections })));
 import { CifrasOrderButton } from "@/components/cifras-order-button";
 import { EffortWeek } from "@/components/effort-week";
 import { foldsOpen, setFoldsOpen } from "@/components/fold";
@@ -69,6 +70,7 @@ function EstadisticasPage() {
           {tx("Desplegar", "Expand")}
         </label>
       </div>
+      <Suspense fallback={<div className="h-64 animate-pulse rounded-2xl bg-surface-2" />}>
       <CobrosCharts
         query={query}
         extra={<CifrasInsightsSections query={query} />}
@@ -86,6 +88,7 @@ function EstadisticasPage() {
           ) : null
         }
       />
+      </Suspense>
     </AppShell>
   );
 }

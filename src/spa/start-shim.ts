@@ -1,10 +1,16 @@
 // Browser stand-in for @tanstack/react-start: Brizna's "server functions" run on the
 // device against the local database. Same call shape: fn({ data }).
 import { markDirty } from "./sync";
+import { flushDb } from "./db";
 
 type Handler = (args: { data: any; context: { userId: string } }) => any;
 
 export const LOCAL_USER_ID = "dev-user";
+
+// Write counter: lets reads skip work (like topping up the schedule) when nothing changed.
+const G = globalThis as any;
+G.__bzWriteEpoch ??= 0;
+G.__bzInPost ??= 0;
 
 function chain(method: string) {
   let validate: ((d: unknown) => unknown) | null = null;
@@ -20,10 +26,12 @@ function chain(method: string) {
         const t0 = Date.now();
         trace?.push(["start", fn.name || String(fn).slice(0, 60), t0]);
         let out;
+        if (method === "POST") { G.__bzWriteEpoch += 1; G.__bzInPost += 1; }
         try { out = await fn({ data, context: { userId: LOCAL_USER_ID } }); }
         catch (e) { trace?.push(["err", String(fn).slice(0, 60), String(e)]); throw e; }
+        finally { if (method === "POST") { G.__bzInPost -= 1; G.__bzWriteEpoch += 1; } }
         trace?.push(["end", String(fn).slice(0, 60), Date.now() - t0]);
-        if (method === "POST") markDirty();
+        if (method === "POST") { await flushDb(); markDirty(); }
         // Server functions returned JSON; keep the same shapes (Dates -> strings).
         return out === undefined ? undefined : JSON.parse(JSON.stringify(out));
       };
