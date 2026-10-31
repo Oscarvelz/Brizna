@@ -12,13 +12,15 @@ export default defineConfig({
   base: "./",
   publicDir: r("./spa-public"),
   define: {
-    "import.meta.env.VITE_AUTH_ENABLED": JSON.stringify("false"),
     "process.env.XAI_API_KEY": "undefined",
   },
   resolve: {
     alias: [
       { find: /^@tanstack\/react-start$/, replacement: r("./src/spa/start-shim.ts") },
       { find: /^@\/lib\/db$/, replacement: r("./src/spa/db.ts") },
+      { find: /^@\/lib\/auth\/client$/, replacement: r("./src/spa/auth/client.ts") },
+      { find: /^@\/lib\/auth\/use-current-user$/, replacement: r("./src/spa/auth/use-current-user.ts") },
+      { find: /^@\/lib\/auth\/gates$/, replacement: r("./src/spa/auth/gates.tsx") },
       { find: /^@\/lib\/auth\/middleware$/, replacement: r("./src/spa/middleware-shim.ts") },
       { find: "@", replacement: r("./src") },
     ],

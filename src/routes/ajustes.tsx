@@ -4,6 +4,7 @@ import { Bell, CalendarRange, Clock, Download, FileSpreadsheet, HardDrive, Hourg
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell, SignOutControl, TitleSearch } from "@/components/app-shell";
+import { FingerprintControl } from "@/components/fingerprint-control";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Fold, foldsOpen, setFoldsOpen } from "@/components/fold";
 import { Hint } from "@/components/hint";
@@ -945,11 +946,12 @@ function AjustesPage() {
         {!query || smartHit(query, "manual ayuda usuario user guide") ? (
           <UserManual onLocale={setLocale} forceOpen={Boolean(query)} />
         ) : null}
-        {!query || smartHit(query, "salir cerrar sesion cuenta sign out") ? (
+        {!query || smartHit(query, "salir cerrar sesion cuenta sign out huella fingerprint") ? (
         <section className="order-14 mt-6">
+          <FingerprintControl />
           <SignOutControl full />
           <p className="mt-2 text-center text-xs text-muted">
-            {tx("La cuenta y los clientes quedan en la nube. Entras otra vez con el mismo correo.", "The account and the clients stay in the cloud. You sign in again with the same email.")}
+            {tx("La cuenta y los clientes quedan en la nube y en este equipo. Entras otra vez con el mismo correo de Faro y Vela.", "The account and the clients stay in the cloud and on this device. Sign in again with the same email as Faro and Vela.")}
           </p>
         </section>
         ) : null}

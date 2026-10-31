@@ -16,6 +16,21 @@ const OID_DATE = 1082;
 const OID_INTERVAL = 1186;
 const identity = (v: string) => v;
 export const DB_NAME = "idb://brizna";
+const OWNER = "brizna.dbOwner";
+
+let dbUser: string | null = null;
+/** Which account's on-device database to open. The first account on a device keeps
+ *  the original database (so data typed before sign-in is kept); others get their own. */
+export function setDbUser(uid: string) { dbUser = uid; }
+function dbName(): string {
+  const forced = (globalThis as any).__bzDb as string | undefined;
+  if (forced) return forced;
+  if (!dbUser) return DB_NAME;
+  let owner: string | null = null;
+  try { owner = localStorage.getItem(OWNER); } catch { /* ignore */ }
+  if (!owner) { try { localStorage.setItem(OWNER, dbUser); } catch { /* ignore */ } return DB_NAME; }
+  return owner === dbUser ? DB_NAME : `${DB_NAME}-${dbUser}`;
+}
 
 let pgPromise: Promise<PGlite> | null = null;
 let sqlPromise: Promise<Sql> | null = null;
@@ -24,7 +39,7 @@ let lane: Promise<unknown> = Promise.resolve();
 
 async function open(): Promise<PGlite> {
   (globalThis as any).__bzTrace?.push(["db-open", "", Date.now()]);
-  const pg = new PGlite((globalThis as any).__bzDb || DB_NAME, {
+  const pg = new PGlite(dbName(), {
     relaxedDurability: false,
     parsers: { [OID_INT8]: Number, [OID_DATE]: identity, [OID_INTERVAL]: identity },
   });
@@ -61,6 +76,13 @@ function toSql(pg: PGlite): Sql {
   }) as unknown as Sql;
   sql.query = <T,>(text: string, params: unknown[] = []) => run<T>(text, params);
   return sql;
+}
+
+/** Run work alone on the database (no screen queries in between). */
+export function exclusive<T>(fn: (pg: PGlite) => Promise<T>): Promise<T> {
+  const next = lane.then(() => getPglite()).then((pg) => fn(pg));
+  lane = next.catch(() => undefined);
+  return next;
 }
 
 export function getSql(): Promise<Sql> {

@@ -1,11 +1,18 @@
-import { StrictMode } from "react";
+import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createHashHistory, createRouter, RouterProvider } from "@tanstack/react-router";
 import "@/styles.css";
 import { APPEARANCE_BOOT_SCRIPT } from "@/lib/theme";
 import { AppErrorComponent } from "@/lib/error-component";
 import { routeTree } from "@/routeTree.gen";
-import { getSql } from "@/lib/db";
+import { getSql, setDbUser } from "@/lib/db";
+import { I18nProvider } from "@/lib/i18n";
+import { lockCredential, unlock } from "@/lib/device-lock";
+import { saveBackupNow } from "@/lib/server/lawn";
+import { CLOUD_READY, emitUser, getUser, lastUser, onUser, rememberUser, supabase, type BriznaUser } from "@/spa/cloud";
+import { setKeepCopy, startSync } from "@/spa/sync";
+import { signOutHere } from "@/spa/session";
+import { Locked, Login, Splash } from "@/spa/login";
 
 // Tiny Buffer stand-in for the two report exports that used Node's Buffer.
 const g = globalThis as any;
@@ -43,11 +50,94 @@ declare module "@tanstack/react-router" {
 
 const root = createRoot(document.getElementById("root")!);
 
+const RELOCK_MS = 60_000;
+let openedFor: string | null = null;
+
+function useUser(): BriznaUser | null {
+  const [u, setU] = useState<BriznaUser | null>(getUser());
+  useEffect(() => onUser(setU), []);
+  return u;
+}
+
+function Gate() {
+  const user = useUser();
+  const [booted, setBooted] = useState(false);
+  const [recovery, setRecovery] = useState(() => /type=recovery/.test(location.hash));
+  const [expired, setExpired] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const hiddenAt = useRef(0);
+  const tried = useRef("");
+
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") setRecovery(true);
+      if (session) { setExpired(false); emitUser(rememberUser(session)); }
+    });
+    void (async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (data.session) emitUser(rememberUser(data.session));
+        else if (!error && lastUser() && navigator.onLine) setExpired(true);
+      } catch { /* offline: keep the remembered user */ }
+      setBooted(true);
+    })();
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) { setOpen(false); return; }
+    setOpen(!lockCredential(user.id));
+    const onVis = () => {
+      if (document.visibilityState === "hidden") hiddenAt.current = Date.now();
+      else if (hiddenAt.current && Date.now() - hiddenAt.current > RELOCK_MS && lockCredential(user.id)) { tried.current = ""; setFailed(false); setOpen(false); }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [user]);
+
+  const tryUnlock = async () => {
+    if (!user) return;
+    setFailed(false);
+    try { if (await unlock(user.id)) setOpen(true); else setFailed(true); } catch { setFailed(true); }
+  };
+  useEffect(() => {
+    if (user && !open && booted && tried.current !== user.id && lockCredential(user.id)) { tried.current = user.id; void tryUnlock(); }
+  });
+
+  // Another account signed in on top of an open one: start clean with that account's data.
+  if (user && openedFor && openedFor !== user.id) { location.reload(); return <Splash />; }
+
+  if (!booted && !user) return <Splash />;
+  if (recovery) return <Login recovery />;
+  if (!user || expired) {
+    return <Login note={expired ? "Tu sesión venció. Entra de nuevo para sincronizar; tus datos siguen en este equipo. / Your session expired: sign in again to sync." : undefined} />;
+  }
+  if (!open) return <Locked failed={failed} onOpen={() => void tryUnlock()} onSignOut={() => void signOutHere()} />;
+  if (openedFor !== user.id) {
+    openedFor = user.id;
+    setDbUser(user.id);
+    void getSql();
+    setKeepCopy(() => saveBackupNow());
+    startSync(user.id);
+  }
+  return <RouterProvider router={router} />;
+}
+
 function start() {
-  void getSql(); // open the on-device database early
+  if (!CLOUD_READY) {
+    emitUser({ id: "local", email: "", name: "Local" }); // local test copy: no accounts
+    void getSql();
+    root.render(<StrictMode><RouterProvider router={router} /></StrictMode>);
+    return;
+  }
+  const remembered = lastUser();
+  if (remembered) emitUser(remembered);
   root.render(
     <StrictMode>
-      <RouterProvider router={router} />
+      <I18nProvider>
+        <Gate />
+      </I18nProvider>
     </StrictMode>,
   );
 }

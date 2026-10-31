@@ -1,10 +1,12 @@
 // Browser stand-in for @tanstack/react-start: Brizna's "server functions" run on the
 // device against the local database. Same call shape: fn({ data }).
+import { markDirty } from "./sync";
+
 type Handler = (args: { data: any; context: { userId: string } }) => any;
 
 export const LOCAL_USER_ID = "dev-user";
 
-function chain() {
+function chain(method: string) {
   let validate: ((d: unknown) => unknown) | null = null;
   const api: any = {
     middleware: () => api,
@@ -21,6 +23,7 @@ function chain() {
         try { out = await fn({ data, context: { userId: LOCAL_USER_ID } }); }
         catch (e) { trace?.push(["err", String(fn).slice(0, 60), String(e)]); throw e; }
         trace?.push(["end", String(fn).slice(0, 60), Date.now() - t0]);
+        if (method === "POST") markDirty();
         // Server functions returned JSON; keep the same shapes (Dates -> strings).
         return out === undefined ? undefined : JSON.parse(JSON.stringify(out));
       };
@@ -30,7 +33,7 @@ function chain() {
   return api;
 }
 
-export function createServerFn(_opts?: unknown) { return chain(); }
+export function createServerFn(opts?: { method?: string }) { return chain(String(opts?.method ?? "GET").toUpperCase()); }
 export function createMiddleware(_opts?: unknown) {
   const m: any = { client: () => m, server: () => m, middleware: () => m };
   return m;
