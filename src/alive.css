@@ -85,9 +85,18 @@ html:not([data-palette]):not(.theme-dark):not(.theme-amoled) {
   }
 
   /* The logo sways like grass in a light breeze. */
-  & .alive-brand {
-    transform-origin: 50% 92%;
-    animation: alive-sway 6.5s ease-in-out infinite;
+  /* Logo: the tile stays still; only the blades sway and the sun glows. */
+  & .alive-brand .bm-blade {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: bm-sway 5.5s ease-in-out infinite;
+  }
+  & .alive-brand .bm-blade-b { animation-duration: 6.4s; animation-delay: -1.8s; }
+  & .alive-brand .bm-blade-c { animation-duration: 5s; animation-delay: -3.1s; }
+  & .alive-brand .bm-sun {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: bm-glow 6s ease-in-out infinite;
   }
 
   /* The + button breathes: a soft ring every few seconds. */
@@ -111,6 +120,9 @@ html:not([data-palette]):not(.theme-dark):not(.theme-amoled) {
 
 @media (prefers-reduced-motion: reduce) {
   html:not([data-palette]):not(.theme-dark):not(.theme-amoled) {
-    & body::before, & .alive-brand, & .alive-fab::after { animation: none; }
+    & body::before, & .alive-brand *, & .alive-fab::after { animation: none; }
   }
 }
+
+@keyframes bm-sway { 0%, 100% { transform: skewX(0deg); } 50% { transform: skewX(-6deg); } }
+@keyframes bm-glow { 0%, 100% { transform: scale(1); filter: none; } 50% { transform: scale(1.06); filter: drop-shadow(0 0 10px rgba(244, 196, 92, 0.75)); } }

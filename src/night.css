@@ -1,0 +1,92 @@
+/* "Noche viva": the night themes borrow the lock screen's look — a deep sky that
+   lightens toward the ground, a moon glow, quiet stars, glass cards, glowing buttons.
+   Only html.theme-dark (the five colored nights). AMOLED keeps true black. */
+html.theme-dark { --nv-moon: #f3dfa2; }
+html.theme-dark[data-palette="noche"]      { --nv-top: #081a10; --nv-mid: #0c2416; --nv-low: #10301d; --nv-moon: #f3dfa2; }
+html.theme-dark[data-palette="medianoche"] { --nv-top: #070d1c; --nv-mid: #0b1631; --nv-low: #112145; --nv-moon: #dbe6ff; }
+html.theme-dark[data-palette="ciruela"]    { --nv-top: #100a19; --nv-mid: #1a1029; --nv-low: #27173b; --nv-moon: #f6dcff; }
+html.theme-dark[data-palette="grafito"]    { --nv-top: #0e0e10; --nv-mid: #151517; --nv-low: #1f1e1b; --nv-moon: #f3dfa2; }
+html.theme-dark[data-palette="luciernaga"] { --nv-top: #080d06; --nv-mid: #0e1809; --nv-low: #17250d; --nv-moon: #eef7a6; }
+
+html.theme-dark,
+html.theme-dark body { background-color: var(--nv-top); }
+
+html.theme-dark body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 86% 15%, color-mix(in srgb, var(--nv-moon) 92%, white) 0 13px, color-mix(in srgb, var(--nv-moon) 34%, transparent) 15px, transparent 90px),
+    radial-gradient(110% 50% at 90% 0%, color-mix(in srgb, var(--nv-moon) 12%, transparent) 0, transparent 62%),
+    radial-gradient(1.4px 1.4px at 12% 22%, rgba(246, 239, 214, 0.75), transparent 60%),
+    radial-gradient(1.2px 1.2px at 68% 9%, rgba(246, 239, 214, 0.6), transparent 60%),
+    radial-gradient(1.6px 1.6px at 88% 27%, rgba(246, 239, 214, 0.55), transparent 60%),
+    radial-gradient(1.2px 1.2px at 41% 31%, rgba(246, 239, 214, 0.5), transparent 60%),
+    radial-gradient(1.3px 1.3px at 26% 47%, rgba(246, 239, 214, 0.4), transparent 60%),
+    radial-gradient(1.2px 1.2px at 79% 52%, rgba(246, 239, 214, 0.35), transparent 60%),
+    radial-gradient(1.3px 1.3px at 6% 64%, rgba(246, 239, 214, 0.35), transparent 60%),
+    radial-gradient(1.2px 1.2px at 58% 70%, rgba(246, 239, 214, 0.3), transparent 60%),
+    radial-gradient(1.4px 1.4px at 93% 78%, rgba(246, 239, 214, 0.3), transparent 60%),
+    linear-gradient(180deg, var(--nv-top) 0%, var(--nv-mid) 38%, var(--nv-low) 100%);
+}
+html.theme-dark #root,
+html.theme-dark .pod-root { position: relative; z-index: 1; }
+html.theme-dark .pod-root,
+html.theme-dark .pod-root .bg-bg:not(.pod-header):not(.pod-dock) { background-color: transparent; }
+
+/* Glass header and dock. */
+html.theme-dark .pod-header {
+  background-color: color-mix(in srgb, var(--nv-top) 72%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+}
+html.theme-dark .pod-dock {
+  background-color: color-mix(in srgb, var(--nv-low) 78%, black 6%);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+}
+
+/* Glass cards: light-edged, slightly see-through, soft drop. */
+html.theme-dark .bg-surface {
+  background-color: color-mix(in srgb, var(--color-surface) 74%, transparent);
+}
+html.theme-dark .bg-sun {
+  background-color: color-mix(in srgb, var(--color-surface) 58%, transparent);
+  box-shadow: var(--shadow-card);
+}
+html.theme-dark .bg-surface-2 {
+  background-color: color-mix(in srgb, var(--color-surface-2) 80%, transparent);
+}
+html.theme-dark {
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 0 1px color-mix(in srgb, var(--color-primary) 14%, rgba(255, 255, 255, 0.08)), 0 18px 36px -22px rgba(0, 0, 0, 0.75);
+  --shadow-card-hover: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 0 1px color-mix(in srgb, var(--color-primary) 28%, rgba(255, 255, 255, 0.12)), 0 20px 40px -22px rgba(0, 0, 0, 0.8);
+}
+
+/* Glowing primary buttons, like "Desbloquear con huella". */
+html.theme-dark .bg-primary,
+html.theme-amoled .bg-primary {
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 78%, white) 0%, var(--color-primary) 58%, color-mix(in srgb, var(--color-primary) 86%, black) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 10px 24px -12px color-mix(in srgb, var(--color-primary) 70%, transparent);
+}
+
+/* AMOLED: stays pure black, gets the stars and a faint moon only. */
+html.theme-amoled body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 86% 15%, rgba(243, 223, 162, 0.85) 0 12px, rgba(243, 223, 162, 0.16) 14px, transparent 70px),
+    radial-gradient(1.4px 1.4px at 12% 22%, rgba(246, 239, 214, 0.6), transparent 60%),
+    radial-gradient(1.2px 1.2px at 68% 9%, rgba(246, 239, 214, 0.45), transparent 60%),
+    radial-gradient(1.6px 1.6px at 88% 27%, rgba(246, 239, 214, 0.4), transparent 60%),
+    radial-gradient(1.2px 1.2px at 41% 31%, rgba(246, 239, 214, 0.35), transparent 60%);
+}
+html.theme-amoled .pod-root { position: relative; z-index: 1; background-color: transparent; }
+
+@media print {
+  html.theme-dark body::before, html.theme-amoled body::before { display: none; }
+}

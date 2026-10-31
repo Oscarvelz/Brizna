@@ -38,11 +38,11 @@ const STATUS_BAR: Record<string, string> = {
   "day:lima": "#eef6d4",
   "day:arena": "#f6efe2",
   "day:flor": "#f8eef1",
-  "night:noche": "#0c110e",
-  "night:medianoche": "#0a0f1a",
-  "night:ciruela": "#120d16",
-  "night:grafito": "#111112",
-  "night:luciernaga": "#0d0f0a",
+  "night:noche": "#081a10",
+  "night:medianoche": "#070d1c",
+  "night:ciruela": "#100a19",
+  "night:grafito": "#0e0e10",
+  "night:luciernaga": "#080d06",
   "night:amoled": "#000000",
 };
 
@@ -173,7 +173,7 @@ r.classList.toggle("theme-amoled",!!(useNight&&p==="amoled"));
 r.classList.toggle("theme-dark",!!(useNight&&p!=="amoled"));
 if((useNight&&p==="amoled")||(!useNight&&p==="jardin"))r.removeAttribute("data-palette");else r.dataset.palette=p;
 r.style.colorScheme=useNight?"dark":"light";
-var bars={jardin:"#efe8d6",costa:"#e5f1f0",barro:"#f6eee6",pino:"#e7eee9",cielo:"#e8eef6",lima:"#eef6d4",arena:"#f6efe2",flor:"#f8eef1",noche:"#0c110e",medianoche:"#0a0f1a",ciruela:"#120d16",grafito:"#111112",luciernaga:"#0d0f0a",amoled:"#000000"};
+var bars={jardin:"#efe8d6",costa:"#e5f1f0",barro:"#f6eee6",pino:"#e7eee9",cielo:"#e8eef6",lima:"#eef6d4",arena:"#f6efe2",flor:"#f8eef1",noche:"#081a10",medianoche:"#070d1c",ciruela:"#100a19",grafito:"#0e0e10",luciernaga:"#080d06",amoled:"#000000"};
 var bar=bars[p]||(useNight?"#0c110e":"#efe8d6");
 var meta=document.querySelector('meta[name="theme-color"]');
 if(!meta){meta=document.createElement("meta");meta.setAttribute("name","theme-color");document.head.appendChild(meta);}

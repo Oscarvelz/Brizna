@@ -402,7 +402,7 @@ export function AppShell({
 
   return (
     <RequireAuth>
-      <div className={cn("min-h-dvh w-full max-w-full overflow-x-clip bg-bg text-fg", !embedded && "lg:grid", !embedded && (split ? "lg:grid-cols-[4.25rem_minmax(0,1fr)]" : "lg:grid-cols-[15.5rem_minmax(0,1fr)]"))}>
+      <div className={cn("pod-root min-h-dvh w-full max-w-full overflow-x-clip bg-bg text-fg", !embedded && "lg:grid", !embedded && (split ? "lg:grid-cols-[4.25rem_minmax(0,1fr)]" : "lg:grid-cols-[15.5rem_minmax(0,1fr)]"))}>
         <aside className={cn("hidden pt-[env(safe-area-inset-top,0px)] lg:flex lg:flex-col lg:border-r lg:border-border lg:bg-surface print:hidden", embedded && "lg:hidden", split && "lg:items-center")}>
           {split ? (
             <nav className="flex flex-1 flex-col items-center gap-1 px-1.5 pt-3" aria-label={tx("Pestañas", "Tabs")}>
