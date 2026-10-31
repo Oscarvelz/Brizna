@@ -78,6 +78,8 @@ export function Fold({
   forceOpen = false,
   group,
   style,
+  defaultOpen = false,
+  peek,
 }: {
   id: string;
   title: ReactNode;
@@ -90,10 +92,14 @@ export function Fold({
   /** Opening one fold in the group closes the others, unless they are pinned. */
   group?: string;
   style?: CSSProperties;
+  /** Open on first view unless the user chose otherwise (Desplegar or pin). */
+  defaultOpen?: boolean;
+  /** A short figure shown in the title row while the section is closed. */
+  peek?: ReactNode;
 }) {
   const tx = useTx();
   const [pinned, setPinned] = useState(() => readPins().includes(id));
-  const [open, setOpen] = useState(() => readForce(id) ?? readPins().includes(id));
+  const [open, setOpen] = useState(() => readForce(id) ?? (readPins().includes(id) || defaultOpen));
   const shown = forceOpen || open;
 
   useEffect(() => {
@@ -174,6 +180,7 @@ export function Fold({
           }}
         >
           {title}
+          {peek && !shown ? <span className="ml-auto shrink-0 truncate pl-2 font-sans text-sm font-semibold tabular-nums text-muted">{peek}</span> : null}
         </div>
         {hint}
         <button

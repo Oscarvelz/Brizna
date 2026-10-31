@@ -1,11 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, CloudOff, Eye, EyeOff, Fingerprint, Loader2, LockKeyhole, LogOut, Mail, ShieldCheck, Sprout, UserRound } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { DEFAULT_BUSINESS_NAME, PRODUCT_NAME } from "@/lib/format";
-import { useTx } from "@/lib/i18n";
+import { useI18n, useTx } from "@/lib/i18n";
 import { emitUser, rememberUser, supabase } from "./cloud";
+import { LawnScene } from "./lawn-scene";
 
 type Mode = "in" | "up" | "forgot" | "reset";
 
@@ -22,6 +21,7 @@ function friendly(err: unknown, tx: (es: string, en: string) => string) {
 
 export function Login({ recovery, note }: { recovery?: boolean; note?: string }) {
   const tx = useTx();
+  const { locale, setLocale } = useI18n();
   const [mode, setMode] = useState<Mode>(recovery ? "reset" : "in");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -76,81 +76,136 @@ export function Login({ recovery, note }: { recovery?: boolean; note?: string })
 
   const swap = (next: Mode) => { setError(""); setInfo(""); setConfirm(""); setMode(next); };
   const passType = show ? "text" : "password";
+  const eye = (
+    <button type="button" onClick={() => setShow((on) => !on)} aria-label={show ? tx("Ocultar contraseña", "Hide password") : tx("Mostrar contraseña", "Show password")} aria-pressed={show} className="bz-eye">
+      {show ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+    </button>
+  );
+  const heading =
+    mode === "up" ? [tx("Crea tu cuenta", "Create your account"), tx("Una sola cuenta para Brizna, Faro y Vela.", "One account for Brizna, Faro, and Vela.")]
+    : mode === "forgot" ? [tx("Olvidé mi contraseña", "Forgot my password"), tx("Te enviamos un enlace para crear una nueva.", "We will send you a link to make a new one.")]
+    : mode === "reset" ? [tx("Nueva contraseña", "New password"), tx("Escríbela dos veces para guardarla.", "Type it twice to save it.")]
+    : [tx("Hola de nuevo", "Welcome back"), tx("Entra para ver tus patios de hoy.", "Sign in to see today's yards.")];
+  const busyText =
+    mode === "up" ? tx("Creando cuenta…", "Creating account…")
+    : mode === "forgot" ? tx("Enviando…", "Sending…")
+    : mode === "reset" ? tx("Guardando…", "Saving…")
+    : tx("Entrando…", "Signing in…");
 
   return (
-    <main className="relative min-h-dvh overflow-x-hidden bg-bg text-fg">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-sun" />
-      <div className="relative mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <BrandMark className="mb-4 size-16" />
-          <p className="text-xs font-semibold tracking-[0.18em] text-muted uppercase">{tx("Desde el patio", "From the yard")}</p>
-          <h1 className="mt-3 flex items-center justify-center gap-2">
-            <span className="font-display text-3xl font-semibold tracking-tight">{PRODUCT_NAME}</span>
-            <span className="h-5 w-px bg-border" aria-hidden />
-            <span className="font-display text-lg font-medium text-muted">{DEFAULT_BUSINESS_NAME}</span>
-          </h1>
-          <p className="mt-2 max-w-xs text-sm text-muted">
+    <main className="bz-login">
+      <LawnScene />
+      <div className="bz-lang" role="group" aria-label={tx("Idioma", "Language")}>
+        <button type="button" aria-pressed={locale === "es"} onClick={() => setLocale("es")}>ES</button>
+        <button type="button" aria-pressed={locale === "en"} onClick={() => setLocale("en")}>EN</button>
+      </div>
+      <div className="bz-shell">
+        <header className="bz-brand">
+          <BrandMark className="bz-mark" />
+          <p className="bz-eyebrow">{tx("Desde el patio", "From the yard")}</p>
+          <h1 className="bz-title">{PRODUCT_NAME}</h1>
+          <p className="bz-business">{DEFAULT_BUSINESS_NAME}</p>
+          <p className="bz-tagline">
             {tx("Clientes, cortes y cobros en el teléfono o la tablet, siempre al día.", "Clients, cuts, and payments on the phone or tablet, always up to date.")}
           </p>
-        </div>
+        </header>
 
-        <div className="rounded-xl bg-surface p-5 shadow-card">
-          {mode === "forgot" || mode === "reset" ? (
-            <h2 className="mb-3 font-display text-xl font-semibold">
-              {mode === "reset" ? tx("Nueva contraseña", "New password") : tx("Olvidé mi contraseña", "Forgot my password")}
-            </h2>
-          ) : null}
-          <form className="grid gap-3" onSubmit={(e) => void submit(e)}>
+        <section className="bz-card" aria-labelledby="bz-card-title">
+          <h2 id="bz-card-title" className="bz-card-title">{heading[0]}</h2>
+          <p className="bz-card-sub">{heading[1]}</p>
+          <form className="grid gap-3.5" onSubmit={(e) => void submit(e)} noValidate={false}>
             {mode === "up" ? (
-              <Input autoComplete="name" placeholder={tx("Tu nombre", "Your name")} value={name} onChange={(e) => setName(e.target.value)} />
+              <div className="bz-field">
+                <label className="bz-label" htmlFor="bz-name">{tx("Tu nombre", "Your name")}</label>
+                <div className="bz-input-wrap">
+                  <UserRound className="bz-icon" aria-hidden />
+                  <input id="bz-name" className="bz-input" autoComplete="name" placeholder={tx("Como quieras que te llamemos", "What we should call you")} value={name} onChange={(e) => setName(e.target.value)} />
+                </div>
+              </div>
             ) : null}
             {mode !== "reset" ? (
-              <Input type="email" autoComplete="email" inputMode="email" required placeholder={tx("Correo", "Email")} value={email} onChange={(e) => setEmail(e.target.value)} />
+              <div className="bz-field">
+                <label className="bz-label" htmlFor="bz-email">{tx("Correo", "Email")}</label>
+                <div className="bz-input-wrap">
+                  <Mail className="bz-icon" aria-hidden />
+                  <input id="bz-email" className="bz-input" type="email" autoComplete="email" inputMode="email" required placeholder={tx("tu@correo.com", "you@email.com")} value={email} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+              </div>
             ) : null}
             {mode !== "forgot" ? (
-              <div className="relative">
-                <Input
-                  type={passType}
-                  autoComplete={making ? "new-password" : "current-password"}
-                  required
-                  minLength={8}
-                  placeholder={mode === "reset" ? tx("Nueva contraseña", "New password") : tx("Contraseña", "Password")}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pr-12"
-                />
-                <button type="button" onClick={() => setShow((on) => !on)} aria-label={show ? tx("Ocultar contraseña", "Hide password") : tx("Mostrar contraseña", "Show password")} className="absolute inset-y-0 right-1 grid w-10 place-items-center text-muted">
-                  {show ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-                </button>
+              <div className="bz-field">
+                <div className="bz-label">
+                  <label htmlFor="bz-pass">{mode === "reset" ? tx("Nueva contraseña", "New password") : tx("Contraseña", "Password")}</label>
+                  {mode === "in" ? (
+                    <button type="button" className="bz-link" onClick={() => swap("forgot")}>{tx("Olvidé mi contraseña", "Forgot my password")}</button>
+                  ) : null}
+                </div>
+                <div className="bz-input-wrap">
+                  <LockKeyhole className="bz-icon" aria-hidden />
+                  <input
+                    id="bz-pass"
+                    className="bz-input has-eye"
+                    type={passType}
+                    autoComplete={making ? "new-password" : "current-password"}
+                    required
+                    minLength={8}
+                    placeholder={making ? tx("Mínimo 8 caracteres", "At least 8 characters") : "••••••••"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  {eye}
+                </div>
               </div>
             ) : null}
             {making ? (
-              <Input type={passType} autoComplete="new-password" required minLength={8} placeholder={tx("Confirma la contraseña", "Confirm the password")} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+              <div className="bz-field">
+                <label className="bz-label" htmlFor="bz-confirm">{tx("Confirma la contraseña", "Confirm the password")}</label>
+                <div className="bz-input-wrap">
+                  <ShieldCheck className="bz-icon" aria-hidden />
+                  <input id="bz-confirm" className="bz-input" type={passType} autoComplete="new-password" required minLength={8} placeholder={tx("Otra vez, igual", "Same again")} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+                </div>
+              </div>
             ) : null}
-            {info ? <p className="text-sm text-primary">{info}</p> : null}
-            {error ? <p className="text-sm text-late">{error}</p> : null}
-            <Button type="submit" disabled={busy}>
-              {busy
-                ? "…"
-                : mode === "up" ? tx("Crear cuenta", "Create account")
-                : mode === "forgot" ? tx("Enviar correo", "Send email")
-                : mode === "reset" ? tx("Guardar contraseña", "Save password")
-                : tx("Entrar", "Sign in")}
-            </Button>
-            {mode === "in" || mode === "up" ? (
-              <button type="button" className="text-sm font-semibold text-primary" onClick={() => swap(mode === "in" ? "up" : "in")}>
-                {mode === "up" ? tx("Ya tengo cuenta", "I already have an account") : tx("Crear una cuenta nueva", "Create a new account")}
-              </button>
-            ) : null}
+            {info ? <p className="bz-msg bz-msg-info" role="status"><CheckCircle2 aria-hidden />{info}</p> : null}
+            {error ? <p className="bz-msg bz-msg-error" role="alert"><AlertCircle aria-hidden />{error}</p> : null}
+            <button type="submit" className="bz-submit mt-1" disabled={busy} data-busy={busy ? "1" : undefined} aria-busy={busy}>
+              {busy ? (
+                <>
+                  <Loader2 className="bz-spinner" aria-hidden />
+                  {busyText}
+                </>
+              ) : (
+                <>
+                  {mode === "up" ? tx("Crear cuenta", "Create account")
+                    : mode === "forgot" ? tx("Enviar correo", "Send email")
+                    : mode === "reset" ? tx("Guardar contraseña", "Save password")
+                    : tx("Entrar", "Sign in")}
+                  <ArrowRight className="size-[1.1rem]" aria-hidden />
+                </>
+              )}
+            </button>
             {mode === "in" ? (
-              <button type="button" className="text-sm text-muted" onClick={() => swap("forgot")}>{tx("Olvidé mi contraseña", "Forgot my password")}</button>
+              <>
+                <div className="bz-divider">{tx("o", "or")}</div>
+                <button type="button" className="bz-alt" onClick={() => swap("up")}>
+                  <Sprout className="size-[1.05rem]" aria-hidden />
+                  {tx("Crear una cuenta nueva", "Create a new account")}
+                </button>
+              </>
+            ) : null}
+            {mode === "up" ? (
+              <button type="button" className="bz-link justify-self-center py-1" onClick={() => swap("in")}>{tx("Ya tengo cuenta", "I already have an account")}</button>
             ) : null}
             {mode === "forgot" ? (
-              <button type="button" className="text-sm text-muted" onClick={() => swap("in")}>{tx("Volver", "Back")}</button>
+              <button type="button" className="bz-link inline-flex items-center gap-1 justify-self-center py-1" onClick={() => swap("in")}>
+                <ArrowLeft className="size-4" aria-hidden />
+                {tx("Volver", "Back")}
+              </button>
             ) : null}
           </form>
-        </div>
-        <p className="mt-4 text-center text-xs text-muted">
+        </section>
+        <p className="bz-foot">
+          <CloudOff aria-hidden />
           {tx("La misma cuenta de Faro y Vela. Después funciona sin internet.", "The same account as Faro and Vela. After that it works without internet.")}
         </p>
       </div>
@@ -161,17 +216,25 @@ export function Login({ recovery, note }: { recovery?: boolean; note?: string })
 export function Locked({ onOpen, onSignOut, failed }: { onOpen: () => void; onSignOut: () => void; failed: boolean }) {
   const tx = useTx();
   return (
-    <main className="relative grid min-h-dvh place-items-center bg-bg px-5 text-fg">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-sun" />
-      <div className="relative flex w-full max-w-sm flex-col items-center text-center">
-        <BrandMark className="mb-4 size-16" />
-        <h1 className="font-display text-3xl font-semibold">{PRODUCT_NAME}</h1>
-        <p className="mt-2 text-sm text-muted">{tx("Brizna está bloqueada.", "Brizna is locked.")}</p>
-        <Button type="button" className="mt-6 w-full" onClick={onOpen}>
-          {failed ? tx("Intentar de nuevo", "Try again") : tx("Desbloquear con huella", "Unlock with fingerprint")}
-        </Button>
-        {failed ? <p className="mt-3 text-sm text-late">{tx("No se pudo confirmar. Intenta de nuevo.", "Could not confirm. Try again.")}</p> : null}
-        <button type="button" className="mt-6 text-sm text-muted" onClick={onSignOut}>{tx("Cerrar sesión", "Sign out")}</button>
+    <main className="bz-login">
+      <LawnScene calm />
+      <div className="bz-shell" style={{ maxWidth: "24rem", display: "flex" }}>
+        <header className="bz-brand">
+          <BrandMark className="bz-mark" />
+          <h1 className="bz-title">{PRODUCT_NAME}</h1>
+          <p className="bz-tagline">{tx("Brizna está bloqueada.", "Brizna is locked.")}</p>
+        </header>
+        <section className="bz-card grid gap-3">
+          <button type="button" className="bz-submit" onClick={onOpen}>
+            <Fingerprint className="size-5" aria-hidden />
+            {failed ? tx("Intentar de nuevo", "Try again") : tx("Desbloquear con huella", "Unlock with fingerprint")}
+          </button>
+          {failed ? <p className="bz-msg bz-msg-error" role="alert"><AlertCircle aria-hidden />{tx("No se pudo confirmar. Intenta de nuevo.", "Could not confirm. Try again.")}</p> : null}
+          <button type="button" className="bz-link inline-flex items-center justify-center gap-1.5 py-1" onClick={onSignOut}>
+            <LogOut className="size-4" aria-hidden />
+            {tx("Cerrar sesión", "Sign out")}
+          </button>
+        </section>
       </div>
     </main>
   );
@@ -179,9 +242,10 @@ export function Locked({ onOpen, onSignOut, failed }: { onOpen: () => void; onSi
 
 export function Splash() {
   return (
-    <main className="grid min-h-dvh place-items-center bg-bg text-fg">
+    <main className="bz-login grid place-items-center">
+      <div className="bz-scene" aria-hidden="true"><div className="bz-sky" /></div>
       <div className="flex flex-col items-center">
-        <BrandMark className="mb-4 size-16" />
+        <BrandMark className="bz-mark mb-4" />
         <p className="font-display text-3xl font-semibold">{PRODUCT_NAME}</p>
       </div>
     </main>

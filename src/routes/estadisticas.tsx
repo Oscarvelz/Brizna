@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CobrosCharts } from "@/components/cobros-charts";
+import { CifrasInsightsSections } from "@/components/cifras-insights";
 import { CifrasOrderButton } from "@/components/cifras-order-button";
 import { EffortWeek } from "@/components/effort-week";
 import { foldsOpen, setFoldsOpen } from "@/components/fold";
@@ -24,6 +25,11 @@ function EstadisticasPage() {
   const query = findOn ? needle : "";
   const dash = useQuery({ queryKey: ["dashboard"], queryFn: () => getDashboard() });
   const data = dash.data;
+  // Hoy's schedule pass (getDashboard) can add this month's upcoming cuts: recount "Este mes" after it.
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (dash.dataUpdatedAt) void qc.invalidateQueries({ queryKey: ["cifras-insights"] });
+  }, [dash.dataUpdatedAt, qc]);
 
   return (
     <AppShell
@@ -44,8 +50,8 @@ function EstadisticasPage() {
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="min-w-0 text-sm text-muted">
           {tx(
-            "Metas, cortes y cobros a lo largo del tiempo. Aquí encontrará la información técnica de todo su trabajo duro.",
-            "Goals, cuts, and collections over time. Here you will find the technical record of all your hard work.",
+            "Cómo va el negocio de un vistazo: el mes, lo que te deben, tus mejores clientes y tus días fuertes. Toca cualquier cifra para ver más.",
+            "How the business is doing at a glance: the month, what you are owed, your best clients, and your strong days. Tap any figure to see more.",
           )}
         </p>
         <label className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-muted">
@@ -65,6 +71,7 @@ function EstadisticasPage() {
       </div>
       <CobrosCharts
         query={query}
+        extra={<CifrasInsightsSections query={query} />}
         effort={
           data ? (
             <EffortWeek

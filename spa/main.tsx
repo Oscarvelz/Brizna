@@ -5,7 +5,7 @@ import "@/styles.css";
 import { APPEARANCE_BOOT_SCRIPT } from "@/lib/theme";
 import { AppErrorComponent } from "@/lib/error-component";
 import { routeTree } from "@/routeTree.gen";
-import { getSql, setDbUser } from "@/lib/db";
+import { getPglite, getSql, setDbUser } from "@/lib/db";
 import { I18nProvider } from "@/lib/i18n";
 import { lockCredential, unlock } from "@/lib/device-lock";
 import { saveBackupNow } from "@/lib/server/lawn";
@@ -127,6 +127,7 @@ function Gate() {
 function start() {
   if (!CLOUD_READY) {
     emitUser({ id: "local", email: "", name: "Local" }); // local test copy: no accounts
+    (globalThis as any).__bzSql = getSql; (globalThis as any).__bzPg = getPglite; // local test copy only (127.0.0.1): lets tests seed and check figures
     void getSql();
     root.render(<StrictMode><RouterProvider router={router} /></StrictMode>);
     return;

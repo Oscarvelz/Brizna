@@ -13,6 +13,7 @@ import {
 import { Hint } from "@/components/hint";
 import { Fold } from "@/components/fold";
 import { YearRhythm } from "@/components/year-rhythm";
+import { WeekToDate } from "@/components/cifras-insights";
 import { useCifraRank, type CifraId } from "@/lib/cifras-order";
 import { lastDayOfMonthISO } from "@/lib/dates";
 import { smartHit } from "@/lib/fuzzy";
@@ -32,10 +33,13 @@ export function CobrosCharts({
   embedded = false,
   query = "",
   effort = null,
+  extra = null,
 }: {
   embedded?: boolean;
   query?: string;
   effort?: ReactNode;
+  /** The 1.2 sections (Este mes, tendencia, deudas…), placed by their own order. */
+  extra?: ReactNode;
 }) {
   const { t, locale } = useI18n();
   const tx = useTx();
@@ -46,7 +50,6 @@ export function CobrosCharts({
   const data = q.data;
   const rankNumeros = useCifraRank("numeros");
   const rankHoras = useCifraRank("horas");
-  const rankFiabilidad = useCifraRank("fiabilidad");
   const rankSemana = useCifraRank("semana");
   const rankAnio = useCifraRank("anio");
   const rankPospuesto = useCifraRank("pospuesto");
@@ -55,6 +58,7 @@ export function CobrosCharts({
     return (
       <div className={cn("grid gap-4", !embedded && "mb-6")}>
         {effort}
+        {extra}
         {!ready || q.isLoading ? (
           <div className="h-48 animate-pulse rounded-xl bg-surface-2" style={{ order: rankNumeros }} />
         ) : null}
@@ -67,6 +71,12 @@ export function CobrosCharts({
   const hasYear = data.yearSeries.some((p) => p.collected > 0 || p.cuts > 0);
   const hasFlow = data.clientFlow.some((p) => p.altas > 0 || p.bajas > 0);
 
+  const weekStack = data.weekSeries.map((p) => ({
+    ...p,
+    cutAmount: Math.max(0, Math.round((p.completed - p.extraAmount - p.onceAmount) * 100) / 100),
+  }));
+  const firstYear = data.yearSeries.findIndex((y) => y.collected > 0 || y.cuts > 0);
+  const years = firstYear > 0 ? data.yearSeries.slice(firstYear) : data.yearSeries;
   const thisMonth = data.monthSeries[data.monthSeries.length - 1];
   const lastMonth = data.monthSeries[data.monthSeries.length - 2];
 
@@ -91,6 +101,7 @@ export function CobrosCharts({
   return (
     <div className={cn("grid gap-4", !embedded && "mb-6")}>
       {effort}
+      {extra}
       {show("números patios promedio mediana ticket cobrado propinas personas vida dinero ganado") ? (
       <Fold id="cif-numeros" style={{ order: rankNumeros }} title={tx("Números", "Numbers")} hint={<Hint manual="cifras" text={tx("Sin barras. Sirve cuando ya hay varias semanas de trabajo.", "No bars. Useful once there are several weeks of work.")} />}>
         <dl className="grid grid-cols-2 gap-2">
@@ -117,8 +128,8 @@ export function CobrosCharts({
           <NumberCell label={tx("Patios esta semana", "Yards this week")} value={String(data.thisWeekCuts)} manual="cifras-semana" hint={tx("Los patios marcados Hecho en esta semana, de lunes a domingo.", "Yards marked Done this week, Monday through Sunday.")} />
           <NumberCell label={tx("Patios semana pasada", "Yards last week")} value={String(data.lastWeekCuts)} manual="cifras-semana-pasada" hint={tx("La misma cuenta, pero de la semana anterior.", "The same count, but for the previous week.")} />
           <NumberCell label={tx("Promedio por semana", "Average per week")} value={String(data.avgWeekCuts)} manual="cifras-promedio" hint={tx("Suma los patios de las últimas 4 semanas y los divide entre 4.", "Adds the yards from the last 4 weeks and divides by 4.")} />
-          <NumberCell label={tx("Mediana por semana", "Median per week")} value={String(data.medianWeekCuts)} manual="cifras-mediana" hint={tx("El punto medio de esas semanas. No es el promedio: un día enorme no lo empuja.", "The midpoint of those weeks. It is not the average: one huge day does not push it.")} />
-          <NumberCell label={tx("Ticket promedio", "Average ticket")} value={money(data.avgTicket)} manual="cifras-ticket" hint={tx("Lo cobrado este año dividido entre los patios hechos.", "Collected this year divided by the yards done.")} />
+          <NumberCell label={tx("Mediana por semana", "Median per week")} value={String(data.medianWeekCuts)} manual="cifras-mediana" hint={tx("El punto medio de esas mismas 4 semanas. No es el promedio: una semana enorme no lo empuja.", "The midpoint of those same 4 weeks. It is not the average: one huge week does not push it.")} />
+          <NumberCell label={tx("Ticket promedio", "Average ticket")} value={money(data.avgTicket)} manual="cifras-ticket" hint={tx("Lo que valió en promedio cada trabajo hecho este año (corte, extra o de una vez).", "The average value of each job done this year (cut, extra, or one time).")} />
           <NumberCell label={tx("Cobrado, promedio semanal", "Collected, weekly average")} value={money(data.avgWeekCollected)} manual="cifras-cobrado-semana" hint={tx("El dinero de Cobrado de las últimas 4 semanas, dividido entre 4.", "Collected money from the last 4 weeks, divided by 4.")} />
           <NumberCell label={tx("Personas por cobrar", "People to collect")} value={String(data.owingPeople)} manual="cobros-por-cobrar" hint={tx("Cuántas personas tienen saldo en Por cobrar.", "How many people have a balance in To collect.")} />
           <NumberCell label={tx("Al corriente con saldo", "Current with a balance")} value={String(data.currentPeople)} manual="cobros-corriente" hint={tx("Deben, pero todavía no llegan a En espera ni a Alto riesgo.", "They owe, but they are not yet in Waiting or High risk.")} />
@@ -153,16 +164,20 @@ export function CobrosCharts({
         ) : null}
       </Fold>
       ) : null}
-      {show("fiabilidad espera riesgo pago") ? (
-      <Fold id="cif-fiabilidad" style={{ order: rankFiabilidad }} className="border-l-4 border-hold bg-hold-bg" title={<span className="text-hold">{tx("Fiabilidad de pago", "Payment reliability")}</span>} hint={<Hint manual="fiabilidad" text={tx("Distinto del resto. Mide si la persona paga a tiempo y si el saldo se pasó de lo que tú marcaste.", "Different from the rest. It measures whether the person pays on time and whether the balance went past what you set.")} />}>
-        <dl className="grid grid-cols-2 gap-2">
-          <NumberCell label={tx("En espera", "Waiting")} value={String(data.waitPeople)} manual="en-espera" hint={tx("Siguen debiendo y se atrasaron, pero todavía no llegan al límite naranja.", "They still owe and fell behind, but they have not reached the orange limit yet.")} />
-          <NumberCell label={tx("Alto riesgo", "High risk")} value={String(data.seriousPeople)} hold manual="alto-riesgo" hint={tx("Se pasaron de los días, del monto o de los cortes sin pagar que pusiste en Ajustes. Siguen en Por cobrar.", "They went past the days, the amount, or the unpaid cuts you set in Settings. They stay in To collect.")} />
-        </dl>
-      </Fold>
-      ) : null}
       {show("semana anterior cortes cobrado mes") ? (
       <Fold id="cif-semana" style={{ order: rankSemana }} title={tx("Esta semana frente a la anterior", "This week versus the previous one")} hint={<Hint text={tx("El registro de cada semana se guarda. Sirve para ver si esta semana cortaste o cobraste más que la pasada.", "Each week's record is kept. It shows whether you cut or collected more this week than last week.")} />}>
+        <WeekToDate>
+          {(w) => w ? (
+            <>
+              <p className="mb-1.5 text-xs font-semibold text-muted">{tx("Hasta hoy, contra la semana pasada hasta el mismo día", "So far, against last week up to the same day")}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <CompareCard label={tx("Cortes", "Cuts")} current={w.cuts} previous={w.prevCuts} format={(n) => String(n)} unit={tx("hechos", "done")} />
+                <CompareCard label={tx("Cobrado", "Collected")} current={w.collected} previous={w.prevCollected} format={money} />
+              </div>
+            </>
+          ) : null}
+        </WeekToDate>
+        <p className="mb-1.5 mt-3 text-xs font-semibold text-muted">{tx("Semana completa", "Whole week")}</p>
         <div className="grid grid-cols-2 gap-2">
           <CompareCard
             label={tx("Cortes", "Cuts")}
@@ -170,12 +185,14 @@ export function CobrosCharts({
             previous={data.lastWeekCuts}
             format={(n) => String(n)}
             unit={tx("patios", "yards")}
+            quiet
           />
           <CompareCard
             label={tx("Cobrado", "Collected")}
             current={data.thisWeekCollected}
             previous={data.lastWeekCollected}
             format={money}
+            quiet
           />
         </div>
         {thisMonth && lastMonth ? (
@@ -220,57 +237,30 @@ export function CobrosCharts({
         place="semana-dinero"
         query={query}
         title={tx("Dinero por semana", "Money by week")}
-        hint={tx("Verde: lo cobrado. Oscuro: el valor de los patios ya hechos, aunque aún no te hayan pagado. Cada barra es una semana.", "Green: money collected. Dark: the value of yards already done, even if they have not paid you yet. Each bar is a week.")}
+        hint={tx("Cada semana tiene dos barras. Verde: lo cobrado. La de al lado: lo que valió el trabajo hecho, apilado por tipo (cortes, extras, una vez), aunque aún no te hayan pagado.", "Each week has two bars. Green: collected. The one beside it: what the work done was worth, stacked by kind (cuts, extras, one time), even if not paid yet.")}
+        legend={[[tx("Cobrado", "Collected"), "var(--color-done)"], [tx("Cortes", "Cuts"), "var(--color-money)"], [tx("Extras", "Extras"), "var(--color-soil)"], [tx("Una vez", "One time"), "var(--color-pending)"]]}
         empty={tx("Todavía no hay cobros ni trabajos hechos para graficar.", "There are no payments or finished jobs to chart yet.")}
         hasData={hasWeek}
         height="h-44"
       >
-        <BarChart data={data.weekSeries} barGap={2}>
-          <CartesianGrid vertical={false} stroke="var(--color-border)" />
-          <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--color-muted)" />
+        <BarChart data={weekStack} barGap={3} barCategoryGap="22%">
+          <CartesianGrid vertical={false} stroke="var(--color-border)" strokeDasharray="2 4" />
+          <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--color-muted)" tickLine={false} />
           <YAxis
             tick={{ fontSize: 10 }}
-            stroke="var(--color-muted)"
-            width={36}
-            tickFormatter={(v) => `$${v}`}
+            stroke="transparent"
+            width={40}
+            tickFormatter={(v) => (Number(v) >= 1000 ? `$${(Number(v) / 1000).toFixed(1)}k` : `$${v}`)}
           />
           <Tooltip
             formatter={(v, name) => [money(Number(v) || 0), String(name ?? tx("Monto", "Amount"))]}
             contentStyle={tooltipStyle}
+            cursor={{ fill: "color-mix(in srgb, var(--color-border) 35%, transparent)" }}
           />
           <Bar dataKey="collected" name={tx("Cobrado", "Collected")} fill="var(--color-done)" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="completed" name={tx("Hecho", "Done")} fill="var(--color-money)" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="extraAmount" name={tx("Extras", "Extras")} fill="var(--color-soil)" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="onceAmount" name={tx("Una vez", "One time")} fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ChartBlock>
-
-      <ChartBlock
-        id="cif-mes"
-        place="mes"
-        query={query}
-        title={tx("Dinero por mes", "Money by month")}
-        hint={tx("Cada barra es un mes. Así se compara un mes con los anteriores.", "Each bar is a month. That is how one month is compared with earlier ones.")}
-        empty={tx("Todavía no hay cobros este año para graficar por mes.", "There are no payments this year yet to chart by month.")}
-        hasData={hasMonth}
-        height="h-40"
-      >
-        <BarChart data={data.monthSeries} barGap={2}>
-          <CartesianGrid vertical={false} stroke="var(--color-border)" />
-          <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--color-muted)" />
-          <YAxis
-            tick={{ fontSize: 10 }}
-            stroke="var(--color-muted)"
-            width={36}
-            tickFormatter={(v) => `$${v}`}
-          />
-          <Tooltip
-            formatter={(v, name) => [money(Number(v) || 0), String(name ?? tx("Cobrado", "Collected"))]}
-            contentStyle={tooltipStyle}
-          />
-          <Bar dataKey="collected" name={tx("Cobrado", "Collected")} fill="var(--color-done)" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="extraAmount" name={tx("Extras", "Extras")} fill="var(--color-soil)" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="onceAmount" name={tx("Una vez", "One time")} fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="cutAmount" stackId="hecho" name={tx("Hecho: cortes", "Done: cuts")} fill="var(--color-money)" />
+          <Bar dataKey="extraAmount" stackId="hecho" name={tx("Hecho: extras", "Done: extras")} fill="var(--color-soil)" />
+          <Bar dataKey="onceAmount" stackId="hecho" name={tx("Hecho: una vez", "Done: one time")} fill="var(--color-pending)" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ChartBlock>
 
@@ -279,7 +269,7 @@ export function CobrosCharts({
         {hasYear ? (
           <>
             <ul className="mb-3 grid gap-1.5">
-              {[...data.yearSeries].reverse().map((y) => (
+              {[...years].reverse().map((y) => (
                 <li
                   key={y.key}
                   className="flex items-baseline justify-between gap-2 rounded-sm bg-work-bg px-2.5 py-2"
@@ -295,20 +285,20 @@ export function CobrosCharts({
             </ul>
             <div className="h-36">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.yearSeries} barGap={2}>
+                <BarChart data={years} barGap={2} barCategoryGap="30%">
                   <CartesianGrid vertical={false} stroke="var(--color-border)" />
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--color-muted)" />
                   <YAxis
                     tick={{ fontSize: 10 }}
                     stroke="var(--color-muted)"
-                    width={36}
-                    tickFormatter={(v) => `$${v}`}
+                    width={44}
+                    tickFormatter={(v) => (Number(v) >= 1000 ? `$${Math.round(Number(v) / 1000)}k` : `$${v}`)}
                   />
                   <Tooltip
                     formatter={(v) => [money(Number(v) || 0), tx("Cobrado", "Collected")]}
                     contentStyle={tooltipStyle}
                   />
-                  <Bar dataKey="collected" fill="var(--color-work)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="collected" fill="var(--color-done)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -452,7 +442,9 @@ function ChartBlock({
   hasData,
   height,
   children,
+  legend,
 }: {
+  legend?: [string, string][];
   id: string;
   place: CifraId;
   query?: string;
@@ -468,11 +460,18 @@ function ChartBlock({
   return (
     <Fold id={id} style={{ order: rank }} title={title} hint={<Hint text={hint} />}>
       {hasData ? (
-        <div className={height}>
-          <ResponsiveContainer width="100%" height="100%">
-            {children}
-          </ResponsiveContainer>
-        </div>
+        <>
+          <div className={height}>
+            <ResponsiveContainer width="100%" height="100%">
+              {children}
+            </ResponsiveContainer>
+          </div>
+          {legend ? (
+            <div className="cif-stack-legend">
+              {legend.map(([name, color]) => <span key={name}><i style={{ background: color }} />{name}</span>)}
+            </div>
+          ) : null}
+        </>
       ) : (
         <p className="text-sm text-muted">{empty}</p>
       )}

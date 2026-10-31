@@ -3152,7 +3152,8 @@ export const getFinanceStats = createServerFn({ method: "GET" })
       [context.userId, addDaysISO(today, -90)],
     );
 
-    const cuts = weekSeries.map((p) => p.cuts);
+    // Median of the same last 4 weeks the average uses (the hint says "those weeks").
+    const cuts = sample.map((p) => p.cuts);
     const sortedCuts = [...cuts].sort((a, b) => a - b);
     const mid = Math.floor(sortedCuts.length / 2);
     const medianWeekCuts = sortedCuts.length
@@ -5192,7 +5193,388 @@ export const getYearRhythm = createServerFn({ method: "GET" })
     };
   });
 
+// ---------------------------------------------------------------------------
+// Cifras 1.2: read-only figures for the new Cifras sections (this month, trend,
+// who owes and since when, best clients, weekday × month rhythm, tips, price).
+// Same conventions as getFinanceStats: Cobrado = payments 'paid' + 'prepaid';
+// work value = jobs marked done (by scheduled date); tips are apart.
 
+export type CifrasMonth = {
+  key: string; // YYYY-MM
+  label: string;
+  collected: number;
+  doneValue: number;
+  cuts: number; // done jobs of kind 'cut'
+  jobs: number; // all done jobs
+  cutValue: number; // value of done 'cut' jobs (for price per cut)
+  extraValue: number;
+  onceValue: number;
+  tips: number;
+  tipCount: number;
+  partial: boolean; // the month in progress
+};
 
+export type CifrasInsights = {
+  today: string;
+  monthStart: string;
+  monthEnd: string;
+  dayOfMonth: number;
+  daysInMonth: number;
+  hasData: boolean;
+  firstWorkDate: string | null;
+  pulse: {
+    collected: number;
+    doneValue: number;
+    doneCount: number;
+    restValue: number;
+    restCount: number;
+    lateValue: number;
+    lateCount: number;
+    planned: number;
+    tips: number;
+    prevCollectedToDate: number;
+    prevDoneToDate: number;
+    prevCollectedFull: number;
+    outstanding: number;
+    owingPeople: number;
+    rate90: { collected: number; done: number };
+  };
+  week: { cuts: number; collected: number; prevCuts: number; prevCollected: number; through: string };
+  months: CifrasMonth[];
+  debts: {
+    total: number;
+    buckets: { key: "0-30" | "31-60" | "61-90" | "90+"; amount: number; people: number }[];
+    top: { id: number; name: string; balance: number; oldestDays: number | null; tier: PayTier; unpaidCuts: number }[];
+    waitPeople: number;
+    seriousPeople: number;
+    currentPeople: number;
+    latePayers: number;
+  };
+  best: {
+    total: number;
+    clients: { id: number; name: string; active: boolean; value: number; jobs: number; cuts: number; avg: number }[];
+    clientCount: number;
+  };
+  rhythm: {
+    cells: { month: string; dow: number; cuts: number; value: number }[];
+    weekdays: { dow: number; cuts: number; value: number; days: number }[];
+  };
+  tips: { year: number; count: number; avg: number; top: { id: number; name: string; total: number; count: number }[] };
+  price: { avgCut: number; avgExtra: number; avgOnce: number; nCut: number; nExtra: number; nOnce: number };
+};
 
+export const getCifrasInsights = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<CifrasInsights> => {
+    const sql = await getSql();
+    const uid = context.userId;
+    const today = todayISO();
+    const { year, month } = monthParts(today);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const monthStart = `${year}-${pad(month)}-01`;
+    const monthEnd = lastDayOfMonthISO(year, month);
+    const dayOfMonth = Number(today.slice(8, 10));
+    const daysInMonth = Number(monthEnd.slice(8, 10));
+    const first = addMonths(year, month, -11);
+    const from12 = `${first.year}-${pad(first.month)}-01`;
+    const prev = addMonths(year, month, -1);
+    const prevStart = `${prev.year}-${pad(prev.month)}-01`;
+    const prevEnd = lastDayOfMonthISO(prev.year, prev.month);
+    const prevCut = addDaysISO(prevStart, dayOfMonth - 1) > prevEnd ? prevEnd : addDaysISO(prevStart, dayOfMonth - 1);
+    const from90 = addDaysISO(today, -89);
+    const weekStart = startOfWeekISO(today);
+    const prevWeekStart = addDaysISO(weekStart, -7);
+    const prevWeekCut = addDaysISO(today, -7);
 
+    const paid = async (from: string, to: string) => {
+      const r = await sql.query<{ v: unknown }>(
+        `select coalesce(sum(amount),0) as v from payments
+          where user_id = $1 and kind in ('paid','prepaid')
+            and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')`,
+        [uid, from, to],
+      );
+      return money(r[0]?.v);
+    };
+    const work = async (from: string, to: string, status: string, kind?: string) => {
+      const r = await sql.query<{ v: unknown; n: unknown }>(
+        `select coalesce(sum(amount),0) as v, count(*) as n from jobs
+          where user_id = $1 and status = $4 and scheduled_date >= $2::date and scheduled_date <= $3::date
+            ${kind ? "and kind = $5" : ""}`,
+        kind ? [uid, from, to, status, kind] : [uid, from, to, status],
+      );
+      return { value: money(r[0]?.v), count: intId(r[0]?.n) };
+    };
+
+    // 12 months of money and work
+    const payRows = await sql.query<{ m: string; collected: unknown; tips: unknown; tip_n: unknown }>(
+      `select to_char(paid_at, 'YYYY-MM') as m,
+              coalesce(sum(amount) filter (where kind in ('paid','prepaid')),0) as collected,
+              coalesce(sum(tip),0) as tips,
+              count(*) filter (where tip > 0) as tip_n
+         from payments
+        where user_id = $1 and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')
+        group by 1`,
+      [uid, from12, monthEnd],
+    );
+    const jobRows = await sql.query<{ m: string; kind: string; n: unknown; v: unknown }>(
+      `select to_char(scheduled_date, 'YYYY-MM') as m, kind, count(*) as n, coalesce(sum(amount),0) as v
+         from jobs
+        where user_id = $1 and status = 'done' and scheduled_date >= $2::date and scheduled_date <= $3::date
+        group by 1, 2`,
+      [uid, from12, monthEnd],
+    );
+    const months: CifrasMonth[] = [];
+    for (let i = 11; i >= 0; i -= 1) {
+      const m = addMonths(year, month, -i);
+      const key = `${m.year}-${pad(m.month)}`;
+      const p = payRows.find((r) => r.m === key);
+      const js = jobRows.filter((r) => r.m === key);
+      const byKind = (k: string) => js.find((r) => r.kind === k);
+      months.push({
+        key,
+        label: monthLabel(m.year, m.month),
+        collected: money(p?.collected),
+        doneValue: money(js.reduce((s, r) => s + money(r.v), 0)),
+        cuts: intId(byKind("cut")?.n),
+        jobs: js.reduce((s, r) => s + intId(r.n), 0),
+        cutValue: money(byKind("cut")?.v),
+        extraValue: money(byKind("extra")?.v),
+        onceValue: money(byKind("one_time")?.v),
+        tips: money(p?.tips),
+        tipCount: intId(p?.tip_n),
+        partial: i === 0,
+      });
+    }
+
+    // This month
+    const collected = await paid(monthStart, today);
+    const done = await work(monthStart, monthEnd, "done");
+    const rest = await work(today, monthEnd, "pending");
+    const late = monthStart <= addDaysISO(today, -1) ? await work(monthStart, addDaysISO(today, -1), "pending") : { value: 0, count: 0 };
+    const tipsMonth = months[months.length - 1]?.tips ?? 0;
+    const prevCollectedToDate = await paid(prevStart, prevCut);
+    const prevDoneToDate = (await work(prevStart, prevCut, "done")).value;
+    const prevCollectedFull = await paid(prevStart, prevEnd);
+    const collected90 = await paid(from90, today);
+    const done90 = (await work(from90, today, "done")).value;
+
+    // Week to date vs last week to the same weekday
+    const wk = await work(weekStart, today, "done");
+    const pwk = await work(prevWeekStart, prevWeekCut, "done");
+    const week = {
+      cuts: wk.count,
+      collected: await paid(weekStart, today),
+      prevCuts: pwk.count,
+      prevCollected: await paid(prevWeekStart, prevWeekCut),
+      through: today,
+    };
+
+    // Who owes and since when (first in, first out: a balance covers the newest done jobs)
+    const owing = await loadClients(uid, today, "owing");
+    const owingIds = new Set(owing.map((c) => c.id));
+    const debtJobs = owing.length
+      ? await sql.query<{ client_id: number; scheduled_date: unknown; amount: unknown }>(
+          `select j.client_id, j.scheduled_date, j.amount
+             from jobs j join clients c on c.id = j.client_id and c.user_id = j.user_id
+            where j.user_id = $1 and j.status = 'done' and c.is_active = true and c.balance > 0
+            order by j.client_id, coalesce(j.completed_at, j.scheduled_date::timestamptz) desc, j.id desc`,
+          [uid],
+        )
+      : [];
+    const bucketKey = (days: number): "0-30" | "31-60" | "61-90" | "90+" =>
+      days <= 30 ? "0-30" : days <= 60 ? "31-60" : days <= 90 ? "61-90" : "90+";
+    const buckets = new Map<string, { amount: number; people: Set<number> }>(
+      ["0-30", "31-60", "61-90", "90+"].map((k) => [k, { amount: 0, people: new Set<number>() }]),
+    );
+    const oldest = new Map<number, number | null>();
+    for (const c of owing) {
+      let left = c.balance;
+      let oldestDays: number | null = null;
+      for (const j of debtJobs) {
+        if (left <= 0.004) break;
+        if (intId(j.client_id) !== c.id) continue;
+        const take = Math.min(money(j.amount), left);
+        if (take <= 0) continue;
+        const days = Math.max(0, daysBetween(asIsoDate(j.scheduled_date), today));
+        const b = buckets.get(bucketKey(days))!;
+        b.amount += take;
+        b.people.add(c.id);
+        left = Math.round((left - take) * 100) / 100;
+        oldestDays = days;
+      }
+      if (left > 0.004) {
+        // Owed from before any recorded cut (opening balance): counted as the oldest.
+        const b = buckets.get("90+")!;
+        b.amount += left;
+        b.people.add(c.id);
+        oldestDays = oldestDays == null ? null : Math.max(oldestDays, 91);
+      }
+      oldest.set(c.id, oldestDays);
+    }
+    const unpaid = new Map<number, number>();
+    for (const c of owing) {
+      let left = c.balance;
+      let n = 0;
+      for (const j of debtJobs) {
+        if (intId(j.client_id) !== c.id || left <= 0.004) continue;
+        left -= money(j.amount);
+        n += 1;
+      }
+      unpaid.set(c.id, n);
+    }
+    const dueRows = await sql.query<{ pay_due_day: number | null; balance: unknown }>(
+      `select pay_due_day, balance from clients where user_id = $1 and is_active = true and balance > 0`,
+      [uid],
+    );
+    const waitPeople = owing.filter((c) => c.payTier === "espera").length;
+    const seriousPeople = owing.filter((c) => c.payTier === "serio").length;
+    const debts = {
+      total: Math.round(owing.reduce((s, c) => s + c.balance, 0) * 100) / 100,
+      buckets: (["0-30", "31-60", "61-90", "90+"] as const).map((key) => ({
+        key,
+        amount: Math.round((buckets.get(key)?.amount ?? 0) * 100) / 100,
+        people: buckets.get(key)?.people.size ?? 0,
+      })),
+      top: [...owing]
+        .sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name))
+        .slice(0, 8)
+        .map((c) => ({ id: c.id, name: c.name, balance: c.balance, oldestDays: oldest.get(c.id) ?? null, tier: c.payTier, unpaidCuts: unpaid.get(c.id) ?? 0 })),
+      waitPeople,
+      seriousPeople,
+      currentPeople: Math.max(0, owing.length - waitPeople - seriousPeople),
+      latePayers: dueRows.filter((c) => isPaymentLate(c.pay_due_day, today, money(c.balance))).length,
+    };
+    void owingIds;
+    const outstandingRows = await sql.query<{ v: unknown; n: unknown }>(
+      `select coalesce(sum(balance),0) as v, count(*) filter (where balance > 0) as n from clients where user_id = $1 and is_active = true`,
+      [uid],
+    );
+
+    // Best clients, last 12 months of work value
+    const bestRows = await sql.query<{ id: number; name: string; is_active: boolean; jobs: unknown; cuts: unknown; v: unknown }>(
+      `select c.id, c.name, c.is_active, count(*) as jobs, count(*) filter (where j.kind = 'cut') as cuts, coalesce(sum(j.amount),0) as v
+         from jobs j join clients c on c.id = j.client_id and c.user_id = j.user_id
+        where j.user_id = $1 and j.status = 'done' and j.scheduled_date >= $2::date and j.scheduled_date <= $3::date
+        group by c.id, c.name, c.is_active
+        order by v desc, c.name
+        limit 8`,
+      [uid, from12, today],
+    );
+    const bestTotal = await sql.query<{ v: unknown; n: unknown }>(
+      `select coalesce(sum(amount),0) as v, count(distinct client_id) as n from jobs
+        where user_id = $1 and status = 'done' and scheduled_date >= $2::date and scheduled_date <= $3::date`,
+      [uid, from12, today],
+    );
+
+    // Weekday × month rhythm (done jobs)
+    const cellRows = await sql.query<{ m: string; dow: unknown; n: unknown; v: unknown }>(
+      `select to_char(scheduled_date, 'YYYY-MM') as m, extract(dow from scheduled_date)::int as dow,
+              count(*) as n, coalesce(sum(amount),0) as v
+         from jobs
+        where user_id = $1 and status = 'done' and scheduled_date >= $2::date and scheduled_date <= $3::date
+        group by 1, 2`,
+      [uid, from12, today],
+    );
+    const dayRows = await sql.query<{ dow: unknown; d: unknown }>(
+      `select extract(dow from scheduled_date)::int as dow, count(distinct scheduled_date) as d
+         from jobs
+        where user_id = $1 and status = 'done' and scheduled_date >= $2::date and scheduled_date <= $3::date
+        group by 1`,
+      [uid, from12, today],
+    );
+    const cells = cellRows.map((r) => ({ month: r.m, dow: intId(r.dow), cuts: intId(r.n), value: money(r.v) }));
+    const weekdays = [1, 2, 3, 4, 5, 6, 0].map((dow) => ({
+      dow,
+      cuts: cells.filter((c) => c.dow === dow).reduce((s, c) => s + c.cuts, 0),
+      value: Math.round(cells.filter((c) => c.dow === dow).reduce((s, c) => s + c.value, 0) * 100) / 100,
+      days: intId(dayRows.find((r) => intId(r.dow) === dow)?.d),
+    }));
+
+    // Tips (calendar year) and top tippers
+    const yearStart = `${year}-01-01`;
+    const tipYear = await sql.query<{ t: unknown; n: unknown }>(
+      `select coalesce(sum(tip),0) as t, count(*) filter (where tip > 0) as n from payments
+        where user_id = $1 and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')`,
+      [uid, yearStart, today],
+    );
+    const tipTop = await sql.query<{ id: number; name: string; t: unknown; n: unknown }>(
+      `select c.id, c.name, coalesce(sum(p.tip),0) as t, count(*) as n
+         from payments p join clients c on c.id = p.client_id and c.user_id = p.user_id
+        where p.user_id = $1 and p.tip > 0 and p.paid_at >= $2::date and p.paid_at < ($3::date + interval '1 day')
+        group by c.id, c.name
+        order by t desc, c.name
+        limit 3`,
+      [uid, yearStart, today],
+    );
+
+    // Price per job kind, last 12 months
+    const priceRows = await sql.query<{ kind: string; n: unknown; a: unknown }>(
+      `select kind, count(*) as n, coalesce(avg(amount),0) as a from jobs
+        where user_id = $1 and status = 'done' and scheduled_date >= $2::date and scheduled_date <= $3::date
+        group by kind`,
+      [uid, from12, today],
+    );
+    const pk = (k: string) => priceRows.find((r) => r.kind === k);
+    const firstRow = await sql.query<{ d: unknown }>(
+      `select min(scheduled_date) as d from jobs where user_id = $1 and status = 'done'`,
+      [uid],
+    );
+    const firstWorkDate = firstRow[0]?.d ? asIsoDate(firstRow[0].d) : null;
+    const anyPay = await sql.query<{ n: unknown }>(`select count(*) as n from payments where user_id = $1`, [uid]);
+    const tYear = money(tipYear[0]?.t);
+    const nYear = intId(tipYear[0]?.n);
+
+    return {
+      today,
+      monthStart,
+      monthEnd,
+      dayOfMonth,
+      daysInMonth,
+      hasData: Boolean(firstWorkDate) || intId(anyPay[0]?.n) > 0,
+      firstWorkDate,
+      pulse: {
+        collected,
+        doneValue: done.value,
+        doneCount: done.count,
+        restValue: rest.value,
+        restCount: rest.count,
+        lateValue: late.value,
+        lateCount: late.count,
+        planned: Math.round((done.value + rest.value + late.value) * 100) / 100,
+        tips: tipsMonth,
+        prevCollectedToDate,
+        prevDoneToDate,
+        prevCollectedFull,
+        outstanding: money(outstandingRows[0]?.v),
+        owingPeople: intId(outstandingRows[0]?.n),
+        rate90: { collected: collected90, done: done90 },
+      },
+      week,
+      months,
+      debts,
+      best: {
+        total: money(bestTotal[0]?.v),
+        clientCount: intId(bestTotal[0]?.n),
+        clients: bestRows.map((r) => {
+          const jobsN = intId(r.jobs);
+          const value = money(r.v);
+          return { id: intId(r.id), name: r.name, active: Boolean(r.is_active), value, jobs: jobsN, cuts: intId(r.cuts), avg: jobsN ? Math.round((value / jobsN) * 100) / 100 : 0 };
+        }),
+      },
+      rhythm: { cells, weekdays },
+      tips: {
+        year: tYear,
+        count: nYear,
+        avg: nYear ? Math.round((tYear / nYear) * 100) / 100 : 0,
+        top: tipTop.map((r) => ({ id: intId(r.id), name: r.name, total: money(r.t), count: intId(r.n) })),
+      },
+      price: {
+        avgCut: Math.round(money(pk("cut")?.a) * 100) / 100,
+        avgExtra: Math.round(money(pk("extra")?.a) * 100) / 100,
+        avgOnce: Math.round(money(pk("one_time")?.a) * 100) / 100,
+        nCut: intId(pk("cut")?.n),
+        nExtra: intId(pk("extra")?.n),
+        nOnce: intId(pk("one_time")?.n),
+      },
+    };
+  });
