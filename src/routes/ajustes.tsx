@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell, SignOutControl, TitleSearch } from "@/components/app-shell";
 import { FingerprintControl } from "@/components/fingerprint-control";
+import { SyncStatusCard } from "@/components/sync-status";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Fold, foldsOpen, setFoldsOpen } from "@/components/fold";
 import { Hint } from "@/components/hint";
@@ -946,8 +947,9 @@ function AjustesPage() {
         {!query || smartHit(query, "manual ayuda usuario user guide") ? (
           <UserManual onLocale={setLocale} forceOpen={Boolean(query)} />
         ) : null}
-        {!query || smartHit(query, "salir cerrar sesion cuenta sign out huella fingerprint") ? (
+        {!query || smartHit(query, "salir cerrar sesion cuenta sign out huella fingerprint nube sincronizar sync cloud") ? (
         <section className="order-14 mt-6">
+          <SyncStatusCard />
           <FingerprintControl />
           <SignOutControl full />
           <p className="mt-2 text-center text-xs text-muted">

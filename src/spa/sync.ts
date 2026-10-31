@@ -9,7 +9,7 @@ const TABLES = [
 ];
 const PARENTS = new Set(["clients", "pad_pages"]);
 
-type State = { rev: number; at: string; dirty: boolean; editedAt: string; hash?: string };
+type State = { rev: number; at: string; dirty: boolean; editedAt: string; hash?: string; checkedAt?: string };
 const KEY = (uid: string) => `brizna.sync.${uid}`;
 function load(uid: string): State {
   try { return { rev: 0, at: "", dirty: false, editedAt: "", ...JSON.parse(localStorage.getItem(KEY(uid)) || "{}") }; }
@@ -27,7 +27,10 @@ function deviceId() {
 export type SyncStatus = "off" | "idle" | "syncing" | "offline" | "error";
 let status: SyncStatus = "off";
 let statusListeners: ((s: SyncStatus) => void)[] = [];
-function setStatus(s: SyncStatus) { status = s; statusListeners.forEach((f) => f(s)); }
+function setStatus(s: SyncStatus) {
+  if (s === "idle" && uid) { const st = load(uid); st.checkedAt = new Date().toISOString(); save(uid, st); }
+  status = s; statusListeners.forEach((f) => f(s));
+}
 export function syncStatus() { return status; }
 export function onSyncStatus(fn: (s: SyncStatus) => void) {
   statusListeners.push(fn);
@@ -228,4 +231,9 @@ export function startSync(userId: string) {
 }
 export function stopSync() { uid = null; setStatus("off"); }
 export function hasPending(): boolean { return Boolean(uid && load(uid).dirty); }
+/** For Ajustes: when this account's data was last saved to / checked against the cloud. */
+export function syncInfo(): { status: SyncStatus; cloudAt: string; checkedAt: string; pending: boolean; on: boolean } {
+  const st = uid ? load(uid) : null;
+  return { status, cloudAt: st?.at ?? "", checkedAt: st?.checkedAt ?? "", pending: Boolean(st?.dirty), on: Boolean(uid) };
+}
 export { getUser };
