@@ -17,6 +17,7 @@ import {
   Settings,
   Search,
   Users,
+  X,
 } from "lucide-react";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { BrandMark } from "@/components/brand-mark";
@@ -208,6 +209,18 @@ export function AppShell({
   const savedShare = flow === "stack" ? board.ratio : board.sideRatio;
   const ratio = dragRatio ?? (typeof savedShare === "number" ? savedShare : 0.5);
 
+  function closeFloat() {
+    saveFloat({ ...float, open: false, min: false });
+  }
+  /** Same as Faro: off opens it; on folds it to the bubble or brings it back. */
+  function foldFloat() {
+    if (float.open) {
+      if (float.min) saveFloat({ ...float, min: false });
+      else saveFloat({ ...float, min: true, bx: Math.max(6, Math.min(float.x + float.w - 56, window.innerWidth - 62)), by: Math.max(6, float.y) });
+      return;
+    }
+    toggleFloat();
+  }
   function toggleFloat() {
     if (float.open) {
       saveFloat({ ...float, open: false, min: false });
@@ -504,7 +517,9 @@ export function AppShell({
             open={boardOpen}
             layout={board}
             floatOn={float.open}
-            onFloat={toggleFloat}
+            floatMin={Boolean(float.min)}
+            onFloat={foldFloat}
+            onFloatClose={closeFloat}
             onToggle={() => setBoardOpen((value) => !value)}
             onChange={(next) => {
               setBoard(next);
@@ -512,33 +527,14 @@ export function AppShell({
             }}
           />
           ) : (
-            <>
-            <button
-              type="button"
-              onClick={toggleFloat}
-              aria-pressed={float.open}
-              aria-label={float.open ? tx("Cerrar ventana flotante", "Close floating window") : tx("Ventana flotante", "Floating window")}
-              className={cn(
-                "fixed left-3 z-40 grid size-10 place-items-center rounded-full border border-border bg-surface/90 text-muted shadow-card ring-1 ring-border print:hidden",
-                "bottom-36",
-                float.open && "bg-sun text-primary",
-              )}
-            >
-              <PictureInPicture2 className="size-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => saveBoard({ ...board, phone: !board.phone })}
-              aria-pressed={phoneSplit}
-              aria-label={phoneSplit ? tx("Una sola pantalla", "One screen") : tx("Dividir arriba y abajo", "Split top and bottom")}
-              className={cn(
-                "fixed left-3 z-40 grid size-10 place-items-center rounded-full border border-border bg-surface/90 text-muted shadow-card ring-1 ring-border print:hidden bottom-24",
-                phoneSplit && "bg-sun text-primary",
-              )}
-            >
-              <Rows2 className="size-5" />
-            </button>
-            </>
+            <PhoneViewButton
+              split={phoneSplit}
+              floatOn={float.open}
+              floatMin={Boolean(float.min)}
+              onSplit={(on) => saveBoard({ ...board, phone: on })}
+              onFloat={foldFloat}
+              onFloatClose={closeFloat}
+            />
           )
         ) : null}
 
@@ -663,14 +659,18 @@ function TabletDock({
   open,
   layout,
   floatOn,
+  floatMin,
   onFloat,
+  onFloatClose,
   onToggle,
   onChange,
 }: {
   open: boolean;
   layout: TabletLayout;
   floatOn: boolean;
+  floatMin: boolean;
   onFloat: () => void;
+  onFloatClose: () => void;
   onToggle: () => void;
   onChange: (next: TabletLayout) => void;
 }) {
@@ -703,15 +703,7 @@ function TabletDock({
               {tx("Cambiar de lado", "Swap sides")}
             </button>
           ) : null}
-          <button
-            type="button"
-            onClick={onFloat}
-            aria-pressed={floatOn}
-            className={cn("mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold", floatOn ? "bg-sun text-primary" : "bg-bg text-muted")}
-          >
-            <PictureInPicture2 className="size-4" />
-            {floatOn ? tx("Cerrar ventana flotante", "Close floating window") : tx("Ventana flotante", "Floating window")}
-          </button>
+          <FloatRow on={floatOn} min={floatMin} onFloat={onFloat} onClose={onFloatClose} />
           <p className="mt-2 text-xs text-muted">
             {tx(
               "Con 2 pantallas, arrastra la barra del medio para dar más espacio a un lado (doble toque la centra). La ventana flotante se mueve desde su barra de arriba, cambia de tamaño desde las esquinas de abajo y se pliega en una burbuja con –. Alt+\\ parte o junta. Alt+F abre o cierra la ventana flotante. Alt+1 a Alt+5 cambia de pestaña.",
@@ -955,6 +947,113 @@ function AccountChip() {
     <div className="flex min-w-0 items-center gap-2 rounded-md bg-bg px-2.5 py-2">
       {avatar}
       <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
+    </div>
+  );
+}
+
+/** Faro-style floating-window row: opens it, then folds / unfolds it; the × closes it. */
+function FloatRow({ on, min, onFloat, onClose }: { on: boolean; min: boolean; onFloat: () => void; onClose: () => void }) {
+  const tx = useTx();
+  return (
+    <div className={cn("mt-1 flex min-h-11 items-center rounded-2xl border", on ? "border-primary" : "border-border")}>
+      <button
+        type="button"
+        role="menuitemcheckbox"
+        aria-checked={on}
+        onClick={onFloat}
+        className="flex min-h-11 flex-1 items-center gap-2.5 px-3 text-left text-sm font-semibold"
+      >
+        <PictureInPicture2 className="size-4 text-primary" />
+        <span className="flex-1">
+          {on
+            ? min ? tx("Desplegar ventana flotante", "Unfold floating window") : tx("Plegar en burbuja", "Fold into bubble")
+            : tx("Ventana flotante", "Floating window")}
+        </span>
+      </button>
+      {on ? (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={tx("Cerrar ventana flotante", "Close floating window")}
+          className="mr-2 grid size-8 place-items-center rounded-lg text-muted hover:bg-bg hover:text-fg"
+        >
+          <X className="size-4" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Phone: the split button opens a small View menu (one screen, top/bottom, floating window). */
+function PhoneViewButton({
+  split,
+  floatOn,
+  floatMin,
+  onSplit,
+  onFloat,
+  onFloatClose,
+}: {
+  split: boolean;
+  floatOn: boolean;
+  floatMin: boolean;
+  onSplit: (on: boolean) => void;
+  onFloat: () => void;
+  onFloatClose: () => void;
+}) {
+  const tx = useTx();
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  const tile = (on: boolean) =>
+    cn(
+      "grid justify-items-center gap-1.5 rounded-2xl border px-1 pt-2.5 pb-2 text-xs font-semibold leading-tight",
+      on ? "border-primary bg-[color-mix(in_oklab,var(--color-primary)_14%,var(--color-bg))] text-fg" : "border-transparent bg-bg text-muted",
+    );
+  const glyph = (rows: number, on: boolean) => (
+    <i aria-hidden className="flex h-10 w-[30px] flex-col gap-[3px] rounded-[7px] border-[1.5px] border-current p-[3px]">
+      {Array.from({ length: rows }, (_, i) => (
+        <b key={i} className={cn("flex-1 rounded-[3px]", on ? "bg-primary opacity-90" : "bg-current opacity-55")} />
+      ))}
+    </i>
+  );
+  return (
+    <div ref={box} className="fixed bottom-24 left-3 z-40 print:hidden" data-no-swipe>
+      {open ? (
+        <div role="menu" aria-label={tx("Vista", "View")} className="absolute bottom-[calc(100%+8px)] left-0 grid w-64 gap-2.5 rounded-[20px] border border-border bg-surface p-3 shadow-[0_20px_50px_rgb(0_0_0/0.3)]">
+          <p className="text-[0.68rem] font-bold tracking-[0.08em] text-muted uppercase">{tx("Vista", "View")}</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button type="button" role="menuitemradio" aria-checked={!split} onClick={() => { onSplit(false); setOpen(false); }} className={tile(!split)}>
+              {glyph(1, !split)}
+              <span>{tx("1 pantalla", "1 screen")}</span>
+            </button>
+            <button type="button" role="menuitemradio" aria-checked={split} onClick={() => { onSplit(true); setOpen(false); }} className={tile(split)}>
+              {glyph(2, split)}
+              <span>{tx("Arriba y abajo", "Top and bottom")}</span>
+            </button>
+          </div>
+          <FloatRow on={floatOn} min={floatMin} onFloat={() => { onFloat(); setOpen(false); }} onClose={() => { onFloatClose(); setOpen(false); }} />
+        </div>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={tx("Vista: pantallas y ventana flotante", "View: screens and floating window")}
+        className={cn(
+          "grid size-10 place-items-center rounded-full border border-border bg-surface/90 text-muted shadow-card ring-1 ring-border",
+          (split || floatOn) && "bg-sun text-primary",
+        )}
+      >
+        {floatOn && !split ? <PictureInPicture2 className="size-5" /> : <Rows2 className="size-5" />}
+      </button>
     </div>
   );
 }
