@@ -10,6 +10,7 @@ function makeQueryClient() {
   const client = new QueryClient({
     defaultOptions: {
       queries: {
+        networkMode: "always",
         staleTime: 12_000,
         retry: 4,
         retryDelay: (n) => Math.min(1500, 300 * 2 ** n),
@@ -17,6 +18,7 @@ function makeQueryClient() {
         refetchOnReconnect: true,
       },
       mutations: {
+        networkMode: "always",
         retry: 1,
       },
     },
