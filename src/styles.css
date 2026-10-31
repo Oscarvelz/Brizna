@@ -852,10 +852,3 @@ body::-webkit-scrollbar {
   display: none;
 }
 
-/* Phone: Android paints the strip under the bottom bar (gesture/nav area) with the page's
-   root color. Make that root color the bar's own, so the bar reaches the true bottom edge.
-   The body keeps the app background over the whole screen. */
-@media (max-width: 1023.98px) {
-  html { background-color: var(--color-surface); }
-  body { min-height: 100dvh; }
-}

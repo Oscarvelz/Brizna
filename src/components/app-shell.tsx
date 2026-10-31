@@ -538,7 +538,7 @@ export function AppShell({
           )
         ) : null}
 
-        <nav ref={setDockEl} className={cn("pod-dock pointer-events-auto fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[color-mix(in_srgb,var(--color-primary)_32%,var(--color-border))] bg-surface px-0.5 pt-1 text-fg print:hidden lg:hidden pb-[env(safe-area-inset-bottom)]", (embedded || split || keyboard) && "hidden")}>
+        <nav ref={setDockEl} className={cn("pod-dock pointer-events-auto fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[color-mix(in_srgb,var(--color-primary)_32%,var(--color-border))] bg-bg px-0.5 pt-1 text-fg print:hidden lg:hidden pb-[env(safe-area-inset-bottom)]", (embedded || split || keyboard) && "hidden")}>
           {nav.map((item) => (
             <NavLink key={item.to} to={item.to} icon={item.icon} label={t(item.label)} compact />
           ))}
