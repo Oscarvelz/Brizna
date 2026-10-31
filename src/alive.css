@@ -32,10 +32,6 @@
   50%  { transform: translate3d(6%, 4%, 0) scale(1.12); }
   100% { transform: translate3d(-8%, -6%, 0) scale(1); }
 }
-@keyframes alive-blades {
-  0%, 100% { transform: skewX(-6deg); }
-  50%      { transform: skewX(6deg); }
-}
 @keyframes alive-leaf {
   0%   { transform: scale(.6) rotate(-14deg); }
   60%  { transform: scale(1.15) rotate(6deg); }
@@ -111,27 +107,10 @@ html:not([data-palette]):not(.theme-dark):not(.theme-amoled) {
   & .alive-nav.bg-sun .alive-nav-icon {
     animation: alive-leaf .45s cubic-bezier(.34, 1.56, .64, 1) backwards;
   }
-
-  /* A strip of grass swaying along the top of the bottom bar. */
-  & .pod-dock::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: -9px;
-    height: 10px;
-    pointer-events: none;
-    opacity: .55;
-    transform-origin: 50% 100%;
-    background-repeat: repeat-x;
-    background-size: 46px 10px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='10' viewBox='0 0 46 10'%3E%3Cg fill='%232f6b3f'%3E%3Cpath d='M2 10 Q4 4 3 0 Q6 5 6 10Z'/%3E%3Cpath d='M12 10 Q13 6 15 3 Q15 7 16 10Z'/%3E%3Cpath d='M22 10 Q23 5 21 1 Q26 5 26 10Z'/%3E%3Cpath d='M31 10 Q33 6 35 4 Q34 7 35 10Z'/%3E%3Cpath d='M39 10 Q40 4 42 0 Q42 6 44 10Z'/%3E%3C/g%3E%3C/svg%3E");
-    animation: alive-blades 5.5s ease-in-out infinite;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html:not([data-palette]):not(.theme-dark):not(.theme-amoled) {
-    & body::before, & .alive-brand, & .alive-fab::after, & .pod-dock::before { animation: none; }
+    & body::before, & .alive-brand, & .alive-fab::after { animation: none; }
   }
 }
