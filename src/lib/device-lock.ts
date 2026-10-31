@@ -62,3 +62,34 @@ export async function unlock(uid: string): Promise<boolean> {
   });
   return Boolean(got);
 }
+
+// How long Brizna can stay away before it asks again. Switching apps or closing Brizna
+// for less than this never asks. Default 1 hour (Oscar: asking every time made it unusable).
+const AFTER_KEY = "brizna.lockAfter";
+const SEEN_KEY = (uid: string) => `brizna.lockSeen.${uid}`;
+export const LOCK_AFTER_CHOICES = [5, 30, 60, 240, 720] as const; // minutes
+export function lockAfterMinutes(): number {
+  try {
+    const n = Number(localStorage.getItem(AFTER_KEY));
+    return (LOCK_AFTER_CHOICES as readonly number[]).includes(n) ? n : 60;
+  } catch {
+    return 60;
+  }
+}
+export function setLockAfterMinutes(n: number) {
+  try { localStorage.setItem(AFTER_KEY, String(n)); } catch { /* ignore */ }
+}
+/** Brizna was in use just now (unlocked and visible). */
+export function markSeen(uid: string) {
+  try { localStorage.setItem(SEEN_KEY(uid), String(Date.now())); } catch { /* ignore */ }
+}
+/** True when the lock is on and Brizna has been away longer than the chosen time. */
+export function lockDue(uid: string): boolean {
+  if (!lockCredential(uid)) return false;
+  try {
+    const seen = Number(localStorage.getItem(SEEN_KEY(uid)) || 0);
+    return !seen || Date.now() - seen > lockAfterMinutes() * 60_000;
+  } catch {
+    return true;
+  }
+}

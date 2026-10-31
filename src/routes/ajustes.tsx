@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Bell, CalendarRange, Clock, Download, FileSpreadsheet, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
+import { Bell, ChevronDown, CalendarRange, Clock, Download, FileSpreadsheet, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell, SignOutControl, TitleSearch } from "@/components/app-shell";
@@ -428,40 +428,68 @@ function AjustesPage() {
                 </button>
               ))}
             </div>
-            <h3 className="mt-4 font-display text-base font-semibold">{tx("Tema de día", "Day theme")}</h3>
-            <div className="mt-2 grid grid-cols-2 gap-2">
+            <details className="group mt-4 rounded-md bg-sun">
+              <summary className="flex h-12 cursor-pointer list-none items-center gap-2 px-3 [&::-webkit-details-marker]:hidden">
+                <span className="flex-1 font-display text-base font-semibold">{tx("Tema de día", "Day theme")}</span>
+                {(() => {
+                  const cur = DAY_THEMES.find((theme) => theme.id === look.day) ?? DAY_THEMES[0];
+                  return (
+                    <span className="flex items-center gap-2 text-sm font-semibold text-muted">
+                      <span className={cn("size-5 shrink-0 rounded-full", cur.swatch)} />
+                      {tx(cur.es, cur.en)}
+                    </span>
+                  );
+                })()}
+                <ChevronDown className="size-4 shrink-0 text-muted transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="grid grid-cols-2 gap-2 px-2 pb-2">
               {DAY_THEMES.map((theme) => (
                 <button
                   key={theme.id}
                   type="button"
                   onClick={() => chooseLook({ day: theme.id })}
                   className={cn(
-                    "flex h-11 items-center gap-2 rounded-md bg-sun px-2 text-sm font-semibold",
+                    "flex h-11 items-center gap-2 rounded-md bg-surface px-2 text-sm font-semibold",
                     look.day === theme.id && "ring-2 ring-primary",
                   )}
                 >
-                  <span className={cn("size-5 shrink-0 rounded-full border border-border", theme.swatch)} />
+                  <span className={cn("size-5 shrink-0 rounded-full", theme.swatch)} />
                   {tx(theme.es, theme.en)}
                 </button>
               ))}
-            </div>
-            <h3 className="mt-4 font-display text-base font-semibold">{tx("Tema de noche", "Night theme")}</h3>
-            <div className="mt-2 grid grid-cols-2 gap-2">
+              </div>
+            </details>
+            <details className="group mt-4 rounded-md bg-sun">
+              <summary className="flex h-12 cursor-pointer list-none items-center gap-2 px-3 [&::-webkit-details-marker]:hidden">
+                <span className="flex-1 font-display text-base font-semibold">{tx("Tema de noche", "Night theme")}</span>
+                {(() => {
+                  const cur = NIGHT_THEMES.find((theme) => theme.id === look.night) ?? NIGHT_THEMES[0];
+                  return (
+                    <span className="flex items-center gap-2 text-sm font-semibold text-muted">
+                      <span className={cn("size-5 shrink-0 rounded-full", cur.swatch)} />
+                      {tx(cur.es, cur.en)}
+                    </span>
+                  );
+                })()}
+                <ChevronDown className="size-4 shrink-0 text-muted transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="grid grid-cols-2 gap-2 px-2 pb-2">
               {NIGHT_THEMES.map((theme) => (
                 <button
                   key={theme.id}
                   type="button"
                   onClick={() => chooseLook({ night: theme.id })}
                   className={cn(
-                    "flex h-11 items-center gap-2 rounded-md bg-sun px-2 text-sm font-semibold",
+                    "flex h-11 items-center gap-2 rounded-md bg-surface px-2 text-sm font-semibold",
                     look.night === theme.id && "ring-2 ring-primary",
                   )}
                 >
-                  <span className={cn("size-5 shrink-0 rounded-full border border-border", theme.swatch)} />
+                  <span className={cn("size-5 shrink-0 rounded-full", theme.swatch)} />
                   {tx(theme.es, theme.en)}
                 </button>
               ))}
-            </div>
+              </div>
+            </details>
             <h3 className="mt-4 font-display text-base font-semibold">{locale === "en" ? "Language" : "Idioma"}</h3>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {(["es", "en"] as const).map((code) => (

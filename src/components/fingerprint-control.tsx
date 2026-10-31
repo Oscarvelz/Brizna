@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Fingerprint } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
-import { disableLock, enableLock, lockCredential, lockSupported } from "@/lib/device-lock";
+import { disableLock, enableLock, LOCK_AFTER_CHOICES, lockAfterMinutes, lockCredential, lockSupported, setLockAfterMinutes } from "@/lib/device-lock";
 import { useTx } from "@/lib/i18n";
 
 /** Turn fingerprint / face unlock on or off for this account on this device. */
@@ -12,6 +12,7 @@ export function FingerprintControl() {
   const [supported, setSupported] = useState<boolean | null>(null);
   const [on, setOn] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [after, setAfter] = useState(() => lockAfterMinutes());
 
   useEffect(() => {
     void lockSupported().then(setSupported);
@@ -67,6 +68,23 @@ export function FingerprintControl() {
           </button>
         ) : null}
       </div>
+      {supported && on ? (
+        <div className="mt-3 border-t border-border pt-3">
+          <p className="mb-2 text-xs font-semibold text-muted">{tx("Pedir la huella solo si Brizna estuvo cerrada más de:", "Ask only if Brizna was away longer than:")}</p>
+          <div className="grid grid-cols-5 gap-1.5">
+            {LOCK_AFTER_CHOICES.map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => { setLockAfterMinutes(m); setAfter(m); }}
+                className={`h-9 rounded-full text-xs font-semibold ${after === m ? "bg-primary text-primary-fg" : "bg-surface-2 text-fg"}`}
+              >
+                {m < 60 ? `${m} min` : `${m / 60} h`}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {user.primaryEmail ? (
         <p className="mt-3 border-t border-border pt-3 text-xs text-muted">
           {tx("Cuenta:", "Account:")} {user.primaryEmail} · {tx("se sincroniza sola cuando hay internet.", "syncs on its own when online.")}

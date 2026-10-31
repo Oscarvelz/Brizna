@@ -10,7 +10,7 @@ import { routeTree } from "@/routeTree.gen";
 import { setPaneRouteTree } from "@/lib/pane-context";
 import { getPglite, getSql, setDbUser } from "@/lib/db";
 import { I18nProvider } from "@/lib/i18n";
-import { lockCredential, unlock } from "@/lib/device-lock";
+import { lockDue, markSeen, unlock } from "@/lib/device-lock";
 import { saveBackupNow } from "@/lib/server/lawn";
 import { CLOUD_READY, emitUser, keepSignedIn, setSessionGone, getUser, lastUser, onUser, rememberUser, supabase, type BriznaUser } from "@/spa/cloud";
 import { setKeepCopy, startSync } from "@/spa/sync";
@@ -56,7 +56,6 @@ declare module "@tanstack/react-router" {
 
 const root = createRoot(document.getElementById("root")!);
 
-const RELOCK_MS = 60_000;
 let openedFor: string | null = null;
 
 function useUser(): BriznaUser | null {
@@ -103,22 +102,34 @@ function Gate() {
 
   useEffect(() => {
     if (!user) { setOpen(false); return; }
-    setOpen(!lockCredential(user.id));
+    setOpen(!lockDue(user.id));
     const onVis = () => {
-      if (document.visibilityState === "hidden") hiddenAt.current = Date.now();
-      else if (hiddenAt.current && Date.now() - hiddenAt.current > RELOCK_MS && lockCredential(user.id)) { tried.current = ""; setFailed(false); setOpen(false); }
+      if (document.visibilityState === "hidden") return;
+      if (lockDue(user.id)) { tried.current = ""; setFailed(false); setOpen(false); }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [user]);
 
+  // While Brizna is open and unlocked, keep stamping "seen" so a short trip to another app never asks.
+  useEffect(() => {
+    if (!user || !open) return;
+    const uid = user.id;
+    markSeen(uid);
+    const stamp = () => { if (document.visibilityState === "hidden") markSeen(uid); };
+    const t = window.setInterval(() => { if (document.visibilityState === "visible") markSeen(uid); }, 20_000);
+    document.addEventListener("visibilitychange", stamp);
+    window.addEventListener("pagehide", stamp);
+    return () => { window.clearInterval(t); document.removeEventListener("visibilitychange", stamp); window.removeEventListener("pagehide", stamp); };
+  }, [user, open]);
+
   const tryUnlock = async () => {
     if (!user) return;
     setFailed(false);
-    try { if (await unlock(user.id)) setOpen(true); else setFailed(true); } catch { setFailed(true); }
+    try { if (await unlock(user.id)) { markSeen(user.id); setOpen(true); } else setFailed(true); } catch { setFailed(true); }
   };
   useEffect(() => {
-    if (user && !open && booted && tried.current !== user.id && lockCredential(user.id)) { tried.current = user.id; void tryUnlock(); }
+    if (user && !open && booted && tried.current !== user.id && lockDue(user.id)) { tried.current = user.id; void tryUnlock(); }
   });
 
   // Another account signed in on top of an open one: start clean with that account's data.

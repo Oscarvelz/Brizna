@@ -48,21 +48,30 @@ html.theme-dark .pod-dock {
   backdrop-filter: blur(14px) saturate(1.2);
 }
 
-/* Glass cards: light-edged, slightly see-through, soft drop. */
-html.theme-dark .bg-surface {
-  background-color: color-mix(in srgb, var(--color-surface) 74%, transparent);
-}
-html.theme-dark .bg-sun {
-  background-color: color-mix(in srgb, var(--color-surface) 58%, transparent);
-  box-shadow: var(--shadow-card);
-}
-html.theme-dark .bg-surface-2 {
-  background-color: color-mix(in srgb, var(--color-surface-2) 80%, transparent);
-}
+/* Glass cards, crisp like the lock screen: dark tinted glass, a light edge,
+   pure-white text, deep saturated state colors (no gray mud). */
 html.theme-dark {
-  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 0 1px color-mix(in srgb, var(--color-primary) 14%, rgba(255, 255, 255, 0.08)), 0 18px 36px -22px rgba(0, 0, 0, 0.75);
-  --shadow-card-hover: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 0 1px color-mix(in srgb, var(--color-primary) 28%, rgba(255, 255, 255, 0.12)), 0 20px 40px -22px rgba(0, 0, 0, 0.8);
+  --color-fg: #ffffff;
+  --color-muted: color-mix(in srgb, #ffffff 82%, var(--color-primary));
+  --color-subtle: color-mix(in srgb, #ffffff 62%, var(--color-primary));
+  --nv-glass: color-mix(in srgb, var(--nv-top) 66%, transparent);
+  --nv-glass-2: color-mix(in srgb, color-mix(in srgb, var(--nv-top) 80%, var(--color-primary)) 72%, transparent);
+  --nv-edge: color-mix(in srgb, var(--color-primary) 24%, rgba(255, 255, 255, 0.1));
+  --color-border: color-mix(in srgb, var(--color-primary) 22%, #2a2f2c);
+  --color-late-bg: color-mix(in oklab, var(--color-late) 24%, var(--nv-top));
+  --color-done-bg: color-mix(in oklab, var(--color-done) 22%, var(--nv-top));
+  --color-pending-bg: color-mix(in oklab, var(--color-pending) 22%, var(--nv-top));
+  --color-money-bg: color-mix(in oklab, var(--color-money) 22%, var(--nv-top));
+  --color-today-bg: color-mix(in oklab, var(--color-today) 22%, var(--nv-top));
+  --color-due-bg: color-mix(in oklab, var(--color-due) 22%, var(--nv-top));
+  --color-soil-bg: color-mix(in oklab, var(--color-soil) 22%, var(--nv-top));
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px var(--nv-edge), 0 18px 36px -20px rgba(0, 0, 0, 0.85);
+  --shadow-card-hover: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 0 1px color-mix(in srgb, var(--color-primary) 40%, transparent), 0 20px 40px -20px rgba(0, 0, 0, 0.9);
 }
+html.theme-dark .bg-surface,
+html.theme-dark .bg-sun { background-color: var(--nv-glass); }
+html.theme-dark .bg-sun:not(.ring-2):not(.ring-1) { box-shadow: var(--shadow-card); }
+html.theme-dark .bg-surface-2 { background-color: var(--nv-glass-2); }
 
 /* Glowing primary buttons, like "Desbloquear con huella". */
 html.theme-dark .bg-primary,
