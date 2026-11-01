@@ -31,6 +31,7 @@ import { emphasize, useTx } from "@/lib/i18n";
 import { listBalances, recordPayment, recordPaymentsBulk } from "@/lib/server/lawn";
 import type { ClientRow, JobRow, PaymentRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { BadgeCheck, Wallet } from "lucide-react";
 import { DayNightSwitch } from "@/components/day-night-switch";
 import { WeatherChip } from "@/components/weather-chip";
 
@@ -175,7 +176,8 @@ function CobrosPage() {
             (view === "owing" || view === "abonos") && "bz-stat-on",
           )}
         >
-          <p className="bz-stat-label flex items-center gap-1 text-xs font-medium tracking-wide text-muted uppercase">
+          <p className="bz-stat-label flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted uppercase">
+            <Wallet className="size-4" />
             {tx("Por cobrar", "To collect")}
             <Hint topic="por-cobrar" />
           </p>
@@ -524,7 +526,8 @@ function CollectedNest({
         active && "bz-stat-on",
       )}
     >
-      <p className="bz-stat-label flex items-center gap-1 px-1 text-xs font-medium tracking-wide text-muted uppercase">
+      <p className="bz-stat-label flex items-center gap-1.5 px-1 text-xs font-medium tracking-wide text-muted uppercase">
+        <BadgeCheck className="size-4" />
         {tx("Cobrado", "Collected")}
         <Hint topic="cobrado" />
       </p>
