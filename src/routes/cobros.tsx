@@ -211,12 +211,12 @@ function CobrosPage() {
             {tx("Por cobrar", "To collect")}
             <Hint topic="por-cobrar" />
           </p>
-          <Link to="/cobros" search={{ view: "owing" }} resetScroll={false} className={cn("-mx-1 mt-1 block min-h-10 rounded-md px-1 touch-manipulation", view === "owing" && "bz-due-on bg-surface/70")}>
-            <p className="font-display text-xl font-semibold tabular-nums text-due sm:text-2xl">
+          <Link to="/cobros" search={{ view: "owing" }} resetScroll={false} className={cn("-mx-1 mt-1 block min-h-10 rounded-lg px-2 py-1.5 touch-manipulation", view === "owing" && "bz-due-on bg-surface/70")}>
+            <p className="font-display text-lg font-semibold tabular-nums text-due sm:text-xl">
               {data ? money(data.totals.outstanding) : "—"}
             </p>
             {data ? (
-              <p className="text-sm font-semibold text-fg">
+              <p className="text-[13px] font-semibold text-fg">
                 {data.clients.length} {data.clients.length === 1 ? tx("persona", "person") : tx("personas", "people")}
               </p>
             ) : null}
@@ -230,10 +230,10 @@ function CobrosPage() {
               to="/cobros"
               search={{ view: "abonos" }}
               resetScroll={false}
-              className={cn("-mx-1 block rounded-md px-1 touch-manipulation", view === "abonos" && "bz-due-on bg-surface/70")}
+              className={cn("-mx-1 block rounded-lg px-2 py-1.5 touch-manipulation", view === "abonos" && "bz-due-on bg-surface/70")}
             >
-              <p className="font-display text-lg font-semibold tabular-nums text-due">{data ? money(abonoSum) : "—"}</p>
-              <p className="text-sm font-semibold text-fg">
+              <p className="font-display text-base font-semibold tabular-nums text-due">{data ? money(abonoSum) : "—"}</p>
+              <p className="text-[13px] font-semibold text-fg">
                 {abonoPeople} {abonoPeople === 1 ? tx("persona", "person") : tx("personas", "people")}
               </p>
             </Link>
@@ -713,7 +713,7 @@ function StatLink({
         {label}
         <Hint text={hint} />
       </p>
-      <Link to="/cobros" search={{ view }} resetScroll={false} className={cn("-mx-1 mt-1 block min-h-10 rounded-md px-1 touch-manipulation", view === "owing" && "bz-due-on bg-surface/70")}>
+      <Link to="/cobros" search={{ view }} resetScroll={false} className={cn("-mx-1 mt-1 block min-h-10 rounded-lg px-2 py-1.5 touch-manipulation", view === "owing" && "bz-due-on bg-surface/70")}>
         <p
           className={cn(
             "font-display font-semibold tabular-nums",
