@@ -10,7 +10,6 @@ import { ContactIcons } from "@/components/contact-icons";
 import { CueChip } from "@/components/cue-chip";
 import { DensityScope, DensityToggle, useDensity, useQuadCols } from "@/components/density-toggle";
 import { Hint } from "@/components/hint";
-import { NameLink } from "@/components/name-jump";
 import { ScrollTop } from "@/components/scroll-top";
 import { invalidateLawn } from "@/components/job-card";
 import { SwipeRow } from "@/components/swipe-row";
@@ -339,20 +338,7 @@ function ClientesPage() {
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold touch-manipulation [&::-webkit-details-marker]:hidden">
           <span className="flex min-w-0 items-center gap-1">
             {tx("Inventario de clientes", "Client inventory")}
-            <Hint
-              text={
-                <>
-                  <NameLink term={tx("Permanentes", "Regular")} />
-                  {tx(": cada semana. ", ": every week. ")}
-                  <NameLink term={tx("Una vez", "One-time")} />
-                  {tx(": no se repite. ", ": does not repeat. ")}
-                  <NameLink term={tx("Juntos", "Together")} />
-                  {tx(": los dos. ", ": both. ")}
-                  <NameLink term={tx("Archivos", "Archive")} />
-                  {tx(": dado de baja.", ": taken off.")}
-                </>
-              }
-            />
+            <Hint topic="inventario" />
           </span>
           <span className="ml-auto flex items-center gap-1">
             <span className="text-xs font-medium text-muted group-open:hidden">{tx("Ver", "View")}</span>
@@ -433,12 +419,7 @@ function ClientesPage() {
               {tx(FILTERS.find((item) => item.value === filter)?.label ?? "Activos", FILTER_EN[filter].label)}
             </span>
           </button>
-          <Hint
-            text={tx(
-              "Sirven para ver un tipo de cliente: los de la ruta, los de cada semana, los que deben y los casos aparte.",
-              "They show one kind of client: people on the route, weekly yards, people who still owe, and the special cases.",
-            )}
-          />
+          <Hint topic="clientes-filtros" />
         </div>
         {filtersOpen ? (
           <div className="mt-2 grid gap-1 rounded-2xl bg-surface p-2 pb-3 shadow-card">
@@ -503,19 +484,7 @@ function ClientesPage() {
             ? ` · ${money(totalPrice)} ${tx("por ronda de cortes", "per round of cuts")}`
             : null}
           {filter === "triple" ? tx(" con 3 o más cortes este mes", " with 3 or more cuts this month") : null}
-          <Hint
-            text={
-              inArchive
-                ? tx(
-                    "Busca, ordena, selecciona uno o todos. Reactivar los vuelve a la agenda. Borrar es para siempre.",
-                    "Search, sort, select one or all. Reactivate puts them back on the schedule. Delete is forever.",
-                  )
-                : tx(
-                    "Los iconos llaman, escriben o abren el mapa. Desliza a la izquierda para dar de baja o borrar.",
-                    "The icons call, text, or open the map. Swipe left to take them off or delete.",
-                  )
-            }
-          />
+          <Hint topic={inArchive ? "archivo" : "lista-clientes"} />
         </p>
         <DensityToggle />
       </div>

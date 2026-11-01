@@ -17,6 +17,7 @@ import { Blade, CountUp, Lead, secStyle } from "@/components/cifras-visuals";
 import { useCifraRank, type CifraId } from "@/lib/cifras-order";
 import { lastDayOfMonthISO, weekdayFromISO } from "@/lib/dates";
 import { smartHit } from "@/lib/fuzzy";
+import { findTopic, pick } from "@/lib/manual/topics";
 import { money, weekdayOptions } from "@/lib/format";
 import { reasonLabel, useI18n, useTx } from "@/lib/i18n";
 import { getFinanceStats } from "@/lib/server/lawn";
@@ -101,19 +102,18 @@ export function CobrosCharts({
       {effort}
       {extra}
       {show("horas entrada salida parados") ? (
-      <Fold id="cif-horas" style={secStyle(rankHoras)} className="cif-sec" title={t("hours.title")} hint={<Hint manual="horas" text={t("hours.auto")} />}>
+      <Fold id="cif-horas" style={secStyle(rankHoras)} className="cif-sec" title={t("hours.title")} hint={<Hint topic="horas" />}>
         <Lead
           kicker={t("stats.hoursWeek")}
           figure={hourText(data.hoursWeek, tx)}
           sentence={tx(`En el mes llevas ${hourText(data.hoursMonth, tx)}.`, `This month you have ${hourText(data.hoursMonth, tx)}.`)}
         />
         <dl className="grid grid-cols-2 gap-2">
-          <NumberCell label={t("stats.hoursToday")} value={hourText(data.hoursToday, tx)} manual="horas" hint={t("hours.auto")} />
+          <NumberCell label={t("stats.hoursToday")} value={hourText(data.hoursToday, tx)} topic="horas" />
           <NumberCell
             label={t("stats.stops")}
             value={String(data.stopReasons.reduce((n, row) => n + row.count, 0))}
-            manual="lluvia"
-            hint={tx("Días en los que paraste el trabajo y la razón que quedó guardada.", "Days you stopped work and the reason that was saved.")}
+            topic="dias-parados"
           />
         </dl>
         {data.stopReasons.length > 0 ? (
@@ -134,10 +134,7 @@ export function CobrosCharts({
         style={secStyle(rankSemana)}
         className="cif-sec"
         title={tx("Esta semana frente a la anterior", "This week versus the previous one")}
-        hint={<Hint text={tx(
-          "Arriba, esta semana hasta hoy contra la semana pasada hasta el mismo día. Abajo, las últimas 8 semanas: verde es lo cobrado; la barra de al lado es lo que valió el trabajo hecho, por tipo (cortes, extras, una vez), aunque aún no te hayan pagado.",
-          "On top, this week so far against last week up to the same day. Below, the last 8 weeks: green is collected; the bar beside it is what the work done was worth, by kind (cuts, extras, one time), even if not paid yet.",
-        )} />}
+        hint={<Hint topic="semana-vs" />}
       >
         <WeekToDate>
           {(w) => w ? <WeekNow w={w} /> : null}
@@ -156,7 +153,7 @@ export function CobrosCharts({
       ) : null}
 
       {show("cada año cortes cobrado vida dinero de por vida patios") ? (
-      <Fold id="cif-anio" style={secStyle(rankAnio)} className="cif-sec" title={tx("Cada año", "Each year")} hint={<Hint manual="cifras-vida-dinero" text={tx("Cuánto cobraste y cuántos cortes hiciste en cada año. Arriba, de por vida: todo lo cobrado desde el primer pago (sin propinas) y todos los cortes hechos. El conteo no se borra al cambiar de año.", "How much you collected and how many cuts you made each year. On top, lifetime: everything collected since the first payment (tips apart) and every cut done. The count is not erased when the year changes.")} />}>
+      <Fold id="cif-anio" style={secStyle(rankAnio)} className="cif-sec" title={tx("Cada año", "Each year")} hint={<Hint topic="cada-anio" />}>
         {hasLife ? (
           <div className="cif-tiles cif-tiles-2 cif-life">
             <div className="cif-tile">
@@ -223,7 +220,7 @@ export function CobrosCharts({
         place="clientes"
         query={query}
         title={tx("Clientes nuevos y bajas", "New clients and departures")}
-        hint={tx("Altas: patios que añadiste ese mes. Bajas: clientes que diste de baja ese mes.", "New: yards you added that month. Departures: clients you deactivated that month.")}
+        topic="altas-bajas"
         empty={tx("Cuando añadas o des de baja clientes, aquí se verá el ritmo.", "When you add or deactivate clients, the pace will show here.")}
         hasData={hasFlow}
         height="h-40"
@@ -255,7 +252,7 @@ export function CobrosCharts({
       </ChartBlock>
 
       {data.postponeReasons.length > 0 && show("pospuso razón") ? (
-        <Fold id="cif-pospuesto" style={secStyle(rankPospuesto)} className="cif-sec" title={tx("Por qué se pospuso", "Why it was postponed")} hint={<Hint text={tx("Últimos 90 días. Cuenta los patios movidos con una razón.", "Last 90 days. Counts yards moved with a reason.")} />}>
+        <Fold id="cif-pospuesto" style={secStyle(rankPospuesto)} className="cif-sec" title={tx("Por qué se pospuso", "Why it was postponed")} hint={<Hint topic="pospuesto" />}>
           <ul className="grid gap-1.5">
             {data.postponeReasons.map((row) => (
               <li key={row.reason} className="flex items-center justify-between rounded-sm bg-soil-bg px-2.5 py-2 text-sm">
@@ -394,21 +391,19 @@ function hourText(minutes: number, tx: (es: string, en: string) => string) {
 function NumberCell({
   label,
   value,
-  hint,
   hold,
-  manual,
+  topic,
 }: {
   label: string;
   value: string;
-  hint?: string;
   hold?: boolean;
-  manual?: string;
+  topic?: string;
 }) {
   return (
     <div className={cn("rounded-sm px-2.5 py-2", hold ? "bg-surface" : "bg-surface-2")}>
       <dt className="flex items-center text-xs font-medium tracking-wide text-muted uppercase">
         <span className="min-w-0">{label}</span>
-        {hint || manual ? <Hint manual={manual} text={hint ?? label} /> : null}
+        {topic ? <Hint topic={topic} /> : null}
       </dt>
       <dd className={cn("font-display text-lg font-semibold tabular-nums", hold && "text-hold")}>{value}</dd>
     </div>
@@ -420,7 +415,7 @@ function ChartBlock({
   place,
   query = "",
   title,
-  hint,
+  topic,
   empty,
   hasData,
   height,
@@ -432,16 +427,18 @@ function ChartBlock({
   place: CifraId;
   query?: string;
   title: string;
-  hint: string;
+  topic: string;
   empty: string;
   hasData: boolean;
   height: string;
   children: ReactElement;
 }) {
   const rank = useCifraRank(place);
-  if (query.trim() && !smartHit(query, `${title} ${hint} ${empty}`)) return null;
+  const { locale } = useI18n();
+  const entry = findTopic(topic);
+  if (query.trim() && !smartHit(query, `${title} ${entry ? pick(locale, entry.what) : ""} ${empty}`)) return null;
   return (
-    <Fold id={id} style={secStyle(rank)} className="cif-sec" title={title} hint={<Hint text={hint} />}>
+    <Fold id={id} style={secStyle(rank)} className="cif-sec" title={title} hint={<Hint topic={topic} />}>
       {hasData ? (
         <>
           <div className={height}>

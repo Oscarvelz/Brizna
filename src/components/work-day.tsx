@@ -108,7 +108,7 @@ export function WorkDayCard() {
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-1 font-display text-base font-semibold">
           {t("hours.title")}
-          <Hint manual="horas" text={t("hours.auto")} />
+          <Hint topic="horas" />
         </h2>
         <div className="flex gap-1">
           <button

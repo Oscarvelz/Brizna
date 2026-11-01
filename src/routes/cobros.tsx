@@ -165,13 +165,7 @@ function CobrosPage() {
         >
           <p className="flex items-center gap-1 text-xs font-medium tracking-wide text-muted uppercase">
             {tx("Por cobrar", "To collect")}
-            <Hint
-              manual="cobros-por-cobrar"
-              text={tx(
-                "El saldo que todavía te deben. Toca para ver a esas personas. Si se retrasan, siguen aquí: no se perdonan solas.",
-                "The balance they still owe you. Tap to see those people. If they fall behind, they stay here: they are not forgiven on their own.",
-              )}
-            />
+            <Hint topic="por-cobrar" />
           </p>
           <Link to="/cobros" search={{ view: "owing" }} hash="lista" className="mt-1 block min-h-10 touch-manipulation">
             <p className="font-display text-xl font-semibold tabular-nums text-due sm:text-2xl">
@@ -186,13 +180,7 @@ function CobrosPage() {
           <div className="mt-auto pt-2">
             <p className="flex items-center gap-1 text-xs font-medium tracking-wide text-muted uppercase">
               {tx("Abonado", "Partial paid")}
-              <Hint
-                manual="cobros-abonado"
-                text={tx(
-                  "Quien dejó una parte y todavía debe. Sirve para darles seguimiento. Si pagan toda la deuda, salen de aquí. Toca para ver quiénes son.",
-                  "Someone who left a partial payment and still owes. It is for follow-up. If they pay the whole debt, they leave this list. Tap to see who they are.",
-                )}
-              />
+              <Hint topic="abonado" />
             </p>
             <Link
               to="/cobros"
@@ -232,13 +220,7 @@ function CobrosPage() {
             </span>
           }
           hint={
-            <Hint
-              manual="en-espera"
-              text={tx(
-                "Quien se atrasó y va a pagar, o a quien pausaste mientras baja la deuda. El dinero no sale de Por cobrar. La función Continuar vuelve a poner el patio en la agenda.",
-                "Someone who fell behind and will pay, or someone you paused while they pay the debt down. The money does not leave To collect. The Play function puts the yard back on the schedule.",
-              )}
-            />
+            <Hint topic="en-espera" />
           }
         >
           <Link to="/cobros" search={{ view: "espera" }} hash="lista" className="block text-sm font-semibold text-hold">
@@ -258,13 +240,7 @@ function CobrosPage() {
             </span>
           }
           hint={
-            <Hint
-              manual="cobros-perdonar"
-              text={tx(
-                "Dinero que decidiste no cobrar. Sale de Por cobrar. No es un atraso: un atraso se queda en En espera.",
-                "Money you decided not to collect. It leaves To collect. It is not a late payment: a late payment stays in Waiting.",
-              )}
-            />
+            <Hint topic="perdonado" />
           }
         >
           <Link to="/cobros" search={{ view: "waived" }} hash="lista" className="block text-sm font-semibold text-late">
@@ -538,7 +514,7 @@ function CollectedNest({
     >
       <p className="flex items-center gap-1 px-1 text-xs font-medium tracking-wide text-muted uppercase">
         {tx("Cobrado", "Collected")}
-        <Hint text={tx("Dinero que ya te pagaron: esta semana, este mes y este año. Toca una fila para ver la lista.", "Money they already paid you: this week, this month, and this year. Tap a row to see the list.")} />
+        <Hint topic="cobrado" />
       </p>
       <NestRow view="collectedWeek" label={tx("Semana", "Week")} value={week} active={current === "collectedWeek"} wash />
       <NestRow view="collectedMonth" label={tx("Mes", "Month")} value={month} active={current === "collectedMonth"} wash />
@@ -576,12 +552,7 @@ function WorkNest({
         </span>
       }
       hint={
-        <Hint
-          text={tx(
-            "Suma el precio de los patios ya terminados, hayan pagado o no. El dinero en mano está en Cobrado, no aquí.",
-            "Adds up the price of yards already finished, whether they paid or not. Cash in hand is under Collected, not here.",
-          )}
-        />
+        <Hint topic="trabajo-hecho" />
       }
     >
       <NestRow

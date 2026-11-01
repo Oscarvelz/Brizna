@@ -1,25 +1,53 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowRight, CircleHelp, Lightbulb } from "lucide-react";
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { NameLink } from "@/components/name-jump";
 import { useI18n, emphasize } from "@/lib/i18n";
+import { findTopic, pick } from "@/lib/manual/topics";
+import { rememberOrigin } from "@/lib/manual/nav";
 import { cn } from "@/lib/utils";
 
+/** Manual/hint text: [[Term]] is an explicit link to that place in the app; known names get emphasis. */
+export function richText(text: string): ReactNode {
+  if (!text.includes("[[")) return emphasize(text);
+  return text.split(/(\[\[[^\]]+\]\])/g).map((part, i) =>
+    part.startsWith("[[") && part.endsWith("]]") ? (
+      <NameLink key={i} term={part.slice(2, -2)} />
+    ) : (
+      <Fragment key={i}>{emphasize(part)}</Fragment>
+    ),
+  );
+}
+
+/**
+ * The (?) bubble. Give it a `topic`: its text comes from the manual (lib/manual/topics.ts), word for
+ * word, and "Más en el manual" opens that exact entry. `text` is only for a bubble with no entry.
+ */
 export function Hint({
+  topic,
   text,
+  alt = false,
   label,
   manual,
   className,
   compact = false,
 }: {
-  text: ReactNode;
+  topic?: string;
+  text?: ReactNode;
+  /** Use the topic's second text (e.g. while paused). */
+  alt?: boolean;
   label?: string;
+  /** @deprecated old name for `topic`. */
   manual?: string;
   className?: string;
   compact?: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const entry = findTopic(topic ?? manual);
+  const body: ReactNode = text ?? (entry ? pick(locale, alt && entry.whatAlt ? entry.whatAlt : entry.what) : "");
   const [open, setOpen] = useState(false);
   const [box, setBox] = useState<{ top: number; left: number; width: number; maxHeight: number; below: boolean; arrow: number } | null>(
     null,
@@ -74,7 +102,7 @@ export function Hint({
   }, [open, id]);
 
   return (
-    <span className={cn("relative inline-flex shrink-0 align-middle", className)}>
+    <span data-topic={entry?.id} className={cn("relative inline-flex shrink-0 align-middle", className)}>
       <button
         ref={btn}
         type="button"
@@ -116,8 +144,8 @@ export function Hint({
                   <Lightbulb className="size-3.5" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block">{typeof text === "string" ? emphasize(text) : text}</span>
-                  {manual ? (
+                  <span className="block">{typeof body === "string" ? richText(body) : body}</span>
+                  {entry ? (
                     <button
                       type="button"
                       onPointerDown={(e) => {
@@ -126,7 +154,8 @@ export function Hint({
                       }}
                       onClick={() => {
                         setOpen(false);
-                        void navigate({ to: "/ajustes", hash: `ayuda-${manual}` });
+                        rememberOrigin(pathname);
+                        void navigate({ to: "/manual", search: { t: entry.id }, resetScroll: false });
                       }}
                       className="bz-hint-more"
                     >

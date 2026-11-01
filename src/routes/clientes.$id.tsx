@@ -306,12 +306,7 @@ function ClientDetailPage() {
           <section className="mt-4 min-w-0 max-w-full overflow-hidden rounded-xl border-l-4 border-money bg-money-bg p-4 shadow-card">
             <p className="flex items-center gap-1 text-xs font-medium tracking-wide text-muted uppercase">
               {tx("Deuda", "Debt")}
-              <Hint
-                text={tx(
-                  "Deuda es el monto acumulado que te deben. Abono es un pago parcial. Adelanto es dinero pagado antes del corte: al marcar Hecho no se cobra otra vez. Toca Se acumula para que pague el mismo día.",
-                  "Debt is the amount they still owe you. Partial is a partial payment. Advance is money paid before the cut: when you mark Done it is not charged again. Tap It adds up so they pay the same day.",
-                )}
-              />
+              <Hint topic="ficha-deuda" />
             </p>
             <div className="mt-2 grid min-w-0 grid-cols-2 gap-3">
               <div className="min-w-0">

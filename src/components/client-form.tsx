@@ -350,10 +350,7 @@ export function ClientForm({
       {!initial ? (
         <Field
           label={tx("Deuda anterior", "Earlier debt")}
-          hint={tx(
-            "Lo que ya debía antes de entrar en la app, como $80 de cortes pasados. Queda en Por cobrar. Si no debe nada, déjalo vacío.",
-            "What they already owed before joining the app, such as $80 from past cuts. It goes to To collect. If they owe nothing, leave it empty.",
-          )}
+          topic="deuda-anterior"
         >
           <div className="relative">
             <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted">$</span>
@@ -378,10 +375,7 @@ export function ClientForm({
 
       <Field
         label={tx("Pista o referencia (opcional)", "Cue or reference (optional)")}
-        hint={tx(
-          "Algo corto para distinguir este patio si hay otro con el mismo nombre. Se ve en la lista, sin abrir la ficha.",
-          "Something short to tell this yard apart if another has the same name. It shows on the list, without opening the file.",
-        )}
+        topic="pista"
       >
         <CueField value={value.cue} onChange={(next) => set("cue", next)} presets={settingsQ.data?.cuePresets ?? DEFAULT_CUE_PRESETS} />
       </Field>
@@ -444,10 +438,7 @@ export function ClientForm({
 
       <Field
         label={tx("Dirección", "Address")}
-        hint={tx(
-          "Si hay dirección, un toque abre Google Maps para llegar al patio.",
-          "If there is an address, one tap opens Google Maps to reach the yard.",
-        )}
+        topic="direccion"
       >
         <div className="flex gap-2">
           <Input
@@ -573,10 +564,7 @@ export function ClientForm({
         <>
           <Field
             label={tx("Frecuencia", "Frequency")}
-            hint={tx(
-              "A partir del día de inicio la app arma sola los siguientes cortes.",
-              "From the start day the app builds the next cuts on its own.",
-            )}
+            topic="frecuencia"
           >
             <NativeSelect
               value={value.frequencyMode}
@@ -611,10 +599,7 @@ export function ClientForm({
           {value.frequencyMode === "custom" && (
             <Field
               label={tx("Cada cuántos días", "Every how many days")}
-              hint={tx(
-                "La app arma sola los cortes futuros con este intervalo, a partir del día de inicio.",
-                "The app builds future cuts on its own with this interval, starting from the start day.",
-              )}
+              topic="cada-cuantos"
             >
               <div className="flex items-center gap-2">
                 <Button
@@ -658,10 +643,7 @@ export function ClientForm({
 
           <Field
             label={tx("Día de inicio", "Start day")}
-            hint={tx(
-              "El primer corte es este día. El resto cae solo, según la frecuencia, a partir de esa fecha.",
-              "The first cut is this day. The rest fall on their own, by the frequency, from that date.",
-            )}
+            topic="dia-inicio"
           >
             <Input
               type="date"
@@ -700,10 +682,7 @@ export function ClientForm({
 
           <Field
             label={tx("En cada visita (opcional)", "On each visit (optional)")}
-            hint={tx(
-              "Sale en la tarjeta de cada corte. No crea un trabajo extra. Ejemplo: orilla, soplado, perro suelto.",
-              "It shows on each cut card. It does not create an extra job. Example: edging, blowing, loose dog.",
-            )}
+            topic="en-cada-visita"
           >
             <Input
               value={value.standingExtras}
@@ -729,10 +708,7 @@ export function ClientForm({
 
           <Field
             label={tx("Temporada", "Season")}
-            hint={tx(
-              "Un tramo del año con otro ritmo. Mes y día, como 11-01 y 02-28. El número es cada cuántos días. Si lo dejas apagado, vale la temporada de todos en Ajustes.",
-              "A stretch of the year with a different pace. Month and day, like 11-01 and 02-28. The number is every how many days. If you leave it off, the season for everyone in Settings applies.",
-            )}
+            topic="temporada-cliente"
           >
             <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
               <input
@@ -812,12 +788,7 @@ export function ClientForm({
       <fieldset className="rounded-lg bg-surface p-3 shadow-card">
         <legend className="flex items-center gap-1 px-1 text-sm font-medium text-muted">
           {tx("Cobro", "Payment")}
-          <Hint
-            text={tx(
-              "Si no paga el mismo día, el precio se suma a su cuenta hasta que marques Pagado o Perdonar.",
-              "If they do not pay the same day, the price is added to their account until you mark Paid or Forgive.",
-            )}
-          />
+          <Hint topic="cobro-cliente" />
         </legend>
         <div className="grid gap-2">
           <PayChoice
@@ -863,10 +834,7 @@ export function ClientForm({
 
       <Field
         label={tx("Notas del cliente", "Client notes")}
-        hint={tx(
-          "Este bloc queda guardado con el contacto. Sirve para portón, perro, llave o lo que haya que recordar.",
-          "This pad stays saved with the contact. Use it for a gate, a dog, a key, or anything to remember.",
-        )}
+        topic="notas-cliente"
       >
         <RichNotes
           cornerUndo
@@ -920,17 +888,19 @@ export function ClientForm({
 function Field({
   label,
   hint,
+  topic,
   children,
 }: {
   label: string;
   hint?: string;
+  topic?: string;
   children: ReactNode;
 }) {
   return (
     <div>
       <div className="mb-1.5 flex items-center gap-0.5">
         <Label className="mb-0">{label}</Label>
-        {hint ? <Hint text={hint} /> : null}
+        {topic ? <Hint topic={topic} /> : hint ? <Hint text={hint} /> : null}
       </div>
       {children}
     </div>
@@ -953,12 +923,7 @@ function KindToggle({
     <div>
       <div className="mb-1.5 flex items-center gap-0.5">
         <Label className="mb-0">{tx("Tipo", "Type")}</Label>
-        <Hint
-          text={tx(
-            "Regular: se corta cada cierto tiempo. De una vez: un trabajo suelto que no se repite.",
-            "Regular: it is cut on a schedule. One-time: a single job that does not repeat.",
-          )}
-        />
+        <Hint topic="tipo-cliente" />
       </div>
       <div className="grid grid-cols-2 gap-1 rounded-md bg-surface-2 p-1">
         {options.map(({ id, label }) => (

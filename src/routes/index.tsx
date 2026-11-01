@@ -369,20 +369,7 @@ function Home() {
             : tx("¿Pasar el trabajo atrasado?", "Move the late work?")
         }
         hint={
-          <Hint
-            compact
-            text={
-              askAcc === "today"
-                ? tx(
-                    "Pasa los patios de hoy que siguen pendientes al día que elijas. Los que ya marcaste Hecho se quedan. No se cobra al pasarlos. La razón, si la pones, queda en esa fecha.",
-                    "Moves today's yards that are still pending to the day you choose. Ones you already marked Done stay. Nothing is collected by moving them. The reason, if you add one, stays on that date.",
-                  )
-                : tx(
-                    "Pasa los patios que ya iban tarde al día que elijas. No se marcan Hecho ni se cobra. La razón, si la pones, queda en esa fecha.",
-                    "Moves the yards that were already late to the day you choose. They are not marked Done and nothing is collected. The reason, if you add one, stays on that date.",
-                  )
-            }
-          />
+          <Hint compact topic={askAcc === "today" ? "pasar-pendientes" : "pasar-atrasado"} />
         }
         description={
           <div className="grid gap-2">
@@ -557,12 +544,7 @@ function DayBoard({
                   onChange={(e) => setOpen(e.target.checked ? keys : [])}
                 />
                 {tx("Desplegar todo", "Expand all")}
-                <Hint
-                  text={tx(
-                    "Abre o cierra de una vez los bloques de Hoy, atrasados y los días que siguen.",
-                    "Opens or closes Today, late jobs, and the coming days all at once.",
-                  )}
-                />
+                <Hint topic="desplegar-hoy" />
               </label>
             ) : null}
             <DayFold
@@ -592,7 +574,7 @@ function DayBoard({
                   />
                   {tx("Sin confirmación extra por hoy", "No extra confirmation for today")}
                 </label>
-                <Hint text={tx("Solo vale para hoy. Mañana vuelve a pedir confirmación, para no marcar un patio por error.", "Only for today. Tomorrow it asks for confirmation again, so you do not mark a yard by mistake.")} />
+                <Hint topic="sin-confirmacion" />
               </div>
             ) : null}
             {items.length === 0 ? (

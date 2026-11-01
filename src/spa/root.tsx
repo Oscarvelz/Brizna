@@ -3,6 +3,7 @@ import { AppProviders } from "@/components/providers";
 import { FloatHost } from "@/components/float-window";
 import { FingerprintOffer } from "@/components/fingerprint-offer";
 import { WeatherSky } from "@/components/weather-sky";
+import { NavHost } from "@/components/nav-host";
 
 export const Route = createRootRoute({
   component: () => (
@@ -11,6 +12,7 @@ export const Route = createRootRoute({
       <Outlet />
       <FloatHost />
       <FingerprintOffer />
+      <NavHost />
     </AppProviders>
   ),
 });

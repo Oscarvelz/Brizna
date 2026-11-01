@@ -14,6 +14,7 @@ import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as AjustesRouteImport } from './routes/ajustes'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as ClimaRouteImport } from './routes/clima'
+import { Route as ManualRouteImport } from './routes/manual'
 import { Route as CobrosRouteImport } from './routes/cobros'
 import { Route as EstadisticasRouteImport } from './routes/estadisticas'
 import { Route as FicheroRouteImport } from './routes/fichero'
@@ -43,6 +44,11 @@ const AjustesRoute = AjustesRouteImport.update({
 const ClientesRoute = ClientesRouteImport.update({
   id: '/clientes',
   path: '/clientes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManualRoute = ManualRouteImport.update({
+  id: '/manual',
+  path: '/manual',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClimaRoute = ClimaRouteImport.update({
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/ajustes': typeof AjustesRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/clima': typeof ClimaRoute
+  '/manual': typeof ManualRoute
   '/cobros': typeof CobrosRoute
   '/estadisticas': typeof EstadisticasRoute
   '/fichero': typeof FicheroRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/agenda': typeof AgendaRoute
   '/ajustes': typeof AjustesRoute
   '/clima': typeof ClimaRoute
+  '/manual': typeof ManualRoute
   '/cobros': typeof CobrosRoute
   '/estadisticas': typeof EstadisticasRoute
   '/fichero': typeof FicheroRoute
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/ajustes': typeof AjustesRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/clima': typeof ClimaRoute
+  '/manual': typeof ManualRoute
   '/cobros': typeof CobrosRoute
   '/estadisticas': typeof EstadisticasRoute
   '/fichero': typeof FicheroRoute
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | '/ajustes'
     | '/clientes'
     | '/clima'
+    | '/manual'
     | '/cobros'
     | '/estadisticas'
     | '/fichero'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/ajustes'
     | '/clima'
+    | '/manual'
     | '/cobros'
     | '/estadisticas'
     | '/fichero'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/ajustes'
     | '/clientes'
     | '/clima'
+    | '/manual'
     | '/cobros'
     | '/estadisticas'
     | '/fichero'
@@ -211,6 +223,7 @@ export interface RootRouteChildren {
   AjustesRoute: typeof AjustesRoute
   ClientesRoute: typeof ClientesRouteWithChildren
   ClimaRoute: typeof ClimaRoute
+  ManualRoute: typeof ManualRoute
   CobrosRoute: typeof CobrosRoute
   EstadisticasRoute: typeof EstadisticasRoute
   FicheroRoute: typeof FicheroRoute
@@ -249,6 +262,13 @@ declare module '@tanstack/react-router' {
       path: '/clientes'
       fullPath: '/clientes'
       preLoaderRoute: typeof ClientesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manual': {
+      id: '/manual'
+      path: '/manual'
+      fullPath: '/manual'
+      preLoaderRoute: typeof ManualRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clima': {
@@ -351,6 +371,7 @@ const rootRouteChildren: RootRouteChildren = {
   AjustesRoute: AjustesRoute,
   ClientesRoute: ClientesRouteWithChildren,
   ClimaRoute: ClimaRoute,
+  ManualRoute: ManualRoute,
   CobrosRoute: CobrosRoute,
   EstadisticasRoute: EstadisticasRoute,
   FicheroRoute: FicheroRoute,

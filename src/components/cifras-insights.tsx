@@ -100,10 +100,7 @@ function PulseSection({ data, query }: { data: CifrasInsights; query: string }) 
       className="cif-sec cif-hero"
       title={<span className="flex items-baseline gap-2">{title}<span className="font-sans text-sm font-medium text-muted">{month}</span></span>}
       peek={money(p.collected)}
-      hint={<Hint text={tx(
-        "El anillo grande es lo cobrado este mes. El de adentro, el trabajo ya hecho. Los dos se miden contra lo esperado: lo que vale todo el trabajo agendado del mes (hecho, por hacer y atrasado).",
-        "The big ring is what you collected this month. The inner one is the work already done. Both are measured against expected: what all of this month's scheduled work is worth (done, still to do, and late).",
-      )} />}
+      hint={<Hint topic="este-mes" />}
     >
       {empty || p.planned <= 0 ? null : (
       <p className="cif-lead-line cif-lead-solo cif-rise">
@@ -224,10 +221,7 @@ function TrendSection({ data, query }: { data: CifrasInsights; query: string }) 
       defaultOpen
       title={title}
       peek={lastFull ? money(lastFull.collected) : undefined}
-      hint={<Hint text={tx(
-        "Verde: lo cobrado cada mes. Línea punteada: lo que valió el trabajo hecho ese mes. Si la línea va por encima del verde, quedó dinero por cobrar. El último mes va en curso. Toca un mes para ver el detalle.",
-        "Green: collected each month. Dotted line: what the work done that month was worth. When the line runs above the green, money was left to collect. The last month is in progress. Tap a month for details.",
-      )} />}
+      hint={<Hint topic="ingresos-mes" />}
     >
       {has ? (
         <div className="cif-rise">
@@ -338,10 +332,7 @@ function DebtsSection({ data, query }: { data: CifrasInsights; query: string }) 
       className="cif-sec"
       title={title}
       peek={d.total > 0 ? money(d.total) : undefined}
-      hint={<Hint manual="fiabilidad" text={tx(
-        "Lo que te deben, repartido por la edad de cada trabajo sin pagar. Un abono paga primero lo más viejo, así que lo que queda debiendo son los trabajos más recientes. Lo que ya debían antes del primer corte anotado va aparte, como Saldo inicial. En espera y Alto riesgo siguen tus límites de Ajustes.",
-        "What you are owed, split by the age of each unpaid job. A payment covers the oldest first, so what is still owed is the most recent jobs. What was owed before the first recorded cut goes apart, as Opening balance. Waiting and High risk follow your limits in Settings.",
-      )} />}
+      hint={<Hint topic="quien-debe" />}
     >
       {d.total > 0 ? (
         <div className="cif-rise">
@@ -440,10 +431,7 @@ function RhythmSection({ data, query }: { data: CifrasInsights; query: string })
       className="cif-sec"
       title={title}
       peek={bestDay && bestDay.cuts > 0 ? label(bestDay.dow)?.label : undefined}
-      hint={<Hint text={tx(
-        "Cada fila es un mes y cada columna un día de la semana. Más verde, más trabajos hechos. Abajo, cuánto deja cada día de la semana en los últimos 12 meses: así ves qué ruta vale más. Toca un cuadro para ver el número.",
-        "Each row is a month and each column a weekday. Greener means more jobs done. Below, what each weekday brought in over the last 12 months, so you can see which route is worth more. Tap a square for its number.",
-      )} />}
+      hint={<Hint topic="dias-temporadas" />}
     >
       {rows.length ? (
         <div className="cif-rise">
@@ -541,10 +529,7 @@ function BestSection({ data, query }: { data: CifrasInsights; query: string }) {
       className="cif-sec"
       title={title}
       peek={top?.name}
-      hint={<Hint text={tx(
-        "Lo que valió el trabajo hecho para cada cliente en los últimos 12 meses (cortes, extras y trabajos de una vez). La barra compara con el primero. Toca un nombre para abrir su ficha.",
-        "What the work done for each client was worth over the last 12 months (cuts, extras, and one-time jobs). The bar compares with the first one. Tap a name to open their card.",
-      )} />}
+      hint={<Hint topic="mejores-clientes" />}
     >
       {b.clients.length ? (
         <div className="cif-rise">
@@ -621,10 +606,7 @@ function PriceSection({ data, query }: { data: CifrasInsights; query: string }) 
       className="cif-sec"
       title={title}
       peek={pr.nCut ? money(pr.avgCut) : undefined}
-      hint={<Hint text={tx(
-        "Promedio de lo que valió cada trabajo hecho en los últimos 12 meses, separado por tipo. Los trabajos de $0 (cortesías) no cuentan. La línea es el precio medio de un corte, mes a mes.",
-        "Average value of each job done over the last 12 months, by kind. $0 jobs (courtesies) don't count. The line is the average price of a cut, month by month.",
-      )} />}
+      hint={<Hint topic="precio-trabajo" />}
     >
       {pr.nCut + pr.nExtra + pr.nOnce > 0 ? (
         <div className="cif-rise">
@@ -671,10 +653,7 @@ function TipsSection({ data, query }: { data: CifrasInsights; query: string }) {
       className="cif-sec"
       title={title}
       peek={t.year > 0 ? money(t.year) : undefined}
-      hint={<Hint manual="propina-anio" text={tx(
-        "Dinero de más que no cambia la deuda ni entra en Cobrado. Arriba, lo de este año; las barras son los últimos 12 meses.",
-        "Extra money that does not change the debt or count as Collected. On top, this year; the bars are the last 12 months.",
-      )} />}
+      hint={<Hint topic="propinas" />}
     >
       {t.count > 0 || months.some((m) => m.tips > 0) ? (
         <div className="cif-rise">
@@ -735,10 +714,7 @@ function GoalSection({ data, query }: { data: CifrasInsights; query: string }) {
       defaultOpen
       title={title}
       peek={g.hasGoals ? (left > 0 ? tx(`${g.perDayLeft} por día`, `${g.perDayLeft} a day`) : tx("cumplida", "reached")) : undefined}
-      hint={<Hint text={tx(
-        "La meta del mes suma la meta de patios de cada día de trabajo del mes (la que pones en Esfuerzo de la semana). Los días libres y las vacaciones no cuentan. Cuenta cada trabajo hecho, como Esfuerzo. La rayita marca dónde deberías ir hoy.",
-        "The month goal adds up the yard goal of every working day this month (the one you set in This week's effort). Days off and vacation don't count. It counts every job done, like Effort. The tick marks where you should be today.",
-      )} />}
+      hint={<Hint topic="meta-mes" />}
     >
       {g.hasGoals ? (
         <div className="cif-rise">
@@ -807,10 +783,7 @@ function BaselineSection({ data, query }: { data: CifrasInsights; query: string 
       className="cif-sec"
       title={title}
       peek={b.total > 0 ? money(b.total) : undefined}
-      hint={<Hint text={tx(
-        "Lo que dejan tus clientes fijos activos en un mes normal: visitas al mes (según su frecuencia) por su precio. No cuenta extras, trabajos de una vez, clientes en pausa ni temporadas. Es tu piso: lo que entra si todo sigue igual.",
-        "What your active regular clients bring in a normal month: visits a month (from their frequency) times their price. It leaves out extras, one-time jobs, paused clients, and seasons. It is your floor: what comes in if nothing changes.",
-      )} />}
+      hint={<Hint topic="ingreso-fijo" />}
     >
       {b.clients > 0 ? (
         <div className="cif-rise">
@@ -890,10 +863,7 @@ function PerHourSection({ data, query }: { data: CifrasInsights; query: string }
       className="cif-sec"
       title={title}
       peek={ph.month.minutes > 0 ? `${perH(head)}/h` : undefined}
-      hint={<Hint manual="horas" text={tx(
-        "Lo cobrado dividido entre tus horas de trabajo confirmadas, en la semana y en el mes. Cuenta hasta el último día con horas confirmadas. El anillo compara la semana con el mes: lleno es igual o mejor.",
-        "What you collected divided by your confirmed work hours, for the week and the month. It counts up to the last day with confirmed hours. The ring compares the week with the month: full means as good or better.",
-      )} />}
+      hint={<Hint topic="por-hora" />}
     >
       {ph.month.minutes > 0 ? (
         <div className="cif-rise">

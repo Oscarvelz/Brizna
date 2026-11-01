@@ -59,11 +59,6 @@ function NuevoPage() {
   });
   const debtPresets = settingsQ.data?.debtPresets ?? DEFAULT_DEBT_PRESETS;
   const pricePresets = settingsQ.data?.pricePresets ?? DEFAULT_PRICE_PRESETS;
-  const payHelp = tx(
-    "Si la casilla está vacía, cada corte suma el precio a lo que debe. La deuda se acumula. Si la marcas, cobras al marcar Hecho y ese corte no se suma.",
-    "If the box is empty, each cut adds the price to what they owe. The debt piles up. If you check it, you collect when you mark Done and that cut is not added.",
-  );
-
   const mutation = useMutation({
     mutationFn: (value: ClientFormValue) => createClient({ data: payloadFromForm(value) }),
     onSuccess: async (res, value) => {
@@ -481,7 +476,7 @@ function NuevoPage() {
                         className="size-5 shrink-0 accent-primary"
                       />
                       <span className="min-w-0 flex-1 whitespace-nowrap leading-tight">{tx("Paga el mismo día", "Same day")}</span>
-                      <Hint compact text={payHelp} />
+                      <Hint compact topic="paga-mismo-dia" />
                     </label>
                   </div>
                 </li>

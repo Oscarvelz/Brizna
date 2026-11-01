@@ -309,13 +309,7 @@ function AjustesPage() {
             />
             {tx("Desplegar todo", "Expand all")}
           </label>
-          <Hint
-            manual="ajustes"
-            text={tx(
-              "Abre o cierra de una vez todos los ajustes de esta página. La casilla queda alineada con las flechas de abajo.",
-              "Opens or closes every setting on this page at once. The box lines up with the arrows below.",
-            )}
-          />
+          <Hint topic="ajustes" />
         </div>
         <SettingFold
           id="aj-nombre"
@@ -358,12 +352,7 @@ function AjustesPage() {
             </span>
           }
           hint={
-            <Hint
-              text={tx(
-                "El tema de día y el de noche se quedan como los dejes, aunque bajes la pantalla para refrescar.",
-                "The day theme and the night theme stay as you left them, even if you pull to refresh.",
-              )}
-            />
+            <Hint topic="tema" />
           }
         >
             <p className="text-sm text-muted">
@@ -489,13 +478,7 @@ function AjustesPage() {
             </span>
           }
           hint={
-            <Hint
-              manual="ajustes"
-              text={tx(
-                "Parte la pantalla en dos (lado a lado en tableta o computadora, arriba y abajo en el teléfono) y añade una ventana flotante que puedes mover, agrandar y plegar en una burbuja. Lo que hagas en una se ve al momento en las otras.",
-                "Splits the screen in two (side by side on a tablet or computer, top and bottom on a phone) and adds a floating window you can move, resize, and fold into a bubble. What you do in one shows up right away in the others.",
-              )}
-            />
+            <Hint topic="tableta" />
           }
         >
           <p className="text-sm text-muted">
@@ -531,7 +514,7 @@ function AjustesPage() {
               {t("hours.title")}
             </span>
           }
-          hint={<Hint manual="horas" text={t("hours.auto")} />}
+          hint={<Hint topic="horas" />}
         >
           <div className="grid grid-cols-2 gap-2">
             <label className="text-sm">
@@ -575,13 +558,7 @@ function AjustesPage() {
             </span>
           }
           hint={
-            <Hint
-              manual="espera"
-              text={tx(
-                "En espera es alguien que se atrasó y va a pagar. Alto riesgo es cuando pasa los días, el monto o los cortes sin pagar que pongas aquí. El dinero sigue en Por cobrar. Solo la función Perdonar lo borra.",
-                "Waiting is someone who is late and will pay. High risk is when they pass the days, the amount, or the unpaid cuts you set here. The money stays in To collect. Only the Forgive function clears it.",
-              )}
-            />
+            <Hint topic="espera" />
           }
         >
           <p className="text-sm text-muted">
@@ -673,7 +650,7 @@ function AjustesPage() {
               {tx("Recordatorios", "Reminders")}
             </span>
           }
-          hint={<Hint text={tx("Avisos cuando abres la app: cortes atrasados y la hora de llegada del patio.", "Alerts when you open the app: late cuts and the yard arrival time.")} />}
+          hint={<Hint topic="recordatorios" />}
         >
           <p className="text-sm text-muted">
             {tx("Avisos de cortes atrasados y de la hora de llegada cuando abres la app en el teléfono.", "Alerts for late cuts and the arrival time when you open the app on the phone.")}
@@ -723,12 +700,7 @@ function AjustesPage() {
             </span>
           }
           hint={
-            <Hint
-              text={tx(
-                "Elige ida y vuelta. Todo lo pendiente de esas fechas, y lo atrasado, se pasa al día del regreso. Si acortas o alargas las fechas, la agenda se reacomoda sola.",
-                "Choose departure and return. Everything pending on those dates, and what is late, moves to the return day. If you shorten or lengthen the dates, the schedule rearranges itself.",
-              )}
-            />
+            <Hint topic="vacaciones" />
           }
         >
           <p className="text-sm text-muted">
@@ -782,12 +754,7 @@ function AjustesPage() {
             </span>
           }
           hint={
-            <Hint
-              text={tx(
-                "Elige qué entra (todo o solo algunas partes), de qué fechas y de qué clientes. Sale en PDF para leer e imprimir, en hoja de cálculo para filtrar y sumar, o directo a la impresora.",
-                "Choose what goes in (everything or just some parts), which dates and which clients. It comes out as a PDF to read and print, a worksheet to filter and sum, or straight to the printer.",
-              )}
-            />
+            <Hint topic="exportar" />
           }
         >
           <ExportCenterCard onOpen={exporter.launch} />
@@ -806,12 +773,7 @@ function AjustesPage() {
             </span>
           }
           hint={
-            <Hint
-              text={tx(
-                "Guardar copia deja un respaldo en tu cuenta. Restaurar reemplaza clientes y trabajos actuales por los de esa copia.",
-                "Save copy keeps a backup in your account. Restore replaces current clients and jobs with those from that copy.",
-              )}
-            />
+            <Hint topic="copia" />
           }
         >
           <p className="text-sm text-muted">
@@ -962,13 +924,7 @@ function SeasonBlock({ settings, query }: { settings?: AppSettings; query: strin
         </span>
       }
       hint={
-        <Hint
-          manual="temporada"
-          text={tx(
-            "Es un tramo del año en el que todos los cortes regulares se espacian más, sin cambiar cada ficha. Por ejemplo, de noviembre a febrero cada 21 días. Un cliente puede tener su propio ritmo. Los patios que ya moviste no vuelven atrás.",
-            "It is a stretch of the year when every regular cut is spaced out, without editing each file. For example, November through February every 21 days. A client can keep their own pace. Yards you already moved do not jump back.",
-          )}
-        />
+        <Hint topic="temporada" />
       }
     >
       <p className="text-sm text-muted">

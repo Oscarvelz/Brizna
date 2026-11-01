@@ -11,7 +11,6 @@ import { OffDayDialog, shiftToMonday, useRareDay } from "@/components/off-day-as
 import { ScrollTop } from "@/components/scroll-top";
 import { UndoBar } from "@/components/undo-bar";
 import { Hint } from "@/components/hint";
-import { NameLink } from "@/components/name-jump";
 import { invalidateLawn, JobCard } from "@/components/job-card";
 import { ReasonChips } from "@/components/reason-chips";
 import { ReorderableJobs } from "@/components/reorder-jobs";
@@ -408,19 +407,7 @@ function AgendaPage() {
           {tx("Cancelado", "Canceled")}
         </button>
       </div>
-      <Hint
-        compact
-        manual="agenda"
-        text={
-          <>
-            <NameLink term={tx("Calendario", "Calendar")} />
-            {tx(
-              ", Semana, Mes y Todo eligen el período. Pendiente, Tarde, Realizado, Pospuesto y Cancelado eligen el estado. Van juntos. Realizado con Semana es lo hecho esta semana. Con Mes, este mes. Con Todo, todo lo hecho. Con Calendario, esos días en el mes.",
-              ", Week, Month, and All pick the period. Pending, Late, Done, Postponed, and Canceled pick the state. They work together. Done with Week is what was finished this week. With Month, this month. With All, everything finished. With Calendar, those days on the month.",
-            )}
-          </>
-        }
-      />
+      <Hint compact topic="agenda" />
       </div>
 
       <section id="ag-libres" className="mb-3 rounded-xl bg-surface shadow-card">
@@ -472,7 +459,7 @@ function AgendaPage() {
               <ChevronRight className="size-3.5" />
             </button>
           </div>
-          <Hint compact text={tx("Son fechas concretas de esta semana y, al abrir, también los días que casi nunca se trabajan. Un toque pide la razón. Los patios de un día libre se pasan al siguiente día abierto. El domingo sigue libre, salvo un patio pospuesto a mano o un trabajo extra o de una vez.", "These are specific dates this week and, when open, also the days that are almost never worked. One tap asks for the reason. Yards on a day off move to the next open day. Sunday stays free, except a yard postponed by hand or an extra or one-time job.")} />
+          <Hint compact topic="dias-libres" />
         </div>
         {pinnedOff || offOpen ? (
           <div className="px-3 pb-3">
@@ -500,7 +487,7 @@ function AgendaPage() {
             </div>
             <p className="mt-3 flex items-center gap-1 text-sm font-semibold">
               {tx("Días que casi nunca se trabajan", "Days that are almost never worked")}
-              <Hint text={tx("Suele ser el domingo. La agenda automática no pone cortes regulares ahí. Un patio pospuesto a mano, o un trabajo extra o de una vez, sí se queda y cuenta en las cifras.", "It is usually Sunday. The automatic schedule does not put regular cuts there. A yard postponed by hand, or an extra or one-time job, stays and counts in the figures.")} />
+              <Hint topic="dia-casi-nunca" />
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {weekdayOptions().map((day) => {
@@ -525,7 +512,7 @@ function AgendaPage() {
         <section className="mb-3 rounded-xl border-l-4 border-soil bg-soil-bg p-3">
           <p className="flex items-center gap-1 font-semibold text-soil">
             {tx("Trabajo acumulado", "Accumulated work")}
-            <Hint text={tx("Si cortaste medio día, pasa lo que quedó a mañana o a otra fecha. Los atrasados se mueven juntos.", "If you only cut for half the day, move what is left to tomorrow or another date. Late jobs move together.")} />
+            <Hint topic="trabajo-acumulado" />
           </p>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <Button variant="outline" size="sm" disabled={overdueCount === 0} onClick={() => setAskAcc("overdue")}>
@@ -547,14 +534,7 @@ function AgendaPage() {
             `${jobs.length} ${jobs.length === 1 ? "job" : "jobs"} · ${money(total)}${filter === "done" ? " done" : ""}`,
           )}
           {range === "all" && !cal && filter !== "done" ? (
-            <Hint
-              compact
-              manual="agenda-todo"
-              text={tx(
-                "Son los patios pendientes de toda la agenda y la suma de lo que valen si se hacen. No es dinero ya cobrado. Cuántos clientes hay, y el dinero si cada uno pagara una vez, está en Clientes, en Activos, y con el detalle en Inventario de clientes.",
-                "These are the pending yards on the whole schedule and what they are worth if they get done. It is not money already collected. How many clients there are, and the money if each paid once, is in Clients, under Active, and in detail in Client inventory.",
-              )}
-            />
+            <Hint compact topic="agenda-todo" />
           ) : null}
         </p>
       </div>
@@ -701,20 +681,7 @@ function AgendaPage() {
         open={Boolean(askAcc)}
         title={askAcc === "today" ? tx("¿Pasar los pendientes de hoy?", "Move today's pending yards?") : tx("¿Pasar el trabajo atrasado?", "Move the late work?")}
         hint={
-          <Hint
-            compact
-            text={
-              askAcc === "today"
-                ? tx(
-                    "Pasa los patios de hoy que siguen pendientes al día que elijas. Los que ya marcaste Hecho se quedan. No se cobra al pasarlos. La razón, si la pones, queda en esa fecha.",
-                    "Moves today's yards that are still pending to the day you choose. Ones you already marked Done stay. Nothing is collected by moving them. The reason, if you add one, stays on that date.",
-                  )
-                : tx(
-                    "Pasa los patios que ya iban tarde al día que elijas. No se marcan Hecho ni se cobra. La razón, si la pones, queda en esa fecha.",
-                    "Moves the yards that were already late to the day you choose. They are not marked Done and nothing is collected. The reason, if you add one, stays on that date.",
-                  )
-            }
-          />
+          <Hint compact topic={askAcc === "today" ? "pasar-pendientes" : "pasar-atrasado"} />
         }
         description={
           <div className="grid gap-2">
@@ -836,14 +803,7 @@ function DayReport({ rows }: { rows: { reason: string; name: string }[] }) {
     <div className="mt-2 min-w-0 rounded-md bg-surface-2 px-3 py-2.5 text-fg ring-1 ring-border">
       <div className="flex min-w-0 items-start gap-1">
         <p className="min-w-0 flex-1 text-sm font-semibold leading-snug">{tx("¿Por qué no se trabajó este día?", "Why was this day not worked?")}</p>
-        <Hint
-          compact
-          manual="agenda-dia"
-          text={tx(
-            "Aquí se reporta la razón de por qué no se siguió trabajando en esta fecha. Si se trabajó normalmente, este reporte no aparece.",
-            "This report says why work did not continue on that date. If the day was worked as usual, this report does not appear.",
-          )}
-        />
+        <Hint compact topic="agenda-dia" />
       </div>
       <div className="mt-1 grid gap-1">
         {[...groups].map(([reason, names]) => (

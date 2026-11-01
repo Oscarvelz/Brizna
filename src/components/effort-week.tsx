@@ -67,12 +67,7 @@ export function EffortWeek({
       className="cif-sec"
       title={title}
       hint={
-        <Hint
-          text={tx(
-            "Toca un día para poner su meta de patios. La meta de un lunes (o el día que toques) se mantiene las semanas siguientes. Si cambias un día concreto, solo cambia esa fecha. Si te ayudan, súbela. Si quieres, iguala la meta a lo que ya cortaste.",
-            "Tap a day to set its yard goal. A Monday goal (or the day you tap) stays for later weeks. Changing one date changes only that date. Raise it if you have help. You can also match the goal to what you already cut.",
-          )}
-        />
+        <Hint topic="esfuerzo" />
       }
     >
       <p className="mb-3 text-sm text-muted">

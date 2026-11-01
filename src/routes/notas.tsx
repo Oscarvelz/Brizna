@@ -457,7 +457,7 @@ function PadBody({
             <ChevronLeft className="size-5 shrink-0" />
             <span>{tx("Abrir bloc", "Open pad")}</span>
           </button>
-          <Hint manual="notas" text={t("notes.placeholder")} />
+          <Hint topic="notas" />
           <span className="min-w-0 flex-1" />
           <CalcButton pressed={calcOn} onClick={() => setCalcOn((value) => !value)} />
           {!draftOn && page ? (
@@ -1083,7 +1083,7 @@ function WeekAccordion({
           <ChevronDown className={cn("size-4 shrink-0 text-muted transition-transform", !shown && "-rotate-90")} />
           <h2 className="truncate font-display text-lg font-semibold">{t("notes.week")}</h2>
         </button>
-        <Hint text={t("notes.weekHelp")} manual="hoy" />
+        <Hint topic="esta-semana" />
         <button
           type="button"
           aria-pressed={pinned}

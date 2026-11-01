@@ -8,6 +8,7 @@ import "@/sky.css";
 import "@/weather-sky.css";
 import "@/cifras.css";
 import "@/asesor.css";
+import "@/clima.css";
 import { restoreSky } from "@/lib/weather-sky";
 restoreSky();
 import { APPEARANCE_BOOT_SCRIPT } from "@/lib/theme";

@@ -12,6 +12,7 @@ import {
   type CifraId,
 } from "@/lib/cifras-order";
 import { emphasize, useTx, useI18n } from "@/lib/i18n";
+import { rememberOrigin } from "@/lib/manual/nav";
 
 export function CifrasOrderButton() {
   const tx = useTx();
@@ -72,16 +73,20 @@ export function CifrasOrderButton() {
                 <p className="mt-2 text-sm text-muted">
                   {emphasize(
                     tx(
-                      "Sube o baja cada bloque. Orden de siempre prepara el orden original, pero no lo guarda solo. Al guardar, Cifras queda en ese orden en este teléfono. No se borra nada.",
-                      "Move each block up or down. Usual order prepares the original order, but it does not save by itself. When you save, Figures stays in that order on this phone. Nothing is deleted.",
+                      "Sube o baja cada bloque. Orden de siempre prepara el orden original, pero no lo guarda solo. Al guardar, Estudio queda en ese orden en este teléfono. No se borra nada.",
+                      "Move each block up or down. Usual order prepares the original order, but it does not save by itself. When you save, Study stays in that order on this phone. Nothing is deleted.",
                     ),
                   )}
                 </p>
                 <Link
-                  to="/ajustes"
-                  hash="ayuda-cifras-orden"
+                  to="/manual"
+                  search={{ t: "orden-cifras" }}
+                  resetScroll={false}
                   className="mt-2 inline-block text-sm underline opacity-80"
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    setOpen(false);
+                    rememberOrigin("/estadisticas");
+                  }}
                 >
                   {t("common.more")}
                 </Link>

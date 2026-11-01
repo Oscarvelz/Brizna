@@ -51,8 +51,6 @@ const LINKS: Record<string, Omit<NameDest, "term">> = {
   Figures: { to: "/estadisticas" },
   Propina: { to: "/estadisticas" },
   Tip: { to: "/estadisticas" },
-  "Días del año": { to: "/estadisticas" },
-  "Days in the year": { to: "/estadisticas" },
   "Días parados": { to: "/estadisticas", hash: "cif-horas" },
   "Stopped days": { to: "/estadisticas", hash: "cif-horas" },
   Agenda: { to: "/agenda" },

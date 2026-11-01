@@ -24,16 +24,6 @@ export function ServicePause({
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const hint = paused
-    ? tx(
-        "En pausa: no hay cortes ni trabajos hasta que decidas Continuar. El caso vive en En espera.",
-        "Paused: no cuts or jobs until you tap Play. The case lives in Waiting.",
-      )
-    : tx(
-        "La función Pausa deja el patio quieto mientras pagan la deuda. No se agenda hasta que decidas Continuar.",
-        "The Pause function holds the yard while they pay the debt. It is not scheduled until you choose Play.",
-      );
-
   async function confirm() {
     setBusy(true);
     try {
@@ -67,7 +57,7 @@ export function ServicePause({
         {paused ? <Play className="size-4 fill-current" /> : <Pause className="size-4" />}
         {labeled ? (paused ? tx("Continuar", "Play") : tx("Pausa", "Pause")) : null}
       </button>
-      <Hint compact manual="pausa" text={hint} />
+      <Hint compact topic="pausa" alt={paused} />
       <ConfirmDialog
         open={open}
         title={
