@@ -687,7 +687,7 @@ function TabletDock({
                 key={count}
                 type="button"
                 onClick={() => onChange({ ...layout, count })}
-                className={cn("h-11 rounded-full text-sm font-semibold", layout.count === count ? "bg-primary text-primary-fg" : "bg-bg text-muted")}
+                className={cn("h-11 rounded-full text-sm font-semibold", layout.count === count ? "bz-pick" : "bg-bg text-muted")}
               >
                 {count === 1 ? tx("1 pantalla", "1 screen") : tx("2 pantallas", "2 screens")}
               </button>

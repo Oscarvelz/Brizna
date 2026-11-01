@@ -152,7 +152,7 @@ function Chip({ on, onClick, children, disabled, title, data }: { on: boolean; o
       {...data}
       className={cn(
         "inline-flex h-10 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold transition-colors disabled:opacity-40",
-        on ? "bg-primary text-primary-fg shadow-card" : "bg-surface-2 text-fg hover:bg-border",
+        on ? "bz-pick" : "bg-surface-2 text-fg hover:bg-border",
       )}
     >
       {on ? <Check className="size-4" /> : null}
@@ -344,7 +344,7 @@ export function ExportSheet({ open, preset, onClose }: { open: boolean; preset: 
                     }}
                     className={cn(
                       "flex min-h-[4.5rem] flex-col items-start gap-1 rounded-md px-3 py-2.5 text-left transition-[box-shadow,background-color]",
-                      on ? "bg-primary text-primary-fg shadow-card" : "bg-surface shadow-card hover:shadow-card-hover",
+                      on ? "bz-pick bz-pick-icon" : "bg-surface shadow-card hover:shadow-card-hover",
                     )}
                   >
                     <span className="flex items-center gap-1.5 text-sm font-semibold leading-tight">
@@ -556,7 +556,7 @@ export function ExportSheet({ open, preset, onClose }: { open: boolean; preset: 
                   role="radio"
                   aria-checked={shareKind === k}
                   onClick={() => setShareKind(k)}
-                  className={cn("h-7 rounded-full px-2.5 font-semibold", shareKind === k ? "bg-primary text-primary-fg" : "bg-surface-2 text-fg")}
+                  className={cn("h-7 rounded-full px-2.5 font-semibold", shareKind === k ? "bz-pick" : "bg-surface-2 text-fg")}
                 >
                   {k === "pdf" ? "PDF" : tx("Hoja", "Sheet")}
                 </button>

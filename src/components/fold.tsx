@@ -161,26 +161,33 @@ export function Fold({
   }
 
   return (
-    <section id={id} style={style} className={cn("rounded-xl bg-surface shadow-card", className)}>
-      <div className="flex items-center gap-0.5 px-2 py-1">
+    <section
+      id={id}
+      style={style}
+      data-open={shown ? "" : undefined}
+      className={cn("bz-fold rounded-xl bg-surface shadow-card", className)}
+    >
+      <div className="bz-fold-head flex items-center gap-0.5 px-2 py-1">
         <button
           type="button"
           aria-expanded={shown}
           aria-label={tx("Abrir o cerrar", "Open or close")}
           onClick={toggleOpen}
-          className="grid size-9 shrink-0 place-items-center"
+          className="bz-fold-chev grid size-9 shrink-0 place-items-center"
         >
-          <ChevronDown className={cn("size-4 text-muted transition-transform", !shown && "-rotate-90")} />
+          <span className="bz-fold-chev-dot grid size-7 place-items-center rounded-full">
+            <ChevronDown className={cn("size-4 transition-transform", !shown && "-rotate-90")} />
+          </span>
         </button>
         <div
-          className={cn("flex min-h-11 min-w-0 flex-1 items-center overflow-hidden font-display text-base font-semibold", titleClassName)}
+          className={cn("bz-fold-title flex min-h-11 min-w-0 flex-1 items-center overflow-hidden font-display text-base font-semibold", titleClassName)}
           onClick={(event) => {
             if ((event.target as HTMLElement).closest("[data-no-fold]")) return;
             toggleOpen();
           }}
         >
           {title}
-          {peek && !shown ? <span className="ml-auto shrink-0 truncate pl-2 font-sans text-sm font-semibold tabular-nums text-muted">{peek}</span> : null}
+          {peek && !shown ? <span className="bz-fold-peek ml-auto shrink-0 truncate font-sans text-sm font-semibold tabular-nums">{peek}</span> : null}
         </div>
         {hint}
         <button
@@ -189,14 +196,14 @@ export function Fold({
           aria-label={pinned ? tx("Dejar de mantener abierto", "Stop keeping this open") : tx("Mantener abierto", "Keep open")}
           onClick={togglePin}
           className={cn(
-            "grid size-9 shrink-0 place-items-center rounded-full",
+            "bz-fold-pin grid size-9 shrink-0 place-items-center rounded-full",
             pinned ? "bz-pick bz-pick-icon" : "text-muted",
           )}
         >
           <Pin className={cn("size-3.5", pinned && "fill-current")} />
         </button>
       </div>
-      {shown ? <div className={cn("px-3 pb-3", contentClassName)}>{children}</div> : null}
+      {shown ? <div className={cn("bz-fold-body px-3 pb-3", contentClassName)}>{children}</div> : null}
     </section>
   );
 }

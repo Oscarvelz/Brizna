@@ -978,3 +978,116 @@ html:not(.theme-dark):not(.theme-amoled) {
     inset 0 0 0 1px rgb(52 44 24 / 0.14), inset 0 1px 0 rgb(255 255 255 / 0.7),
     0 2px 4px rgb(40 34 18 / 0.08), 0 14px 26px -14px rgb(40 34 18 / 0.32);
 }
+
+/* Fold skin (Oscar, 2026-11-01): same colors and buttons, a calmer premium finish in every theme.
+   State folds set --fold-tone (espera, perdonado, hecho...) and carry it in the chevron chip, a
+   tinted hairline contour and the number pill instead of a thick left bar. Solid surfaces only. */
+.bz-fold {
+  --fold-ink: var(--color-fg);
+  --fold-icon: var(--color-muted);
+  --fold-chip: color-mix(in srgb, var(--color-fg) 7%, var(--color-surface));
+  --fold-line: color-mix(in srgb, var(--color-fg) 11%, transparent);
+}
+.bz-fold-toned {
+  --fold-ink: color-mix(in srgb, var(--fold-tone) 50%, var(--color-fg));
+  --fold-icon: color-mix(in srgb, var(--fold-tone) 62%, var(--color-muted));
+  --fold-chip: color-mix(in srgb, var(--fold-tone) 14%, var(--color-surface));
+  --fold-line: color-mix(in srgb, var(--fold-tone) 22%, transparent);
+}
+html:not(.theme-dark):not(.theme-amoled) .bz-fold-toned {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--fold-tone) 24%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 0.6),
+    0 1px 1.5px rgb(40 34 18 / 0.07),
+    0 10px 22px -14px rgb(40 34 18 / 0.28);
+}
+html.theme-dark .bz-fold-toned,
+html.theme-amoled .bz-fold-toned {
+  --fold-ink: color-mix(in srgb, var(--fold-tone) 40%, #ffffff);
+  --fold-chip: color-mix(in srgb, var(--fold-tone) 22%, #0b0b0b);
+  --fold-line: color-mix(in srgb, var(--fold-tone) 30%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 0 0 1px color-mix(in srgb, var(--fold-tone) 38%, transparent),
+    0 18px 36px -20px rgb(0 0 0 / 0.85);
+}
+html.theme-dark .bz-fold, html.theme-amoled .bz-fold { --fold-line: rgb(255 255 255 / 0.12); }
+html.theme-dark .bz-fold:not(.bz-fold-toned), html.theme-amoled .bz-fold:not(.bz-fold-toned) {
+  --fold-chip: color-mix(in srgb, #ffffff 9%, var(--color-surface));
+}
+
+.bz-fold-title { color: var(--fold-ink); letter-spacing: -0.012em; line-height: 1.2; }
+.bz-fold-title:has(> .bz-fold-peek) { column-gap: 0.5rem; }
+
+/* Chevron in a small round chip that turns smoothly. */
+.bz-fold-chev-dot {
+  background-color: var(--fold-chip);
+  color: var(--fold-ink);
+  box-shadow: inset 0 0 0 1px var(--fold-line);
+  transition: background-color 0.2s ease, transform 0.18s ease;
+}
+.bz-fold-toned .bz-fold-chev-dot { color: color-mix(in srgb, var(--fold-tone) 82%, var(--color-fg)); }
+html.theme-dark .bz-fold-toned .bz-fold-chev-dot,
+html.theme-amoled .bz-fold-toned .bz-fold-chev-dot { color: color-mix(in srgb, var(--fold-tone) 70%, #ffffff); }
+.bz-fold-chev svg { transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1); }
+.bz-fold-chev:active .bz-fold-chev-dot { transform: scale(0.9); }
+
+/* ? and pin in the fold's own ink, not loose grey. */
+.bz-fold-head .bz-hint-btn:not(.is-open) { color: var(--fold-icon); }
+.bz-fold-head .bz-hint-btn:not(.is-open):hover { color: var(--fold-ink); }
+.bz-fold-pin:not([aria-pressed="true"]) { color: var(--fold-icon); }
+
+/* The figure in the title row: a neat tabular pill in the state color. */
+.bz-fold-badge {
+  flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 2.25rem; height: 1.75rem; padding: 0 0.7rem;
+  border-radius: 999px;
+  font-family: var(--font-sans); font-size: 0.9375rem; font-weight: 750;
+  font-variant-numeric: tabular-nums; letter-spacing: 0; line-height: 1;
+  color: color-mix(in srgb, var(--fold-tone) 82%, var(--color-fg));
+  background-color: color-mix(in srgb, var(--fold-tone) 10%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fold-tone) 30%, transparent);
+}
+html.theme-dark .bz-fold-badge, html.theme-amoled .bz-fold-badge {
+  color: color-mix(in srgb, var(--fold-tone) 72%, #ffffff);
+  background-color: color-mix(in srgb, var(--fold-tone) 24%, #0b0b0b);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fold-tone) 45%, transparent);
+}
+.bz-fold-peek {
+  padding: 0.2rem 0.65rem; border-radius: 999px;
+  color: var(--fold-ink);
+  background-color: var(--fold-chip);
+  box-shadow: inset 0 0 0 1px var(--fold-line);
+}
+
+/* Open body: a hairline under the header, then a smooth reveal. */
+.bz-fold-body { position: relative; padding-top: 0.625rem; interpolate-size: allow-keywords; animation: bz-fold-open 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.bz-fold-body::before {
+  content: ""; position: absolute; top: 0; left: 0.875rem; right: 0.875rem; height: 1px;
+  background-color: var(--fold-line);
+}
+@keyframes bz-fold-open {
+  from { height: 0; opacity: 0; overflow: clip; padding-top: 0; padding-bottom: 0; }
+  60% { opacity: 1; }
+  to { height: auto; overflow: clip; }
+}
+
+/* Rows inside a fold: a tidy list with hairline separators, label left, figure right. */
+.bz-fold-body .bz-row { position: relative; margin-top: 0; padding-inline: 0.625rem; border-radius: 0.875rem; }
+.bz-fold-body .bz-row + .bz-row::before {
+  content: ""; position: absolute; top: 0; left: 0.625rem; right: 0.625rem; height: 1px;
+  background-color: var(--fold-line);
+}
+.bz-fold-body .bz-row-on::before, .bz-fold-body .bz-row-on + .bz-row::before { display: none; }
+.bz-row-val { display: inline-flex; align-items: baseline; gap: 0.6rem; }
+.bz-row-sub { font-family: var(--font-sans); font-size: 0.8125rem; font-weight: 550; color: var(--color-muted); }
+.bz-row-amt { min-width: 3ch; text-align: right; font-size: 0.9375rem; color: var(--color-fg); }
+/* Selected row: an inset outline, never a Tailwind ring. */
+.bz-row-on { box-shadow: var(--shadow-card), inset 0 0 0 2px var(--color-soil); }
+.bz-row-on-wash { box-shadow: var(--shadow-card), inset 0 0 0 2px var(--color-primary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bz-fold-body { animation: none; }
+  .bz-fold-chev svg, .bz-fold-chev-dot { transition: none; }
+}

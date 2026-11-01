@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { AppShell } from "@/components/app-shell";
@@ -208,11 +208,11 @@ function CobrosPage() {
         <Fold
           id="cob-espera"
           group="cobros"
-          className="border-l-4 border-hold bg-hold-bg"
+          className="bz-fold-toned bg-hold-bg [--fold-tone:var(--color-hold)]"
           title={
-            <span className="flex min-w-0 items-center justify-between gap-2 text-xs font-medium tracking-wide text-muted uppercase">
+            <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
               <span className="min-w-0 truncate">{tx("En espera", "Waiting")}</span>
-              <span className="font-display text-base font-semibold text-hold normal-case">
+              <span className="bz-fold-badge">
                 {data
                   ? String(data.clients.filter((c) => inEspera(c)).length)
                   : "—"}
@@ -230,11 +230,11 @@ function CobrosPage() {
         <Fold
           id="cob-perdonado"
           group="cobros"
-          className="border-l-4 border-late bg-late-bg"
+          className="bz-fold-toned bg-late-bg [--fold-tone:var(--color-late)]"
           title={
-            <span className="flex min-w-0 items-center justify-between gap-2 text-xs font-medium tracking-wide text-muted uppercase">
+            <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
               <span className="min-w-0 truncate">{tx("Perdonado este mes", "Forgiven this month")}</span>
-              <span className="font-display text-base font-semibold text-late normal-case">
+              <span className="bz-fold-badge">
                 {data ? money(data.totals.waivedMonth) : "—"}
               </span>
             </span>
@@ -545,9 +545,9 @@ function WorkNest({
     <Fold
       id="cob-hecho"
       group="cobros"
-      className="mb-2 border-l-4 border-soil bg-soil-bg"
+      className="bz-fold-toned mb-2 bg-soil-bg [--fold-tone:var(--color-soil)]"
       title={
-        <span className="text-xs font-medium tracking-wide text-soil uppercase">
+        <span className="min-w-0 truncate">
           {tx("Trabajo ya hecho", "Work already done")}
         </span>
       }
@@ -558,21 +558,36 @@ function WorkNest({
       <NestRow
         view="doneWeek"
         label={tx("Semana", "Week")}
-        value={`${weekCuts} ${weekCuts === 1 ? tx("corte", "cut") : tx("cortes", "cuts")} · ${weekAmount}`}
+        value={
+          <>
+            <span className="bz-row-sub">{weekCuts} {weekCuts === 1 ? tx("corte", "cut") : tx("cortes", "cuts")}</span>
+            <span className="bz-row-amt">{weekAmount}</span>
+          </>
+        }
         active={current === "doneWeek"}
         muted
       />
       <NestRow
         view="doneMonth"
         label={tx("Mes", "Month")}
-        value={`${monthCuts} ${monthCuts === 1 ? tx("corte", "cut") : tx("cortes", "cuts")} · ${monthAmount}`}
+        value={
+          <>
+            <span className="bz-row-sub">{monthCuts} {monthCuts === 1 ? tx("corte", "cut") : tx("cortes", "cuts")}</span>
+            <span className="bz-row-amt">{monthAmount}</span>
+          </>
+        }
         active={current === "doneMonth"}
         muted
       />
       <NestRow
         view="doneYear"
         label={tx("Año", "Year")}
-        value={`${yearCuts} ${yearCuts === 1 ? tx("corte", "cut") : tx("cortes", "cuts")} · ${yearAmount}`}
+        value={
+          <>
+            <span className="bz-row-sub">{yearCuts} {yearCuts === 1 ? tx("corte", "cut") : tx("cortes", "cuts")}</span>
+            <span className="bz-row-amt">{yearAmount}</span>
+          </>
+        }
         active={current === "doneYear"}
         muted
       />
@@ -590,7 +605,7 @@ function NestRow({
 }: {
   view: CobrosView;
   label: string;
-  value: string;
+  value: ReactNode;
   active?: boolean;
   muted?: boolean;
   wash?: boolean;
@@ -601,9 +616,8 @@ function NestRow({
       search={{ view }}
       hash="lista"
       className={cn(
-        "mt-1 flex min-h-11 items-center justify-between rounded-sm px-2 py-1 touch-manipulation",
-        active && wash && "shadow-card ring-2 ring-primary",
-        active && !wash && "shadow-card ring-2 ring-soil",
+        "bz-row mt-1 flex min-h-11 items-center justify-between rounded-sm px-2 py-1 touch-manipulation",
+        active && (wash ? "bz-row-on bz-row-on-wash" : "bz-row-on"),
         active && wash && "nest-on",
         active && !wash && !muted && "bg-surface",
         active && muted && "bg-[color-mix(in_srgb,var(--color-soil-bg)_42%,var(--color-surface))]",
@@ -612,7 +626,7 @@ function NestRow({
       )}
     >
       <span className={cn("text-sm font-semibold", muted && "text-soil")}>{label}</span>
-      <span className="font-display text-sm font-semibold tabular-nums">{value}</span>
+      <span className="bz-row-val font-display text-sm font-semibold tabular-nums">{value}</span>
     </Link>
   );
 }

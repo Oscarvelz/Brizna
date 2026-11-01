@@ -82,7 +82,7 @@ export function FingerprintControl() {
                 key={m}
                 type="button"
                 onClick={() => { setLockAfterMinutes(m); setAfter(m); }}
-                className={`h-9 rounded-full text-xs font-semibold ${after === m ? "bg-primary text-primary-fg" : "bg-surface-2 text-fg"}`}
+                className={`h-9 rounded-full text-xs font-semibold ${after === m ? "bz-pick" : "bg-surface-2 text-fg"}`}
               >
                 {m < 60 ? `${m} min` : `${m / 60} h`}
               </button>

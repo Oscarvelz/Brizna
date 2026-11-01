@@ -626,7 +626,7 @@ function FilterChip({ on, onClick, children }: { on: boolean; onClick: () => voi
       onClick={onClick}
       className={cn(
         "h-9 shrink-0 rounded-full px-3 text-xs font-semibold",
-        on ? "bg-primary text-primary-fg" : "bg-bg text-muted",
+        on ? "bz-pick" : "bg-bg text-muted",
       )}
     >
       {children}
@@ -998,7 +998,7 @@ function NoteList({
                 }}
                 className={cn(
                   "h-11 rounded-md px-3 text-left text-sm font-semibold",
-                  homeOf(moveFor) === folder.name ? "bg-primary text-primary-fg" : "bg-bg text-fg",
+                  homeOf(moveFor) === folder.name ? "bz-pick" : "bg-bg text-fg",
                 )}
               >
                 {folder.name}
@@ -1159,7 +1159,7 @@ function StylePick({
             onClick={() => onDesign(item.id)}
             className={cn(
               "h-8 rounded-full px-3 text-xs font-semibold",
-              design === item.id ? "bg-primary text-primary-fg" : "bg-bg text-muted",
+              design === item.id ? "bz-pick" : "bg-bg text-muted",
             )}
           >
             {item.label}
@@ -1270,7 +1270,7 @@ function GearSheet({
               onClick={() => onColor(mode)}
               className={cn(
                 "h-10 rounded-full text-sm font-semibold",
-                colorMode === mode ? "bg-primary text-primary-fg" : "text-muted",
+                colorMode === mode ? "bz-pick" : "text-muted",
               )}
             >
               {label}

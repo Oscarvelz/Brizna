@@ -458,7 +458,7 @@ function AjustesPage() {
                     applyLocale(code);
                     void updateSettings({ data: { locale: code } }).then(() => qc.invalidateQueries({ queryKey: ["settings"] }));
                   }}
-                  className={cn("h-11 rounded-md text-sm font-semibold", locale === code ? "bg-primary text-primary-fg" : "bg-sun text-muted")}
+                  className={cn("h-11 rounded-md text-sm font-semibold", locale === code ? "bz-pick" : "bg-sun text-muted")}
                 >
                   {code === "es" ? t("lang.es") : t("lang.en")}
                 </button>

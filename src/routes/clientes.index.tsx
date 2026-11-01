@@ -433,7 +433,7 @@ function ClientesPage() {
                 }}
                 className={cn(
                   "rounded-xl px-3 py-2 text-left",
-                  filter === item.value ? "bg-primary text-primary-fg" : "hover:bg-sun",
+                  filter === item.value ? "bz-pick" : "hover:bg-sun",
                 )}
               >
                 <span className="block text-sm font-semibold">{tx(item.label, FILTER_EN[item.value].label)}</span>
@@ -725,7 +725,7 @@ function ClientListCard({
                 onClick={onToggle}
                 className={cn(
                   "mt-0.5 grid size-11 shrink-0 place-items-center rounded-sm",
-                  selected ? "bg-primary text-primary-fg" : "bg-sun text-muted",
+                  selected ? "bz-pick bz-pick-icon" : "bg-sun text-muted",
                 )}
               >
                 {selected ? <Check className="size-5" /> : null}
