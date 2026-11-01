@@ -304,7 +304,7 @@ export const MANUAL: Record<LocaleName, ManualSection[]> = {
     {
       id: "cifras",
       title: "Cifras",
-      body: "Cifras mira el tiempo, no el cobro del momento. La lupa busca una cifra sin ocupar todo el ancho. Cada bloque se pliega, y el pin lo deja abierto siempre. La palomilla de arriba despliega todo de una vez; si la quitas, se pliega. Junto al título Estadísticas hay un botón de orden. Sube o baja cada bloque y confirma con Guardar. Cancelar no cambia nada. El orden de siempre es Números, después Esta semana frente a la anterior, luego Horas de trabajo y debajo Días del año. De por vida son dos cuentas juntas: el dinero de Cobrado desde el primer pago, y los patios en Hecho desde el primero. No son la misma cosa. El promedio suma y divide. La mediana es el punto medio, no el promedio. El ticket es lo cobrado este año dividido entre los patios hechos. Las propinas se cuentan aparte y no inflan Cobrado. Días del año compara trabajo y descanso. La palomilla de Días del año deja fuera el día que casi nunca se trabaja, para ver solo los días hábiles.",
+      body: "Cifras mira el tiempo, no el cobro del momento. Cada bloque empieza con su cifra grande y una frase corta; el detalle va debajo. La lupa busca una cifra sin ocupar todo el ancho. Cada bloque se pliega, y el pin lo deja abierto siempre. La palomilla de arriba despliega todo de una vez; si la quitas, se pliega. Junto al título Estadísticas hay un botón de orden. Sube o baja cada bloque y confirma con Guardar. Cancelar no cambia nada. El orden de siempre empieza con Este mes y Meta del mes. Meta del mes suma la meta diaria de patios de Esfuerzo de la semana y dice cuántos por día faltan. Ingreso fijo del mes es lo que dejan tus clientes fijos en un mes normal. $ por hora divide lo cobrado entre tus horas confirmadas. De por vida, en Cada año, son dos cuentas: el dinero de Cobrado desde el primer pago, y los cortes hechos desde el primero. No son la misma cosa. Las propinas se cuentan aparte y no inflan Cobrado.",
       points: [
         {
           id: "cifras-semana",
@@ -340,7 +340,7 @@ export const MANUAL: Record<LocaleName, ManualSection[]> = {
         },
         {
           id: "cifras-orden",
-          body: "Orden de las cifras: el botón junto a Estadísticas. Sube o baja cada bloque. Guardar pregunta antes de dejar ese orden. Cancelar no cambia nada. Orden de siempre prepara Números, Esta semana frente a la anterior, Horas de trabajo y, debajo, Días del año. Hay que guardar para que quede.",
+          body: "Orden de las cifras: el botón junto a Estadísticas. Sube o baja cada bloque. Guardar pregunta antes de dejar ese orden. Cancelar no cambia nada. Orden de siempre prepara Este mes, Meta del mes, Ingresos mes a mes y el resto en su lugar de siempre. Hay que guardar para que quede.",
         },
       ],
     },
@@ -535,7 +535,7 @@ export const MANUAL: Record<LocaleName, ManualSection[]> = {
     {
       id: "cifras",
       title: "Figures",
-      body: "Figures looks at time, not the payment you are taking right now. The magnifying glass searches a figure without a full-width bar. Each block folds closed, and the pin keeps one open. The check at the top expands everything at once; clear it and they fold closed. Next to the Statistics title there is an order button. Move each block up or down and confirm with Save. Cancel changes nothing. The usual order is Numbers, then This week versus the previous one, then Work hours, and Days in the year under that. Lifetime is two counts side by side: Collected money since the first payment, and yards marked Done since the first one. They are not the same thing. The average adds and divides. The median is the middle point, not the average. The ticket is this year's collected money divided by finished yards. A tip is counted apart and does not inflate Collected. Days in the year compares work and rest. The check on Days in the year leaves out the day that is almost never worked, so you only see business days.",
+      body: "Figures looks at time, not the payment you are taking right now. Each block starts with its big figure and one short sentence; detail goes below. The magnifying glass searches a figure without a full-width bar. Each block folds closed, and the pin keeps one open. The check at the top expands everything at once; clear it and they fold closed. Next to the Statistics title there is an order button. Move each block up or down and confirm with Save. Cancel changes nothing. The usual order starts with This month and Month goal. Month goal adds up the daily yard goals from This week's effort and says how many a day are left. Steady monthly income is what your regular clients bring in a normal month. $ per hour divides what you collected by your confirmed hours. Lifetime, in Each year, is two counts: Collected money since the first payment, and cuts done since the first one. They are not the same thing. A tip is counted apart and does not inflate Collected.",
       points: [
         { id: "cifras-semana", body: "Yards this week: yards marked Done this week, Monday through Sunday." },
         { id: "cifras-semana-pasada", body: "Yards last week: the same count, for the previous week." },
@@ -553,7 +553,7 @@ export const MANUAL: Record<LocaleName, ManualSection[]> = {
         },
         {
           id: "cifras-orden",
-          body: "Order of the figures: the button next to Statistics. Move each block up or down. Save asks before keeping that order. Cancel changes nothing. Usual order sets Numbers, This week versus the previous one, Work hours, and Days in the year under that. You still have to save.",
+          body: "Order of the figures: the button next to Statistics. Move each block up or down. Save asks before keeping that order. Cancel changes nothing. Usual order sets This month, Month goal, Income month by month, and the rest in their usual place. You still have to save.",
         },
       ],
     },

@@ -3064,6 +3064,7 @@ export const getFinanceStats = createServerFn({ method: "GET" })
         collected: unknown;
         completed: unknown;
         cuts: unknown;
+        jobs: unknown;
         extra_cuts: unknown;
         extra_amount: unknown;
         once_cuts: unknown;
@@ -3077,8 +3078,11 @@ export const getFinanceStats = createServerFn({ method: "GET" })
              where user_id = $1 and status = 'done'
                and scheduled_date >= $2::date and scheduled_date <= $3::date) as completed,
            (select count(*) from jobs
-             where user_id = $1 and status = 'done'
+             where user_id = $1 and status = 'done' and kind = 'cut'
                and scheduled_date >= $2::date and scheduled_date <= $3::date) as cuts,
+           (select count(*) from jobs
+             where user_id = $1 and status = 'done'
+               and scheduled_date >= $2::date and scheduled_date <= $3::date) as jobs,
            (select count(*) from jobs
              where user_id = $1 and status = 'done' and kind = 'extra'
                and scheduled_date >= $2::date and scheduled_date <= $3::date) as extra_cuts,
@@ -3099,6 +3103,7 @@ export const getFinanceStats = createServerFn({ method: "GET" })
         collected: money(rows[0]?.collected),
         completed: money(rows[0]?.completed),
         cuts: intId(rows[0]?.cuts),
+        jobs: intId(rows[0]?.jobs),
         extraCuts: intId(rows[0]?.extra_cuts),
         extraAmount: money(rows[0]?.extra_amount),
         onceCuts: intId(rows[0]?.once_cuts),
@@ -3115,6 +3120,7 @@ export const getFinanceStats = createServerFn({ method: "GET" })
         collected: unknown;
         completed: unknown;
         cuts: unknown;
+        jobs: unknown;
         extra_cuts: unknown;
         extra_amount: unknown;
         once_cuts: unknown;
@@ -3128,8 +3134,11 @@ export const getFinanceStats = createServerFn({ method: "GET" })
              where user_id = $1 and status = 'done'
                and scheduled_date >= $2::date and scheduled_date <= $3::date) as completed,
            (select count(*) from jobs
-             where user_id = $1 and status = 'done'
+             where user_id = $1 and status = 'done' and kind = 'cut'
                and scheduled_date >= $2::date and scheduled_date <= $3::date) as cuts,
+           (select count(*) from jobs
+             where user_id = $1 and status = 'done'
+               and scheduled_date >= $2::date and scheduled_date <= $3::date) as jobs,
            (select count(*) from jobs
              where user_id = $1 and status = 'done' and kind = 'extra'
                and scheduled_date >= $2::date and scheduled_date <= $3::date) as extra_cuts,
@@ -3150,6 +3159,7 @@ export const getFinanceStats = createServerFn({ method: "GET" })
         collected: money(rows[0]?.collected),
         completed: money(rows[0]?.completed),
         cuts: intId(rows[0]?.cuts),
+        jobs: intId(rows[0]?.jobs),
         extraCuts: intId(rows[0]?.extra_cuts),
         extraAmount: money(rows[0]?.extra_amount),
         onceCuts: intId(rows[0]?.once_cuts),
@@ -3166,6 +3176,7 @@ export const getFinanceStats = createServerFn({ method: "GET" })
         collected: unknown;
         completed: unknown;
         cuts: unknown;
+        jobs: unknown;
         extra_cuts: unknown;
         extra_amount: unknown;
         once_cuts: unknown;
@@ -3179,8 +3190,11 @@ export const getFinanceStats = createServerFn({ method: "GET" })
              where user_id = $1 and status = 'done'
                and scheduled_date >= $2::date and scheduled_date <= $3::date) as completed,
            (select count(*) from jobs
-             where user_id = $1 and status = 'done'
+             where user_id = $1 and status = 'done' and kind = 'cut'
                and scheduled_date >= $2::date and scheduled_date <= $3::date) as cuts,
+           (select count(*) from jobs
+             where user_id = $1 and status = 'done'
+               and scheduled_date >= $2::date and scheduled_date <= $3::date) as jobs,
            (select count(*) from jobs
              where user_id = $1 and status = 'done' and kind = 'extra'
                and scheduled_date >= $2::date and scheduled_date <= $3::date) as extra_cuts,
@@ -3201,6 +3215,7 @@ export const getFinanceStats = createServerFn({ method: "GET" })
         collected: money(rows[0]?.collected),
         completed: money(rows[0]?.completed),
         cuts: intId(rows[0]?.cuts),
+        jobs: intId(rows[0]?.jobs),
         extraCuts: intId(rows[0]?.extra_cuts),
         extraAmount: money(rows[0]?.extra_amount),
         onceCuts: intId(rows[0]?.once_cuts),
@@ -3259,7 +3274,8 @@ export const getFinanceStats = createServerFn({ method: "GET" })
 
     const thisWeek = weekSeries[weekSeries.length - 1];
     const lastWeek = weekSeries[weekSeries.length - 2];
-    const sample = weekSeries.slice(-4);
+    // The 4 closed weeks before this one (the week in progress would pull the figures down).
+    const sample = weekSeries.slice(-5, -1);
     const avgWeekCuts = sample.length
       ? Math.round((sample.reduce((s, p) => s + p.cuts, 0) / sample.length) * 10) / 10
       : 0;
@@ -3304,12 +3320,14 @@ export const getFinanceStats = createServerFn({ method: "GET" })
        where user_id = $1 and paid_at >= $2::date and paid_at < ($4::date + interval '1 day')`,
       [context.userId, yearStart, monthStart, today],
     );
-    const lifeRows = await sql.query<{ collected: unknown; cuts: unknown }>(
+    const lifeRows = await sql.query<{ collected: unknown; cuts: unknown; jobs: unknown }>(
       `select
          (select coalesce(sum(amount),0) from payments
            where user_id = $1 and kind in ('paid','prepaid')) as collected,
          (select count(*) from jobs
-           where user_id = $1 and status = 'done') as cuts`,
+           where user_id = $1 and status = 'done' and kind = 'cut') as cuts,
+         (select count(*) from jobs
+           where user_id = $1 and status = 'done') as jobs`,
       [context.userId],
     );
     const owingClients = await loadClients(context.userId, today, "owing");
@@ -3340,6 +3358,7 @@ export const getFinanceStats = createServerFn({ method: "GET" })
       tipsMonth: money(tipRows[0]?.tips_month),
       lifetimeCollected: money(lifeRows[0]?.collected),
       lifetimeCuts: intId(lifeRows[0]?.cuts),
+      lifetimeJobs: intId(lifeRows[0]?.jobs),
       ...(await workFigures(context.userId, today)),
     };
   });
@@ -5340,6 +5359,7 @@ export type CifrasMonth = {
   cuts: number; // done jobs of kind 'cut'
   jobs: number; // all done jobs
   cutValue: number; // value of done 'cut' jobs (for price per cut)
+  cutsPriced: number; // done 'cut' jobs with a price above $0 (free cuts don't pull the average price down)
   extraValue: number;
   onceValue: number;
   tips: number;
@@ -5372,12 +5392,40 @@ export type CifrasInsights = {
     owingPeople: number;
     rate90: { collected: number; done: number };
   };
-  week: { cuts: number; collected: number; prevCuts: number; prevCollected: number; through: string };
+  /** Week to date vs last week to the same weekday. cuts = done 'cut' jobs; jobs = every done job. */
+  week: { cuts: number; jobs: number; collected: number; prevCuts: number; prevJobs: number; prevCollected: number; through: string };
+  /** Collected ÷ confirmed work hours, week to date and month to date. */
+  perHour: {
+    week: { collected: number; doneValue: number; minutes: number };
+    month: { collected: number; doneValue: number; minutes: number };
+  };
+  /** Baseline: active regular clients × visits a month (from their frequency) × price. */
+  baseline: {
+    total: number;
+    clients: number;
+    visits: number;
+    collected: number;
+    doneValue: number;
+    planned: number;
+    top: { id: number; name: string; visits: number; price: number; value: number }[];
+  };
+  /** Month goal from the daily yard goals (Esfuerzo de la semana): a day's own goal, or its weekday's. */
+  goal: {
+    total: number;
+    done: number;
+    dueByToday: number;
+    workDaysLeft: number;
+    perDayLeft: number;
+    todayGoal: number;
+    todayDone: number;
+    hasGoals: boolean;
+  };
   months: CifrasMonth[];
   debts: {
     total: number;
-    buckets: { key: "0-30" | "31-60" | "61-90" | "90+"; amount: number; people: number }[];
-    top: { id: number; name: string; balance: number; oldestDays: number | null; tier: PayTier; unpaidCuts: number }[];
+    /** "inicial" = owed from before any recorded cut (opening balance): its own bucket, not 90+. */
+    buckets: { key: "0-30" | "31-60" | "61-90" | "90+" | "inicial"; amount: number; people: number }[];
+    top: { id: number; name: string; balance: number; oldestDays: number | null; opening: number; tier: PayTier; unpaidCuts: number }[];
     waitPeople: number;
     seriousPeople: number;
     currentPeople: number;
@@ -5449,8 +5497,9 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
         group by 1`,
       [uid, from12, monthEnd],
     );
-    const jobRows = await sql.query<{ m: string; kind: string; n: unknown; v: unknown }>(
-      `select to_char(scheduled_date, 'YYYY-MM') as m, kind, count(*) as n, coalesce(sum(amount),0) as v
+    const jobRows = await sql.query<{ m: string; kind: string; n: unknown; np: unknown; v: unknown }>(
+      `select to_char(scheduled_date, 'YYYY-MM') as m, kind, count(*) as n, count(*) filter (where amount > 0) as np,
+              coalesce(sum(amount),0) as v
          from jobs
         where user_id = $1 and status = 'done' and scheduled_date >= $2::date and scheduled_date <= $3::date
         group by 1, 2`,
@@ -5471,6 +5520,7 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
         cuts: intId(byKind("cut")?.n),
         jobs: js.reduce((s, r) => s + intId(r.n), 0),
         cutValue: money(byKind("cut")?.v),
+        cutsPriced: intId(byKind("cut")?.np),
         extraValue: money(byKind("extra")?.v),
         onceValue: money(byKind("one_time")?.v),
         tips: money(p?.tips),
@@ -5494,10 +5544,14 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
     // Week to date vs last week to the same weekday
     const wk = await work(weekStart, today, "done");
     const pwk = await work(prevWeekStart, prevWeekCut, "done");
+    const wkCut = await work(weekStart, today, "done", "cut");
+    const pwkCut = await work(prevWeekStart, prevWeekCut, "done", "cut");
     const week = {
-      cuts: wk.count,
+      cuts: wkCut.count,
+      jobs: wk.count,
       collected: await paid(weekStart, today),
-      prevCuts: pwk.count,
+      prevCuts: pwkCut.count,
+      prevJobs: pwk.count,
       prevCollected: await paid(prevWeekStart, prevWeekCut),
       through: today,
     };
@@ -5517,9 +5571,10 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
     const bucketKey = (days: number): "0-30" | "31-60" | "61-90" | "90+" =>
       days <= 30 ? "0-30" : days <= 60 ? "31-60" : days <= 90 ? "61-90" : "90+";
     const buckets = new Map<string, { amount: number; people: Set<number> }>(
-      ["0-30", "31-60", "61-90", "90+"].map((k) => [k, { amount: 0, people: new Set<number>() }]),
+      ["0-30", "31-60", "61-90", "90+", "inicial"].map((k) => [k, { amount: 0, people: new Set<number>() }]),
     );
     const oldest = new Map<number, number | null>();
+    const openingLeft = new Map<number, number>();
     for (const c of owing) {
       let left = c.balance;
       let oldestDays: number | null = null;
@@ -5536,11 +5591,12 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
         oldestDays = days;
       }
       if (left > 0.004) {
-        // Owed from before any recorded cut (opening balance): counted as the oldest.
-        const b = buckets.get("90+")!;
+        // Owed from before any recorded cut (opening balance): its own bucket, "Saldo inicial".
+        // oldestDays keeps the age of the oldest unpaid cut only; the row says "saldo inicial" apart.
+        const b = buckets.get("inicial")!;
         b.amount += left;
         b.people.add(c.id);
-        oldestDays = oldestDays == null ? null : Math.max(oldestDays, 91);
+        openingLeft.set(c.id, Math.round(left * 100) / 100);
       }
       oldest.set(c.id, oldestDays);
     }
@@ -5563,7 +5619,7 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
     const seriousPeople = owing.filter((c) => c.payTier === "serio").length;
     const debts = {
       total: Math.round(owing.reduce((s, c) => s + c.balance, 0) * 100) / 100,
-      buckets: (["0-30", "31-60", "61-90", "90+"] as const).map((key) => ({
+      buckets: (["0-30", "31-60", "61-90", "90+", "inicial"] as const).map((key) => ({
         key,
         amount: Math.round((buckets.get(key)?.amount ?? 0) * 100) / 100,
         people: buckets.get(key)?.people.size ?? 0,
@@ -5571,7 +5627,7 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
       top: [...owing]
         .sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name))
         .slice(0, 8)
-        .map((c) => ({ id: c.id, name: c.name, balance: c.balance, oldestDays: oldest.get(c.id) ?? null, tier: c.payTier, unpaidCuts: unpaid.get(c.id) ?? 0 })),
+        .map((c) => ({ id: c.id, name: c.name, balance: c.balance, oldestDays: oldest.get(c.id) ?? null, opening: openingLeft.get(c.id) ?? 0, tier: c.payTier, unpaidCuts: unpaid.get(c.id) ?? 0 })),
       waitPeople,
       seriousPeople,
       currentPeople: Math.max(0, owing.length - waitPeople - seriousPeople),
@@ -5579,7 +5635,8 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
     };
     void owingIds;
     const outstandingRows = await sql.query<{ v: unknown; n: unknown }>(
-      `select coalesce(sum(balance),0) as v, count(*) filter (where balance > 0) as n from clients where user_id = $1`,
+      // Only what people owe: a negative balance (money ahead) must not shrink "Te deben".
+      `select coalesce(sum(balance) filter (where balance > 0),0) as v, count(*) filter (where balance > 0) as n from clients where user_id = $1`,
       [uid],
     );
 
@@ -5642,8 +5699,9 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
 
     // Price per job kind, last 12 months
     const priceRows = await sql.query<{ kind: string; n: unknown; a: unknown }>(
+      // $0 jobs (a free cut, a courtesy) don't count toward the average price.
       `select kind, count(*) as n, coalesce(avg(amount),0) as a from jobs
-        where user_id = $1 and status = 'done' and scheduled_date >= $2::date and scheduled_date <= $3::date
+        where user_id = $1 and status = 'done' and amount > 0 and scheduled_date >= $2::date and scheduled_date <= $3::date
         group by kind`,
       [uid, from12, today],
     );
@@ -5654,6 +5712,97 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
     );
     const firstWorkDate = firstRow[0]?.d ? asIsoDate(firstRow[0].d) : null;
     const anyPay = await sql.query<{ n: unknown }>(`select count(*) as n from payments where user_id = $1`, [uid]);
+
+    // $ per hour: collected ÷ confirmed work hours. Both run through the last confirmed day
+    // (today counts once its hours are confirmed), so money and hours cover the same days.
+    const hourRows = await sql.query<{ work_date: unknown; clock_in: string | null; clock_out: string | null; confirmed: boolean | null }>(
+      `select work_date, clock_in, clock_out, confirmed from work_days
+        where user_id = $1 and work_date >= $2::date and work_date <= $3::date`,
+      [uid, weekStart < monthStart ? weekStart : monthStart, today],
+    );
+    const todayConfirmed = hourRows.some((r) => asIsoDate(r.work_date) === today && r.confirmed);
+    const hourEnd = todayConfirmed ? today : addDaysISO(today, -1);
+    const minutesIn = (from: string) =>
+      hourRows.reduce((t, r) => {
+        const d = asIsoDate(r.work_date);
+        return d < from || d > hourEnd || !r.confirmed ? t : t + minutesBetween(r.clock_in, r.clock_out);
+      }, 0);
+    const perSpan = async (from: string) => {
+      if (hourEnd < from) return { collected: 0, doneValue: 0, minutes: 0 };
+      return {
+        collected: await paid(from, hourEnd),
+        doneValue: (await work(from, hourEnd, "done")).value,
+        minutes: minutesIn(from),
+      };
+    };
+    const perHour = { week: await perSpan(weekStart), month: await perSpan(monthStart) };
+
+    // Baseline: what regular clients bring in a normal month, from their frequency and price.
+    const regRows = await sql.query<{ id: number; name: string; price_per_cut: unknown; cuts_per_month: number | null; frequency_days: number | null }>(
+      `select id, name, price_per_cut, cuts_per_month, frequency_days from clients
+        where user_id = $1 and is_active = true and kind = 'regular'
+          and coalesce(blacklisted, false) = false and coalesce(service_paused, false) = false`,
+      [uid],
+    );
+    const regular = regRows.map((r) => {
+      const freq = Number(r.frequency_days) || 0;
+      const visits = freq > 0 ? Math.round((30.44 / freq) * 10) / 10 : Number(r.cuts_per_month) || 0;
+      const price = money(r.price_per_cut);
+      return { id: intId(r.id), name: r.name, visits, price, value: Math.round(visits * price * 100) / 100 };
+    });
+    const baseline = {
+      total: Math.round(regular.reduce((t, r) => t + r.value, 0) * 100) / 100,
+      clients: regular.length,
+      visits: Math.round(regular.reduce((t, r) => t + r.visits, 0) * 10) / 10,
+      collected,
+      doneValue: done.value,
+      planned: Math.round((done.value + rest.value + late.value) * 100) / 100,
+      top: [...regular].sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)).slice(0, 5),
+    };
+
+    // Month goal from the daily yard goals (the same ones Esfuerzo de la semana sets).
+    const goalPrefs = await loadPrefs(uid).catch(() => null);
+    const goalOverride = await sql.query<{ goal_date: unknown; goal: number }>(
+      `select goal_date, goal from day_goals where user_id = $1 and goal_date >= $2::date and goal_date <= $3::date`,
+      [uid, monthStart, monthEnd],
+    );
+    const offMonth = await sql.query<{ off_date: unknown }>(
+      `select off_date from week_off_dates where user_id = $1 and off_date >= $2::date and off_date <= $3::date`,
+      [uid, monthStart, monthEnd],
+    );
+    const goalByDate = new Map(goalOverride.map((r) => [asIsoDate(r.goal_date), Number(r.goal) || 0]));
+    const offSet = new Set(offMonth.map((r) => asIsoDate(r.off_date)));
+    const excludedDays = new Set<number>((goalPrefs?.excludedWeekdays ?? []) as number[]);
+    const onVacation = (d: string) =>
+      Boolean(goalPrefs?.vacationStart && goalPrefs.vacationEnd && d >= goalPrefs.vacationStart && d <= goalPrefs.vacationEnd);
+    let goalTotal = 0;
+    let goalDue = 0;
+    let workDaysLeft = 0;
+    let todayGoal = 0;
+    for (let d = monthStart; d <= monthEnd; d = addDaysISO(d, 1)) {
+      const dow = weekdayFromISO(d);
+      const g = goalByDate.get(d) || Number(goalPrefs?.weekGoals?.[String(dow)]) || 0;
+      if (g <= 0 || offSet.has(d) || excludedDays.has(dow) || onVacation(d)) continue;
+      goalTotal += g;
+      if (d < today) goalDue += g;
+      if (d === today) todayGoal = g;
+      if (d >= today) workDaysLeft += 1;
+    }
+    const doneBeforeToday = (await work(monthStart, addDaysISO(today, -1), "done")).count;
+    const todayDoneN = (await work(today, today, "done")).count;
+    const goalDone = doneBeforeToday + todayDoneN;
+    const goal = {
+      total: goalTotal,
+      done: goalDone,
+      dueByToday: goalDue,
+      workDaysLeft,
+      // What's left, spread over today and the working days after it (same numbers the sentence shows).
+      perDayLeft: workDaysLeft > 0 ? Math.max(0, Math.ceil((goalTotal - goalDone) / workDaysLeft)) : 0,
+      todayGoal,
+      todayDone: todayDoneN,
+      hasGoals: goalTotal > 0,
+    };
+
     const tYear = money(tipYear[0]?.t);
     const nYear = intId(tipYear[0]?.n);
 
@@ -5683,6 +5832,9 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
         rate90: { collected: collected90, done: done90 },
       },
       week,
+      perHour,
+      baseline,
+      goal,
       months,
       debts,
       best: {

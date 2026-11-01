@@ -90,8 +90,8 @@
 .cif-chip { border-radius: 99px; padding: 0.2rem 0.6rem; }
 
 .cif-rows { margin-top: 0.35rem; display: grid; gap: 0.25rem; }
-.cif-row { display: grid; grid-template-columns: auto minmax(0, 1.3fr) minmax(2.5rem, 1fr) auto auto; align-items: center; gap: 0.6rem; border-radius: var(--radius-sm); padding: 0.45rem 0.35rem 0.45rem 0.55rem; transition: background-color 0.15s; }
-.cif-rows > li:not(:has(.cif-rank)) .cif-row { grid-template-columns: minmax(0, 1.3fr) minmax(2.5rem, 1fr) auto auto; }
+.cif-row { display: grid; grid-template-columns: auto minmax(0, 1.7fr) minmax(2rem, 0.75fr) auto auto; align-items: center; gap: 0.6rem; border-radius: var(--radius-sm); padding: 0.45rem 0.35rem 0.45rem 0.55rem; transition: background-color 0.15s; }
+.cif-rows > li:not(:has(.cif-rank)) .cif-row { grid-template-columns: minmax(0, 1.7fr) minmax(2rem, 0.75fr) auto auto; }
 .cif-rows > li:not(:has(.cif-row-bar)) .cif-row { grid-template-columns: minmax(0, 1fr) auto auto; }
 .cif-row:hover { background: var(--color-surface-2); }
 .cif-row:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 1px; }
@@ -101,7 +101,7 @@
 .cif-row-name small { font-weight: 500; font-size: 0.72rem; color: var(--color-muted); overflow: hidden; text-overflow: ellipsis; }
 .cif-row-bar { height: 0.45rem; border-radius: 99px; background: color-mix(in srgb, var(--color-border) 55%, transparent); overflow: hidden; }
 .cif-row-bar span { display: block; height: 100%; border-radius: inherit; transition: width 1s cubic-bezier(0.22, 1, 0.36, 1); }
-.cif-row-value { font-variant-numeric: tabular-nums; font-size: 0.92rem; text-align: right; }
+.cif-row-value { font-variant-numeric: tabular-nums; font-size: 0.92rem; text-align: right; min-width: 4.1rem; }
 .cif-row-go { width: 1rem; height: 1rem; color: var(--color-subtle); }
 
 /* Rhythm heatmap */
@@ -172,4 +172,144 @@ html.theme-dark .cif-heat-cell.is-strong, html.theme-amoled .cif-heat-cell.is-st
 @media (prefers-reduced-motion: reduce) {
   .cif-rise, .cif-rows > li, .cif-heat-cell, .cif-week-bar span, .cif-pick, .cif-skeleton span { animation: none !important; }
   .cif-ring-arc, .cif-meter span, .cif-age-bar span, .cif-row-bar span, .cif-minibars > span > span { transition: none !important; }
+}
+
+/* ================================================================== Brizna 1.4 · lawn finish
+   Read at a glance: big figure, one plain sentence, then detail. Solid cards in every theme;
+   only transform/opacity animate (plus SVG ring dash), and reduced motion turns it all off. */
+
+@keyframes cif-spin { to { transform: rotate(360deg); } }
+@keyframes cif-spin-slow { to { transform: rotate(360deg); } }
+@keyframes cif-ray { from { opacity: 0; transform: scale(0.2); } to { opacity: 1; transform: none; } }
+@keyframes cif-sway { 0%, 100% { transform: rotate(-14deg); } 50% { transform: rotate(-4deg); } }
+
+/* Sections arrive one after another, by their place in the order. */
+.cif-sec { animation: cif-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i, 0) * 45ms); background-color: var(--color-surface); }
+/* A grass blade before every section title. */
+.cif-sec > div:first-child > div:nth-child(2)::before {
+  content: ""; flex-shrink: 0; width: 0.6rem; height: 1rem; margin-right: 0.5rem;
+  background: var(--color-primary);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 20'%3E%3Cpath d='M6 20C2 14 1 7 6 0c2 6 3 13 0 20z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 20'%3E%3Cpath d='M6 20C2 14 1 7 6 0c2 6 3 13 0 20z'/%3E%3C/svg%3E") center / contain no-repeat;
+  transform: rotate(-14deg); transform-origin: 50% 100%;
+  animation: cif-sway 1.2s ease-in-out 0.4s 1 both;
+}
+
+/* Lead: the big figure and its one sentence */
+.cif-lead { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.8rem; }
+.cif-lead-figure { font-family: var(--font-display); font-size: 2.15rem; font-weight: 650; line-height: 1.05; letter-spacing: -0.015em; font-variant-numeric: tabular-nums; color: var(--color-fg); overflow-wrap: anywhere; }
+.cif-lead-unit { font-family: var(--font-sans); font-size: 1rem; font-weight: 650; letter-spacing: 0; color: var(--color-fg); }
+.cif-lead-line { margin-top: 0.3rem; font-size: 0.95rem; font-weight: 550; line-height: 1.35; color: var(--color-fg); }
+.cif-lead-solo { margin-top: 0; margin-bottom: 0.6rem; }
+.cif-lead-aside { flex-shrink: 0; padding-top: 1.1rem; }
+.cif-lead-icon { flex-shrink: 0; }
+.cif-pace { display: inline-flex; align-items: center; border-radius: 999px; padding: 0.25rem 0.65rem; font-size: 0.8rem; font-weight: 750; white-space: nowrap; }
+.cif-pace.is-ahead { background: var(--color-done-bg); color: var(--color-done); }
+.cif-pace.is-behind { background: var(--color-hold-bg); color: var(--color-hold); }
+
+/* Progress as a lawn being mowed: neat stripes behind the mower, tall grass ahead. */
+.cif-grass { position: relative; padding: 24px 16px 0 0; overflow-x: clip; }
+.cif-grass-track {
+  position: relative; height: 16px; border-radius: 999px; overflow: hidden;
+  background:
+    repeating-linear-gradient(100deg, transparent 0 3px, color-mix(in srgb, var(--color-done) 30%, transparent) 3px 4.5px),
+    color-mix(in srgb, var(--color-done) 13%, var(--color-surface-2));
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--color-fg) 14%, transparent);
+}
+.cif-grass-run {
+  position: absolute; inset: 0; border-radius: inherit;
+  background: repeating-linear-gradient(90deg, var(--color-done) 0 11px, color-mix(in srgb, var(--color-done) 76%, var(--color-surface)) 11px 22px);
+  transform: translateX(calc((var(--f, 0) - 1) * 100%));
+  transition: transform 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cif-grass.is-money .cif-grass-run { background: repeating-linear-gradient(90deg, var(--color-money) 0 11px, color-mix(in srgb, var(--color-money) 76%, var(--color-surface)) 11px 22px); }
+.cif-grass.is-money .cif-grass-track {
+  background:
+    repeating-linear-gradient(100deg, transparent 0 3px, color-mix(in srgb, var(--color-money) 28%, transparent) 3px 4.5px),
+    color-mix(in srgb, var(--color-money) 12%, var(--color-surface-2));
+}
+.cif-grass-lane, .cif-grass-marks { position: absolute; left: 0; right: 16px; top: 0; bottom: 0; pointer-events: none; }
+.cif-grass-lane { transform: translateX(calc(var(--f, 0) * 100%)); transition: transform 1.5s cubic-bezier(0.22, 1, 0.36, 1); }
+.cif-grass-lane .cif-mower { position: absolute; left: 0; bottom: 3px; width: 40px; height: 30px; transform: translateX(-80%) scaleX(-1); filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.22)); }
+.cif-grass-mark { position: absolute; top: 14px; bottom: -4px; width: 0; border-left: 2px dashed var(--color-fg); opacity: 0.75; }
+.cif-grass-scale { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.2rem 0.8rem; margin-top: 0.4rem; font-size: 0.8rem; color: var(--color-muted); }
+.cif-grass-scale b { color: var(--color-fg); font-variant-numeric: tabular-nums; }
+.cif-grass-scale-mark { font-weight: 600; }
+
+.cif-mower { overflow: visible; }
+.cif-mower-body { fill: var(--color-hold); stroke: color-mix(in srgb, var(--color-hold) 60%, #000); stroke-width: 0.8; }
+.cif-mower-motor { fill: var(--color-fg); }
+.cif-mower-handle { fill: none; stroke: var(--color-fg); stroke-width: 1.8; stroke-linecap: round; }
+.cif-mower-wheel circle { fill: var(--color-fg); }
+.cif-mower-wheel path { stroke: var(--color-surface); stroke-width: 1.1; }
+.cif-grass.is-moving .cif-mower-wheel { animation: cif-spin 0.42s linear 3.5; }
+
+.cif-blade { display: inline-block; width: 0.6rem; height: 1rem; fill: var(--color-primary); flex-shrink: 0; }
+.cif-note-line { display: flex; align-items: flex-start; gap: 0.45rem; margin-top: 0.75rem; font-size: 0.86rem; line-height: 1.35; color: var(--color-fg); }
+.cif-note-blade { margin-top: 0.1rem; transform: rotate(-12deg); }
+
+/* Sun: a ring that fills, with rays that light up */
+.cif-sun { position: relative; flex-shrink: 0; }
+.cif-sun svg { display: block; overflow: visible; }
+.cif-sun-rays { transform-origin: 50% 50%; transform-box: view-box; animation: cif-spin-slow 60s linear infinite; }
+.cif-sun-ray { stroke: color-mix(in srgb, var(--color-abono) 40%, var(--color-border)); stroke-width: 3.2; stroke-linecap: round; animation: cif-ray 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cif-sun-ray.is-lit { stroke: var(--color-abono); }
+.cif-sun-disc { fill: color-mix(in srgb, var(--color-abono) 16%, var(--color-surface)); }
+.cif-sun-track { fill: none; stroke: color-mix(in srgb, var(--color-abono) 22%, var(--color-surface-2)); stroke-width: 9; }
+.cif-sun-arc { fill: none; stroke: var(--color-abono); stroke-width: 9; stroke-linecap: round; transition: stroke-dashoffset 1.3s cubic-bezier(0.22, 1, 0.36, 1); }
+.cif-sun-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.cif-sun-big { font-family: var(--font-display); font-size: 1.75rem; font-weight: 650; line-height: 1; letter-spacing: -0.01em; color: var(--color-fg); }
+.cif-sun-unit { margin-top: 0.2rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted); }
+.cif-hour { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1rem; align-items: center; }
+.cif-hour .cif-lead-line { font-size: 1.02rem; }
+
+/* The hero ring gets slow sun rays around it. */
+.cif-pulse-ring::before {
+  content: ""; position: absolute; inset: -9px; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--color-abono) 70%, transparent) 0 2.2deg, transparent 2.2deg 15deg);
+  -webkit-mask: radial-gradient(circle closest-side, transparent 88%, #000 89%, #000 99%, transparent 100%);
+  mask: radial-gradient(circle closest-side, transparent 88%, #000 89%, #000 99%, transparent 100%);
+  animation: cif-spin-slow 80s linear infinite;
+  pointer-events: none;
+}
+
+/* Tiles */
+.cif-tiles-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.cif-life { margin-top: 0; margin-bottom: 0.75rem; }
+.cif-life .cif-tile { background: color-mix(in srgb, var(--color-done-bg) 55%, var(--color-surface-2)); }
+.cif-tile-foot { font-size: 0.66rem; line-height: 1.25; color: var(--color-subtle); }
+.cif-tile-foot.is-on { color: var(--color-hold); font-weight: 650; }
+.cif-b4 { background: var(--color-soil); }
+
+/* Week compare cards */
+.cif-compare { border-radius: var(--radius-sm); background: var(--color-surface-2); padding: 0.55rem 0.7rem; }
+.cif-compare > p:first-child { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted); }
+.cif-compare-note { margin-top: 0.1rem; font-size: 0.7rem; color: var(--color-muted); }
+
+/* 8 weeks of bars that grow like grass */
+.cif-wbars { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0.3rem; margin-top: 0.45rem; }
+.cif-wbar { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; min-width: 0; }
+.cif-wbar-val { font-size: 0.6rem; font-weight: 700; color: var(--color-muted); font-variant-numeric: tabular-nums; white-space: nowrap; min-height: 0.8rem; }
+.cif-wbar-pair { display: flex; align-items: flex-end; justify-content: center; gap: 2px; width: 100%; height: 6.5rem; border-bottom: 2px solid color-mix(in srgb, var(--color-soil) 55%, var(--color-border)); transform-origin: bottom; animation: cif-grow 0.85s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cif-wbar-paid, .cif-wbar-work { display: flex; flex-direction: column; width: 44%; max-width: 1.05rem; border-radius: 5px 5px 1px 1px; overflow: hidden; }
+.cif-wbar-paid { background: linear-gradient(180deg, color-mix(in srgb, var(--color-done) 72%, var(--color-surface)), var(--color-done)); }
+.cif-wbar-paid.is-best { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-abono) 80%, transparent); }
+.cif-wbar-work i { display: block; flex-basis: 0; min-height: 0; }
+.cif-wbar-day { font-size: 0.62rem; font-weight: 700; color: var(--color-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cif-wbar.is-now .cif-wbar-day { color: var(--color-primary); }
+.cif-wbar.is-now .cif-wbar-pair { opacity: 0.8; }
+
+/* Night: lift the deep greens so stripes and blades never go muddy. */
+html.theme-dark .cif-grass-run, html.theme-amoled .cif-grass-run { background: repeating-linear-gradient(90deg, var(--color-done) 0 11px, color-mix(in srgb, var(--color-done) 72%, #000) 11px 22px); }
+html.theme-dark .cif-grass.is-money .cif-grass-run, html.theme-amoled .cif-grass.is-money .cif-grass-run { background: repeating-linear-gradient(90deg, var(--color-money) 0 11px, color-mix(in srgb, var(--color-money) 72%, #000) 11px 22px); }
+html.theme-dark .cif-mower-motor, html.theme-amoled .cif-mower-motor, html.theme-dark .cif-mower-wheel circle, html.theme-amoled .cif-mower-wheel circle { fill: color-mix(in srgb, var(--color-fg) 88%, var(--color-surface)); }
+
+@media (max-width: 340px) {
+  .cif-hour { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .cif-lead-figure { font-size: 1.85rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cif-sec, .cif-sec > div:first-child > div:nth-child(2)::before, .cif-sun-rays, .cif-sun-ray, .cif-pulse-ring::before,
+  .cif-wbar-pair, .cif-grass.is-moving .cif-mower-wheel { animation: none !important; }
+  .cif-grass-run, .cif-grass-lane, .cif-sun-arc { transition: none !important; }
 }

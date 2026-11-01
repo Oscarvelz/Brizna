@@ -2,22 +2,24 @@ import { useEffect, useState } from "react";
 
 export const CIFRAS_DEFAULT = [
   "pulso",
+  "meta",
   "mes",
   "fiabilidad",
   "esfuerzo",
   "semana",
+  "fijo",
+  "hora",
   "calendario",
   "mejores",
   "precio",
   "propinas",
-  "numeros",
-  "semana-dinero",
   "horas",
-  "ritmo",
   "anio",
   "clientes",
   "pospuesto",
 ] as const;
+// Removed in 1.4: "numeros" (its lifetime figures live in "anio"), "ritmo" (Días del año) and
+// "semana-dinero" (its bars live in "semana"). A saved order that still names them simply skips them.
 
 export type CifraId = (typeof CIFRAS_DEFAULT)[number];
 
@@ -38,18 +40,18 @@ export function cifraLabel(id: CifraId, tx: (es: string, en: string) => string):
       return tx("Propinas", "Tips");
     case "esfuerzo":
       return tx("Esfuerzo de la semana", "This week's effort");
-    case "numeros":
-      return tx("Números", "Numbers");
+    case "meta":
+      return tx("Meta del mes", "Month goal");
+    case "fijo":
+      return tx("Ingreso fijo del mes", "Steady monthly income");
+    case "hora":
+      return tx("$ por hora", "$ per hour");
     case "semana":
       return tx("Esta semana frente a la anterior", "This week versus the previous one");
     case "horas":
       return tx("Horas de trabajo", "Work hours");
-    case "ritmo":
-      return tx("Días del año", "Days in the year");
     case "fiabilidad":
       return tx("Quién debe y desde cuándo", "Who owes and since when");
-    case "semana-dinero":
-      return tx("Dinero por semana", "Money by week");
     case "mes":
       return tx("Ingresos, mes a mes", "Income, month by month");
     case "anio":

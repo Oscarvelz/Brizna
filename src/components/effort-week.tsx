@@ -7,6 +7,7 @@ import { formatLongDay, weekdayOptions } from "@/lib/format";
 import { smartHit } from "@/lib/fuzzy";
 import { useTx } from "@/lib/i18n";
 import { useCifraRank } from "@/lib/cifras-order";
+import { secStyle } from "@/components/cifras-visuals";
 import { upsertDayGoal } from "@/lib/server/lawn";
 import type { DayEffort } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -62,7 +63,8 @@ export function EffortWeek({
   return (
     <Fold
       id="cif-esfuerzo"
-      style={{ order: rank }}
+      style={secStyle(rank)}
+      className="cif-sec"
       title={title}
       hint={
         <Hint
@@ -118,7 +120,7 @@ export function EffortWeek({
               className={cn(
                 "flex min-h-11 flex-col items-center gap-1 rounded-md px-0.5 py-1 touch-manipulation",
                 isToday && "bg-today-bg",
-                editDate === d.date && "ring-2 ring-primary",
+                editDate === d.date && "bz-chosen",
               )}
             >
               <div className="relative flex h-14 w-full items-end justify-center">

@@ -234,7 +234,10 @@ export type MoneyPoint = {
   key: string;
   collected: number;
   completed: number;
+  /** Done jobs of kind 'cut'. */
   cuts: number;
+  /** All done jobs (cuts, extras, one time). */
+  jobs: number;
   extraCuts: number;
   extraAmount: number;
   onceCuts: number;
@@ -272,6 +275,7 @@ export type FinanceStats = {
   tipsMonth: number;
   lifetimeCollected: number;
   lifetimeCuts: number;
+  lifetimeJobs: number;
   hoursToday: number;
   hoursWeek: number;
   hoursMonth: number;
