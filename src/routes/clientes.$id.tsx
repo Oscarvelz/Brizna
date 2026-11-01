@@ -1180,7 +1180,7 @@ function JobHistory({ jobs }: { jobs: JobRow[] }) {
       </ul>
       {photo && typeof document !== "undefined"
         ? createPortal(
-            <div className="fixed inset-0 z-[85] grid place-items-end overflow-y-auto bg-fg/70 p-3 sm:place-items-center sm:p-4">
+            <div className="fixed inset-0 z-[85] grid place-items-end overflow-y-auto bz-scrim bz-scrim-deep p-3 sm:place-items-center sm:p-4">
               <button type="button" aria-label={tx("Cerrar", "Close")} className="absolute inset-0" onClick={() => setPhoto(null)} />
               <div className="relative my-auto w-full min-w-0 max-w-lg">
                 <img src={photo.src} alt={tx(`Patio del ${photo.date}`, `Yard from ${photo.date}`)} className="max-h-[70vh] w-full rounded-xl object-contain bg-surface" />
@@ -1331,7 +1331,7 @@ function ClientPhotos({ clientId, photos }: { clientId: number; photos: ClientPh
       ) : null}
       {open && typeof document !== "undefined"
         ? createPortal(
-            <div className="fixed inset-0 z-[85] grid place-items-center overflow-y-auto bg-fg/70 p-3 sm:p-4">
+            <div className="fixed inset-0 z-[85] grid place-items-center overflow-y-auto bz-scrim bz-scrim-deep p-3 sm:p-4">
               <button type="button" className="absolute inset-0" aria-label={tx("Cerrar", "Close")} onClick={() => setOpen(null)} />
               <div className="relative my-auto w-full min-w-0 max-w-lg">
                 <img src={open.data} alt={open.caption || tx("Indicación", "Instruction")} className="max-h-[70vh] w-full rounded-xl object-contain bg-surface" />
@@ -1365,7 +1365,7 @@ function ClientPhotos({ clientId, photos }: { clientId: number; photos: ClientPh
         : null}
       {sharePhoto && typeof document !== "undefined"
         ? createPortal(
-            <div className="fixed inset-0 z-[90] grid place-items-end overflow-y-auto bg-fg/70 p-3 sm:place-items-center sm:p-4">
+            <div className="fixed inset-0 z-[90] grid place-items-end overflow-y-auto bz-scrim bz-scrim-deep p-3 sm:place-items-center sm:p-4">
               <button type="button" className="absolute inset-0" aria-label={tx("Cerrar", "Close")} onClick={() => setSharePhoto(null)} />
               <div role="dialog" aria-modal="true" className="relative my-auto w-full min-w-0 max-w-md rounded-xl bg-surface p-4 shadow-card">
                 <h3 className="font-display text-lg font-semibold">{tx("Compartir foto", "Share photo")}</h3>

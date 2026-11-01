@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { CircleHelp } from "lucide-react";
+import { ArrowRight, CircleHelp, Lightbulb } from "lucide-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useI18n, emphasize } from "@/lib/i18n";
@@ -21,7 +21,7 @@ export function Hint({
   const { t } = useI18n();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [box, setBox] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(
+  const [box, setBox] = useState<{ top: number; left: number; width: number; maxHeight: number; below: boolean; arrow: number } | null>(
     null,
   );
   const id = useId();
@@ -33,15 +33,16 @@ export function Hint({
     const place = () => {
       const rect = btn.current!.getBoundingClientRect();
       const gutter = 12;
-      const width = Math.min(280, Math.max(168, window.innerWidth - gutter * 2));
+      const width = Math.min(300, Math.max(180, window.innerWidth - gutter * 2));
       let left = rect.left + rect.width / 2 - width / 2;
       left = Math.max(gutter, Math.min(left, window.innerWidth - width - gutter));
       const spaceBelow = window.innerHeight - rect.bottom - 16;
       const spaceAbove = rect.top - 16;
       const preferBelow = spaceBelow >= 88 || spaceBelow >= spaceAbove;
       const maxHeight = Math.max(64, Math.min(240, preferBelow ? spaceBelow : spaceAbove));
-      const top = preferBelow ? rect.bottom + 8 : Math.max(gutter, rect.top - 8 - maxHeight);
-      setBox({ top, left, width, maxHeight });
+      const top = preferBelow ? rect.bottom + 6 : Math.max(gutter, rect.top - 6 - maxHeight);
+      const arrow = Math.max(18, Math.min(width - 18, rect.left + rect.width / 2 - left));
+      setBox({ top, left, width, maxHeight, below: preferBelow, arrow });
     };
     place();
     window.addEventListener("resize", place);
@@ -87,7 +88,8 @@ export function Hint({
           setOpen((v) => !v);
         }}
         className={cn(
-          "relative z-10 grid place-items-center rounded-full text-subtle hover:bg-surface-2 hover:text-fg",
+          "bz-hint-btn relative z-10 grid place-items-center rounded-full text-subtle transition-colors hover:bg-surface-2 hover:text-fg",
+          open && "is-open",
           compact ? "size-8" : "size-11",
         )}
       >
@@ -98,31 +100,42 @@ export function Hint({
             <span
               id={id}
               role="tooltip"
+              data-side={box.below ? "below" : "above"}
               style={{
-                top: box.top,
+                top: box.below ? box.top : undefined,
+                bottom: box.below ? undefined : window.innerHeight - (box.top + box.maxHeight),
                 left: box.left,
                 width: box.width,
-                maxHeight: box.maxHeight,
+                ["--bz-arrow" as string]: `${box.arrow}px`,
               }}
-              className="fixed z-[140] overflow-auto rounded-md bg-hint px-3 py-2 text-left text-xs leading-snug font-medium break-words text-hint-fg shadow-card"
+              className="bz-hint fixed z-[140]"
             >
-              {typeof text === "string" ? emphasize(text) : text}
-              {manual ? (
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onClick={() => {
-                    setOpen(false);
-                    void navigate({ to: "/ajustes", hash: `ayuda-${manual}` });
-                  }}
-                  className="mt-2 block text-left underline opacity-80"
-                >
-                  {t("common.more")}
-                </button>
-              ) : null}
+              <span className="bz-hint-arrow" aria-hidden />
+              <span className="bz-hint-body" style={{ maxHeight: box.maxHeight }}>
+                <span className="bz-hint-icon" aria-hidden>
+                  <Lightbulb className="size-3.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block">{typeof text === "string" ? emphasize(text) : text}</span>
+                  {manual ? (
+                    <button
+                      type="button"
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onClick={() => {
+                        setOpen(false);
+                        void navigate({ to: "/ajustes", hash: `ayuda-${manual}` });
+                      }}
+                      className="bz-hint-more"
+                    >
+                      {t("common.more")}
+                      <ArrowRight className="size-3" />
+                    </button>
+                  ) : null}
+                </span>
+              </span>
             </span>,
             document.body,
           )

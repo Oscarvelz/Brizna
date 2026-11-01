@@ -874,3 +874,65 @@ body::-webkit-scrollbar {
   outline-offset: -2px;
   background-color: color-mix(in srgb, var(--color-primary) 20%, var(--color-surface)) !important;
 }
+
+/* Help bubbles: raised card in the theme's own colors, pointer to the "?", soft pop-in. */
+.bz-hint-btn.is-open { color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 16%, transparent); }
+.bz-hint {
+  --bz-hint-bg: color-mix(in srgb, var(--color-surface), var(--color-primary) 12%);
+  --bz-hint-edge: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  transform-origin: var(--bz-arrow) top;
+  animation: bz-hint-in .18s cubic-bezier(.2, .9, .3, 1.2) both;
+  filter: drop-shadow(0 10px 22px rgb(0 0 0 / .28)) drop-shadow(0 2px 4px rgb(0 0 0 / .18));
+}
+.bz-hint[data-side="above"] { transform-origin: var(--bz-arrow) bottom; }
+.bz-hint-body {
+  display: flex; gap: .6rem; align-items: flex-start;
+  overflow: auto; overscroll-behavior: contain;
+  padding: .75rem .875rem .8rem .7rem;
+  border-radius: 1rem;
+  background: var(--bz-hint-bg);
+  border: 1px solid var(--bz-hint-edge);
+  color: var(--color-fg);
+  font-size: .8125rem; line-height: 1.45; font-weight: 500;
+  text-align: left; overflow-wrap: anywhere;
+}
+.bz-hint-icon {
+  display: grid; place-items: center; flex: none;
+  width: 1.6rem; height: 1.6rem; margin-top: .05rem;
+  border-radius: 999px;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+.bz-hint-arrow {
+  position: absolute; left: calc(var(--bz-arrow) - 7px); width: 14px; height: 14px;
+  background: var(--bz-hint-bg);
+  border: 1px solid var(--bz-hint-edge);
+  transform: rotate(45deg); border-radius: 3px;
+}
+.bz-hint[data-side="below"] .bz-hint-arrow { top: -6px; border-right: 0; border-bottom: 0; }
+.bz-hint[data-side="above"] .bz-hint-arrow { bottom: -6px; border-left: 0; border-top: 0; }
+.bz-hint-arrow + .bz-hint-body { position: relative; }
+.bz-hint-more {
+  margin-top: .55rem; display: inline-flex; align-items: center; gap: .3rem;
+  padding: .3rem .65rem; border-radius: 999px;
+  font-size: .75rem; font-weight: 600;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+.bz-hint-more:active { transform: scale(.96); }
+@keyframes bz-hint-in { from { opacity: 0; transform: translateY(-4px) scale(.94); } to { opacity: 1; transform: none; } }
+.bz-hint[data-side="above"] { animation-name: bz-hint-in-up; }
+@keyframes bz-hint-in-up { from { opacity: 0; transform: translateY(4px) scale(.94); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .bz-hint { animation: none; } }
+
+/* Backdrop behind dialogs: a dark veil plus a light blur (Oscar: "just a little"). Never a light wash. */
+.bz-scrim {
+  background-color: rgb(10 14 12 / .42);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: bz-scrim-in .18s ease-out both;
+}
+.bz-scrim-deep { background-color: rgb(10 14 12 / .55); }
+html.theme-dark .bz-scrim, html.theme-amoled .bz-scrim { background-color: rgb(0 0 0 / .5); }
+html.theme-dark .bz-scrim-deep, html.theme-amoled .bz-scrim-deep { background-color: rgb(0 0 0 / .62); }
+@keyframes bz-scrim-in { from { opacity: 0; } to { opacity: 1; } }

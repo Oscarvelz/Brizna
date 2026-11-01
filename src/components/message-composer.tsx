@@ -318,7 +318,7 @@ function ComposerSheet({
   if (typeof document === "undefined") return null;
   return createPortal(
     <div className="fixed inset-0 z-[70] grid place-items-end overflow-y-auto p-3 sm:place-items-center sm:p-4">
-      <button type="button" aria-label={tx("Cerrar", "Close")} className="absolute inset-0 bg-fg/45" onClick={onClose} />
+      <button type="button" aria-label={tx("Cerrar", "Close")} className="absolute inset-0 bz-scrim" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"

@@ -768,7 +768,7 @@ function SaveSheet({
   if (typeof document === "undefined") return null;
   return createPortal(
     <div className="fixed inset-0 z-[80] grid place-items-end p-4 sm:place-items-center">
-      <button type="button" aria-label={tx("Cerrar", "Close")} className="absolute inset-0 bg-fg/45" onClick={onClose} />
+      <button type="button" aria-label={tx("Cerrar", "Close")} className="absolute inset-0 bz-scrim" onClick={onClose} />
       <div role="dialog" aria-modal="true" className="relative max-h-[88dvh] w-full max-w-md overflow-auto rounded-xl bg-surface p-5 shadow-card">
         <h2 className="font-display text-xl font-semibold">{tx("¿En qué carpeta?", "Which folder?")}</h2>
         <p className="mt-1 text-sm text-muted">
@@ -949,7 +949,7 @@ function NotePhotos({
       ) : null}
       {open && typeof document !== "undefined"
         ? createPortal(
-            <div className="fixed inset-0 z-[85] grid place-items-center bg-fg/70 p-4">
+            <div className="fixed inset-0 z-[85] grid place-items-center bz-scrim bz-scrim-deep p-4">
               <button type="button" className="absolute inset-0" aria-label={tx("Cerrar", "Close")} onClick={() => setOpen(null)} />
               <div className="relative w-full max-w-lg">
                 <img src={open.data} alt={title || tx("Nota", "Note")} className="max-h-[70vh] w-full rounded-xl bg-surface object-contain" />

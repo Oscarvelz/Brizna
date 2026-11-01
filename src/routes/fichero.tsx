@@ -984,7 +984,7 @@ function NoteList({
     </ul>
     {moveFor ? (
       <div className="fixed inset-0 z-[80] grid place-items-end p-3 sm:place-items-center">
-        <button type="button" className="absolute inset-0 bg-fg/45" aria-label={tx("Cerrar", "Close")} onClick={() => setMoveFor(null)} />
+        <button type="button" className="absolute inset-0 bz-scrim" aria-label={tx("Cerrar", "Close")} onClick={() => setMoveFor(null)} />
         <div className="relative w-full max-w-md rounded-xl bg-surface p-4 shadow-card">
           <p className="font-display text-lg font-semibold">{tx("Mover a una carpeta", "Move to a folder")}</p>
           <div className="mt-3 grid max-h-[50dvh] gap-2 overflow-auto">
@@ -1248,7 +1248,7 @@ function GearSheet({
 
   return createPortal(
     <div className="fixed inset-0 z-[80] grid grid-cols-1 place-items-end overflow-x-hidden sm:place-items-center sm:p-4">
-      <button type="button" aria-label={tx("Cerrar", "Close")} className="absolute inset-0 bg-fg/45" onClick={onClose} />
+      <button type="button" aria-label={tx("Cerrar", "Close")} className="absolute inset-0 bz-scrim" onClick={onClose} />
       <div role="dialog" aria-modal="true" className="relative max-h-[88dvh] w-full min-w-0 max-w-md overflow-x-hidden overflow-y-auto rounded-t-3xl bg-bg p-4 shadow-card sm:max-w-lg sm:rounded-3xl sm:p-5 lg:max-w-xl">
         <h2 className="font-display text-2xl font-semibold tracking-tight">{tx("Carpetas", "Folders")}</h2>
         <p className="mt-1 text-sm leading-relaxed text-muted">

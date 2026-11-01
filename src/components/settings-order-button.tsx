@@ -47,7 +47,7 @@ export function SettingsOrderButton() {
       {open && typeof document !== "undefined"
         ? createPortal(
             <div className="fixed inset-0 z-[80] grid place-items-end overflow-y-auto p-3 sm:place-items-center sm:p-4">
-              <button type="button" aria-label={tx("Cerrar", "Close")} className="absolute inset-0 bg-fg/45" onClick={() => setOpen(false)} />
+              <button type="button" aria-label={tx("Cerrar", "Close")} className="absolute inset-0 bz-scrim" onClick={() => setOpen(false)} />
               <div role="dialog" aria-modal="true" className="relative my-auto flex max-h-[88dvh] w-full min-w-0 max-w-md flex-col rounded-xl bg-surface p-4 shadow-card sm:p-5">
                 <h2 className="font-display text-xl font-semibold">{tx("Orden de los ajustes", "Order of the settings")}</h2>
                 <p className="mt-2 text-sm text-muted">

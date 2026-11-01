@@ -283,7 +283,7 @@ function NuevoPage() {
         <div className="fixed inset-0 z-[70] grid place-items-end p-4 sm:place-items-center">
           <button
             type="button"
-            className="absolute inset-0 bg-fg/45"
+            className="absolute inset-0 bz-scrim"
             aria-label={tx("Cerrar", "Close")}
             onClick={requestLeaveBulk}
           />
@@ -530,7 +530,7 @@ function NuevoPage() {
         <div className="fixed inset-0 z-[70] grid place-items-end p-4 sm:place-items-center">
           <button
             type="button"
-            className="absolute inset-0 bg-fg/45"
+            className="absolute inset-0 bz-scrim"
             aria-label={tx("Cerrar", "Close")}
             onClick={() => {
               if (nameDraft.trim()) requestLeaveBulk();

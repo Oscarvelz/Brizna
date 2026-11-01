@@ -65,7 +65,7 @@ export function ConfirmDialog({
       <button
         type="button"
         aria-label={t("common.close")}
-        className="absolute inset-0 bg-fg/45"
+        className="absolute inset-0 bz-scrim"
         onClick={dismiss}
       />
       <div

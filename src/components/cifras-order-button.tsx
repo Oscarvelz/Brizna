@@ -57,7 +57,7 @@ export function CifrasOrderButton() {
               <button
                 type="button"
                 aria-label={tx("Cerrar", "Close")}
-                className="absolute inset-0 bg-fg/45"
+                className="absolute inset-0 bz-scrim"
                 onClick={() => setOpen(false)}
               />
               <div
