@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { disableLock, enableLock, LOCK_AFTER_CHOICES, lockAfterMinutes, lockCredential, lockSupported, setLockAfterMinutes } from "@/lib/device-lock";
 import { useTx } from "@/lib/i18n";
+import { SettingsFoldShell } from "@/components/settings-fold-shell";
 
 /** Turn fingerprint / face unlock on or off for this account on this device. */
 export function FingerprintControl() {
@@ -44,9 +45,13 @@ export function FingerprintControl() {
   }
 
   return (
-    <div className="mb-3 rounded-md bg-surface p-4 shadow-card">
+    <SettingsFoldShell
+      id="aj-huella"
+      icon={<Fingerprint className="size-5 shrink-0 text-primary" />}
+      title={tx("Huella", "Fingerprint")}
+      peek={<span className={`text-xs font-semibold ${on ? "text-primary" : "text-muted"}`}>{on ? tx("activada", "on") : tx("apagada", "off")}</span>}
+    >
       <div className="flex items-center gap-3">
-        <Fingerprint className="size-6 shrink-0 text-primary" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">{tx("Desbloqueo con huella", "Fingerprint unlock")}</p>
           <p className="text-xs text-muted">
@@ -90,6 +95,6 @@ export function FingerprintControl() {
           {tx("Cuenta:", "Account:")} {user.primaryEmail} · {tx("se sincroniza sola cuando hay internet.", "syncs on its own when online.")}
         </p>
       ) : null}
-    </div>
+    </SettingsFoldShell>
   );
 }

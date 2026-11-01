@@ -3,6 +3,7 @@ import { Cloud, CloudOff, RefreshCw } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { useTx } from "@/lib/i18n";
 import { onSyncStatus, syncInfo, syncNow } from "@/spa/sync";
+import { SettingsFoldShell } from "@/components/settings-fold-shell";
 import { askSignInAgain, sessionGone } from "@/spa/cloud";
 
 function when(iso: string, es: boolean): string {
@@ -37,7 +38,7 @@ export function SyncStatusCard() {
 
   if (sessionGone()) {
     return (
-      <div className="mb-3 rounded-md bg-surface p-4 shadow-card">
+      <SettingsFoldShell id="aj-nube" icon={<CloudOff className="size-5 shrink-0 text-muted" />} title={tx("Nube", "Cloud")} peek={<span className="text-xs text-muted">{tx("sesión terminada", "signed out")}</span>}>
         <div className="flex items-start gap-3">
           <CloudOff className="mt-0.5 size-6 shrink-0 text-muted" />
           <div className="min-w-0 flex-1">
@@ -48,7 +49,7 @@ export function SyncStatusCard() {
             </button>
           </div>
         </div>
-      </div>
+      </SettingsFoldShell>
     );
   }
 
@@ -68,9 +69,13 @@ export function SyncStatusCard() {
   const Icon = info.status === "offline" || info.status === "error" ? CloudOff : Cloud;
 
   return (
-    <div className="mb-3 rounded-md bg-surface p-4 shadow-card">
+    <SettingsFoldShell
+      id="aj-nube"
+      icon={<Icon className={`size-5 shrink-0 ${safe ? "text-primary" : "text-muted"}`} />}
+      title={tx("Nube", "Cloud")}
+      peek={<span className={`text-xs font-semibold ${safe ? "text-primary" : "text-muted"}`}>{busy ? "…" : safe ? tx("guardado", "saved") : info.status === "offline" ? tx("sin internet", "offline") : tx("pendiente", "pending")}</span>}
+    >
       <div className="flex items-start gap-3">
-        <Icon className={`mt-0.5 size-6 shrink-0 ${safe ? "text-primary" : "text-muted"}`} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">{headline}</p>
           <p className="mt-1 text-xs text-muted">
@@ -95,6 +100,6 @@ export function SyncStatusCard() {
             </button>
         </div>
       </div>
-    </div>
+    </SettingsFoldShell>
   );
 }
