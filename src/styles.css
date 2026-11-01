@@ -1426,6 +1426,6 @@ html.theme-amoled .bz-lenses:has(.bz-stat-on) > .bz-stat:not(.bz-stat-on) { filt
 .bz-fold.cob-espera { --fold-tone: #6b7a38; background-color: #e5e8d1; }
 .bz-fold.cob-perdon { --fold-tone: #865674; background-color: #eee1e9; }
 .bz-fold.cob-hecho  { --fold-tone: #995a38; background-color: #efdccc; }
-html.theme-dark .bz-fold.cob-espera, html.theme-amoled .bz-fold.cob-espera { --fold-tone: #a3b46a; background-color: color-mix(in srgb, #a3b46a 16%, #070707); }
-html.theme-dark .bz-fold.cob-perdon, html.theme-amoled .bz-fold.cob-perdon { --fold-tone: #c393b1; background-color: color-mix(in srgb, #c393b1 15%, #070707); }
-html.theme-dark .bz-fold.cob-hecho,  html.theme-amoled .bz-fold.cob-hecho  { --fold-tone: #d0906a; background-color: color-mix(in srgb, #d0906a 15%, #070707); }
+html.theme-dark .bz-fold.cob-espera, html.theme-amoled .bz-fold.cob-espera { --fold-tone: #b4c574; background: linear-gradient(165deg, color-mix(in srgb, #8fa24c 46%, #0a0a0a) 0%, color-mix(in srgb, #8fa24c 26%, #0a0a0a) 100%); }
+html.theme-dark .bz-fold.cob-perdon, html.theme-amoled .bz-fold.cob-perdon { --fold-tone: #d6a6c4; background: linear-gradient(165deg, color-mix(in srgb, #a8678f 46%, #0a0a0a) 0%, color-mix(in srgb, #a8678f 26%, #0a0a0a) 100%); }
+html.theme-dark .bz-fold.cob-hecho,  html.theme-amoled .bz-fold.cob-hecho  { --fold-tone: #e3a27a; background: linear-gradient(165deg, color-mix(in srgb, #b8693f 46%, #0a0a0a) 0%, color-mix(in srgb, #b8693f 26%, #0a0a0a) 100%); }
