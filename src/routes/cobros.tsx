@@ -252,7 +252,7 @@ function CobrosPage() {
         <Fold
           id="cob-espera"
           group="cobros"
-          className="bz-fold-toned bg-hold-bg [--fold-tone:var(--color-hold)]"
+          className="bz-fold-toned cob-espera bg-hold-bg [--fold-tone:var(--color-hold)]"
           title={
             <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
               <span className="min-w-0 truncate">{tx("En espera", "Waiting")}</span>
@@ -267,14 +267,14 @@ function CobrosPage() {
             <Hint topic="en-espera" />
           }
         >
-          <Link to="/cobros" search={{ view: "espera" }} resetScroll={false} className="block text-sm font-semibold text-hold">
+          <Link to="/cobros" search={{ view: "espera" }} resetScroll={false} className="block text-sm font-semibold text-[color:var(--fold-ink)]">
             {tx("Siguen debiendo. Toca para verlos.", "They still owe. Tap to see them.")}
           </Link>
         </Fold>
         <Fold
           id="cob-perdonado"
           group="cobros"
-          className="bz-fold-toned bg-late-bg [--fold-tone:var(--color-late)]"
+          className="bz-fold-toned cob-perdon bg-late-bg [--fold-tone:var(--color-late)]"
           title={
             <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
               <span className="min-w-0 truncate">{tx("Perdonado este mes", "Forgiven this month")}</span>
@@ -287,7 +287,7 @@ function CobrosPage() {
             <Hint topic="perdonado" />
           }
         >
-          <Link to="/cobros" search={{ view: "waived" }} resetScroll={false} className="block text-sm font-semibold text-late">
+          <Link to="/cobros" search={{ view: "waived" }} resetScroll={false} className="block text-sm font-semibold text-[color:var(--fold-ink)]">
             {tx("Toca para ver los saldos perdonados.", "Tap to see the forgiven balances.")}
           </Link>
         </Fold>
@@ -590,7 +590,7 @@ function WorkNest({
     <Fold
       id="cob-hecho"
       group="cobros"
-      className="bz-fold-toned mb-2 bg-soil-bg [--fold-tone:var(--color-soil)]"
+      className="bz-fold-toned cob-hecho mb-2 bg-soil-bg [--fold-tone:var(--color-soil)]"
       title={
         <span className="min-w-0 truncate">
           {tx("Trabajo ya hecho", "Work already done")}

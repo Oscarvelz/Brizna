@@ -1420,3 +1420,12 @@ html.theme-dark .bz-stat .bz-stat-label > svg, html.theme-amoled .bz-stat .bz-st
 html.theme-dark .bz-lenses:has(.bz-stat-on) > .bz-stat:not(.bz-stat-on),
 html.theme-amoled .bz-lenses:has(.bz-stat-on) > .bz-stat:not(.bz-stat-on) { filter: saturate(.5) brightness(.72); }
 @media (prefers-reduced-motion: reduce) { .bz-lenses > .bz-stat { transition: none; } }
+
+/* 1.4.26: Cobros lower folds in garden tones, calm and distinct.
+   En espera = sage (a seedling waiting), Perdonado = heather (clover flower), Trabajo ya hecho = clay (worked soil). */
+.bz-fold.cob-espera { --fold-tone: #6b7a38; background-color: #e5e8d1; }
+.bz-fold.cob-perdon { --fold-tone: #865674; background-color: #eee1e9; }
+.bz-fold.cob-hecho  { --fold-tone: #995a38; background-color: #efdccc; }
+html.theme-dark .bz-fold.cob-espera, html.theme-amoled .bz-fold.cob-espera { --fold-tone: #a3b46a; background-color: color-mix(in srgb, #a3b46a 16%, #070707); }
+html.theme-dark .bz-fold.cob-perdon, html.theme-amoled .bz-fold.cob-perdon { --fold-tone: #c393b1; background-color: color-mix(in srgb, #c393b1 15%, #070707); }
+html.theme-dark .bz-fold.cob-hecho,  html.theme-amoled .bz-fold.cob-hecho  { --fold-tone: #d0906a; background-color: color-mix(in srgb, #d0906a 15%, #070707); }
