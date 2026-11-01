@@ -1451,8 +1451,8 @@ html.theme-dark .bz-lenses .bz-row-on-wash.bz-row-on-wash, html.theme-amoled .bz
 
 /* Hoy "Por cobrar" tone (slot named "cut"). History: heather, turquoise, blue, peach, linen — all
    rejected. 1.4.36: soft orange, same strength as the other tiles; at night it stays orange, never gold. */
-:root { --color-cut: #b5571c; --color-cut-bg: #fbe1c9; }
-html.theme-dark, html.theme-amoled { --color-cut: #f0883e; --color-cut-bg: color-mix(in srgb, #f0883e 16%, #050505); }
+:root { --color-cut: #b04f12; --color-cut-bg: #f9d3ae; }
+html.theme-dark, html.theme-amoled { --color-cut: #f28a3a; --color-cut-bg: color-mix(in srgb, #f28a3a 19%, #050505); }
 .bz-stat-cut { --stat-tone: var(--color-cut); }
 .bz-cut-bg { background-color: var(--color-cut-bg); }
 .bz-cut-ink { color: var(--color-cut); }
