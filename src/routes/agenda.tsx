@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
+import { markJump } from "@/lib/jump-back";
 import { ChevronDown, ChevronLeft, ChevronRight, Palmtree, Pin, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -267,6 +268,7 @@ function AgendaPage() {
     setAskOff({ kind: "date", value: date, label });
   }
   function scrollCases() {
+    markJump();
     window.setTimeout(() => {
       document.getElementById("agenda-casos")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
@@ -1044,6 +1046,7 @@ function MonthBoard({
                   const hasReport = reports.some((row) => row.date === iso);
                   if (count > 0 || (onlyMoved && hasReport)) {
                     onDive?.();
+                    markJump();
                     window.setTimeout(() => {
                       document.getElementById("agenda-casos")?.scrollIntoView({ behavior: "smooth", block: "start" });
                     }, 40);
