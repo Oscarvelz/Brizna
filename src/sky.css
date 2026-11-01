@@ -1,0 +1,86 @@
+/* ───────── Living sky: the moon (night themes) and the sun (Jardín) breathe and radiate light ─────────
+   body::after = the disc, its glow breathing.  #root::before = light waves rippling outward
+   (night) or slowly turning rays (sun). Behind the app (#root content sits above). Transform/opacity only. */
+
+:root { --orb-x: 86vw; --orb-y: 15vh; }
+
+@keyframes orb-breathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); filter: brightness(1); }
+  50%      { transform: translate(-50%, -50%) scale(1.05); filter: brightness(1.12); }
+}
+@keyframes orb-glow {
+  0%, 100% { opacity: .55; transform: translate(-50%, -50%) scale(.92); }
+  50%      { opacity: 1;   transform: translate(-50%, -50%) scale(1.08); }
+}
+@keyframes orb-wave {
+  0%   { opacity: .55; transform: translate(-50%, -50%) scale(.25); }
+  100% { opacity: 0;   transform: translate(-50%, -50%) scale(1.6); }
+}
+@keyframes orb-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Shared shape */
+html.theme-dark body::after, html.theme-amoled body::after,
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) body::after {
+  content: "";
+  position: fixed;
+  left: var(--orb-x);
+  top: var(--orb-y);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+html.theme-dark #root::before, html.theme-amoled #root::before,
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) #root::before {
+  content: "";
+  position: fixed;
+  left: var(--orb-x);
+  top: var(--orb-y);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+  will-change: transform, opacity;
+}
+
+/* ── Moon ── */
+html.theme-dark body::after, html.theme-amoled body::after {
+  width: 30px; height: 30px;
+  --m: var(--nv-moon, #f3dfa2);
+  background:
+    radial-gradient(circle at 64% 62%, color-mix(in srgb, var(--m) 88%, #8a8070) 0 3px, transparent 4.5px),
+    radial-gradient(circle at 36% 70%, color-mix(in srgb, var(--m) 91%, #8a8070) 0 2px, transparent 3.4px),
+    radial-gradient(circle at 42% 34%, color-mix(in srgb, var(--m) 92%, #8a8070) 0 2.2px, transparent 3.2px),
+    radial-gradient(circle at 34% 30%, #fff, color-mix(in srgb, var(--m) 92%, white) 45%, var(--m) 100%);
+  box-shadow: 0 0 14px 4px color-mix(in srgb, var(--m) 55%, transparent), 0 0 46px 14px color-mix(in srgb, var(--m) 22%, transparent);
+  animation: orb-breathe 7s ease-in-out infinite;
+}
+html.theme-dark #root::before, html.theme-amoled #root::before {
+  width: 260px; height: 260px;
+  background: radial-gradient(circle, transparent 18%, color-mix(in srgb, var(--nv-moon, #f3dfa2) 22%, transparent) 30%, transparent 62%);
+  animation: orb-wave 5.5s ease-out infinite;
+}
+html.theme-amoled body::after { --m: #f3dfa2; }
+
+/* ── Sun (Jardín) ── */
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) {
+  & #root { position: relative; z-index: 1; }
+  & .pod-root, & .pod-root .bg-bg:not(.pod-header):not(.pod-dock) { background-color: transparent; }
+  & body::after {
+    width: 34px; height: 34px;
+    background: radial-gradient(circle at 38% 36%, #fff7d6, #ffd76a 45%, #f2a93b 100%);
+    box-shadow: 0 0 16px 6px rgba(255, 196, 70, .55), 0 0 60px 22px rgba(255, 206, 90, .28);
+    animation: orb-breathe 5s ease-in-out infinite;
+  }
+  & #root::before {
+    width: 240px; height: 240px;
+    background: repeating-conic-gradient(from 0deg, rgba(255, 196, 70, .30) 0deg 6deg, transparent 6deg 20deg);
+    -webkit-mask: radial-gradient(circle, transparent 0 15%, #000 17%, transparent 68%);
+            mask: radial-gradient(circle, transparent 0 15%, #000 17%, transparent 68%);
+    animation: orb-spin 60s linear infinite;
+  }
+}
+
+@media print { body::after, #root::before { display: none !important; } }

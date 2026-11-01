@@ -4,6 +4,7 @@ import { createHashHistory, createRouter, RouterProvider } from "@tanstack/react
 import "@/styles.css";
 import "@/alive.css";
 import "@/night.css";
+import "@/sky.css";
 import { APPEARANCE_BOOT_SCRIPT } from "@/lib/theme";
 import { AppErrorComponent } from "@/lib/error-component";
 import { routeTree } from "@/routeTree.gen";

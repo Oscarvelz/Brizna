@@ -40,20 +40,6 @@
 
 html:not([data-palette]):not(.theme-dark):not(.theme-amoled) {
   /* Soft sunlight drifting slowly behind everything. */
-  & body::before {
-    content: "";
-    position: fixed;
-    inset: -20% -20% auto auto;
-    width: 90vmax;
-    height: 90vmax;
-    border-radius: 50%;
-    background: radial-gradient(circle, color-mix(in srgb, #f6cf6a 22%, transparent) 0%, transparent 62%);
-    mix-blend-mode: multiply;
-    pointer-events: none;
-    z-index: 1;
-    animation: alive-sun 26s ease-in-out infinite;
-    will-change: transform;
-  }
 
   /* Each screen grows in from below, its sections one after another. */
   & .alive-page > * {
@@ -120,7 +106,7 @@ html:not([data-palette]):not(.theme-dark):not(.theme-amoled) {
 
 @media (prefers-reduced-motion: reduce) {
   html:not([data-palette]):not(.theme-dark):not(.theme-amoled) {
-    & body::before, & .alive-brand *, & .alive-fab::after { animation: none; }
+    & .alive-brand *, & .alive-fab::after { animation: none; }
   }
 }
 
