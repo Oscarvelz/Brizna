@@ -1356,3 +1356,27 @@ html.theme-amoled .bz-stat.bz-stat.bz-stat:is(a, button):active {
 .bz-fold-head .bz-hint-btn { margin-inline: -0.3rem; }
 .bz-fold-head > .bz-fold-pin.bz-fold-pin { margin-left: -0.55rem; margin-right: -0.15rem; }
 .bz-fold-head .bz-fold-title > .bz-fold-badge { margin-right: -0.1rem; }
+
+/* 1.4.12 (Oscar: bounce too aggressive) — calm press: no overshoot, shallow scale, gentle glow. */
+.bz-stat, .bz-fold-head, .bz-fold-chev, .bz-fold-body .bz-row, .bz-pick, .bz-pick-icon,
+.bz-fold-badge, .bz-fold-pin, .bz-hint-btn, .bz-chosen {
+  transition: transform 0.28s cubic-bezier(0.25, 0.8, 0.3, 1), box-shadow 0.28s ease, background-color 0.22s ease, filter 0.22s ease;
+}
+:root .bz-stat.bz-stat.bz-stat:is(a, button):active,
+html.theme-dark .bz-stat.bz-stat.bz-stat:is(a, button):active,
+html.theme-amoled .bz-stat.bz-stat.bz-stat:is(a, button):active {
+  transform: scale(0.988); transition-duration: 0.14s; filter: brightness(1.03);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--stat-tone) 55%, transparent), 0 0 12px -6px color-mix(in srgb, var(--stat-tone) 45%, transparent);
+}
+.bz-fold-head:active { transform: scale(0.994); transition-duration: 0.14s; }
+.bz-fold-body .bz-row:active, .bz-pick:active, .bz-pick-icon:active, .bz-chosen:active { transform: scale(0.99); transition-duration: 0.14s; }
+.bz-fold-pin:active, .bz-hint-btn:active, .bz-fold-chev:active { transform: scale(0.92); transition-duration: 0.12s; }
+.bz-fold-head:active .bz-fold-badge { transform: none; }
+.bz-tap-ripple {
+  background: radial-gradient(circle, color-mix(in srgb, var(--bloom, var(--color-primary)) 26%, transparent), transparent 70%);
+  animation: bz-ripple 0.75s cubic-bezier(0.25, 0.8, 0.3, 1) forwards;
+}
+@keyframes bz-ripple { from { transform: scale(1); opacity: 0.7; } to { transform: scale(22); opacity: 0; } }
+/* Dock tabs (1.4.12): calm press, no bounce. */
+.pod-dock .alive-nav { transition: transform 0.24s cubic-bezier(0.25, 0.8, 0.3, 1), background-color 0.2s ease, color 0.2s ease; }
+.pod-dock .alive-nav:active { transform: scale(0.96); transition-duration: 0.12s; }

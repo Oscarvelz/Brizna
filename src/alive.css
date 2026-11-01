@@ -33,9 +33,8 @@
   100% { transform: translate3d(-8%, -6%, 0) scale(1); }
 }
 @keyframes alive-leaf {
-  0%   { transform: scale(.6) rotate(-14deg); }
-  60%  { transform: scale(1.15) rotate(6deg); }
-  100% { transform: none; }
+  0%   { transform: scale(.88) rotate(-5deg); opacity: .7; }
+  100% { transform: none; opacity: 1; }
 }
 
 html {
@@ -100,7 +99,7 @@ html {
 
   /* The chosen tab's icon unfurls like a new leaf. */
   & .alive-nav.bg-sun .alive-nav-icon {
-    animation: alive-leaf .45s cubic-bezier(.34, 1.56, .64, 1) backwards;
+    animation: alive-leaf .42s cubic-bezier(.25, .8, .3, 1) backwards;
   }
 }
 
