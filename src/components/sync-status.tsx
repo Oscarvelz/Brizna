@@ -87,7 +87,7 @@ export function SyncStatusCard() {
             <button
               type="button"
               disabled={busy}
-              onClick={() => { void syncNow().then(() => setInfo(syncInfo())); setInfo(syncInfo()); }}
+              onClick={() => { void syncNow(true).then(() => setInfo(syncInfo())); setInfo(syncInfo()); }}
               className="mt-3 flex items-center gap-1 rounded-full bg-surface-2 px-3 py-1.5 text-xs font-semibold disabled:opacity-60"
             >
               <RefreshCw className={`size-3.5 ${busy ? "animate-spin" : ""}`} />

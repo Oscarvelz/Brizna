@@ -133,11 +133,11 @@ export function markDirty() {
   timer = window.setTimeout(() => void syncNow(), 3000);
 }
 
-export function syncNow(): Promise<void> {
+export function syncNow(force = false): Promise<void> {
   if (!uid) return Promise.resolve();
   if (running) { again = true; return running; }
   running = (async () => {
-    try { await once(); } finally {
+    try { await once(force); } finally {
       running = null;
       if (again) { again = false; void syncNow(); }
     }
@@ -147,7 +147,7 @@ export function syncNow(): Promise<void> {
 
 function dbg(...a: unknown[]) { if ((window as any).__bzTrace) console.info("[brizna sync]", ...a); }
 
-async function once() {
+async function once(force = false) {
   const me = uid;
   if (!me) return;
   if (!navigator.onLine) { setStatus("offline"); return; }
@@ -180,17 +180,21 @@ async function once() {
         }
         const full = await supabase.from("brizna_books").select("data_gz, revision, updated_at").maybeSingle();
         if (full.error) throw full.error;
-        if (full.data) {
-          await apply(await gunzip(String(full.data.data_gz)));
+        const remoteJson = full.data ? await gunzip(String(full.data.data_gz)) : "";
+        // A brand-new device that already has clients must never be wiped by an EMPTY cloud copy: send its own instead.
+        const remoteEmpty = (() => { try { const t = (JSON.parse(remoteJson) as { tables?: Record<string, unknown[]> }).tables ?? {}; return !(t.clients?.length || t.pad_pages?.length); } catch { return false; } })();
+        const pushInstead = s.rev === 0 && full.data && remoteEmpty && (await hasLocalData());
+        if (full.data && !pushInstead) {
+          await apply(remoteJson);
           dbg("applied remote", full.data.revision, (await dump()).match(/"name":"[^"]*"/g)?.join(","));
           save(me, { rev: Number(full.data.revision), at: String(full.data.updated_at), dirty: false, editedAt: "", hash: await digest(await dump()) });
         }
-        setStatus("idle");
-        return;
+        if (!pushInstead) { setStatus("idle"); return; }
       }
     }
 
-    const needPush = remote ? changed : (s.rev > 0 || (await hasLocalData()));
+    const emptyTakeover = Boolean(remote && s.rev === 0);
+    const needPush = emptyTakeover || (remote ? changed || (force && s.dirty) : (s.rev > 0 || force || (await hasLocalData())));
     if (!needPush) { if (s.dirty) save(me, { ...s, dirty: false }); setStatus("idle"); return; }
     dbg("push", text.match(/"name":"[^"]*"/g)?.join(","));
     const payload = await gzip(text);

@@ -12,6 +12,10 @@
   0%, 100% { opacity: .55; transform: translate(-50%, -50%) scale(.92); }
   50%      { opacity: 1;   transform: translate(-50%, -50%) scale(1.08); }
 }
+@keyframes orb-halo {
+  0%, 100% { opacity: .65; transform: translate(-50%, -50%) scale(.94); }
+  50%      { opacity: 1;   transform: translate(-50%, -50%) scale(1.04); }
+}
 @keyframes orb-wave {
   0%   { opacity: .9; transform: translate(-50%, -50%) scale(.12); }
   100% { opacity: 0;   transform: translate(-50%, -50%) scale(1.25); }
@@ -54,27 +58,17 @@ html.theme-dark body::after, html.theme-amoled body::after {
     radial-gradient(circle at 36% 70%, color-mix(in srgb, var(--m) 91%, #8a8070) 0 2px, transparent 3.4px),
     radial-gradient(circle at 42% 34%, color-mix(in srgb, var(--m) 92%, #8a8070) 0 2.2px, transparent 3.2px),
     radial-gradient(circle at 34% 30%, #fff, color-mix(in srgb, var(--m) 92%, white) 45%, var(--m) 100%);
-  box-shadow: 0 0 18px 6px color-mix(in srgb, var(--m) 62%, transparent), 0 0 70px 26px color-mix(in srgb, var(--m) 30%, transparent), 0 0 190px 80px color-mix(in srgb, var(--m) 20%, transparent);
-  animation: orb-breathe 7s ease-in-out infinite;
+  box-shadow: 0 0 18px 6px color-mix(in srgb, var(--m) 62%, transparent), 0 0 50px 16px color-mix(in srgb, var(--m) 26%, transparent);
+  animation: orb-breathe 11s ease-in-out infinite;
 }
-html.theme-dark #root::before, html.theme-amoled #root::before,
-html.theme-dark #root::after, html.theme-amoled #root::after {
-  content: "";
-  position: fixed;
-  left: var(--orb-x);
-  top: var(--orb-y);
-  width: 620px; height: 620px;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: -1;
-  background: radial-gradient(circle, transparent 8%, color-mix(in srgb, var(--nv-moon, #f3dfa2) 48%, transparent) 13%, color-mix(in srgb, var(--nv-moon, #f3dfa2) 20%, transparent) 28%, transparent 58%);
-  animation: orb-wave 6s ease-out infinite;
-  will-change: transform, opacity;
+/* Moonlight: one soft halo that slowly breathes — calm, no pulses. */
+html.theme-dark #root::before, html.theme-amoled #root::before {
+  width: 300px; height: 300px;
+  z-index: 15;
+  mix-blend-mode: screen;
+  background: radial-gradient(circle, color-mix(in srgb, var(--nv-moon, #f3dfa2) 26%, transparent) 0%, color-mix(in srgb, var(--nv-moon, #f3dfa2) 10%, transparent) 32%, transparent 66%);
+  animation: orb-halo 11s ease-in-out infinite;
 }
-html.theme-dark #root::after, html.theme-amoled #root::after { animation-delay: -3s; }
-/* The light washes over the cards too (screen blend only brightens), under header/dock. */
-html.theme-dark #root::before, html.theme-amoled #root::before,
-html.theme-dark #root::after, html.theme-amoled #root::after { z-index: 15; mix-blend-mode: screen; }
 html.theme-amoled body::after { --m: #f3dfa2; }
 
 /* ── Sun (Jardín) ── */
