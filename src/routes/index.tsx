@@ -203,7 +203,7 @@ function Home() {
           label={tx("Cortes hoy", "Cuts today")}
           value={String(data?.stats.pendingToday ?? "—")}
           hint={tx("Toca para ver los patios de hoy", "Tap to see today's yards")}
-          tone="due"
+          tone="cut"
           icon={<Scissors className="size-4" />}
         />
         <StatLink
@@ -229,7 +229,7 @@ function Home() {
           label={tx("Por cobrar", "To collect")}
           value={data ? money(data.stats.outstanding) : "—"}
           hint={tx("Toca para ver esos clientes", "Tap to see those clients")}
-          tone="soil"
+          tone="due"
           icon={<Wallet className="size-4" />}
         />
         <StatLink
@@ -698,7 +698,7 @@ function StatLink({
   label: string;
   value: string;
   hint: string;
-  tone: "today" | "late" | "money" | "done" | "due" | "soil";
+  tone: "today" | "late" | "money" | "done" | "due" | "soil" | "cut";
   warn?: boolean;
   icon: ReactNode;
 }) {
@@ -711,6 +711,7 @@ function StatLink({
     done: "border-l-4 bz-stat-done bg-done-bg",
     due: "border-l-4 bz-stat-due bg-due-bg",
     soil: "border-l-4 bz-stat-soil bg-soil-bg",
+    cut: "border-l-4 bz-stat-cut bz-cut-bg",
   };
   const className = cn(
     "alive-stat bz-stat relative block w-full min-h-24 min-w-0 touch-manipulation rounded-xl p-3 text-left transition-[transform,box-shadow] duration-150 active:scale-[0.98] sm:p-4",
@@ -731,6 +732,7 @@ function StatLink({
           tone === "money" && "text-money",
           tone === "due" && "text-due",
           tone === "soil" && "text-soil",
+          tone === "cut" && "bz-cut-ink",
           tone === "done" && "text-done",
           tone === "today" && "text-today",
         )}
