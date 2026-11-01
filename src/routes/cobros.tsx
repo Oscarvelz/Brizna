@@ -31,6 +31,8 @@ import { emphasize, useTx } from "@/lib/i18n";
 import { listBalances, recordPayment, recordPaymentsBulk } from "@/lib/server/lawn";
 import type { ClientRow, JobRow, PaymentRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { DayNightSwitch } from "@/components/day-night-switch";
+import { WeatherChip } from "@/components/weather-chip";
 
 const cobrosSearch = z.object({
   view: z
@@ -154,7 +156,17 @@ function CobrosPage() {
   });
 
   return (
-    <AppShell title={tx("Cobros", "Payments")}>
+    <AppShell
+      title={tx("Cobros", "Payments")}
+      action={
+        <span className="inline-flex items-center gap-3">
+          <WeatherChip />
+          <span className="mr-2 grid w-10 shrink-0 place-items-center">
+            <DayNightSwitch />
+          </span>
+        </span>
+      }
+    >
       <ScrollTop />
       <section className="relative mb-3 grid min-w-0 grid-cols-2 items-stretch gap-3">
         <div

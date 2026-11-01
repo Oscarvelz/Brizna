@@ -4,6 +4,7 @@ import { FloatHost } from "@/components/float-window";
 import { FingerprintOffer } from "@/components/fingerprint-offer";
 import { WeatherSky } from "@/components/weather-sky";
 import { NavHost } from "@/components/nav-host";
+import { TapBloom } from "@/components/tap-bloom";
 
 export const Route = createRootRoute({
   component: () => (
@@ -13,6 +14,7 @@ export const Route = createRootRoute({
       <FloatHost />
       <FingerprintOffer />
       <NavHost />
+      <TapBloom />
     </AppProviders>
   ),
 });

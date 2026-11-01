@@ -14,6 +14,8 @@ import { ScrollTop } from "@/components/scroll-top";
 import { todayISO } from "@/lib/dates";
 import { useCifraRank } from "@/lib/cifras-order";
 import { useTx } from "@/lib/i18n";
+import { DayNightSwitch } from "@/components/day-night-switch";
+import { WeatherChip } from "@/components/weather-chip";
 import { getDashboard } from "@/lib/server/lawn";
 
 export const Route = createFileRoute("/estadisticas")({ component: EstadisticasPage });
@@ -77,14 +79,20 @@ function EstadisticasPage() {
       title={tx("Estudio", "Study")}
       titleExtra={view === "estudio" ? <CifrasOrderButton /> : undefined}
       action={
-        view === "asesor" ? undefined : <TitleSearch
+        <span className="inline-flex items-center gap-3">
+          <WeatherChip />
+          {view === "asesor" ? null : <TitleSearch
           open={findOn}
           onToggle={() => setFindOn((value) => !value)}
           value={needle}
           onChange={setNeedle}
           placeholder={tx("Buscar una cifra", "Search a figure")}
           label={tx("Buscar en Estudio", "Search Study")}
-        />
+        />}
+          <span className="mr-2 grid w-10 shrink-0 place-items-center">
+            <DayNightSwitch />
+          </span>
+        </span>
       }
     >
       <ScrollTop />
