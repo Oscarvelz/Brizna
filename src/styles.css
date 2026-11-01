@@ -1453,8 +1453,24 @@ html.theme-dark .bz-lenses .bz-row-on-wash.bz-row-on-wash, html.theme-amoled .bz
    other tiles); "Cortes hoy" stays gold. Class names keep the "cut" slot. */
 /* 1.4.32: warm dusty blue instead (Oscar: "azulito, un poquito cálido"). */
 /* 1.4.33: pale peach with terracotta ink (Oscar's pick). */
-:root { --color-cut: #a65a34; --color-cut-bg: #fbe3d3; }
-html.theme-dark, html.theme-amoled { --color-cut: #eba57c; --color-cut-bg: color-mix(in srgb, #eba57c 15%, #070606); }
+/* 1.4.34: Oscar's spec — neutral warm linen, exact values. */
+:root { --color-cut: #4a443e; --color-cut-bg: #f2efe9; }
+html.theme-dark, html.theme-amoled { --color-cut: #e3dfd5; --color-cut-bg: #272421; }
+html .bz-stat.bz-stat-cut.bz-stat-cut {
+  --stat-ink: #4a443e; --stat-icon: #4a443e; --stat-sub: #6e665e;
+  --stat-chip: #e8e3da; --stat-line: #e2ddd3;
+  --stat-edge: 0 0 0 1px #e2ddd3;
+  background-color: #f2efe9; background-image: none;
+  box-shadow: 0 0 0 1px #e2ddd3, 0 8px 18px -14px rgb(60 50 40 / 0.35);
+}
+html.theme-dark .bz-stat.bz-stat-cut.bz-stat-cut, html.theme-amoled .bz-stat.bz-stat-cut.bz-stat-cut {
+  --stat-ink: #e3dfd5; --stat-icon: #e3dfd5; --stat-sub: #b5afa5;
+  --stat-chip: #312d29; --stat-line: #3a3632;
+  --stat-edge: 0 0 0 1px #3a3632;
+  background-color: #272421; background-image: none;
+  box-shadow: 0 0 0 1px #3a3632, 0 10px 20px -14px rgb(0 0 0 / 0.7);
+}
+.bz-stat-cut .bz-stat-sub { color: var(--stat-sub); }
 .bz-stat-cut { --stat-tone: var(--color-cut); }
 .bz-cut-bg { background-color: var(--color-cut-bg); }
 .bz-cut-ink { color: var(--color-cut); }
