@@ -1214,25 +1214,7 @@ html.theme-dark .bz-fold:not(.bz-fold-toned), html.theme-amoled .bz-fold:not(.bz
   box-shadow: var(--stat-edge), 0 calc(var(--blk-depth) - 3px) 0 0 var(--blk-deep), 0 4px 8px -4px rgb(40 30 15 / 0.35);
 }
 
-/* Folds: side as an inset stripe that follows the rounded edge, slab beneath. */
-html .bz-fold.bz-fold.bz-fold.bz-fold {
-  box-shadow:
-    inset 5px 0 0 0 var(--blk-side),
-    inset 0 0 0 1px color-mix(in srgb, var(--blk-tone) 26%, transparent),
-    inset 0 1px 0 rgb(255 255 255 / 0.5),
-    0 var(--blk-depth) 0 0 var(--blk-deep),
-    var(--blk-contact);
-  margin-bottom: var(--blk-depth);
-}
-html.theme-dark .bz-fold.bz-fold.bz-fold.bz-fold, html.theme-amoled .bz-fold.bz-fold.bz-fold.bz-fold {
-  box-shadow:
-    inset 5px 0 0 0 var(--blk-side),
-    inset 0 1px 0 rgb(255 255 255 / 0.06),
-    0 0 0 1px color-mix(in srgb, var(--blk-tone) 38%, transparent),
-    0 var(--blk-depth) 0 0 var(--blk-deep),
-    var(--blk-contact);
-}
-.bz-fold-head { padding-left: calc(0.5rem + 3px); }
+/* Folds: 3D block removed in 1.4.10 (Oscar wanted the 1.4.7 look back). */
 @media (prefers-reduced-motion: reduce) { :root .bz-stat.bz-stat.bz-stat { transition: none; } }
 
 /* Stat cards v3 (Oscar, 2026-11-01: thick stripes out for these cards only; folds keep the
@@ -1267,3 +1249,6 @@ html.theme-amoled .bz-stat.bz-stat.bz-stat:is(a, button):active {
   transform: scale(0.985) translateY(1px);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--stat-tone) 50%, transparent), 0 4px 10px -6px rgb(0 0 0 / 0.45);
 }
+
+/* Cobros: clear air between the last fold and the list card below it (1.4.10). */
+.bz-fold + #lista { margin-top: 1rem; }
