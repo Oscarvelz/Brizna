@@ -1024,7 +1024,7 @@ function PhoneViewButton({
     </i>
   );
   return (
-    <div ref={box} className="fixed bottom-24 left-3 z-40 print:hidden" data-no-swipe>
+    <div ref={box} className="fixed bottom-[calc(5.875rem+var(--bz-chin))] left-3 z-40 print:hidden" data-no-swipe>
       {open ? (
         <div role="menu" aria-label={tx("Vista", "View")} className="absolute bottom-[calc(100%+8px)] left-0 grid w-64 gap-2.5 rounded-[20px] border border-border bg-surface p-3 shadow-[0_20px_50px_rgb(0_0_0/0.3)]">
           <p className="text-[0.68rem] font-bold tracking-[0.08em] text-muted uppercase">{tx("Vista", "View")}</p>
@@ -1048,11 +1048,11 @@ function PhoneViewButton({
         aria-expanded={open}
         aria-label={tx("Vista: pantallas y ventana flotante", "View: screens and floating window")}
         className={cn(
-          "grid size-10 place-items-center rounded-full border border-border bg-surface/90 text-muted shadow-card ring-1 ring-border",
+          "grid size-9 place-items-center rounded-full border border-border bg-surface/90 text-muted shadow-card ring-1 ring-border",
           (split || floatOn) && "bg-sun text-primary",
         )}
       >
-        {floatOn && !split ? <PictureInPicture2 className="size-5" /> : <Rows2 className="size-5" />}
+        {floatOn && !split ? <PictureInPicture2 className="size-[18px]" /> : <Rows2 className="size-[18px]" />}
       </button>
     </div>
   );
