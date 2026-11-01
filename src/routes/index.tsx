@@ -699,22 +699,24 @@ function StatLink({
   warn?: boolean;
   icon: ReactNode;
 }) {
+  // Stat skin: the old 4px left bar stays as a transparent spacer (same metrics);
+  // the tone rides in --stat-tone (hairline contour, icon chip, label ink).
   const tones = {
-    today: "border-l-4 border-today bg-today-bg",
-    late: "border-l-4 border-late bg-late-bg",
-    money: "border-l-4 border-money bg-money-bg",
-    done: "border-l-4 border-done bg-done-bg",
-    due: "border-l-4 border-due bg-due-bg",
-    soil: "border-l-4 border-soil bg-soil-bg",
+    today: "border-l-4 bz-stat-today bg-today-bg",
+    late: "border-l-4 bz-stat-late bg-late-bg",
+    money: "border-l-4 bz-stat-money bg-money-bg",
+    done: "border-l-4 bz-stat-done bg-done-bg",
+    due: "border-l-4 bz-stat-due bg-due-bg",
+    soil: "border-l-4 bz-stat-soil bg-soil-bg",
   };
   const className = cn(
-    "alive-stat relative block w-full min-h-24 min-w-0 touch-manipulation rounded-xl p-3 text-left shadow-card transition-[transform,box-shadow] duration-150 hover:shadow-card-hover active:scale-[0.98] sm:p-4",
+    "alive-stat bz-stat relative block w-full min-h-24 min-w-0 touch-manipulation rounded-xl p-3 text-left transition-[transform,box-shadow] duration-150 active:scale-[0.98] sm:p-4",
     tones[tone],
-    warn && "ring-2 ring-late",
+    warn && "bz-stat-warn",
   );
   const inner = (
     <>
-      <p className="flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted uppercase">
+      <p className="bz-stat-label flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted uppercase">
         {icon}
         {label}
       </p>
@@ -732,7 +734,7 @@ function StatLink({
       >
         {value}
       </p>
-      <p className="mt-1 text-xs leading-snug text-muted">{hint}</p>
+      <p className="bz-stat-sub mt-1 text-xs leading-snug text-muted">{hint}</p>
     </>
   );
   if (onPress || !to) {

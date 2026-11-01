@@ -159,11 +159,11 @@ function CobrosPage() {
       <section className="relative mb-3 grid min-w-0 grid-cols-2 items-stretch gap-3">
         <div
           className={cn(
-            "flex min-h-24 min-w-0 flex-col rounded-xl border-l-4 border-due bg-due-bg p-3 text-left shadow-card",
-            (view === "owing" || view === "abonos") && "ring-4 ring-due ring-offset-2 ring-offset-bg",
+            "bz-stat bz-stat-due flex min-h-24 min-w-0 flex-col rounded-xl border-l-4 bg-due-bg p-3 text-left",
+            (view === "owing" || view === "abonos") && "bz-stat-on",
           )}
         >
-          <p className="flex items-center gap-1 text-xs font-medium tracking-wide text-muted uppercase">
+          <p className="bz-stat-label flex items-center gap-1 text-xs font-medium tracking-wide text-muted uppercase">
             {tx("Por cobrar", "To collect")}
             <Hint topic="por-cobrar" />
           </p>
@@ -178,7 +178,7 @@ function CobrosPage() {
             ) : null}
           </Link>
           <div className="mt-auto pt-2">
-            <p className="flex items-center gap-1 text-xs font-medium tracking-wide text-muted uppercase">
+            <p className="bz-stat-label flex items-center gap-1 text-xs font-medium tracking-wide text-muted uppercase">
               {tx("Abonado", "Partial paid")}
               <Hint topic="abonado" />
             </p>
@@ -508,11 +508,11 @@ function CollectedNest({
   return (
     <div
       className={cn(
-        "rounded-xl border-l-4 border-done bg-done-bg p-2.5 shadow-card",
-        active && "ring-2 ring-primary",
+        "bz-stat bz-stat-done bz-stat-nest rounded-xl border-l-4 bg-done-bg p-2.5",
+        active && "bz-stat-on",
       )}
     >
-      <p className="flex items-center gap-1 px-1 text-xs font-medium tracking-wide text-muted uppercase">
+      <p className="bz-stat-label flex items-center gap-1 px-1 text-xs font-medium tracking-wide text-muted uppercase">
         {tx("Cobrado", "Collected")}
         <Hint topic="cobrado" />
       </p>

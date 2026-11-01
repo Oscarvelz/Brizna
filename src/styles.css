@@ -1097,3 +1097,83 @@ html.theme-dark .bz-fold-badge, html.theme-amoled .bz-fold-badge {
 .bz-fold-head { padding-right: 0.2rem; }
 .bz-fold-head > .bz-fold-pin { margin-left: -0.45rem; }
 .bz-fold-title > .bz-fold-peek { margin-right: -0.2rem; }
+
+/* Stat skin (Oscar, 2026-11-01): Hoy tiles and Cobros summary cards get the fold finish.
+   Same sizes, colors, content and taps. The old 4px left bar stays as a transparent spacer
+   (identical metrics); the tone (--stat-tone) rides in a hairline contour, a soft tinted lift,
+   a round icon chip and the label ink. Selection is an inset outline, never a Tailwind ring. */
+.bz-stat-today { --stat-tone: var(--color-today); }
+.bz-stat-late { --stat-tone: var(--color-late); }
+.bz-stat-money { --stat-tone: var(--color-money); }
+.bz-stat-done { --stat-tone: var(--color-done); }
+.bz-stat-due { --stat-tone: var(--color-due); }
+.bz-stat-soil { --stat-tone: var(--color-soil); }
+.bz-stat {
+  --stat-ink: color-mix(in srgb, var(--stat-tone) 58%, var(--color-fg));
+  --stat-icon: color-mix(in srgb, var(--stat-tone) 78%, var(--color-fg));
+  --stat-chip: color-mix(in srgb, var(--stat-tone) 15%, var(--color-surface));
+  --stat-line: color-mix(in srgb, var(--stat-tone) 20%, transparent);
+  --stat-sub: color-mix(in srgb, var(--stat-tone) 32%, var(--color-muted));
+  --stat-edge: 0 0 0 1px color-mix(in srgb, var(--stat-tone) 26%, transparent);
+  --stat-lift: 0 1px 1.5px rgb(40 34 18 / 0.07),
+    0 10px 22px -14px color-mix(in srgb, var(--stat-tone) 42%, rgb(40 34 18 / 0.5));
+  --stat-lift-press: 0 1px 1px rgb(40 34 18 / 0.1),
+    0 4px 10px -6px color-mix(in srgb, var(--stat-tone) 50%, rgb(40 34 18 / 0.6));
+  border-left-color: transparent;
+  /* Sheen from the very top edge (border-box so the 4px spacer never shows a seam). */
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0) 1.5px, rgb(255 255 255 / 0.14) 1.5px, rgb(255 255 255 / 0) 55%);
+  background-origin: border-box;
+  background-repeat: no-repeat;
+  transition: transform 0.15s ease, box-shadow 0.18s ease;
+}
+/* Beats the day-card contour (html:not(.theme-dark)… :where(.rounded-xl…)), which is (0,2,1). */
+:root .bz-stat.bz-stat { box-shadow: var(--stat-edge), var(--stat-lift); }
+html.theme-dark .bz-stat, html.theme-amoled .bz-stat {
+  --stat-ink: color-mix(in srgb, var(--stat-tone) 42%, #ffffff);
+  --stat-icon: color-mix(in srgb, var(--stat-tone) 75%, #ffffff);
+  --stat-chip: color-mix(in srgb, var(--stat-tone) 24%, #0b0b0b);
+  --stat-line: color-mix(in srgb, var(--stat-tone) 28%, transparent);
+  --stat-sub: color-mix(in srgb, var(--stat-tone) 22%, var(--color-muted));
+  --stat-edge: 0 0 0 1px color-mix(in srgb, var(--stat-tone) 40%, transparent);
+  --stat-lift: 0 18px 36px -20px rgb(0 0 0 / 0.85);
+  --stat-lift-press: 0 6px 14px -8px rgb(0 0 0 / 0.9);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.09), rgb(255 255 255 / 0) 1px, rgb(255 255 255 / 0.035) 1px, rgb(255 255 255 / 0) 50%);
+}
+@media (hover: hover) {
+  :root .bz-stat.bz-stat:is(a, button):hover {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--stat-tone) 40%, transparent), var(--stat-lift);
+  }
+}
+
+:root .bz-stat.bz-stat:is(a, button):active { box-shadow: var(--stat-edge), var(--stat-lift-press); }
+
+/* Label row: refined small caps in the tone's ink; the icon sits in a round tinted chip
+   painted by a spread shadow and scaled in place, so the row keeps its exact 16px box. */
+.bz-stat-label { color: var(--stat-ink); font-weight: 600; letter-spacing: 0.065em; }
+.bz-stat-label > svg {
+  flex: none; color: var(--stat-icon); border-radius: 999px;
+  background-color: var(--stat-chip);
+  box-shadow: 0 0 0 4.5px var(--stat-chip), 0 0 0 5.75px var(--stat-line);
+  transform: scale(0.8);
+}
+.bz-stat-label .bz-hint-btn:not(.is-open) { color: var(--stat-icon); opacity: 0.85; }
+.bz-stat-label .bz-hint-btn:not(.is-open):hover { opacity: 1; }
+.bz-stat-sub { color: var(--stat-sub); }
+.bz-stat .alive-num, .bz-stat .font-display { font-variant-numeric: tabular-nums; }
+
+/* Warn (late yards waiting) and the selected card: an inset outline in the tone (outline,
+   not an inset shadow, so it follows the full rounded edge over the 4px spacer). */
+.bz-stat.bz-stat-warn, .bz-stat.bz-stat-on { outline: 2px solid var(--stat-tone); outline-offset: -2px; }
+.bz-stat.bz-stat-done.bz-stat-on { outline-color: var(--color-primary); }
+
+/* Cobrado rows: hairline separators like fold body rows, figures tabular. */
+.bz-stat-nest .bz-row { position: relative; }
+.bz-stat-nest .bz-row + .bz-row::before {
+  content: ""; position: absolute; top: -0.1875rem; left: 0.5rem; right: 0.5rem; height: 1px;
+  background-color: var(--stat-line); pointer-events: none;
+}
+.bz-stat-nest .bz-row-on::before, .bz-stat-nest .bz-row-on + .bz-row::before { display: none; }
+.bz-stat-nest .bz-row-val { color: color-mix(in srgb, var(--stat-tone) 30%, var(--color-fg)); }
+html.theme-dark .bz-stat-nest .bz-row-val, html.theme-amoled .bz-stat-nest .bz-row-val { color: #ffffff; }
+
+@media (prefers-reduced-motion: reduce) { .bz-stat { transition: none; } }
