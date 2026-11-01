@@ -60,6 +60,8 @@ export function MessageComposer({
   tight,
   channel = "sms",
   initialText,
+  label,
+  className,
 }: {
   phone: string;
   name: string;
@@ -67,6 +69,9 @@ export function MessageComposer({
   tight?: boolean;
   channel?: "sms" | "whatsapp";
   initialText?: string;
+  /** Text on the full-width button (default: Mensaje / WhatsApp). */
+  label?: string;
+  className?: string;
 }) {
   const tx = useTx();
   const { locale } = useI18n();
@@ -273,9 +278,9 @@ export function MessageComposer({
 
   return (
     <>
-      <Button type="button" variant="outline" className="w-full" onClick={() => openSheet()}>
+      <Button type="button" variant="outline" className={cn("w-full", className)} onClick={() => openSheet()}>
         {channel === "whatsapp" ? "WA" : <MessageSquare className="size-4" />}
-        {channel === "whatsapp" ? "WhatsApp" : tx("Mensaje", "Message")}
+        {label ?? (channel === "whatsapp" ? "WhatsApp" : tx("Mensaje", "Message"))}
       </Button>
       {sheet}
       {confirm}

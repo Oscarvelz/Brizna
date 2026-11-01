@@ -8,7 +8,7 @@ const es = {
   "nav.agenda": "Agenda",
   "nav.clients": "Clientes",
   "nav.payments": "Cobros",
-  "nav.stats": "Cifras",
+  "nav.stats": "Estudio",
   "nav.notes": "Notas",
   "nav.settings": "Ajustes",
   "common.back": "Atrás",
@@ -115,7 +115,7 @@ const en: Record<keyof typeof es, string> = {
   "nav.agenda": "Schedule",
   "nav.clients": "Clients",
   "nav.payments": "Payments",
-  "nav.stats": "Figures",
+  "nav.stats": "Study",
   "nav.notes": "Notes",
   "nav.settings": "Settings",
   "common.back": "Back",
@@ -256,12 +256,12 @@ export const MANUAL: Record<LocaleName, ManualSection[]> = {
     {
       id: "lluvia",
       title: "Parar el día",
-      body: "Parar por lluvia mueve los pendientes de hoy al siguiente día abierto. Parar por lluvia viene preestablecido. También puedes parar por visita al médico, dentista u otra razón escrita a mano. Se guarda la hora exacta. Cifras cuenta esos días en Días parados.",
+      body: "Parar por lluvia mueve los pendientes de hoy al siguiente día abierto. Parar por lluvia viene preestablecido. También puedes parar por visita al médico, dentista u otra razón escrita a mano. Se guarda la hora exacta. Estudio cuenta esos días en Días parados.",
     },
     {
       id: "horas",
       title: "Horas",
-      body: "La entrada de siempre es a las 8:00 y la salida a las 5:30. Cámbialas en Ajustes. Desde Hoy, cambiar la entrada o la salida pide confirmación: ahora, o el horario de siempre. Las flechas deshacen y rehacen. Al final, Sí, trabajé esas horas confirma, y No, editar deja corregir la hora. Cifras suma el día, la semana y el mes.",
+      body: "La entrada de siempre es a las 8:00 y la salida a las 5:30. Cámbialas en Ajustes. Desde Hoy, cambiar la entrada o la salida pide confirmación: ahora, o el horario de siempre. Las flechas deshacen y rehacen. Al final, Sí, trabajé esas horas confirma, y No, editar deja corregir la hora. Estudio suma el día, la semana y el mes.",
     },
     {
       id: "notas",
@@ -303,8 +303,8 @@ export const MANUAL: Record<LocaleName, ManualSection[]> = {
     },
     {
       id: "cifras",
-      title: "Cifras",
-      body: "Cifras mira el tiempo, no el cobro del momento. Cada bloque empieza con su cifra grande y una frase corta; el detalle va debajo. La lupa busca una cifra sin ocupar todo el ancho. Cada bloque se pliega, y el pin lo deja abierto siempre. La palomilla de arriba despliega todo de una vez; si la quitas, se pliega. Junto al título Estadísticas hay un botón de orden. Sube o baja cada bloque y confirma con Guardar. Cancelar no cambia nada. El orden de siempre empieza con Este mes y Meta del mes. Meta del mes suma la meta diaria de patios de Esfuerzo de la semana y dice cuántos por día faltan. Ingreso fijo del mes es lo que dejan tus clientes fijos en un mes normal. $ por hora divide lo cobrado entre tus horas confirmadas. De por vida, en Cada año, son dos cuentas: el dinero de Cobrado desde el primer pago, y los cortes hechos desde el primero. No son la misma cosa. Las propinas se cuentan aparte y no inflan Cobrado.",
+      title: "Estudio",
+      body: "Estudio mira el tiempo, no el cobro del momento. Cada bloque empieza con su cifra grande y una frase corta; el detalle va debajo. La lupa busca una cifra sin ocupar todo el ancho. Cada bloque se pliega, y el pin lo deja abierto siempre. La palomilla de arriba despliega todo de una vez; si la quitas, se pliega. Junto al título Estudio hay un botón de orden. Sube o baja cada bloque y confirma con Guardar. Cancelar no cambia nada. El orden de siempre empieza con Este mes y Meta del mes. Meta del mes suma la meta diaria de patios de Esfuerzo de la semana y dice cuántos por día faltan. Ingreso fijo del mes es lo que dejan tus clientes fijos en un mes normal. $ por hora divide lo cobrado entre tus horas confirmadas. De por vida, en Cada año, son dos cuentas: el dinero de Cobrado desde el primer pago, y los cortes hechos desde el primero. No son la misma cosa. Las propinas se cuentan aparte y no inflan Cobrado.",
       points: [
         {
           id: "cifras-semana",
@@ -339,8 +339,12 @@ export const MANUAL: Record<LocaleName, ManualSection[]> = {
           body: "Patios de por vida: cuántos patios quedaron en Hecho, del primero al último. Es una cuenta de patios, no de dinero. Un patio sin pagar también cuenta.",
         },
         {
+          id: "cifras-asesor",
+          body: "Arriba hay dos botones: Estudio y Asesor. Estudio son tus cifras. Asesor te dice en palabras simples cómo va el negocio, con un puntaje de 0 a 100, las tres cosas que yo haría ahora con lo que valen en dinero, tus clientes en grupos (Estrellas, Fieles, En riesgo, Morosos, Ocasionales) y cinco chequeos. Toca un grupo para ver a quién y qué hacer con cada uno. La pantalla recuerda cuál elegiste.",
+        },
+        {
           id: "cifras-orden",
-          body: "Orden de las cifras: el botón junto a Estadísticas. Sube o baja cada bloque. Guardar pregunta antes de dejar ese orden. Cancelar no cambia nada. Orden de siempre prepara Este mes, Meta del mes, Ingresos mes a mes y el resto en su lugar de siempre. Hay que guardar para que quede.",
+          body: "Orden de las cifras: el botón junto a Estudio. Sube o baja cada bloque. Guardar pregunta antes de dejar ese orden. Cancelar no cambia nada. Orden de siempre prepara Este mes, Meta del mes, Ingresos mes a mes y el resto en su lugar de siempre. Hay que guardar para que quede.",
         },
       ],
     },
@@ -355,7 +359,7 @@ export const MANUAL: Record<LocaleName, ManualSection[]> = {
         },
         {
           id: "agenda-dia",
-          body: "Este recuadro aparece en esa fecha, dentro de la agenda, solo si el día no siguió con normalidad. La razón sale de Parar el día: lluvia, que viene preestablecida, una visita al médico, el dentista, u otra escrita a mano. Si unos patios se movieron, su nombre queda junto a la razón. Esos pendientes pasan al siguiente día abierto y se guarda la hora. Un día trabajado como siempre no muestra el recuadro. En Cifras, las mismas razones se cuentan en Días parados.",
+          body: "Este recuadro aparece en esa fecha, dentro de la agenda, solo si el día no siguió con normalidad. La razón sale de Parar el día: lluvia, que viene preestablecida, una visita al médico, el dentista, u otra escrita a mano. Si unos patios se movieron, su nombre queda junto a la razón. Esos pendientes pasan al siguiente día abierto y se guarda la hora. Un día trabajado como siempre no muestra el recuadro. En Estudio, las mismas razones se cuentan en Días parados.",
         },
       ],
     },
@@ -420,7 +424,7 @@ export const MANUAL: Record<LocaleName, ManualSection[]> = {
     {
       id: "propina",
       title: "Propina",
-      body: "Si alguien da más de lo que debe, anótalo como propina al marcar Hecho o al cobrar. La propina no baja ni sube la deuda y no entra en Cobrado. Cifras la suma en el mes y en el año.",
+      body: "Si alguien da más de lo que debe, anótalo como propina al marcar Hecho o al cobrar. La propina no baja ni sube la deuda y no entra en Cobrado. Estudio la suma en el mes y en el año.",
       points: [
         {
           id: "propina-anio",
@@ -534,8 +538,8 @@ export const MANUAL: Record<LocaleName, ManualSection[]> = {
     },
     {
       id: "cifras",
-      title: "Figures",
-      body: "Figures looks at time, not the payment you are taking right now. Each block starts with its big figure and one short sentence; detail goes below. The magnifying glass searches a figure without a full-width bar. Each block folds closed, and the pin keeps one open. The check at the top expands everything at once; clear it and they fold closed. Next to the Statistics title there is an order button. Move each block up or down and confirm with Save. Cancel changes nothing. The usual order starts with This month and Month goal. Month goal adds up the daily yard goals from This week's effort and says how many a day are left. Steady monthly income is what your regular clients bring in a normal month. $ per hour divides what you collected by your confirmed hours. Lifetime, in Each year, is two counts: Collected money since the first payment, and cuts done since the first one. They are not the same thing. A tip is counted apart and does not inflate Collected.",
+      title: "Study",
+      body: "Study looks at time, not the payment you are taking right now. Each block starts with its big figure and one short sentence; detail goes below. The magnifying glass searches a figure without a full-width bar. Each block folds closed, and the pin keeps one open. The check at the top expands everything at once; clear it and they fold closed. Next to the Statistics title there is an order button. Move each block up or down and confirm with Save. Cancel changes nothing. The usual order starts with This month and Month goal. Month goal adds up the daily yard goals from This week's effort and says how many a day are left. Steady monthly income is what your regular clients bring in a normal month. $ per hour divides what you collected by your confirmed hours. Lifetime, in Each year, is two counts: Collected money since the first payment, and cuts done since the first one. They are not the same thing. A tip is counted apart and does not inflate Collected.",
       points: [
         { id: "cifras-semana", body: "Yards this week: yards marked Done this week, Monday through Sunday." },
         { id: "cifras-semana-pasada", body: "Yards last week: the same count, for the previous week." },
@@ -552,8 +556,12 @@ export const MANUAL: Record<LocaleName, ManualSection[]> = {
           body: "Lifetime yards: how many yards were marked Done, from the first to the last. It is a count of yards, not money. A yard that is not paid yet still counts.",
         },
         {
+          id: "cifras-asesor",
+          body: "At the top there are two buttons: Study and Advisor. Study holds your figures. Advisor tells you in plain words how the business is doing, with a score from 0 to 100, the three things I'd do now with what each is worth, your clients in groups (Stars, Loyal, At risk, Late payers, One-time) and five checks. Tap a group to see who is in it and what to do with each. The screen remembers your choice.",
+        },
+        {
           id: "cifras-orden",
-          body: "Order of the figures: the button next to Statistics. Move each block up or down. Save asks before keeping that order. Cancel changes nothing. Usual order sets This month, Month goal, Income month by month, and the rest in their usual place. You still have to save.",
+          body: "Order of the figures: the button next to Study. Move each block up or down. Save asks before keeping that order. Cancel changes nothing. Usual order sets This month, Month goal, Income month by month, and the rest in their usual place. You still have to save.",
         },
       ],
     },
@@ -633,7 +641,7 @@ export const MANUAL: Record<LocaleName, ManualSection[]> = {
     {
       id: "propina",
       title: "Tip",
-      body: "If someone gives more than they owe, record it as a tip when you mark Done or take a payment. A tip does not change the debt and does not go into Collected. Figures adds it up for the month and the year.",
+      body: "If someone gives more than they owe, record it as a tip when you mark Done or take a payment. A tip does not change the debt and does not go into Collected. Study adds it up for the month and the year.",
       points: [
         { id: "propina-anio", body: "Tips this year: extra money for the whole year. It does not change the debt and does not go into Collected." },
         { id: "propina-mes", body: "Tips this month: this month's tips, apart from Collected." },
@@ -779,6 +787,10 @@ const EMPHASIS = [
   "Settings",
   "Agenda",
   "Schedule",
+  "Estudio",
+  "Study",
+  "Asesor",
+  "Advisor",
   "Cifras",
   "Figures",
   "Cobros",

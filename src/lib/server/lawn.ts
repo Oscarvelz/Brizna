@@ -5863,3 +5863,392 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
       },
     };
   });
+
+// ---------------------------------------------------------------------------
+// Estudio · Asesor: a plain-words coach for a solo lawn-service owner.
+// Read-only. One client pass (loadClients) + a handful of grouped queries.
+// Everything is computed here as numbers and keys; the screen writes the words.
+
+export type AdvisorStatus = "pass" | "warn" | "fail";
+export type AdvisorPillarKey = "cobro" | "precios" | "clientes" | "agenda" | "fijo";
+export type AdvisorGroupKey = "estrellas" | "fieles" | "riesgo" | "morosos" | "ocasionales";
+export type AdvisorActionKind = "collect" | "raise" | "winback" | "fill" | "plans" | "season";
+export type AdvisorTip = "thank" | "raise" | "keep" | "call" | "collect" | "plan";
+export type AdvisorRiskReason = "gap" | "moves" | "paused" | "stopped";
+
+export type AdvisorPerson = {
+  id: number;
+  name: string;
+  phone: string | null;
+  kind: "regular" | "one_time";
+  price: number;
+  /** What a normal month with this client is worth (visits × price); one-time clients: 0. */
+  monthly: number;
+  /** Work done for them in the last 12 months. */
+  value12: number;
+  balance: number;
+  /** Days since they last paid (or since the first unpaid cut). */
+  payDays: number | null;
+  /** Days since the last cut marked done. */
+  sinceCut: number | null;
+  /** Their usual days between visits. */
+  every: number;
+  years: number;
+  reason: AdvisorRiskReason | null;
+  /** Price suggestion (only when they pay well below similar yards). */
+  suggested: number | null;
+  gainYear: number;
+  tip: AdvisorTip;
+};
+
+export type AdvisorWeekday = { dow: number; load: number; capacity: number };
+
+export type AdvisorAction = {
+  kind: AdvisorActionKind;
+  /** $ shown on the card. per: "now" = money to collect once, "year" = a year's worth, "each" = per client that says yes. */
+  impact: number;
+  per: "now" | "year" | "each";
+  /** Ranking weight in $ (comparable across kinds). */
+  weight: number;
+  people: AdvisorPerson[];
+  count: number;
+  typical?: number;
+  week?: AdvisorWeekday[];
+  light?: AdvisorWeekday;
+  /** A weekday booked well past its room (move some yards from it). */
+  heavy?: AdvisorWeekday;
+  avgPrice?: number;
+  dropPct?: number;
+  winterAvg?: number;
+  restAvg?: number;
+  months?: { m: number; value: number }[];
+  monthsLeft?: number;
+};
+
+export type AdvisorPillar = {
+  key: AdvisorPillarKey;
+  status: AdvisorStatus;
+  score: number; // 0–1
+  /** The one number the line is about (%, count or $), with a second one where useful. */
+  a: number;
+  b: number;
+  c: number;
+};
+
+export type AdvisorReading = {
+  today: string;
+  hasData: boolean;
+  business: string;
+  score: number;
+  tone: "good" | "warn" | "bad";
+  activeClients: number;
+  owed: number;
+  owedLate: number;
+  monthly: number;
+  /** True when the daily yard goals are set (the week is measured against them). */
+  hasGoals: boolean;
+  actions: AdvisorAction[];
+  pillars: AdvisorPillar[];
+  groups: { key: AdvisorGroupKey; count: number; money: number; people: AdvisorPerson[] }[];
+};
+
+export const getAdvisor = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<AdvisorReading> => {
+    const sql = await getSql();
+    const uid = context.userId;
+    const today = todayISO();
+    const from12 = addDaysISO(today, -364);
+    const from90 = addDaysISO(today, -89);
+    const to28 = addDaysISO(today, 27);
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const clamp01 = (n: number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
+    const median = (xs: number[]) => {
+      const s = xs.filter((x) => x > 0).sort((a, b) => a - b);
+      if (!s.length) return 0;
+      const m = Math.floor(s.length / 2);
+      return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+    };
+
+    const clients = await loadClients(uid, today, "all");
+    const statRows = await sql.query<{
+      client_id: number; done12: unknown; value12: unknown; first_done: unknown; moved90: unknown; cancel90: unknown; done90: unknown;
+    }>(
+      `select client_id,
+              count(*) filter (where status = 'done' and scheduled_date >= $2::date and scheduled_date <= $4::date) as done12,
+              coalesce(sum(amount) filter (where status = 'done' and scheduled_date >= $2::date and scheduled_date <= $4::date), 0) as value12,
+              min(scheduled_date) filter (where status = 'done') as first_done,
+              count(*) filter (where origin_date is not null and origin_date <> scheduled_date and scheduled_date >= $3::date and scheduled_date <= $4::date) as moved90,
+              count(*) filter (where status = 'cancelled' and scheduled_date >= $3::date and scheduled_date <= $4::date) as cancel90,
+              count(*) filter (where status = 'done' and scheduled_date >= $3::date and scheduled_date <= $4::date) as done90
+         from jobs where user_id = $1 group by client_id`,
+      [uid, from12, from90, today],
+    );
+    const stat = new Map(statRows.map((r) => [intId(r.client_id), r]));
+
+    // Money in vs work done (90 days), the average cut price, and work by calendar month (2 years).
+    const flowRows = await sql.query<{ paid90: unknown; done90: unknown; avg_cut: unknown }>(
+      `select
+         (select coalesce(sum(amount),0) from payments where user_id = $1 and kind in ('paid','prepaid')
+             and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')) as paid90,
+         (select coalesce(sum(amount),0) from jobs where user_id = $1 and status = 'done'
+             and scheduled_date >= $2::date and scheduled_date <= $3::date) as done90,
+         (select coalesce(avg(amount),0) from jobs where user_id = $1 and status = 'done' and kind = 'cut' and amount > 0
+             and scheduled_date >= $4::date and scheduled_date <= $3::date) as avg_cut`,
+      [uid, from90, today, from12],
+    );
+    const paid90 = money(flowRows[0]?.paid90);
+    const done90 = money(flowRows[0]?.done90);
+    const avgCut = money(flowRows[0]?.avg_cut);
+    const thisMonthKey = today.slice(0, 7);
+    const from24 = `${Number(today.slice(0, 4)) - 2}${today.slice(4, 7)}-01`;
+    const monthRows = await sql.query<{ ym: string; v: unknown }>(
+      `select to_char(scheduled_date, 'YYYY-MM') as ym, coalesce(sum(amount),0) as v from jobs
+        where user_id = $1 and status = 'done' and scheduled_date >= $2::date and scheduled_date < $3::date
+        group by 1 order by 1`,
+      [uid, from24, `${thisMonthKey}-01`],
+    );
+    // The coming 4 weeks, by weekday: how many yards are booked.
+    const loadRows = await sql.query<{ dow: unknown; n: unknown }>(
+      `select extract(dow from scheduled_date)::int as dow, count(*) as n from jobs
+        where user_id = $1 and status = 'pending' and scheduled_date >= $2::date and scheduled_date <= $3::date
+        group by 1`,
+      [uid, today, to28],
+    );
+    const settingRows = await sql.query<{ business_name: string | null }>(
+      `select business_name from app_settings where user_id = $1`,
+      [uid],
+    );
+    const prefs = await loadPrefs(uid).catch(() => null);
+    const business = settingRows[0]?.business_name || DEFAULT_BUSINESS_NAME;
+
+    // ---- one row per client
+    const visitsOf = (c: ClientRow) => {
+      if (c.kind !== "regular") return 0;
+      if (c.frequencyDays && c.frequencyDays > 0) return 30.44 / c.frequencyDays;
+      return Number(c.cutsPerMonth) || 0;
+    };
+    // Similar visits: more than weekly, weekly, every 2–3 weeks, monthly.
+    const bucketOf = (v: number) => (v >= 4.8 ? "t" : v >= 3.5 ? "w" : v >= 1.6 ? "b" : "m");
+    const regularsActive = clients.filter((c) => c.isActive && c.kind === "regular" && !c.blacklisted);
+    const typicalBy = new Map<string, number>();
+    for (const b of ["t", "w", "b", "m"]) {
+      const prices = regularsActive.filter((c) => !c.servicePaused && bucketOf(visitsOf(c)) === b).map((c) => c.pricePerCut);
+      if (prices.filter((p) => p > 0).length >= 3) typicalBy.set(b, median(prices));
+    }
+    const typicalAll = median(regularsActive.map((c) => c.pricePerCut)) || avgCut;
+    const typicalFor = (v: number) => typicalBy.get(bucketOf(v)) ?? typicalAll;
+
+    const people: AdvisorPerson[] = [];
+    const lostIds = new Set<number>();
+    for (const c of clients) {
+      if (c.blacklisted) continue;
+      const s = stat.get(c.id);
+      const recentlyOff = !c.isActive && c.deactivatedAt != null && daysBetween(c.deactivatedAt.slice(0, 10), today) <= 120;
+      if (!c.isActive && !recentlyOff) continue;
+      const visits = visitsOf(c);
+      const every = visits > 0 ? Math.round(30.44 / visits) : 0;
+      const since = c.lastCutDate ? daysBetween(c.lastCutDate, today) : null;
+      const first = s?.first_done ? asIsoDate(s.first_done) : null;
+      const start = [c.startDate, first, c.createdAt.slice(0, 10)].filter(Boolean).sort()[0] as string;
+      const years = Math.max(0, daysBetween(start, today) / 365.25);
+      const moved = intId(s?.moved90) + intId(s?.cancel90);
+      const done90c = intId(s?.done90);
+      let reason: AdvisorRiskReason | null = null;
+      if (recentlyOff) reason = "stopped";
+      else if (c.kind === "regular" && c.servicePaused) reason = "paused";
+      else if (c.kind === "regular" && every > 0 && since != null && since > Math.max(every * 2, every + 14, (c.seasonEvery ?? 0) + 14)) reason = "gap";
+      else if (c.kind === "regular" && moved >= 3 && moved >= done90c * 0.3) reason = "moves";
+      if (recentlyOff) lostIds.add(c.id);
+      const typical = typicalFor(visits);
+      const late = c.balance > 0 && c.payTier !== "al_dia";
+      let suggested: number | null = null;
+      let gainYear = 0;
+      if (
+        c.isActive && c.kind === "regular" && !c.servicePaused && !late && !reason &&
+        c.pricePerCut > 0 && typical > 0 && years >= 1 && c.pricePerCut <= typical * 0.9
+      ) {
+        // About +15%, to the nearest $5, never past the usual price or +20%, and at least +$5.
+        const step = Math.min(Math.round((c.pricePerCut * 1.15) / 5) * 5, typical, Math.round(c.pricePerCut * 1.2));
+        suggested = Math.max(c.pricePerCut + 5, step);
+        gainYear = Math.round((suggested - c.pricePerCut) * visits * 12);
+      }
+      people.push({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        kind: c.kind,
+        price: c.pricePerCut,
+        monthly: Math.round(visits * c.pricePerCut),
+        value12: money(s?.value12),
+        balance: c.balance,
+        payDays: c.balance > 0 ? c.daysSincePay : null,
+        sinceCut: since,
+        every,
+        years: Math.round(years * 10) / 10,
+        reason,
+        suggested,
+        gainYear,
+        tip: "keep",
+      });
+    }
+    const lateIds = new Set(clients.filter((c) => c.balance > 0 && c.payTier !== "al_dia").map((c) => c.id));
+    const isLate = (p: AdvisorPerson) => lateIds.has(p.id);
+
+    // ---- groups (a client sits in one: the first that fits)
+    const activeRegular = people.filter((p) => p.kind === "regular" && !lostIds.has(p.id));
+    const vals = activeRegular.filter((p) => p.value12 > 0).map((p) => p.value12).sort((a, b) => a - b);
+    const q75 = vals.length ? vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.75))] : Infinity;
+    const groups = new Map<AdvisorGroupKey, AdvisorPerson[]>(
+      (["estrellas", "fieles", "riesgo", "morosos", "ocasionales"] as const).map((k) => [k, []]),
+    );
+    for (const p of people) {
+      if (isLate(p)) { p.tip = "collect"; groups.get("morosos")!.push(p); continue; }
+      if (p.reason) { p.tip = "call"; groups.get("riesgo")!.push(p); continue; }
+      if (p.kind === "one_time") { p.tip = "plan"; groups.get("ocasionales")!.push(p); continue; }
+      if (p.value12 >= q75 && p.value12 > 0) { p.tip = p.suggested ? "raise" : "thank"; groups.get("estrellas")!.push(p); continue; }
+      p.tip = p.suggested ? "raise" : "keep";
+      groups.get("fieles")!.push(p);
+    }
+    const sortBy: Record<AdvisorGroupKey, (a: AdvisorPerson, b: AdvisorPerson) => number> = {
+      morosos: (a, b) => b.balance - a.balance,
+      riesgo: (a, b) => b.monthly - a.monthly,
+      ocasionales: (a, b) => b.value12 - a.value12,
+      estrellas: (a, b) => b.value12 - a.value12,
+      fieles: (a, b) => b.gainYear - a.gainYear || b.monthly - a.monthly,
+    };
+    const groupMoney = (k: AdvisorGroupKey, list: AdvisorPerson[]) =>
+      Math.round(list.reduce((t, p) => t + (k === "morosos" ? p.balance : k === "ocasionales" ? p.value12 : p.monthly), 0));
+    const groupList = [...groups.entries()].map(([key, list]) => ({
+      key,
+      count: list.length,
+      money: groupMoney(key, list),
+      people: [...list].sort((a, b) => sortBy[key](a, b) || a.name.localeCompare(b.name)),
+    }));
+
+    // ---- the week: yards booked per weekday vs room for them
+    const loads = new Map(loadRows.map((r) => [intId(r.dow), intId(r.n) / 4]));
+    const excluded = new Set<number>((prefs?.excludedWeekdays ?? []) as number[]);
+    const goals = (prefs?.weekGoals ?? {}) as Record<string, number>;
+    const workDays = [1, 2, 3, 4, 5, 6].filter((d) => !excluded.has(d));
+    const busiest = Math.max(0, ...workDays.map((d) => loads.get(d) ?? 0));
+    const hasGoals = workDays.some((d) => Number(goals[String(d)]) > 0);
+    const week: AdvisorWeekday[] = workDays.map((d) => ({
+      dow: d,
+      load: Math.round((loads.get(d) ?? 0) * 10) / 10,
+      capacity: Number(goals[String(d)]) > 0 ? Number(goals[String(d)]) : Math.round(busiest),
+    }));
+    const weekLoad = week.reduce((t, w) => t + w.load, 0);
+    const weekCap = week.reduce((t, w) => t + w.capacity, 0);
+    const lightDays = week
+      .filter((w) => w.capacity > 0 && w.capacity - w.load >= 3 && w.load <= w.capacity * (hasGoals ? 0.75 : 0.5))
+      .sort((a, b) => (b.capacity - b.load) - (a.capacity - a.load));
+
+    // ---- actions
+    const actions: AdvisorAction[] = [];
+    const morosos = groupList.find((g) => g.key === "morosos")!;
+    const owed = r2(clients.reduce((t, c) => t + (c.balance > 0 ? c.balance : 0), 0));
+    const owedLate = r2(morosos.people.reduce((t, p) => t + p.balance, 0));
+    if (morosos.count > 0 && owedLate >= 20) {
+      // Biggest first, nudged up by age (capped at 6 months so an old $50 never beats a fresh $2,000).
+      const urgency = (p: AdvisorPerson) => p.balance * (1 + Math.min(180, p.payDays ?? 0) / 90);
+      const ranked = [...morosos.people].sort((a, b) => urgency(b) - urgency(a));
+      actions.push({ kind: "collect", impact: Math.round(owedLate), per: "now", weight: owedLate * 1.2, people: ranked.slice(0, 8), count: morosos.count });
+    }
+    const raise = people.filter((p) => p.suggested && !lostIds.has(p.id)).sort((a, b) => b.gainYear - a.gainYear);
+    if (raise.length) {
+      const gain = raise.reduce((t, p) => t + p.gainYear, 0);
+      if (gain >= 60) actions.push({ kind: "raise", impact: gain, per: "year", weight: gain * 1.5, people: raise.slice(0, 8), count: raise.length, typical: Math.round(typicalAll) });
+    }
+    const risky = groupList.find((g) => g.key === "riesgo")!;
+    if (risky.count > 0) {
+      const atStake = risky.people.reduce((t, p) => t + p.monthly, 0) * 12;
+      if (atStake > 0) actions.push({ kind: "winback", impact: Math.round(atStake), per: "year", weight: atStake * 0.5, people: risky.people.slice(0, 8), count: risky.count });
+    }
+    if (lightDays.length && avgCut > 0) {
+      const light = lightDays[0];
+      const room = lightDays.reduce((t, w) => t + (w.capacity - w.load), 0);
+      const perYear = Math.round(Math.floor(light.capacity - light.load) * avgCut * 4.33 * 12);
+      const heavy = [...week].filter((w) => w.capacity > 0 && w.load > w.capacity * 1.15).sort((a, b) => (b.load - b.capacity) - (a.load - a.capacity))[0];
+      actions.push({ kind: "fill", impact: perYear, per: "year", weight: perYear * 0.2, people: [], count: Math.round(room), week, light, heavy, avgPrice: Math.round(avgCut) });
+    }
+    const occasional = groupList.find((g) => g.key === "ocasionales")!;
+    if (occasional.count > 0) {
+      const plan = Math.round(typicalBy.get("b") ?? typicalAll);
+      const each = Math.round(plan * (30.44 / 14) * 12);
+      if (each > 0) actions.push({ kind: "plans", impact: each, per: "each", weight: each * Math.max(1, Math.floor(occasional.count / 3)) * 0.35, people: occasional.people.slice(0, 8), count: occasional.count, typical: plan });
+    }
+    // Winter (Nov–Feb in Miami): grass grows slower, visits drop.
+    const monthVals = monthRows.map((r) => ({ ym: r.ym, m: Number(r.ym.slice(5, 7)), value: money(r.v) })).filter((r) => r.value > 0);
+    const isWinter = (m: number) => m === 11 || m === 12 || m === 1 || m === 2;
+    const winterVals = monthVals.filter((r) => isWinter(r.m));
+    const restVals = monthVals.filter((r) => !isWinter(r.m));
+    const monthNow = Number(today.slice(5, 7));
+    if (winterVals.length >= 2 && restVals.length >= 3 && (monthNow >= 9 || monthNow <= 1)) {
+      const winterAvg = winterVals.reduce((t, r) => t + r.value, 0) / winterVals.length;
+      const restAvg = restVals.reduce((t, r) => t + r.value, 0) / restVals.length;
+      const drop = restAvg > 0 ? 1 - winterAvg / restAvg : 0;
+      const monthsLeft = monthNow >= 9 && monthNow <= 10 ? 4 : monthNow === 11 ? 4 : monthNow === 12 ? 3 : 2;
+      if (drop >= 0.12) {
+        const lost = Math.round((restAvg - winterAvg) * monthsLeft);
+        const byMonth = Array.from({ length: 12 }, (_, i) => {
+          const xs = monthVals.filter((r) => r.m === i + 1);
+          return { m: i + 1, value: xs.length ? Math.round(xs.reduce((t, r) => t + r.value, 0) / xs.length) : 0 };
+        });
+        actions.push({ kind: "season", impact: lost, per: "now", weight: lost * 0.6, people: [], count: 0, dropPct: Math.round(drop * 100), winterAvg: Math.round(winterAvg), restAvg: Math.round(restAvg), months: byMonth, monthsLeft });
+      }
+    }
+    actions.sort((a, b) => b.weight - a.weight);
+
+    // ---- five checks
+    const activeAll = people.filter((p) => !lostIds.has(p.id));
+    const rate = done90 > 0 ? paid90 / done90 : 1;
+    const lateShare = activeAll.length ? morosos.count / activeAll.length : 0;
+    const cobroScore = clamp01((rate - 0.6) / 0.35) * (1 - Math.min(0.6, lateShare));
+    const cobroStatus: AdvisorStatus = rate >= 0.92 && lateShare <= 0.1 ? "pass" : rate >= 0.8 && lateShare <= 0.25 ? "warn" : "fail";
+    const eligible = activeRegular.filter((p) => p.years >= 1 && p.price > 0 && !p.reason);
+    const under = eligible.filter((p) => p.price <= typicalFor(30.44 / Math.max(1, p.every)) * 0.9).length;
+    const underShare = eligible.length ? under / eligible.length : 0;
+    const priceStatus: AdvisorStatus = underShare <= 0.1 ? "pass" : underShare <= 0.25 ? "warn" : "fail";
+    const leaving = risky.count;
+    const leaveShare = activeRegular.length ? leaving / activeRegular.length : 0;
+    const newClients = activeRegular.filter((p) => p.years < 120 / 365.25).length;
+    const leaveStatus: AdvisorStatus = leaveShare <= 0.06 ? "pass" : leaveShare <= 0.15 ? "warn" : "fail";
+    const fill = weekCap > 0 ? weekLoad / weekCap : 0;
+    const agendaStatus: AdvisorStatus = weekCap <= 0 ? "warn" : fill >= 0.85 ? "pass" : fill >= 0.6 ? "warn" : "fail";
+    const monthly = Math.round(activeRegular.filter((p) => !p.reason).reduce((t, p) => t + p.monthly, 0));
+    const full3 = monthVals.filter((r) => r.ym < thisMonthKey).slice(-3);
+    const avg3 = full3.length ? full3.reduce((t, r) => t + r.value, 0) / full3.length : 0;
+    const fixedRatio = avg3 > 0 ? monthly / avg3 : monthly > 0 ? 1 : 0;
+    const topShare = (() => {
+      const total = people.reduce((t, p) => t + p.value12, 0);
+      const top = Math.max(0, ...people.map((p) => p.value12));
+      return total > 0 ? top / total : 0;
+    })();
+    const fixedStatus: AdvisorStatus = fixedRatio >= 0.75 && topShare <= 0.25 ? "pass" : fixedRatio >= 0.5 ? "warn" : "fail";
+    const pillars: AdvisorPillar[] = [
+      { key: "cobro", status: cobroStatus, score: cobroScore, a: Math.round(Math.min(rate, 9.99) * 100), b: morosos.count, c: Math.round(owedLate) },
+      { key: "precios", status: priceStatus, score: 1 - Math.min(1, underShare * 2.5), a: under, b: eligible.length, c: Math.round(typicalAll) },
+      { key: "clientes", status: leaveStatus, score: 1 - Math.min(1, leaveShare * 4), a: leaving, b: activeRegular.length, c: newClients },
+      { key: "agenda", status: agendaStatus, score: weekCap > 0 ? clamp01(fill / 0.9) : 0.6, a: Math.round(fill * 100), b: Math.round(weekLoad), c: Math.round(weekCap) },
+      { key: "fijo", status: fixedStatus, score: clamp01(fixedRatio / 0.85) * (topShare > 0.25 ? 0.8 : 1), a: monthly, b: Math.round(avg3), c: Math.round(topShare * 100) },
+    ];
+    const weights: Record<AdvisorPillarKey, number> = { cobro: 0.3, clientes: 0.25, precios: 0.15, agenda: 0.15, fijo: 0.15 };
+    const score = Math.round(100 * pillars.reduce((t, p) => t + clamp01(p.score) * weights[p.key], 0));
+    const doneAny = statRows.some((r) => intId(r.done12) > 0);
+    return {
+      today,
+      hasData: activeAll.length >= 1 && doneAny,
+      business,
+      score,
+      tone: score >= 75 ? "good" : score >= 50 ? "warn" : "bad",
+      activeClients: activeAll.length,
+      owed,
+      owedLate,
+      monthly,
+      hasGoals,
+      actions: actions.slice(0, 3),
+      pillars,
+      groups: groupList,
+    };
+  });

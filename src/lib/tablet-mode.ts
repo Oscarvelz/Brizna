@@ -140,5 +140,5 @@ export function tabletTabLabel(path: string) {
   if (path === "/agenda") return ["Agenda", "Schedule"] as const;
   if (path === "/clientes") return ["Clientes", "Clients"] as const;
   if (path === "/cobros") return ["Cobros", "Payments"] as const;
-  return ["Cifras", "Figures"] as const;
+  return ["Estudio", "Study"] as const;
 }
