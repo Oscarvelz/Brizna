@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CloudRain, AlertTriangle, CheckCheck, CircleDollarSign, Palmtree, Pin, Plus, Scissors, Sprout, Wallet } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { htmlToNote } from "@/components/rich-notes";
 import { AppShell } from "@/components/app-shell";
@@ -436,6 +436,7 @@ function DayBoard({
   const cols = useQuadCols();
   const tiles = viewGrid(density, cols, "gap-2");
   const tight = viewGrid(density, cols, "gap-1.5");
+  const doneJumped = useRef(false);
   const pinned = [...overdue, ...todayJobs, ...upcoming].filter((j) => j.pinned && j.status === "pending");
   const pinnedIds = new Set(pinned.map((j) => j.id));
   const late = overdue.filter((j) => !pinnedIds.has(j.id));
@@ -474,13 +475,29 @@ function DayBoard({
 
   useEffect(() => {
     if (!focusDone) return;
+    doneJumped.current = true;
     const el = document.getElementById("hechos-hoy") as HTMLDetailsElement | null;
     if (el) el.open = true;
     const t = window.setTimeout(() => {
       el?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 30);
+    // Back after this jump returns to the top of Hoy instead of leaving the screen.
+    if (!window.history.state?.bzDoneJump) {
+      window.history.pushState({ ...(window.history.state ?? {}), bzDoneJump: true }, "", window.location.href);
+    }
     return () => window.clearTimeout(t);
   }, [focusDone]);
+
+  useEffect(() => {
+    const onPop = () => {
+      if (window.history.state?.bzDoneJump) return;
+      if (!doneJumped.current) return;
+      doneJumped.current = false;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   function toggle(key: string) {
     setOpen((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));

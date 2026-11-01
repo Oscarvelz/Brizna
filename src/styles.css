@@ -1407,3 +1407,6 @@ html.theme-dark .bz-stat .bz-stat-label > svg, html.theme-amoled .bz-stat .bz-st
 .bz-stat-label { white-space: nowrap; min-width: 0; }
 .bz-stat-label:has(> svg):has(.bz-hint-btn) { letter-spacing: 0.04em; gap: 0.3rem; }
 .bz-stat-label:has(> svg):has(.bz-hint-btn) > svg { margin-right: 0.3rem; }
+
+/* 1.4.20: Por cobrar / Abonado selection gets the same fine tone border as the Cobrado rows */
+.bz-due-on { box-shadow: var(--shadow-card), inset 0 0 0 2px var(--color-due); }
