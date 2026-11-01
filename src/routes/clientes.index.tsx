@@ -23,6 +23,8 @@ import { bulkClients, deleteClient, getClientInventory, listClients, setClientAc
 import type { ClientFilter, ClientRow, ClientSort } from "@/lib/types";
 import { useUndo } from "@/lib/undo";
 import { cn } from "@/lib/utils";
+import { DayNightSwitch } from "@/components/day-night-switch";
+import { WeatherChip } from "@/components/weather-chip";
 
 export const Route = createFileRoute("/clientes/")({
   component: function ClientesRoute() {
@@ -288,15 +290,15 @@ function ClientesPage() {
     <AppShell
       title={inArchive ? tx("Archivos", "Archive") : tx("Clientes", "Clients")}
       action={
-        <Button asChild size="sm">
-          <Link to="/nuevo">
-            <Plus />
-            {tx("Nuevo", "New")}
-          </Link>
-        </Button>
+        <span className="inline-flex items-center gap-3">
+          <WeatherChip />
+          <span className="mr-2 grid w-10 shrink-0 place-items-center">
+            <DayNightSwitch />
+          </span>
+        </span>
       }
     >
-      <ScrollTop />
+      <ScrollTop aboveFab />
       <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_12rem]">
         <div className="relative min-w-0">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-subtle" />
@@ -557,6 +559,13 @@ function ClientesPage() {
         onConfirm={() => bulk.mutate("delete")}
         onCancel={() => setAskBulk(null)}
       />
+      <Link
+        to="/nuevo"
+        className="alive-fab fixed right-4 bottom-[calc(5.25rem+var(--bz-chin))] z-20 grid size-14 place-items-center rounded-full bg-primary text-primary-fg shadow-card"
+        aria-label={tx("Añadir cliente", "Add client")}
+      >
+        <Plus className="size-6" />
+      </Link>
     </AppShell>
   );
 }
