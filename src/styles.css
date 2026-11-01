@@ -1380,3 +1380,10 @@ html.theme-amoled .bz-stat.bz-stat.bz-stat:is(a, button):active {
 /* Dock tabs (1.4.12): calm press, no bounce. */
 .pod-dock .alive-nav { transition: transform 0.24s cubic-bezier(0.25, 0.8, 0.3, 1), background-color 0.2s ease, color 0.2s ease; }
 .pod-dock .alive-nav:active { transform: scale(0.96); transition-duration: 0.12s; }
+/* 1.4.13: softer glow on the four Hoy stat icons. */
+.bz-stat .bz-stat-label > svg {
+  box-shadow:
+    0 0 0 4.5px var(--jewel),
+    0 0 0 5.75px color-mix(in srgb, var(--jewel) 35%, transparent),
+    0 2px 6px 1px color-mix(in srgb, var(--jewel) 22%, transparent);
+}
