@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode, useRef } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { AppShell } from "@/components/app-shell";
@@ -82,9 +82,39 @@ function CobrosPage() {
   const [picked, setPicked] = useState<number[]>([]);
   const [askBulk, setAskBulk] = useState<"paid" | "waived" | null>(null);
 
+  // Switching views never jumps: no router reset, no hash jump. The list is brought into view
+  // only when it is not already there, and the header keeps its state while we glide.
+  const firstView = useRef(true);
   useEffect(() => {
+    const fromOutside = firstView.current;
+    firstView.current = false;
     if (!viewParam) return;
-    document.getElementById("lista")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const run = () => {
+      const list = document.getElementById("lista");
+      if (!list) return;
+      const header = document.querySelector<HTMLElement>(".pod-header");
+      const headerShown = header && !header.classList.contains("is-away") && !header.style.transform;
+      const offset = (headerShown ? header.offsetHeight : 0) + 8;
+      const top = list.getBoundingClientRect().top;
+      const delta = top - offset;
+      const visible = top >= offset - 2 && top < window.innerHeight - 160;
+      if (!fromOutside && visible) return;
+      if (Math.abs(delta) < 4) return;
+      const root = document.documentElement;
+      root.dataset.bzQuiet = "1";
+      window.scrollTo({ top: window.scrollY + delta, behavior: fromOutside ? "auto" : "smooth" });
+      let still = 0;
+      let lastY = -1;
+      const settle = () => {
+        if (window.scrollY === lastY) still += 1;
+        else still = 0;
+        lastY = window.scrollY;
+        if (still >= 4) delete root.dataset.bzQuiet;
+        else requestAnimationFrame(settle);
+      };
+      requestAnimationFrame(settle);
+    };
+    requestAnimationFrame(run);
   }, [viewParam]);
 
   const today = todayISO();
@@ -181,7 +211,7 @@ function CobrosPage() {
             {tx("Por cobrar", "To collect")}
             <Hint topic="por-cobrar" />
           </p>
-          <Link to="/cobros" search={{ view: "owing" }} hash="lista" className="mt-1 block min-h-10 touch-manipulation">
+          <Link to="/cobros" search={{ view: "owing" }} resetScroll={false} className="mt-1 block min-h-10 touch-manipulation">
             <p className="font-display text-xl font-semibold tabular-nums text-due sm:text-2xl">
               {data ? money(data.totals.outstanding) : "—"}
             </p>
@@ -199,7 +229,7 @@ function CobrosPage() {
             <Link
               to="/cobros"
               search={{ view: "abonos" }}
-              hash="lista"
+              resetScroll={false}
               className={cn("block rounded-md touch-manipulation", view === "abonos" && "bg-surface/70 px-1")}
             >
               <p className="font-display text-lg font-semibold tabular-nums text-due">{data ? money(abonoSum) : "—"}</p>
@@ -237,7 +267,7 @@ function CobrosPage() {
             <Hint topic="en-espera" />
           }
         >
-          <Link to="/cobros" search={{ view: "espera" }} hash="lista" className="block text-sm font-semibold text-hold">
+          <Link to="/cobros" search={{ view: "espera" }} resetScroll={false} className="block text-sm font-semibold text-hold">
             {tx("Siguen debiendo. Toca para verlos.", "They still owe. Tap to see them.")}
           </Link>
         </Fold>
@@ -257,7 +287,7 @@ function CobrosPage() {
             <Hint topic="perdonado" />
           }
         >
-          <Link to="/cobros" search={{ view: "waived" }} hash="lista" className="block text-sm font-semibold text-late">
+          <Link to="/cobros" search={{ view: "waived" }} resetScroll={false} className="block text-sm font-semibold text-late">
             {tx("Toca para ver los saldos perdonados.", "Tap to see the forgiven balances.")}
           </Link>
         </Fold>
@@ -629,7 +659,7 @@ function NestRow({
     <Link
       to="/cobros"
       search={{ view }}
-      hash="lista"
+      resetScroll={false}
       className={cn(
         "bz-row mt-1 flex min-h-11 items-center justify-between rounded-sm px-2 py-1 touch-manipulation",
         active && (wash ? "bz-row-on bz-row-on-wash" : "bz-row-on"),
@@ -683,7 +713,7 @@ function StatLink({
         {label}
         <Hint text={hint} />
       </p>
-      <Link to="/cobros" search={{ view }} hash="lista" className="mt-1 block min-h-10 touch-manipulation">
+      <Link to="/cobros" search={{ view }} resetScroll={false} className="mt-1 block min-h-10 touch-manipulation">
         <p
           className={cn(
             "font-display font-semibold tabular-nums",

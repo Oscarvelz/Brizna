@@ -70,6 +70,8 @@ export function useScrollBars({ scroller, header, dock, pinned = false }: Bars) 
       const y = read();
       let dy = y - last;
       last = y;
+      // Programmatic glides (e.g. switching lists) leave the bars exactly where they are.
+      if (document.documentElement.dataset.bzQuiet) return;
       dy *= 0.8;
       if (pinned || y <= 0) headerTarget = 0;
       else headerTarget += dy;
