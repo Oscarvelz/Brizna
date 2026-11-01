@@ -38,7 +38,7 @@
   100% { transform: none; }
 }
 
-html:not([data-palette]):not(.theme-dark):not(.theme-amoled) {
+html {
   /* Soft sunlight drifting slowly behind everything. */
 
   /* Each screen grows in from below, its sections one after another. */
@@ -105,7 +105,7 @@ html:not([data-palette]):not(.theme-dark):not(.theme-amoled) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html:not([data-palette]):not(.theme-dark):not(.theme-amoled) {
+  html {
     & .alive-brand *, & .alive-fab::after { animation: none; }
   }
 }

@@ -64,8 +64,7 @@ html.theme-dark body::after, html.theme-amoled body::after {
 /* Moonlight: one soft halo that slowly breathes — calm, no pulses. */
 html.theme-dark #root::before, html.theme-amoled #root::before {
   width: 300px; height: 300px;
-  z-index: 15;
-  mix-blend-mode: screen;
+  z-index: -1;
   background: radial-gradient(circle, color-mix(in srgb, var(--nv-moon, #f3dfa2) 26%, transparent) 0%, color-mix(in srgb, var(--nv-moon, #f3dfa2) 10%, transparent) 32%, transparent 66%);
   animation: orb-halo 11s ease-in-out infinite;
 }

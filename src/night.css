@@ -36,16 +36,9 @@ html.theme-dark .pod-root,
 html.theme-dark .pod-root .bg-bg:not(.pod-header):not(.pod-dock) { background-color: transparent; }
 
 /* Glass header and dock. */
-html.theme-dark .pod-header {
-  background-color: color-mix(in srgb, var(--nv-top) 72%, transparent);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
-  backdrop-filter: blur(14px) saturate(1.2);
-}
-html.theme-dark .pod-dock {
-  background-color: color-mix(in srgb, var(--nv-low) 78%, black 6%);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
-  backdrop-filter: blur(14px) saturate(1.2);
-}
+/* Solid (Oscar: the UI must not be see-through). */
+html.theme-dark .pod-header { background-color: var(--nv-top); }
+html.theme-dark .pod-dock { background-color: color-mix(in srgb, var(--nv-top), black 25%); }
 
 /* Glass cards, crisp like the lock screen: dark tinted glass, a light edge,
    pure-white text, deep saturated state colors (no gray mud). */
@@ -53,8 +46,8 @@ html.theme-dark {
   --color-fg: #ffffff;
   --color-muted: color-mix(in srgb, #ffffff 82%, var(--color-primary));
   --color-subtle: color-mix(in srgb, #ffffff 62%, var(--color-primary));
-  --nv-glass: color-mix(in srgb, var(--nv-top) 66%, transparent);
-  --nv-glass-2: color-mix(in srgb, color-mix(in srgb, var(--nv-top) 80%, var(--color-primary)) 72%, transparent);
+  --nv-glass: color-mix(in srgb, var(--nv-mid), var(--color-primary) 9%);
+  --nv-glass-2: color-mix(in srgb, var(--nv-mid), var(--color-primary) 18%);
   --nv-edge: color-mix(in srgb, var(--color-primary) 24%, rgba(255, 255, 255, 0.1));
   --color-border: color-mix(in srgb, var(--color-primary) 22%, #2a2f2c);
   --color-late-bg: color-mix(in oklab, var(--color-late) 24%, var(--nv-top));

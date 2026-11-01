@@ -1,5 +1,5 @@
 // Brizna service worker: the app opens with no internet. Bump VERSION on every release.
-const VERSION = "brizna-1.3.9";
+const VERSION = "brizna-1.3.10";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-180.png", "./precache.json"];
 
 self.addEventListener("install", (event) => {
@@ -7,7 +7,7 @@ self.addEventListener("install", (event) => {
     const cache = await caches.open(VERSION);
     let files = [];
     try { files = await (await fetch("./precache.json", { cache: "no-store" })).json(); } catch { /* ignore */ }
-    await cache.addAll([...new Set([...CORE, ...files])]);
+    await cache.addAll([...new Set([...CORE, ...files])].map((u) => new Request(u, { cache: "reload" })));
     self.skipWaiting();
   })());
 });
@@ -35,6 +35,8 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (url.origin !== self.location.origin) return;
+  // The install manifest always comes fresh from the network (a stale one gave Android the old beige strip).
+  if (url.pathname.endsWith(".webmanifest")) return;
   if (req.mode === "navigate") {
     event.respondWith((async () => {
       try {
