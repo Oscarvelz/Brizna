@@ -978,7 +978,7 @@ function AjustesPage() {
           <UserManual onLocale={setLocale} forceOpen={Boolean(query)} />
         ) : null}
         {!query || smartHit(query, "salir cerrar sesion cuenta sign out huella fingerprint nube sincronizar sync cloud") ? (
-        <section className="order-14 mt-6">
+        <section className="order-14">
           <SyncStatusCard />
           <FingerprintControl />
           <SignOutControl full />
