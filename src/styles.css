@@ -1415,8 +1415,8 @@ html.theme-dark .bz-stat .bz-stat-label > svg, html.theme-amoled .bz-stat .bz-st
    The picked card stands forward with a firmer tone outline; the other one steps back
    (desaturated, softer contrast — still solid, never see-through). */
 .bz-lenses > .bz-stat { transition: filter .28s ease, outline-color .2s ease, box-shadow .28s ease; }
-.bz-lenses > .bz-stat.bz-stat-on { outline-width: 3px; outline-offset: -3px; }
-.bz-lenses:has(.bz-stat-on) > .bz-stat:not(.bz-stat-on) { filter: saturate(.45) contrast(.9) brightness(1.03); box-shadow: none; }
+.bz-lenses > .bz-stat.bz-stat-on { outline-width: 1.5px; outline-offset: -1.5px; }
+.bz-lenses:has(.bz-stat-on) > .bz-stat:not(.bz-stat-on) { filter: saturate(.45) contrast(.9) brightness(1.03); }
 html.theme-dark .bz-lenses:has(.bz-stat-on) > .bz-stat:not(.bz-stat-on),
 html.theme-amoled .bz-lenses:has(.bz-stat-on) > .bz-stat:not(.bz-stat-on) { filter: saturate(.5) brightness(.72); }
 @media (prefers-reduced-motion: reduce) { .bz-lenses > .bz-stat { transition: none; } }
