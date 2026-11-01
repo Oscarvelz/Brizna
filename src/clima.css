@@ -271,3 +271,48 @@ html.theme-dark .clx-tip-ic.is-sun, html.theme-amoled .clx-tip-ic.is-sun { backg
 @media (prefers-reduced-motion: reduce) {
   .clx *, .clx-rise, .clx *::before, .clx *::after { animation: none !important; transition: none !important; }
 }
+
+/* ── Jardín (default day palette): earth & leaf tones, no blue ─────────── */
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-hero.is-cloud {
+  --wx-bg: linear-gradient(165deg, #f6f1e2 0%, #e8e2cc 55%, #d8d3b8 100%);
+  --wx-fg: #1d2a1e; --wx-muted: #5a6450; --wx-line: rgb(40 50 30 / 0.14);
+  --wx-cloud: #ffffff; --wx-cloud-2: #efeadb; --wx-cloud-dark: #a9a98f; --wx-drop: #4f8a6c;
+  --seg-dry: #2f8f4e; --seg-maybe: #b9c79a; --seg-wet: #4f8a6c; --seg-hot: #d98a26; --seg-track: rgb(40 50 30 / 0.1);
+}
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-hero.is-rain {
+  --wx-bg: linear-gradient(165deg, #3a6b4f 0%, #28513b 55%, #1b3c2b 100%);
+  --wx-fg: #f7f2e3; --wx-muted: #d3dcc4; --wx-line: rgb(247 242 227 / 0.18);
+  --wx-grass: #6fae5e; --wx-cloud: #f1ecdc; --wx-cloud-2: #c4c9b2; --wx-cloud-dark: #9fa88f; --wx-drop: #e6edd2;
+  --seg-dry: #9bd77f; --seg-maybe: #c8cfae; --seg-wet: #f1e7c8; --seg-hot: #f2b250; --seg-track: rgb(247 242 227 / 0.14);
+}
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-hero.is-storm {
+  --wx-bg: linear-gradient(165deg, #45422f 0%, #302f21 55%, #201f16 100%);
+  --wx-fg: #f8f3e4; --wx-muted: #d9d2b8; --wx-line: rgb(248 243 228 / 0.16);
+  --wx-grass: #5c9a4e; --wx-cloud: #c9c5ae; --wx-cloud-2: #8f8b74; --wx-cloud-dark: #77735e; --wx-drop: #e3e7cf;
+  --seg-dry: #9bd77f; --seg-maybe: #c8cfae; --seg-wet: #f1e7c8; --seg-hot: #f5b942; --seg-track: rgb(248 243 228 / 0.13);
+}
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-hero.is-night {
+  --wx-bg: linear-gradient(165deg, #2c4a3a 0%, #1f3a2c 55%, #152a20 100%);
+  --wx-fg: #f5f0e0; --wx-muted: #ccd6c0; --wx-line: rgb(245 240 224 / 0.16);
+  --wx-grass: #5f9e52; --wx-cloud: #d9d8c4; --wx-cloud-2: #a3a68e;
+  --seg-dry: #9bd77f; --seg-maybe: #c8cfae; --seg-wet: #f1e7c8; --seg-hot: #f2b250; --seg-track: rgb(245 240 224 / 0.13);
+}
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-hero { box-shadow: 0 10px 28px -14px rgb(40 50 25 / 0.45), var(--shadow-card); }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-stop svg { color: #2f6b47; }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-stop small { background: #e3ead2; color: #2a5a3c; }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-stop.is-near { background: linear-gradient(165deg, #3a6b4f, #28513b); border-color: #1f4532; color: #f7f2e3; box-shadow: 0 10px 22px -12px rgb(30 70 45 / 0.75); }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-stop.is-near svg { color: #e6edd2; }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-stop.is-near small { background: rgb(247 242 227 / 0.18); color: #f7f2e3; }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-drop-empty { fill: color-mix(in srgb, #4f8a6c 12%, var(--color-surface)); }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-drop-water { fill: #4f8a6c; }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-drop-line { stroke: #4f8a6c; }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-i-drop line { stroke: #4f8a6c; }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-i-cloud { fill: #cfcdb8; }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-i-cloud.is-dark { fill: #9b9a82; }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-i-snow circle { fill: #a9b79a; }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-hbar { background: color-mix(in srgb, #4f8a6c 10%, var(--color-surface-2)); }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-hbar span { background: color-mix(in srgb, #4f8a6c 45%, var(--color-surface)); }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-hcell.is-wet .clx-hbar span { background: #3f7a5c; }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-hcell.is-wet .clx-hpop { color: #2f6b47; }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-tm-bar { background: color-mix(in srgb, #4f8a6c 12%, var(--color-surface-2)); }
+html:not([data-palette]):not(.theme-dark):not(.theme-amoled) .clx-tm-bar span { background: #4f8a6c; }
