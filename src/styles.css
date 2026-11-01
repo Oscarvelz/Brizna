@@ -1177,3 +1177,60 @@ html.theme-dark .bz-stat, html.theme-amoled .bz-stat {
 html.theme-dark .bz-stat-nest .bz-row-val, html.theme-amoled .bz-stat-nest .bz-row-val { color: #ffffff; }
 
 @media (prefers-reduced-motion: reduce) { .bz-stat { transition: none; } }
+
+/* 3D block finish (Oscar, 2026-11-01: "bring the stripe back, as if they were 3D blocks with a
+   deep bottom"). The left stripe returns as the block's lit side and a solid slab under the
+   card is its darker bottom face; a soft contact shadow sits under the slab. Same box sizes:
+   the stat cards' 4px spacer becomes the side, folds paint theirs as an inset. Tapping a stat
+   card presses it into its slab. */
+.bz-stat, .bz-fold {
+  --blk-side: color-mix(in srgb, var(--blk-tone) 86%, #000000);
+  --blk-deep: color-mix(in srgb, var(--blk-tone) 68%, #000000);
+  --blk-depth: 5px;
+  --blk-contact: 0 calc(var(--blk-depth) + 4px) 12px -5px rgb(40 30 15 / 0.32);
+}
+.bz-stat { --blk-tone: var(--stat-tone); }
+.bz-fold { --blk-tone: color-mix(in srgb, var(--color-fg) 26%, var(--color-surface)); }
+.bz-fold-toned { --blk-tone: var(--fold-tone); }
+html.theme-dark .bz-stat, html.theme-amoled .bz-stat,
+html.theme-dark .bz-fold, html.theme-amoled .bz-fold {
+  --blk-side: color-mix(in srgb, var(--blk-tone) 80%, #000000);
+  --blk-deep: color-mix(in srgb, var(--blk-tone) 46%, #000000);
+  --blk-contact: 0 calc(var(--blk-depth) + 6px) 16px -6px rgb(0 0 0 / 0.9);
+}
+html.theme-dark .bz-fold:not(.bz-fold-toned), html.theme-amoled .bz-fold:not(.bz-fold-toned) {
+  --blk-tone: color-mix(in srgb, #ffffff 30%, var(--color-surface));
+}
+
+/* Stat cards: side = the 4px left spacer, painted with a top-lit gradient. */
+:root .bz-stat.bz-stat.bz-stat {
+  border-left-color: var(--blk-side);
+  box-shadow: var(--stat-edge), 0 var(--blk-depth) 0 0 var(--blk-deep), var(--blk-contact);
+  margin-bottom: var(--blk-depth);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+:root .bz-stat.bz-stat.bz-stat:is(a, button):active {
+  transform: translateY(3px);
+  box-shadow: var(--stat-edge), 0 calc(var(--blk-depth) - 3px) 0 0 var(--blk-deep), 0 4px 8px -4px rgb(40 30 15 / 0.35);
+}
+
+/* Folds: side as an inset stripe that follows the rounded edge, slab beneath. */
+html .bz-fold.bz-fold.bz-fold.bz-fold {
+  box-shadow:
+    inset 5px 0 0 0 var(--blk-side),
+    inset 0 0 0 1px color-mix(in srgb, var(--blk-tone) 26%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 0.5),
+    0 var(--blk-depth) 0 0 var(--blk-deep),
+    var(--blk-contact);
+  margin-bottom: var(--blk-depth);
+}
+html.theme-dark .bz-fold.bz-fold.bz-fold.bz-fold, html.theme-amoled .bz-fold.bz-fold.bz-fold.bz-fold {
+  box-shadow:
+    inset 5px 0 0 0 var(--blk-side),
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 0 0 1px color-mix(in srgb, var(--blk-tone) 38%, transparent),
+    0 var(--blk-depth) 0 0 var(--blk-deep),
+    var(--blk-contact);
+}
+.bz-fold-head { padding-left: calc(0.5rem + 3px); }
+@media (prefers-reduced-motion: reduce) { :root .bz-stat.bz-stat.bz-stat { transition: none; } }
