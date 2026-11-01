@@ -164,7 +164,7 @@ function ago(days: number, tx: Tx): string {
 }
 const shortAgo = (days: number, tx: Tx) => (days >= 365 ? tx(`${Math.floor(days / 365)} a`, `${Math.floor(days / 365)} y`) : days >= 60 ? tx(`${Math.floor(days / 30)} m`, `${Math.floor(days / 30)} mo`) : `${days} d`);
 
-function verdict(r: AdvisorReading, tx: Tx): { title: string; sub: string; word: string } {
+export function verdict(r: AdvisorReading, tx: Tx): { title: string; sub: string; word: string } {
   const w = worstPillar(r);
   const issue = tx(...ISSUE[w.key]);
   const word = r.tone === "good" ? tx("Bien", "Good") : r.tone === "warn" ? tx("Regular", "Fair") : tx("Atención", "Needs care");
@@ -287,7 +287,7 @@ function tipLine(p: AdvisorPerson, tx: Tx, plan: number): string {
   }
 }
 
-function actionWords(a: AdvisorAction, r: AdvisorReading, tx: Tx): { title: string; line: string; unit: string; sign: string } {
+export function actionWords(a: AdvisorAction, r: AdvisorReading, tx: Tx): { title: string; line: string; unit: string; sign: string } {
   const top = a.people[0];
   const others = Math.max(0, a.count - 1);
   switch (a.kind) {
@@ -711,7 +711,7 @@ const PILLAR_TITLE: Record<AdvisorPillarKey, [string, string]> = {
   fijo: ["Ingreso fijo", "Fixed income"],
 };
 
-function pillarWords(p: AdvisorPillar, r: AdvisorReading, tx: Tx): { line: string; more: string } {
+export function pillarWords(p: AdvisorPillar, r: AdvisorReading, tx: Tx): { line: string; more: string } {
   switch (p.key) {
     case "cobro":
       return {

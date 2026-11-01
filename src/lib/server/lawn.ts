@@ -6252,3 +6252,234 @@ export const getAdvisor = createServerFn({ method: "GET" })
       groups: groupList,
     };
   });
+
+/* ------------------------------------------------------------------ export center (1.4.1)
+   Raw data for the export center (Ajustes → Exportar e imprimir). The device builds the PDF,
+   the worksheet and the print pages from this one payload, after the person's filters. */
+
+export type ExportRawJob = {
+  id: number;
+  clientId: number;
+  date: string;
+  status: JobStatus;
+  kind: JobKind;
+  title: string | null;
+  amount: number;
+  completedAt: string | null;
+  postponeReason: string | null;
+  originDate: string | null;
+  arrivalTime: string | null;
+  notes: string | null;
+  sortOrder: number;
+};
+
+export type ExportRawPayment = {
+  id: number;
+  clientId: number;
+  date: string;
+  amount: number;
+  kind: PaymentKind;
+  method: string | null;
+  note: string | null;
+  tip: number;
+};
+
+export type ExportAging = { oldestDays: number | null; opening: number; b0: number; b31: number; b61: number; b91: number; unpaidJobs: number };
+
+export type ExportRaw = {
+  today: string;
+  from: string;
+  to: string;
+  aheadTo: string;
+  business: string;
+  vacation: { start: string | null; end: string | null };
+  clients: ClientRow[];
+  aging: Record<number, ExportAging>;
+  jobs: ExportRawJob[];
+  upcoming: ExportRawJob[];
+  payments: ExportRawPayment[];
+  work: { date: string; clockIn: string | null; clockOut: string | null; minutes: number; stopped: string | null }[];
+  dayNotes: { date: string; body: string }[];
+  notes: { id: number; title: string; body: string; folder: string; tags: string; pinned: boolean; due: string | null; updated: string }[];
+  offDays: { date: string; reason: string; detail: string }[];
+  /** Done jobs before `from` (count and value), so "all time" and period figures can be put in context. */
+  before: { jobs: number; value: number };
+};
+
+export const exportCenterData = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((data: unknown) =>
+    z
+      .object({
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        ahead: z.coerce.number().int().min(0).max(120).default(14),
+      })
+      .parse(data ?? {}),
+  )
+  .handler(async ({ context, data }): Promise<ExportRaw> => {
+    const uid = context.userId;
+    await ensureScheduleForUser(uid).catch(() => undefined);
+    const sql = await getSql();
+    const today = todayISO();
+    const from = data.from;
+    const to = data.to;
+    const aheadTo = addDaysISO(today, Math.max(0, data.ahead - 1));
+    const settings = await sql.query<{ business_name: string | null; vacation_start: unknown; vacation_end: unknown }>(
+      `select business_name, vacation_start, vacation_end from app_settings where user_id = $1`,
+      [uid],
+    );
+    const clients = await loadClients(uid, today, "all");
+    type JobSel = {
+      id: unknown; client_id: unknown; scheduled_date: unknown; status: string; kind: string; title: string | null; amount: unknown;
+      completed_at: unknown; postpone_reason: string | null; origin_date: unknown; arrival_time: string | null; notes: string | null; sort_order: unknown;
+    };
+    const jobCols = `id, client_id, scheduled_date, status, kind, title, amount, completed_at, postpone_reason, origin_date, arrival_time, notes, sort_order`;
+    const mapRaw = (r: JobSel): ExportRawJob => ({
+      id: intId(r.id),
+      clientId: intId(r.client_id),
+      date: asIsoDate(r.scheduled_date),
+      status: (r.status as JobStatus) ?? "pending",
+      kind: (r.kind as JobKind) ?? "cut",
+      title: r.title,
+      amount: money(r.amount),
+      completedAt: r.completed_at ? asIsoStamp(r.completed_at) : null,
+      postponeReason: r.postpone_reason,
+      originDate: r.origin_date ? asIsoDate(r.origin_date) : null,
+      arrivalTime: r.arrival_time,
+      notes: r.notes,
+      sortOrder: intId(r.sort_order),
+    });
+    const jobs = await sql.query<JobSel>(
+      `select ${jobCols} from jobs
+        where user_id = $1 and scheduled_date >= $2::date and scheduled_date <= $3::date
+        order by scheduled_date asc, sort_order asc, id asc limit 20000`,
+      [uid, from, to],
+    );
+    const upcoming = await sql.query<JobSel>(
+      `select ${jobCols} from jobs
+        where user_id = $1 and status = 'pending' and scheduled_date <= $2::date
+          and scheduled_date >= ($3::date - interval '60 days')
+        order by scheduled_date asc, sort_order asc, id asc limit 3000`,
+      [uid, aheadTo, today],
+    );
+    const payments = await sql.query<{ id: unknown; client_id: unknown; paid_at: unknown; amount: unknown; kind: string; method: string | null; note: string | null; tip: unknown }>(
+      `select id, client_id, paid_at, amount, kind, method, note, tip from payments
+        where user_id = $1 and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')
+        order by paid_at asc, id asc limit 20000`,
+      [uid, from, to],
+    );
+    const work = await sql.query<{ work_date: unknown; clock_in: string | null; clock_out: string | null; stopped_reason: string | null }>(
+      `select work_date, clock_in, clock_out, stopped_reason from work_days
+        where user_id = $1 and work_date >= $2::date and work_date <= $3::date and work_date <= $4::date
+        order by work_date asc`,
+      [uid, from, to, today],
+    );
+    const dayNotes = await sql.query<{ note_date: unknown; body: string }>(
+      `select note_date, body from day_notes
+        where user_id = $1 and note_date >= $2::date and note_date <= $3::date and length(trim(body)) > 0
+        order by note_date asc`,
+      [uid, from, to],
+    );
+    const notes = await sql.query<{ id: unknown; title: string; body: string; folder: string | null; tags: string | null; pinned: boolean | null; due_date: unknown; updated_at: unknown }>(
+      `select id, title, body, folder, tags, pinned, due_date, updated_at from pad_pages
+        where user_id = $1 and deleted_at is null
+        order by pinned desc, updated_at desc limit 400`,
+      [uid],
+    );
+    const offDays = await sql.query<{ mark_date: unknown; reason: string; detail: string }>(
+      `select mark_date, reason, detail from day_marks
+        where user_id = $1 and kind = 'off' and mark_date >= $2::date and mark_date <= $3::date
+        order by mark_date asc`,
+      [uid, from, to],
+    );
+    const before = await sql.query<{ n: unknown; v: unknown }>(
+      `select count(*) as n, coalesce(sum(amount), 0) as v from jobs
+        where user_id = $1 and status = 'done' and scheduled_date < $2::date`,
+      [uid, from],
+    );
+    // Who owes, and since when: the balance is laid on their newest done jobs first
+    // (the same reading the Estudio uses). What is left is the opening balance.
+    const owing = clients.filter((c) => c.balance > 0);
+    const aging: Record<number, ExportAging> = {};
+    if (owing.length) {
+      const debtJobs = await sql.query<{ client_id: unknown; scheduled_date: unknown; amount: unknown }>(
+        `select j.client_id, j.scheduled_date, j.amount
+           from jobs j join clients c on c.id = j.client_id and c.user_id = j.user_id
+          where j.user_id = $1 and j.status = 'done' and c.balance > 0
+          order by j.client_id, coalesce(j.completed_at, j.scheduled_date::timestamptz) desc, j.id desc`,
+        [uid],
+      );
+      const byClient = new Map<number, { date: string; amount: number }[]>();
+      for (const j of debtJobs) {
+        const id = intId(j.client_id);
+        const list = byClient.get(id) ?? [];
+        list.push({ date: asIsoDate(j.scheduled_date), amount: money(j.amount) });
+        byClient.set(id, list);
+      }
+      for (const c of owing) {
+        const row: ExportAging = { oldestDays: null, opening: 0, b0: 0, b31: 0, b61: 0, b91: 0, unpaidJobs: 0 };
+        let left = c.balance;
+        for (const j of byClient.get(c.id) ?? []) {
+          if (left <= 0.004) break;
+          const take = Math.min(j.amount, left);
+          if (take <= 0) continue;
+          const days = Math.max(0, daysBetween(j.date, today));
+          if (days <= 30) row.b0 += take;
+          else if (days <= 60) row.b31 += take;
+          else if (days <= 90) row.b61 += take;
+          else row.b91 += take;
+          left = Math.round((left - take) * 100) / 100;
+          row.oldestDays = days;
+          row.unpaidJobs += 1;
+        }
+        if (left > 0.004) row.opening = Math.round(left * 100) / 100;
+        for (const k of ["b0", "b31", "b61", "b91"] as const) row[k] = Math.round(row[k] * 100) / 100;
+        aging[c.id] = row;
+      }
+    }
+    const vs = settings[0]?.vacation_start ? asIsoDate(settings[0].vacation_start) : null;
+    const ve = settings[0]?.vacation_end ? asIsoDate(settings[0].vacation_end) : null;
+    return {
+      today,
+      from,
+      to,
+      aheadTo,
+      business: settings[0]?.business_name?.trim() || DEFAULT_BUSINESS_NAME,
+      vacation: { start: vs, end: ve },
+      clients,
+      aging,
+      jobs: jobs.map(mapRaw),
+      upcoming: upcoming.map(mapRaw),
+      payments: payments.map((p) => ({
+        id: intId(p.id),
+        clientId: intId(p.client_id),
+        date: asIsoStamp(p.paid_at).slice(0, 10),
+        amount: money(p.amount),
+        kind: (p.kind as PaymentKind) ?? "paid",
+        method: p.method,
+        note: p.note,
+        tip: money(p.tip),
+      })),
+      work: work.map((w) => ({
+        date: asIsoDate(w.work_date),
+        clockIn: w.clock_in ? w.clock_in.slice(0, 5) : null,
+        clockOut: w.clock_out ? w.clock_out.slice(0, 5) : null,
+        minutes: minutesBetween(w.clock_in, w.clock_out),
+        stopped: w.stopped_reason?.trim() || null,
+      })),
+      dayNotes: dayNotes.map((d) => ({ date: asIsoDate(d.note_date), body: d.body })),
+      notes: notes.map((n) => ({
+        id: intId(n.id),
+        title: n.title || "Nota",
+        body: n.body ?? "",
+        folder: n.folder ?? "",
+        tags: n.tags ?? "",
+        pinned: Boolean(n.pinned),
+        due: n.due_date ? asIsoDate(n.due_date) : null,
+        updated: n.updated_at ? asIsoStamp(n.updated_at) : "",
+      })),
+      offDays: offDays.map((o) => ({ date: asIsoDate(o.mark_date), reason: o.reason, detail: o.detail ?? "" })),
+      before: { jobs: intId(before[0]?.n), value: money(before[0]?.v) },
+    };
+  });

@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, createFileRoute } from "@tanstack/react-router";
-import { Bell, Check, ChevronDown, CalendarRange, Clock, Download, FileSpreadsheet, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { Bell, Check, ChevronDown, CalendarRange, Clock, Download, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell, SignOutControl, TitleSearch } from "@/components/app-shell";
 import { FingerprintControl } from "@/components/fingerprint-control";
 import { SyncStatusCard } from "@/components/sync-status";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { ExportCenterCard, ExportSheet, useExportLaunch } from "@/components/export-center";
 import { Fold, foldsOpen, setFoldsOpen } from "@/components/fold";
 import { Hint } from "@/components/hint";
 import { invalidateLawn } from "@/components/job-card";
@@ -17,19 +18,17 @@ import { SettingsOrderButton } from "@/components/settings-order-button";
 import { useAjustesRank } from "@/lib/ajustes-order";
 import { useUndo } from "@/lib/undo";
 import { UserManual } from "@/components/user-manual";
-import { addDaysISO, endOfWeekISO, lastDayOfMonthISO, monthParts, startOfWeekISO, todayISO } from "@/lib/dates";
+import { addDaysISO, todayISO } from "@/lib/dates";
 import { formatDay, formatStamp } from "@/lib/format";
 import { emphasize, useI18n, useTx } from "@/lib/i18n";
 import { smartHit } from "@/lib/fuzzy";
 import { notificationsSupported, requestNotificationPermission } from "@/lib/reminders";
-import { pickBackupFolder, saveBinaryFile, saveCsvFile, writeBackupBundle } from "@/lib/save-file";
+import { pickBackupFolder, writeBackupBundle } from "@/lib/save-file";
 import {
   applyVacation,
   clearVacation,
   exportBackup,
   exportReport,
-  exportScope,
-  exportSheets,
   getSettings,
   importBackupJson,
   listBackups,
@@ -128,6 +127,7 @@ function AjustesPage() {
     const xls = Uint8Array.from(atob(report.xls), (c) => c.charCodeAt(0));
     return writeBackupBundle({ json: copy.json, pdf, xls });
   }
+  const exporter = useExportLaunch();
   const [findOn, setFindOn] = useState(false);
   const [needle, setNeedle] = useState("");
   const query = findOn ? needle.trim() : "";
@@ -228,40 +228,6 @@ function AjustesPage() {
       await invalidateLawn(qc);
     },
     onError: () => toast.error(tx("Ese archivo está dañado o no es una copia. No se cambió nada.", "That file is damaged or not a copy. Nothing was changed.")),
-  });
-  const sheets = useMutation({
-    mutationFn: () => exportSheets(),
-    onSuccess: async (payload) => {
-      try {
-        await saveCsvFile(`clientes-${payload.stamp}.csv`, payload.clientsCsv);
-        await saveCsvFile(`citas-pendientes-${payload.stamp}.csv`, payload.jobsCsv);
-        toast.success(
-          tx(
-            `Hojas listas: ${payload.clientCount} clientes y ${payload.jobCount} citas pendientes.`,
-            `Sheets ready: ${payload.clientCount} clients and ${payload.jobCount} pending appointments.`,
-          ),
-        );
-      } catch (err) {
-        if ((err instanceof Error ? err.name : "") === "AbortError") return;
-        toast.error(tx("No se pudieron guardar las hojas", "Could not save the sheets"));
-      }
-    },
-  });
-  const report = useMutation({
-    mutationFn: () => exportReport(),
-    onSuccess: async (file) => {
-      try {
-        const pdf = Uint8Array.from(atob(file.pdf), (c) => c.charCodeAt(0));
-        const xls = Uint8Array.from(atob(file.xls), (c) => c.charCodeAt(0));
-        await saveBinaryFile(`Brizna_Informe_${file.today}.pdf`, pdf, "Informe PDF", ".pdf", "application/pdf");
-        await saveBinaryFile(`Brizna_Libro_${file.today}.xls`, xls, "Libro de Excel", ".xls", "application/vnd.ms-excel");
-        toast.success(tx("Informe y libro listos.", "Report and workbook ready."));
-      } catch (err) {
-        if ((err instanceof Error ? err.name : "") === "AbortError") return;
-        toast.error(tx("No se pudo guardar el informe", "Could not save the report"));
-      }
-    },
-    onError: () => toast.error(tx("No se pudo preparar el informe", "Could not prepare the report")),
   });
   const vacMut = useMutation({
     mutationFn: (range: { start: string; end: string }) => applyVacation({ data: range }),
@@ -805,45 +771,28 @@ function AjustesPage() {
         </SettingFold>
 
         <SettingFold
-          id="aj-hojas"
+          id="aj-exportar"
           order="order-10"
           query={query}
-          blob="hojas para imprimir papel pdf excel sheets to print"
+          blob="exportar imprimir hojas pdf excel hoja de calculo xlsx compartir contador informe export print sheets worksheet share report accountant"
           title={
             <span className="flex items-center gap-2">
               <Printer className="size-5 shrink-0 text-primary" />
-              {tx("Hojas para imprimir", "Sheets to print")}
+              {tx("Exportar e imprimir", "Export and print")}
             </span>
           }
           hint={
             <Hint
               text={tx(
-                "Dos archivos de cálculo: todos los clientes y las citas pendientes. Ábrelos en Excel o imprímelos. También hay una vista lista para imprimir.",
-                "Two spreadsheet files: all clients and the pending appointments. Open them in Excel or print them. There is also a view ready to print.",
+                "Elige qué entra (todo o solo algunas partes), de qué fechas y de qué clientes. Sale en PDF para leer e imprimir, en hoja de cálculo para filtrar y sumar, o directo a la impresora.",
+                "Choose what goes in (everything or just some parts), which dates and which clients. It comes out as a PDF to read and print, a worksheet to filter and sum, or straight to the printer.",
               )}
             />
           }
         >
-          <p className="text-sm text-muted">{tx("Respaldo físico por si hace falta llevar el trabajo en papel.", "A paper backup in case you need to take the work on paper.")}</p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <Button onClick={() => sheets.mutate()} disabled={sheets.isPending}>
-              <Download />
-              {tx("Exportar hojas", "Export sheets")}
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/imprimir" search={{}}>
-                <Printer />
-                {tx("Vista para imprimir", "Print view")}
-              </Link>
-            </Button>
-            <Button variant="outline" onClick={() => report.mutate()} disabled={report.isPending}>
-              <FileSpreadsheet />
-              {tx("PDF y Excel", "PDF and Excel")}
-            </Button>
-          </div>
+          <ExportCenterCard onOpen={exporter.launch} />
         </SettingFold>
-
-        <ExportBlock query={query} />
+        <ExportSheet open={exporter.open} preset={exporter.preset} onClose={exporter.close} />
 
         <SettingFold
           id="aj-copia"
@@ -1061,96 +1010,6 @@ function SeasonBlock({ settings, query }: { settings?: AppSettings; query: strin
       >
         {tx("Guardar temporada", "Save season")}
       </Button>
-    </SettingFold>
-  );
-}
-
-function ExportBlock({ query }: { query: string }) {
-  const tx = useTx();
-  const today = todayISO();
-  const { year, month } = monthParts(today);
-  const [scope, setScope] = useState("month");
-  const [y1, setY1] = useState(String(year));
-  const [y2, setY2] = useState(String(year));
-  const range = (() => {
-    if (scope === "all") return { from: "1970-01-01", to: "2999-12-31" };
-    if (scope === "week") return { from: startOfWeekISO(today), to: endOfWeekISO(today) };
-    if (scope === "month") return { from: `${year}-${String(month).padStart(2, "0")}-01`, to: lastDayOfMonthISO(year, month) };
-    if (scope === "year") return { from: `${year}-01-01`, to: `${year}-12-31` };
-    const a = Math.min(Number(y1) || year, Number(y2) || year);
-    const b = Math.max(Number(y1) || year, Number(y2) || year);
-    return { from: `${a}-01-01`, to: `${b}-12-31` };
-  })();
-  const excel = useMutation({
-    mutationFn: () => exportScope({ data: range }),
-    onSuccess: async (res) => {
-      await saveCsvFile(`oscar-${res.from ?? "todo"}-${res.to ?? "todo"}.csv`, res.csv);
-      toast.success(tx("Hoja lista. Ábrela en Excel.", "Sheet ready. Open it in Excel."));
-    },
-    onError: () => toast.error(tx("No se pudo exportar.", "Could not export.")),
-  });
-  return (
-    <SettingFold
-      id="aj-exportar"
-      order="order-11"
-      query={query}
-      blob="exportar un tramo excel csv pdf semana mes ano export"
-      title={
-        <span className="flex items-center gap-2">
-          <FileSpreadsheet className="size-5 shrink-0 text-primary" />
-          {tx("Exportar un tramo", "Export a stretch")}
-        </span>
-      }
-      hint={
-        <Hint
-          text={tx(
-            "Elige el tramo y exporta una hoja. El PDF sale al imprimir la vista.",
-            "Pick the stretch and export a sheet. The PDF comes from printing the view.",
-          )}
-        />
-      }
-    >
-      <p className="text-sm text-muted">
-        {tx("Semana, mes, año, varios años o todo. El PDF usa las páginas que hagan falta al imprimir.", "Week, month, year, several years, or everything. The PDF uses as many pages as printing needs.")}
-      </p>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {(
-          [
-            ["week", tx("Semana", "Week")],
-            ["month", tx("Mes", "Month")],
-            ["year", tx("Año", "Year")],
-            ["years", tx("Años", "Years")],
-            ["all", tx("Todo", "All")],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setScope(id)}
-            className={cn("h-9 rounded-full px-3 text-xs font-semibold", scope === id ? "bg-soil text-primary-fg" : "bg-sun text-muted")}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {scope === "years" ? (
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <Input type="number" value={y1} onChange={(e) => setY1(e.target.value)} />
-          <Input type="number" value={y2} onChange={(e) => setY2(e.target.value)} />
-        </div>
-      ) : null}
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <Button onClick={() => excel.mutate()} disabled={excel.isPending}>
-          <Download />
-          Excel
-        </Button>
-        <Button variant="outline" asChild>
-          <Link to="/imprimir" search={range}>
-            <Printer />
-            PDF
-          </Link>
-        </Button>
-      </div>
     </SettingFold>
   );
 }

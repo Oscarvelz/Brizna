@@ -9,7 +9,6 @@ export const AJUSTES_DEFAULT = [
   "aj-temporada",
   "aj-vacaciones",
   "aj-tableta",
-  "aj-hojas",
   "aj-exportar",
   "aj-copia",
 ] as const;
@@ -37,10 +36,8 @@ export function ajusteLabel(id: AjusteId, tx: (es: string, en: string) => string
       return tx("Vacaciones", "Vacation");
     case "aj-tableta":
       return tx("Modo tableta", "Tablet mode");
-    case "aj-hojas":
-      return tx("Hojas", "Sheets");
     case "aj-exportar":
-      return tx("Exportar", "Export");
+      return tx("Exportar e imprimir", "Export and print");
     case "aj-copia":
       return tx("Copia de seguridad", "Backup");
   }
@@ -68,7 +65,10 @@ export function readAjustesOrder(): AjusteId[] {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || "null") as unknown;
     if (!Array.isArray(raw)) return [...AJUSTES_DEFAULT];
-    return mergeOrder(raw.filter(isId));
+    // 1.4.1: "Hojas para imprimir" and "Exportar un tramo" became one export center (aj-exportar),
+    // which keeps the place the first of the two had.
+    const migrated = raw.map((id) => (id === "aj-hojas" ? "aj-exportar" : id));
+    return mergeOrder(migrated.filter(isId));
   } catch {
     return [...AJUSTES_DEFAULT];
   }
