@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTx } from "@/lib/i18n";
 import { PLACE_EVENT, readWeatherPlace } from "@/lib/weather-place";
+import { applySky } from "@/lib/weather-sky";
 
 const CACHE = "ols-weather";
 
@@ -45,7 +46,9 @@ export function WeatherChip() {
         const c = data.current?.temperature_2m;
         if (typeof c !== "number") return;
         const f = Math.round((c * 9) / 5 + 32);
-        const sky = skyLabel(Number(data.current?.weather_code ?? -1));
+        const code = Number(data.current?.weather_code ?? -1);
+        if (code >= 0) applySky(code);
+        const sky = skyLabel(code);
         remember(`${Math.round(c)}°C · ${f}°F${sky ? ` · ${sky}` : ""}`);
       })
       .catch(() => undefined);

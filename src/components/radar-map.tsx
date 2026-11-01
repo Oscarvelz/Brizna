@@ -25,7 +25,7 @@ export function RadarMap({ lat, lon, host, path }: { lat: number; lon: number; h
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const baseRef = useRef<TileLayer | null>(null);
-  const radarRef = useRef<TileLayer | null>(null);
+  const radarRef = useRef<Map<string, TileLayer>>(new Map());
   const dotRef = useRef<CircleMarker | null>(null);
   const moved = useRef(false);
   const [night, setNight] = useState(false);
@@ -49,7 +49,7 @@ export function RadarMap({ lat, lon, host, path }: { lat: number; lon: number; h
         zoomControl: false,
         minZoom: 4,
         maxZoom: 14,
-      }).setView([lat, lon], 9);
+      }).setView([lat, lon], 8);
       L.control.zoom({ position: "bottomright" }).addTo(created);
       created.on("dragstart", () => {
         moved.current = true;
@@ -65,7 +65,7 @@ export function RadarMap({ lat, lon, host, path }: { lat: number; lon: number; h
       created?.remove();
       mapRef.current = null;
       baseRef.current = null;
-      radarRef.current = null;
+      radarRef.current = new Map();
       dotRef.current = null;
       setReady(false);
     };
@@ -101,15 +101,25 @@ export function RadarMap({ lat, lon, host, path }: { lat: number; lon: number; h
     void import("leaflet").then((mod) => {
       if (dead) return;
       const L = asLeaflet(mod);
-      if (radarRef.current) map.removeLayer(radarRef.current);
-      const layer = L.tileLayer(`${host}${path}/256/{z}/{x}/{y}/4/1_1.png`, {
-        pane: "radar",
-        opacity: 0.78,
-        maxNativeZoom: 7,
-        maxZoom: 14,
-      });
-      layer.addTo(map);
-      radarRef.current = layer;
+      // Keep each radar frame's layer so the loop doesn't flash blank while tiles load.
+      const layers = radarRef.current;
+      let layer = layers.get(path);
+      if (!layer) {
+        layer = L.tileLayer(`${host}${path}/256/{z}/{x}/{y}/2/1_1.png`, {
+          pane: "radar",
+          opacity: 0,
+          maxNativeZoom: 7,
+          maxZoom: 14,
+        });
+        layer.addTo(map);
+        layers.set(path, layer);
+      }
+      for (const [key, item] of layers) item.setOpacity(key === path ? 0.78 : 0);
+      // Forget frames that are no longer in the last hour.
+      if (layers.size > 8) {
+        const first = layers.keys().next().value as string;
+        if (first !== path) { map.removeLayer(layers.get(first)!); layers.delete(first); }
+      }
     });
     return () => {
       dead = true;

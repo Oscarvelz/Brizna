@@ -1,0 +1,98 @@
+/* ───────── Weather sky: html[data-sky] (set from the live weather) picks the layers behind the app ─────────
+   Clouds drift past the sun/moon, rain falls, storms flash, fog rolls, snow drifts. Transform/opacity only. */
+
+.wx { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.wx > * { position: absolute; opacity: 0; transition: opacity 1.2s ease; will-change: transform; }
+
+/* Clouds: soft puffs built from radial gradients. */
+.wx-cloud {
+  --cl: 206 214 224;
+  --ca: .9;
+  width: 260px; height: 90px; left: 0;
+  background:
+    radial-gradient(closest-side at 30% 62%, rgb(var(--cl) / var(--ca)), transparent) ,
+    radial-gradient(closest-side at 52% 42%, rgb(var(--cl) / var(--ca)), transparent),
+    radial-gradient(closest-side at 72% 60%, rgb(var(--cl) / var(--ca)), transparent),
+    radial-gradient(closest-side at 50% 72%, rgb(var(--cl) / calc(var(--ca) * .9)), transparent);
+  background-size: 46% 80%, 50% 100%, 44% 78%, 70% 56%;
+  background-repeat: no-repeat;
+  background-position: 6% 80%, 40% 0%, 92% 82%, 50% 100%;
+  filter: blur(2px);
+  animation: wx-drift 110s linear infinite;
+}
+.wx-c1 { top: 7vh; animation-duration: 120s; animation-delay: -30s; }
+.wx-c2 { top: 15vh; transform: scale(.75); animation-duration: 150s; animation-delay: -95s; }
+.wx-c3 { top: 26vh; transform: scale(1.15); animation-duration: 170s; animation-delay: -10s; }
+@keyframes wx-drift { from { transform: translateX(-320px); } to { transform: translateX(calc(100vw + 60px)); } }
+
+/* Rain: thin slanted streaks on a tall layer that slides down. */
+.wx-rain {
+  left: -20%; right: -20%; top: -100%; height: 200%;
+  background:
+    repeating-linear-gradient(100deg, transparent 0 22px, rgb(170 195 220 / .45) 22px 23.2px, transparent 23.2px 47px),
+    repeating-linear-gradient(98deg, transparent 0 37px, rgb(170 195 220 / .3) 37px 38px, transparent 38px 71px);
+  -webkit-mask: repeating-linear-gradient(180deg, #000 0 14px, transparent 14px 40px);
+          mask: repeating-linear-gradient(180deg, #000 0 14px, transparent 14px 40px);
+  animation: wx-fall .55s linear infinite;
+}
+@keyframes wx-fall { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-7px, 40px, 0); } }
+
+/* Lightning: a rare double flash. */
+.wx-flash { inset: 0; background: rgb(235 240 255 / .55); }
+@keyframes wx-flash { 0%, 90%, 100% { opacity: 0; } 91% { opacity: .55; } 92% { opacity: 0; } 94% { opacity: .35; } 95.5% { opacity: 0; } }
+
+/* Fog: wide soft bands rolling sideways. */
+.wx-fog {
+  left: -50%; width: 200%; top: 0; height: 100%;
+  background:
+    radial-gradient(60% 9% at 30% 22%, rgb(230 234 236 / .55), transparent),
+    radial-gradient(55% 8% at 75% 45%, rgb(230 234 236 / .45), transparent),
+    radial-gradient(70% 10% at 45% 72%, rgb(230 234 236 / .5), transparent);
+  filter: blur(8px);
+  animation: wx-roll 40s ease-in-out infinite alternate;
+}
+@keyframes wx-roll { from { transform: translateX(-6%); } to { transform: translateX(6%); } }
+
+/* Snow: dotted layer drifting down. */
+.wx-snow {
+  left: 0; right: 0; top: -100%; height: 200%;
+  background:
+    radial-gradient(2px 2px at 20px 30px, #fff, transparent 70%),
+    radial-gradient(2.5px 2.5px at 90px 80px, #fff, transparent 70%),
+    radial-gradient(1.6px 1.6px at 150px 20px, #fff, transparent 70%),
+    radial-gradient(2px 2px at 60px 140px, #fff, transparent 70%);
+  background-size: 180px 170px;
+  animation: wx-snow 9s linear infinite;
+}
+@keyframes wx-snow { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(30px, 170px, 0); } }
+
+/* ── What each sky shows ── */
+html[data-sky="nubes"] .wx-cloud { opacity: 1; }
+html[data-sky="lluvia"] .wx-cloud, html[data-sky="tormenta"] .wx-cloud { opacity: 1; --cl: 150 160 170; --ca: .85; }
+html[data-sky="lluvia"] .wx-rain, html[data-sky="tormenta"] .wx-rain { opacity: 1; }
+html[data-sky="tormenta"] .wx-flash { animation: wx-flash 11s linear infinite; opacity: 0; }
+html[data-sky="tormenta"] .wx-rain { animation-duration: .4s; }
+html[data-sky="niebla"] .wx-fog { opacity: 1; }
+html[data-sky="niebla"] .wx-cloud { opacity: .6; --cl: 225 228 230; }
+html[data-sky="nieve"] .wx-snow { opacity: .9; }
+html[data-sky="nieve"] .wx-cloud { opacity: 1; --cl: 225 230 238; }
+
+/* Night: clouds are moonlit and faint, rain a little dimmer. */
+html.theme-dark .wx-cloud, html.theme-amoled .wx-cloud { --cl: 196 206 226; --ca: .3; filter: blur(3px); }
+html.theme-dark[data-sky="lluvia"] .wx-cloud, html.theme-dark[data-sky="tormenta"] .wx-cloud,
+html.theme-amoled[data-sky="lluvia"] .wx-cloud, html.theme-amoled[data-sky="tormenta"] .wx-cloud { --cl: 130 140 160; --ca: .42; }
+html.theme-dark .wx-rain, html.theme-amoled .wx-rain { filter: brightness(.75); }
+html.theme-dark .wx-fog, html.theme-amoled .wx-fog { filter: blur(8px) brightness(.35); }
+
+/* The sun/moon dims behind clouds and hides behind rain. */
+html[data-sky="nubes"] body::after { opacity: .8; transition: opacity 1.2s; }
+html[data-sky="nubes"] #root::before { opacity: .45 !important; animation-play-state: paused; }
+html[data-sky="lluvia"] body::after, html[data-sky="tormenta"] body::after,
+html[data-sky="niebla"] body::after, html[data-sky="nieve"] body::after { opacity: .28; filter: blur(1.5px); }
+html[data-sky="lluvia"] #root::before, html[data-sky="tormenta"] #root::before,
+html[data-sky="niebla"] #root::before, html[data-sky="nieve"] #root::before { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wx > * { animation: none !important; }
+}
+@media print { .wx { display: none; } }

@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { CloudRain, Crosshair, Droplets, MapPin, Search, SunMedium, Wind } from "lucide-react";
+import { CloudRain, Crosshair, Droplets, MapPin, Pause, Play, Search, SunMedium, Wind } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { invalidateLawn } from "@/components/job-card";
 import { MessageComposer } from "@/components/message-composer";
+import { applySky } from "@/lib/weather-sky";
 import { RadarMap } from "@/components/radar-map";
 import { ReasonChips } from "@/components/reason-chips";
 import { Button } from "@/components/ui/button";
@@ -120,6 +121,8 @@ function ClimaPage() {
   const [host, setHost] = useState("");
   const [frame, setFrame] = useState(0);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [playing, setPlaying] = useState(true);
 
   useEffect(() => {
     // Refresh GPS silently only when Chrome already allowed it; never pop the prompt on open.
@@ -139,14 +142,20 @@ function ClimaPage() {
 
   useEffect(() => {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${place.lat}&longitude=${place.lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,uv_index_max&timezone=auto&forecast_days=2`;
+    const cacheKey = `brizna.clima.${place.lat.toFixed(2)},${place.lon.toFixed(2)}`;
+    try {
+      const old = JSON.parse(localStorage.getItem(cacheKey) || "null") as { at: number; pack: Pack } | null;
+      if (old?.pack && Date.now() - old.at < 6 * 3600_000) { setPack(old.pack); setReady(true); }
+    } catch { /* ignore */ }
+    setFailed(false);
     void fetch(url)
       .then((r) => r.json())
       .then((data) => {
         const c = data.current;
         const h = data.hourly;
         const d = data.daily;
-        if (!c || !h?.time || !d?.time) return;
-        const hours: Hour[] = h.time.slice(0, 24).map((time: string, i: number) => ({
+        if (!c || !h?.time || !d?.time) { setFailed(true); setReady(true); return; }
+        const hours: Hour[] = h.time.slice(0, 48).map((time: string, i: number) => ({
           time,
           temp: h.temperature_2m[i],
           pop: h.precipitation_probability[i] ?? 0,
@@ -163,7 +172,7 @@ function ClimaPage() {
           code: d.weather_code[i] ?? 0,
           uv: d.uv_index_max[i] ?? 0,
         }));
-        setPack({
+        const next: Pack = {
           temp: c.temperature_2m,
           code: c.weather_code ?? 0,
           humidity: c.relative_humidity_2m ?? 0,
@@ -171,23 +180,38 @@ function ClimaPage() {
           rain: c.precipitation ?? 0,
           hours,
           days,
-        });
+        };
+        setPack(next);
+        applySky(next.code);
+        try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), pack: next })); } catch { /* ignore */ }
         setReady(true);
       })
-      .catch(() => setReady(true));
+      .catch(() => { setFailed(true); setReady(true); });
   }, [place.lat, place.lon]);
 
   useEffect(() => {
-    void fetch("https://api.rainviewer.com/public/weather-maps.json")
-      .then((r) => r.json())
-      .then((data: { host?: string; radar?: { past?: Frame[] } }) => {
-        const past = data.radar?.past ?? [];
-        setHost(data.host ?? "");
-        setFrames(past.slice(-6));
-        setFrame(Math.max(0, past.slice(-6).length - 1));
-      })
-      .catch(() => undefined);
+    const load = () =>
+      void fetch("https://api.rainviewer.com/public/weather-maps.json")
+        .then((r) => r.json())
+        .then((data: { host?: string; radar?: { past?: Frame[] } }) => {
+          const past = (data.radar?.past ?? []).slice(-6);
+          setHost(data.host ?? "");
+          setFrames(past);
+          setFrame(Math.max(0, past.length - 1));
+        })
+        .catch(() => undefined);
+    load();
+    const t = window.setInterval(load, 10 * 60_000);
+    return () => window.clearInterval(t);
   }, []);
+
+  // Play the last hour of radar as a loop, resting a moment on the newest frame.
+  useEffect(() => {
+    if (!playing || frames.length < 2) return;
+    const last = frames.length - 1;
+    const t = window.setTimeout(() => setFrame((f) => (f >= last ? 0 : f + 1)), frame === last ? 1800 : 650);
+    return () => window.clearTimeout(t);
+  }, [playing, frames.length, frame]);
 
   const rainMut = useMutation({
     mutationFn: () => shiftForRain({ data: { reason: stopReason || "Lluvia" } }),
@@ -264,11 +288,11 @@ function ClimaPage() {
         ) : null}
       </div>
 
-      <section className={cn("rounded-xl px-4 py-4", tone === "alert" ? "bg-late-bg" : tone === "wait" ? "bg-sun" : "bg-done-bg")}>
+      <section className={cn("rounded-xl px-4 py-4", !pack ? "bg-surface shadow-card" : tone === "alert" ? "bg-late-bg" : tone === "wait" ? "bg-sun" : "bg-done-bg")}>
         <p className="text-xs font-semibold tracking-wide uppercase text-muted">{tx("Para el trabajo", "For the work")}</p>
         <p className="mt-1 font-display text-3xl font-semibold">{pack ? `${Math.round(pack.temp)}°` : "–"}</p>
-        <p className="text-sm">{pack ? sky(pack.code, en) : tx("Leyendo el cielo…", "Reading the sky…")}</p>
-        <p className="mt-2 text-sm leading-snug">{ready ? verdict : ""}</p>
+        <p className="text-sm">{pack ? sky(pack.code, en) : failed ? tx("No pude leer el clima ahora. Vuelve a intentarlo en un rato.", "Couldn't read the weather right now. Try again in a bit.") : tx("Leyendo el cielo…", "Reading the sky…")}</p>
+        <p className="mt-2 text-sm leading-snug">{ready && pack ? verdict : ""}</p>
       </section>
 
       <Button variant="outline" className="mt-3 w-full" onClick={() => setAskRain(true)}>
@@ -312,7 +336,7 @@ function ClimaPage() {
 
       <div className="mt-3 grid grid-cols-3 gap-2">
         <Fact icon={CloudRain} label={tx("Lluvia", "Rain")} value={soon[0] ? `${soon[0].pop}%` : "–"} />
-        <Fact icon={Wind} label={tx("Viento", "Wind")} value={pack ? `${Math.round(pack.wind)} km` : "–"} />
+        <Fact icon={Wind} label={tx("Viento", "Wind")} value={pack ? `${Math.round(pack.wind)} km/h` : "–"} />
         <Fact icon={Droplets} label={tx("Humedad", "Humidity")} value={pack ? `${Math.round(pack.humidity)}%` : "–"} />
       </div>
 
@@ -321,24 +345,36 @@ function ClimaPage() {
           <h2 className="font-display text-lg font-semibold">{tx("Radar", "Radar")}</h2>
           <p className="text-xs text-muted">
             {radarWhen
-              ? tx(`Nubes a las ${radarWhen}`, `Clouds at ${radarWhen}`)
+              ? tx(`Lluvia a las ${radarWhen}`, `Rain at ${radarWhen}`)
               : tx("Cargando el radar…", "Loading the radar…")}
           </p>
         </div>
         <RadarMap lat={place.lat} lon={place.lon} host={host} path={shot?.path ?? ""} />
         {frames.length > 1 ? (
-          <div className="mt-2 flex gap-1">
+          <div className="mt-2 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setPlaying((v) => !v)}
+              aria-label={playing ? tx("Pausar radar", "Pause radar") : tx("Reproducir radar", "Play radar")}
+              className="mr-1 grid size-7 shrink-0 place-items-center rounded-full bg-surface-2 text-fg"
+            >
+              {playing ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+            </button>
             {frames.map((item, index) => (
               <button
                 key={item.time}
                 type="button"
                 aria-label={tx("Ver este momento del radar", "See this radar moment")}
-                onClick={() => setFrame(index)}
+                onClick={() => { setPlaying(false); setFrame(index); }}
                 className={cn("h-1.5 flex-1 rounded-full", index === frame ? "bg-soil" : "bg-sun")}
               />
             ))}
           </div>
         ) : null}
+        <div className="mt-2 flex items-center gap-2 text-[11px] text-muted">
+          <span className="h-2 flex-1 rounded-full" style={{ background: "linear-gradient(90deg,#88ddee,#0077aa,#ffee00,#ff9900,#ff4400,#c10000,#ff99ff)" }} />
+          <span className="shrink-0">{tx("ligera → fuerte", "light → heavy")}</span>
+        </div>
         <p className="mt-2 text-xs leading-snug text-muted">
           {tx(
             "Pellizca para acercar y arrastra para moverte. El punto es tu zona. Si el color avanza hacia él, la lluvia viene.",
@@ -347,6 +383,7 @@ function ClimaPage() {
         </p>
       </section>
 
+      {soon.length > 0 ? (
       <section className="mt-4">
         <h2 className="mb-2 font-display text-lg font-semibold">{tx("Próximas horas", "Next hours")}</h2>
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -359,6 +396,7 @@ function ClimaPage() {
           ))}
         </div>
       </section>
+      ) : null}
 
       {pack?.days[1] ? (
         <section className="mt-4 rounded-xl bg-surface px-4 py-3 shadow-card">
@@ -375,6 +413,7 @@ function ClimaPage() {
         </section>
       ) : null}
 
+      {pack ? (
       <ul className="mt-4 grid gap-2 text-sm leading-snug text-muted">
         <li className="flex gap-2">
           <SunMedium className="mt-0.5 size-4 shrink-0 text-soil" />
@@ -389,6 +428,7 @@ function ClimaPage() {
             : tx("Humedad normal. El corte queda más limpio si el pasto no está mojado.", "Normal humidity. The cut looks cleaner if the grass is not wet.")}
         </li>
       </ul>
+      ) : null}
       <ConfirmDialog
         open={askRain}
         title={t("stop.title")}
