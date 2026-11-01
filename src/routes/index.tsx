@@ -203,7 +203,7 @@ function Home() {
           label={tx("Cortes hoy", "Cuts today")}
           value={String(data?.stats.pendingToday ?? "—")}
           hint={tx("Toca para ver los patios de hoy", "Tap to see today's yards")}
-          tone="cut"
+          tone="due"
           icon={<Scissors className="size-4" />}
         />
         <StatLink
@@ -229,7 +229,7 @@ function Home() {
           label={tx("Por cobrar", "To collect")}
           value={data ? money(data.stats.outstanding) : "—"}
           hint={tx("Toca para ver esos clientes", "Tap to see those clients")}
-          tone="due"
+          tone="cut"
           icon={<Wallet className="size-4" />}
         />
         <StatLink
