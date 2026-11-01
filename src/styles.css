@@ -1091,3 +1091,9 @@ html.theme-dark .bz-fold-badge, html.theme-amoled .bz-fold-badge {
   .bz-fold-body { animation: none; }
   .bz-fold-chev svg, .bz-fold-chev-dot { transition: none; }
 }
+
+/* Fold head, tighter right cluster (Oscar, 2026-11-01): pin hugs the edge, ? hugs the pin,
+   so the figure pill sits closer and the title gets the room. Hit areas stay 36px. */
+.bz-fold-head { padding-right: 0.2rem; }
+.bz-fold-head > .bz-fold-pin { margin-left: -0.45rem; }
+.bz-fold-title > .bz-fold-peek { margin-right: -0.2rem; }
