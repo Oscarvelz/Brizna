@@ -867,3 +867,10 @@ body::-webkit-scrollbar {
 .pod-dock {
   background-image: linear-gradient(to top, var(--color-bg) var(--bz-chin), transparent var(--bz-chin));
 }
+
+/* Selected choice (themes, day/night mode). Outline, not box-shadow, so night glass shadows can't hide it. */
+.bz-chosen {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+  background-color: color-mix(in srgb, var(--color-primary) 20%, var(--color-surface)) !important;
+}

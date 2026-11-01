@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Bell, ChevronDown, CalendarRange, Clock, Download, FileSpreadsheet, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
+import { Bell, Check, ChevronDown, CalendarRange, Clock, Download, FileSpreadsheet, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell, SignOutControl, TitleSearch } from "@/components/app-shell";
@@ -420,7 +420,7 @@ function AjustesPage() {
                   onClick={() => chooseLook({ mode: mode as AppearanceMode })}
                   className={cn(
                     "flex min-h-20 flex-col items-center justify-center gap-1 rounded-md bg-sun px-1 text-xs font-semibold",
-                    look.mode === mode && "ring-2 ring-primary",
+                    look.mode === mode && "bz-chosen",
                   )}
                 >
                   <Icon className="size-5" />
@@ -450,11 +450,12 @@ function AjustesPage() {
                   onClick={() => chooseLook({ day: theme.id })}
                   className={cn(
                     "flex h-11 items-center gap-2 rounded-md bg-surface px-2 text-sm font-semibold",
-                    look.day === theme.id && "ring-2 ring-primary",
+                    look.day === theme.id && "bz-chosen",
                   )}
                 >
                   <span className={cn("size-5 shrink-0 rounded-full", theme.swatch)} />
-                  {tx(theme.es, theme.en)}
+                  <span className="flex-1 text-left">{tx(theme.es, theme.en)}</span>
+                  {look.day === theme.id ? <Check className="size-4 shrink-0 text-primary" aria-label={tx("Elegido", "Selected")} /> : null}
                 </button>
               ))}
               </div>
@@ -481,11 +482,12 @@ function AjustesPage() {
                   onClick={() => chooseLook({ night: theme.id })}
                   className={cn(
                     "flex h-11 items-center gap-2 rounded-md bg-surface px-2 text-sm font-semibold",
-                    look.night === theme.id && "ring-2 ring-primary",
+                    look.night === theme.id && "bz-chosen",
                   )}
                 >
                   <span className={cn("size-5 shrink-0 rounded-full", theme.swatch)} />
-                  {tx(theme.es, theme.en)}
+                  <span className="flex-1 text-left">{tx(theme.es, theme.en)}</span>
+                  {look.night === theme.id ? <Check className="size-4 shrink-0 text-primary" aria-label={tx("Elegido", "Selected")} /> : null}
                 </button>
               ))}
               </div>
