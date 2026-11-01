@@ -1451,8 +1451,9 @@ html.theme-dark .bz-lenses .bz-row-on-wash.bz-row-on-wash, html.theme-amoled .bz
 
 /* 1.4.31 Hoy: "Por cobrar" = turquoise (Oscar: not green, leaning to blue, same strength as the
    other tiles); "Cortes hoy" stays gold. Class names keep the "cut" slot. */
-:root { --color-cut: #13777c; --color-cut-bg: #d3ecec; }
-html.theme-dark, html.theme-amoled { --color-cut: #3cc6cf; --color-cut-bg: color-mix(in srgb, #3cc6cf 16%, #050505); }
+/* 1.4.32: warm dusty blue instead (Oscar: "azulito, un poquito cálido"). */
+:root { --color-cut: #3f6390; --color-cut-bg: #dde4ee; }
+html.theme-dark, html.theme-amoled { --color-cut: #86a8d4; --color-cut-bg: color-mix(in srgb, #86a8d4 15%, #070606); }
 .bz-stat-cut { --stat-tone: var(--color-cut); }
 .bz-cut-bg { background-color: var(--color-cut-bg); }
 .bz-cut-ink { color: var(--color-cut); }
