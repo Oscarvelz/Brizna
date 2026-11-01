@@ -160,14 +160,14 @@ export function RadarMap({ lat, lon, host, path }: { lat: number; lon: number; h
         <button
           type="button"
           onClick={() => setBase("streets")}
-          className={cn("h-8 px-3 text-xs font-semibold", base === "streets" ? "bg-soil text-primary-fg" : "text-muted")}
+          className={cn("h-8 px-3 text-xs font-semibold", base === "streets" ? "bz-pick" : "text-muted")}
         >
           {tx("Calles", "Streets")}
         </button>
         <button
           type="button"
           onClick={() => setBase("satellite")}
-          className={cn("h-8 px-3 text-xs font-semibold", base === "satellite" ? "bg-soil text-primary-fg" : "text-muted")}
+          className={cn("h-8 px-3 text-xs font-semibold", base === "satellite" ? "bz-pick" : "text-muted")}
         >
           {tx("Satélite", "Satellite")}
         </button>

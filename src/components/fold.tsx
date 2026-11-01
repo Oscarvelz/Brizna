@@ -190,7 +190,7 @@ export function Fold({
           onClick={togglePin}
           className={cn(
             "grid size-9 shrink-0 place-items-center rounded-full",
-            pinned ? "bg-soil text-primary-fg" : "text-muted",
+            pinned ? "bz-pick bz-pick-icon" : "text-muted",
           )}
         >
           <Pin className={cn("size-3.5", pinned && "fill-current")} />

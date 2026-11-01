@@ -120,7 +120,7 @@ export function SettleDay({
                       onClick={() => setRow(job.id, { mode: id })}
                       className={cn(
                         "h-9 rounded-sm text-xs font-semibold",
-                        mode === id ? "bg-soil text-primary-fg" : "bg-surface text-muted",
+                        mode === id ? "bz-pick" : "bg-surface text-muted",
                       )}
                     >
                       {label}

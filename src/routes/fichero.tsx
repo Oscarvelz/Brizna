@@ -971,7 +971,7 @@ function NoteList({
                 className={cn(
                   "grid shrink-0 place-items-center rounded-full",
                   density === "quad" || density === "dense" ? "size-8" : "size-10",
-                  page.pinned ? "bg-soil text-primary-fg" : "bg-bg text-fg ring-1 ring-border",
+                  page.pinned ? "bz-pick bz-pick-icon" : "bg-bg text-fg border border-border",
                 )}
               >
                 <Pin className={cn("size-4", page.pinned && "fill-current")} />

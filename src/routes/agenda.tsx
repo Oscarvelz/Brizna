@@ -444,7 +444,7 @@ function AgendaPage() {
               }
               if (next) setOffOpen(true);
             }}
-            className={cn("grid size-9 shrink-0 place-items-center rounded-full", pinnedOff ? "bg-soil text-primary-fg" : "text-muted")}
+            className={cn("grid size-9 shrink-0 place-items-center rounded-full", pinnedOff ? "bz-pick bz-pick-icon" : "text-muted")}
           >
             <Pin className={cn("size-3.5", pinnedOff && "fill-current")} />
           </button>
@@ -497,7 +497,7 @@ function AgendaPage() {
                     key={day.value}
                     type="button"
                     onClick={() => askWeekday(day.value, day.short)}
-                    className={cn("h-10 min-w-12 rounded-full px-3 text-sm font-semibold", on ? "bg-soil text-primary-fg" : "bg-sun text-muted")}
+                    className={cn("h-10 min-w-12 rounded-full px-3 text-sm font-semibold", on ? "bz-pick" : "bg-sun text-muted")}
                   >
                     {day.short}
                   </button>

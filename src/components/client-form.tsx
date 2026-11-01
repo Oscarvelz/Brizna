@@ -933,7 +933,7 @@ function KindToggle({
             onClick={() => onChange(id)}
             className={cn(
               "h-11 rounded-sm text-sm font-semibold transition-colors duration-150",
-              value === id ? "bg-soil text-primary-fg shadow-card" : "text-muted",
+              value === id ? "bz-pick" : "text-muted",
             )}
           >
             {label}
@@ -1033,7 +1033,7 @@ function PresetLine({
         onClick={onToggle}
         className={cn(
           "grid size-8 place-items-center rounded-full",
-          editing ? "bg-soil text-primary-fg" : "text-muted hover:bg-sun hover:text-fg",
+          editing ? "bz-pick bz-pick-icon" : "text-muted hover:bg-sun hover:text-fg",
         )}
       >
         <PencilLine className="size-3.5" strokeWidth={1.75} />
@@ -1085,7 +1085,7 @@ function FrequencyPresets({
             }}
             className={cn(
               "h-8 rounded-full px-2 text-[11px] font-semibold",
-              freqOn(code, mode, days) ? "bg-soil text-primary-fg" : "bg-sun text-muted",
+              freqOn(code, mode, days) ? "bz-pick" : "bg-sun text-muted",
             )}
           >
             {code}
@@ -1163,7 +1163,7 @@ export function PricePresets({
             onClick={() => onPick(amount)}
             className={cn(
               "h-8 rounded-full px-2 text-[11px] font-semibold",
-              current === amount ? "bg-soil text-primary-fg" : "bg-sun text-muted",
+              current === amount ? "bz-pick" : "bg-sun text-muted",
             )}
           >
             {money(amount)}
@@ -1245,7 +1245,7 @@ export function DebtPresets({
             onClick={() => onPick(amount)}
             className={cn(
               "h-8 rounded-full px-2 text-[11px] font-semibold",
-              current === amount ? "bg-soil text-primary-fg" : "bg-sun text-muted",
+              current === amount ? "bz-pick" : "bg-sun text-muted",
             )}
           >
             {money(amount)}
@@ -1325,7 +1325,7 @@ export function ArrivalField({
             onClick={() => onChange(t)}
             className={cn(
               "h-8 rounded-full px-2 text-[11px] font-semibold",
-              value === t ? "bg-soil text-primary-fg" : "bg-sun text-muted",
+              value === t ? "bz-pick" : "bg-sun text-muted",
             )}
           >
             {t}
@@ -1471,7 +1471,7 @@ function StringPresets({
             onClick={() => onPick(item)}
             className={cn(
               "h-8 rounded-full px-2 text-[11px] font-semibold",
-              selected(item) ? "bg-soil text-primary-fg ring-2 ring-primary" : "bg-sun text-muted",
+              selected(item) ? "bz-pick" : "bg-sun text-muted",
             )}
           >
             {item}

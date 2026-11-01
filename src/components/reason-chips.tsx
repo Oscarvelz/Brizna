@@ -50,7 +50,7 @@ export function ReasonChips({
               }}
               className={cn(
                 "h-9 max-w-full truncate rounded-full px-3 text-xs font-semibold",
-                on ? "bg-soil text-primary-fg" : "bg-sun text-muted",
+                on ? "bz-pick" : "bg-sun text-muted",
               )}
             >
               {shown}

@@ -54,7 +54,7 @@ export function MethodField({
               }}
               className={cn(
                 "h-9 rounded-full px-3 text-xs font-semibold",
-                on ? "bg-soil text-primary-fg" : "bg-sun text-muted",
+                on ? "bz-pick" : "bg-sun text-muted",
               )}
             >
               {label}

@@ -46,7 +46,7 @@ export function DayNightSwitch() {
         onClick={() => choose("day")}
         className={cn(
           "relative grid size-5 place-items-center rounded-full before:absolute before:-inset-1",
-          !night ? "bg-soil text-primary-fg" : "text-muted",
+          !night ? "bz-pick bz-pick-icon" : "text-muted",
         )}
       >
         <Sun className="size-3" strokeWidth={2} />
@@ -58,7 +58,7 @@ export function DayNightSwitch() {
         onClick={() => choose("night")}
         className={cn(
           "relative grid size-5 place-items-center rounded-full before:absolute before:-inset-1",
-          night ? "bg-soil text-primary-fg" : "text-muted",
+          night ? "bz-pick bz-pick-icon" : "text-muted",
         )}
       >
         <Moon className="size-3" strokeWidth={2} />
