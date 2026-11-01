@@ -199,7 +199,7 @@ function CobrosPage() {
       }
     >
       <ScrollTop />
-      <section className="relative mb-3 grid min-w-0 grid-cols-2 items-stretch gap-3">
+      <section className="bz-lenses relative mb-3 grid min-w-0 grid-cols-2 items-stretch gap-3">
         <div
           className={cn(
             "bz-stat bz-stat-due flex min-h-24 min-w-0 flex-col rounded-xl border-l-4 bg-due-bg p-3 text-left",

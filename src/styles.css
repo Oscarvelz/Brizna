@@ -1410,3 +1410,13 @@ html.theme-dark .bz-stat .bz-stat-label > svg, html.theme-amoled .bz-stat .bz-st
 
 /* 1.4.20: Por cobrar / Abonado selection gets the same fine tone border as the Cobrado rows */
 .bz-due-on { box-shadow: var(--shadow-card), inset 0 0 0 2px var(--color-due); }
+
+/* 1.4.24: Faro-style lens pick for Por cobrar / Cobrado.
+   The picked card stands forward with a firmer tone outline; the other one steps back
+   (desaturated, softer contrast — still solid, never see-through). */
+.bz-lenses > .bz-stat { transition: filter .28s ease, outline-color .2s ease, box-shadow .28s ease; }
+.bz-lenses > .bz-stat.bz-stat-on { outline-width: 3px; outline-offset: -3px; }
+.bz-lenses:has(.bz-stat-on) > .bz-stat:not(.bz-stat-on) { filter: saturate(.45) contrast(.9) brightness(1.03); box-shadow: none; }
+html.theme-dark .bz-lenses:has(.bz-stat-on) > .bz-stat:not(.bz-stat-on),
+html.theme-amoled .bz-lenses:has(.bz-stat-on) > .bz-stat:not(.bz-stat-on) { filter: saturate(.5) brightness(.72); }
+@media (prefers-reduced-motion: reduce) { .bz-lenses > .bz-stat { transition: none; } }
