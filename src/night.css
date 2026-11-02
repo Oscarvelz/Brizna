@@ -2,11 +2,11 @@
    lightens toward the ground, a moon glow, quiet stars, glass cards, glowing buttons.
    Only html.theme-dark (the five colored nights). AMOLED keeps true black. */
 html.theme-dark { --nv-moon: #f3dfa2; }
-html.theme-dark[data-palette="noche"]      { --nv-top: #081a10; --nv-mid: #0c2416; --nv-low: #10301d; --nv-moon: #f3dfa2; }
-html.theme-dark[data-palette="medianoche"] { --nv-top: #070d1c; --nv-mid: #0b1631; --nv-low: #112145; --nv-moon: #dbe6ff; }
-html.theme-dark[data-palette="ciruela"]    { --nv-top: #100a19; --nv-mid: #1a1029; --nv-low: #27173b; --nv-moon: #f6dcff; }
-html.theme-dark[data-palette="grafito"]    { --nv-top: #0e0e10; --nv-mid: #151517; --nv-low: #1f1e1b; --nv-moon: #f3dfa2; }
-html.theme-dark[data-palette="luciernaga"] { --nv-top: #080d06; --nv-mid: #0e1809; --nv-low: #17250d; --nv-moon: #eef7a6; }
+html.theme-dark[data-palette="noche"]      { --nv-top: #06130c; --nv-mid: #091a10; --nv-low: #0c2315; --nv-moon: #f3dfa2; }
+html.theme-dark[data-palette="medianoche"] { --nv-top: #050914; --nv-mid: #081023; --nv-low: #0c1832; --nv-moon: #dbe6ff; }
+html.theme-dark[data-palette="ciruela"]    { --nv-top: #0c0712; --nv-mid: #130c1e; --nv-low: #1c112a; --nv-moon: #f6dcff; }
+html.theme-dark[data-palette="grafito"]    { --nv-top: #0a0a0c; --nv-mid: #0f0f11; --nv-low: #161613; --nv-moon: #f3dfa2; }
+html.theme-dark[data-palette="luciernaga"] { --nv-top: #060904; --nv-mid: #0a1106; --nv-low: #111b09; --nv-moon: #eef7a6; }
 
 html.theme-dark,
 html.theme-dark body { background-color: var(--nv-top); }

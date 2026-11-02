@@ -339,8 +339,8 @@ html[data-palette="flor"] {
 }
 
 html.theme-dark[data-palette="noche"] {
-  --color-bg: #081a10;
-  --color-sun: #111813;
+  --color-bg: #06130c;
+  --color-sun: #0c110e;
   --color-surface: #1b241f;
   --color-surface-2: #27322c;
   --color-fg: #edf3ee;
@@ -380,8 +380,8 @@ html.theme-dark[data-palette="noche"] {
 }
 
 html.theme-dark[data-palette="medianoche"] {
-  --color-bg: #070d1c;
-  --color-sun: #0f1624;
+  --color-bg: #050914;
+  --color-sun: #0b101a;
   --color-surface: #1a202d;
   --color-surface-2: #272e3c;
   --color-fg: #eaf0fb;
@@ -421,8 +421,8 @@ html.theme-dark[data-palette="medianoche"] {
 }
 
 html.theme-dark[data-palette="ciruela"] {
-  --color-bg: #100a19;
-  --color-sun: #18121e;
+  --color-bg: #0c0712;
+  --color-sun: #110d16;
   --color-surface: #241e29;
   --color-surface-2: #322b38;
   --color-fg: #f4eef8;
@@ -462,8 +462,8 @@ html.theme-dark[data-palette="ciruela"] {
 }
 
 html.theme-dark[data-palette="grafito"] {
-  --color-bg: #0e0e10;
-  --color-sun: #161618;
+  --color-bg: #0a0a0c;
+  --color-sun: #101011;
   --color-surface: #242321;
   --color-surface-2: #32302c;
   --color-fg: #f2f2f0;
@@ -503,8 +503,8 @@ html.theme-dark[data-palette="grafito"] {
 }
 
 html.theme-dark[data-palette="luciernaga"] {
-  --color-bg: #080d06;
-  --color-sun: #12150e;
+  --color-bg: #060904;
+  --color-sun: #0d0f0a;
   --color-surface: #202219;
   --color-surface-2: #2e3125;
   --color-fg: #f1f4e6;
@@ -1603,3 +1603,35 @@ html.theme-dark .bz-lenses .bz-row-on-wash.bz-row-on-wash,
 html.theme-amoled .bz-lenses .bz-row-on-wash.bz-row-on-wash {
   background: linear-gradient(165deg, color-mix(in srgb, var(--color-primary) 12%, #060806), color-mix(in srgb, var(--color-primary) 8%, #050605));
 }
+/* 1.4.51: Cobros folds (En espera, Perdonado, Trabajo ya hecho) stand out a little: a thinner
+   tone stripe than the main chips (2.5px vs 4px) and a slightly firmer hairline. */
+:root .bz-fold.bz-fold.bz-fold:is(.cob-espera, .cob-perdon, .cob-hecho) {
+  box-shadow:
+    inset 2.5px 0 0 color-mix(in srgb, var(--fold-tone) 80%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--fold-tone) 34%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 0.55),
+    0 1px 1.5px rgb(40 34 18 / 0.07),
+    0 10px 22px -14px rgb(40 34 18 / 0.28);
+}
+html.theme-dark .bz-fold.bz-fold.bz-fold:is(.cob-espera, .cob-perdon, .cob-hecho),
+html.theme-amoled .bz-fold.bz-fold.bz-fold:is(.cob-espera, .cob-perdon, .cob-hecho) {
+  box-shadow:
+    inset 2.5px 0 0 color-mix(in srgb, var(--fold-tone) 78%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 0.07),
+    0 0 0 1px color-mix(in srgb, var(--fold-tone) 50%, transparent),
+    0 18px 36px -20px rgb(0 0 0 / 0.85);
+}
+
+/* 1.4.51 night contrast (Oscar: night themes need a bit more contrast so colours feel alive).
+   Backgrounds were deepened ~28% (palettes + night sky). Stat chips and Cobros folds sit their
+   tone over near-black instead of grey surface, a touch richer; text a little brighter. */
+html.theme-dark .bz-stat.bz-stat.bz-stat:not(.bz-lenses > *) {
+  background-color: color-mix(in srgb, var(--stat-tone) 22%, #0c0c0b);
+}
+html.theme-dark .bz-lenses > .bz-stat.bz-stat.bz-stat {
+  background-color: color-mix(in srgb, var(--stat-tone) 17%, #0a0a0a);
+}
+html.theme-dark .bz-stat { --stat-sub: color-mix(in srgb, var(--stat-tone) 18%, #e6e6e2); }
+html.theme-dark .bz-fold.cob-espera { background: linear-gradient(165deg, color-mix(in srgb, #8fa24c 36%, #0a0a0a) 0%, color-mix(in srgb, #8fa24c 21%, #0a0a0a) 100%); }
+html.theme-dark .bz-fold.cob-perdon { background: linear-gradient(165deg, color-mix(in srgb, #a8678f 36%, #0a0a0a) 0%, color-mix(in srgb, #a8678f 21%, #0a0a0a) 100%); }
+html.theme-dark .bz-fold.cob-hecho  { background: linear-gradient(165deg, color-mix(in srgb, #b8693f 36%, #0a0a0a) 0%, color-mix(in srgb, #b8693f 21%, #0a0a0a) 100%); }
