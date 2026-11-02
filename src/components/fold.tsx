@@ -101,6 +101,8 @@ export function Fold({
   chevronEnd?: boolean;
 }) {
   const tx = useTx();
+  // Estudio folds (cif-*) also take the small arrow at the right, so the title's leaf leads (Oscar 2026-11-02).
+  chevronEnd = chevronEnd || id.startsWith("cif-");
   const [pinned, setPinned] = useState(() => readPins().includes(id));
   const [open, setOpen] = useState(() => readForce(id) ?? (readPins().includes(id) || defaultOpen));
   const shown = forceOpen || open;

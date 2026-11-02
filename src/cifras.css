@@ -186,7 +186,7 @@ html.theme-dark .cif-heat-cell.is-strong, html.theme-amoled .cif-heat-cell.is-st
 /* Sections arrive one after another, by their place in the order. */
 .cif-sec { animation: cif-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i, 0) * 45ms); background-color: var(--color-surface); }
 /* A grass blade before every section title. */
-.cif-sec > div:first-child > div:nth-child(2)::before {
+.cif-sec > .bz-fold-head > .bz-fold-title::before {
   content: ""; flex-shrink: 0; width: 0.6rem; height: 1rem; margin-right: 0.5rem;
   background: var(--color-primary);
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 20'%3E%3Cpath d='M6 20C2 14 1 7 6 0c2 6 3 13 0 20z'/%3E%3C/svg%3E") center / contain no-repeat;
@@ -309,7 +309,9 @@ html.theme-dark .cif-mower-motor, html.theme-amoled .cif-mower-motor, html.theme
   .cif-lead-figure { font-size: 1.85rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cif-sec, .cif-sec > div:first-child > div:nth-child(2)::before, .cif-sun-rays, .cif-sun-ray, .cif-pulse-ring::before,
+  .cif-sec, .cif-sec > .bz-fold-head > .bz-fold-title::before, .cif-sun-rays, .cif-sun-ray, .cif-pulse-ring::before,
   .cif-wbar-pair, .cif-grass.is-moving .cif-mower-wheel { animation: none !important; }
   .cif-grass-run, .cif-grass-lane, .cif-sun-arc { transition: none !important; }
 }
+/* Titles with a peek figure already get an 8px flex gap: keep the blade at the same distance as in the other titles. */
+.cif-sec > .bz-fold-head > .bz-fold-title:has(> .bz-fold-peek)::before { margin-right: 0; }
