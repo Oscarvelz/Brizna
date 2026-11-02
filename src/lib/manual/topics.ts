@@ -722,7 +722,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
       },
       {
         id: "quien-debe",
-        title: ["Quién debe y desde cuándo", "Who owes and since when"],
+        title: ["Quién te debe", "Who owes you"],
         sum: ["Lo que te deben, por antigüedad.", "What you are owed, by age."],
         what: [
           "Lo que te deben, repartido por la edad de cada trabajo sin pagar. Un abono paga primero lo más viejo, así que lo que queda debiendo son los trabajos más recientes. Lo que ya debían antes del primer corte anotado va aparte, como Saldo inicial. En espera y Alto riesgo siguen tus límites de Ajustes.",
@@ -776,7 +776,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
       },
       {
         id: "semana-vs",
-        title: ["Esta semana frente a la anterior", "This week versus the previous one"],
+        title: ["Esta semana y la pasada", "This week vs. last"],
         sum: ["¿Vas mejor o peor que la semana pasada?", "Are you ahead of or behind last week?"],
         what: [
           "Arriba, esta semana hasta hoy contra la semana pasada hasta el mismo día. Abajo, las últimas 8 semanas: verde es lo cobrado; la barra de al lado es lo que valió el trabajo hecho, por tipo (cortes, extras, una vez), aunque aún no te hayan pagado.",

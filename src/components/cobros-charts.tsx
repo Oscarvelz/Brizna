@@ -133,7 +133,7 @@ export function CobrosCharts({
         id="cif-semana"
         style={secStyle(rankSemana)}
         className="cif-sec"
-        title={tx("Esta semana frente a la anterior", "This week versus the previous one")}
+        title={tx("Esta semana y la pasada", "This week vs. last")}
         hint={<Hint topic="semana-vs" />}
       >
         <WeekToDate>

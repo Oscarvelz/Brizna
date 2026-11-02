@@ -47,11 +47,11 @@ export function cifraLabel(id: CifraId, tx: (es: string, en: string) => string):
     case "hora":
       return tx("$ por hora", "$ per hour");
     case "semana":
-      return tx("Esta semana frente a la anterior", "This week versus the previous one");
+      return tx("Esta semana y la pasada", "This week vs. last");
     case "horas":
       return tx("Horas de trabajo", "Work hours");
     case "fiabilidad":
-      return tx("Quién debe y desde cuándo", "Who owes and since when");
+      return tx("Quién te debe", "Who owes you");
     case "mes":
       return tx("Ingresos, mes a mes", "Income, month by month");
     case "anio":

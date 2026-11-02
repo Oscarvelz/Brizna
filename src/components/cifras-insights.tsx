@@ -322,7 +322,7 @@ function DebtsSection({ data, query }: { data: CifrasInsights; query: string }) 
   const arrived = useArrived();
   const rank = useCifraRank("fiabilidad");
   const d = data.debts;
-  const title = tx("Quién debe y desde cuándo", "Who owes and since when");
+  const title = tx("Quién te debe", "Who owes you");
   if (query.trim() && !smartHit(query, `${title} fiabilidad espera riesgo pago deuda saldo por cobrar antigüedad`)) return null;
   const max = Math.max(1, ...d.top.map((c) => c.balance));
   return (
