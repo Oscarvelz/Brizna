@@ -383,7 +383,7 @@ function DebtsSection({ data, query }: { data: CifrasInsights; query: string }) 
                     {c.name}
                     <small>
                       {[
-                        c.oldestDays != null ? tx(`hace ${c.oldestDays} d`, `${c.oldestDays} d old`) : null,
+                        c.oldestDays != null ? (c.oldestDays <= 0 ? tx("de hoy", "from today") : c.oldestDays === 1 ? tx("de ayer", "from yesterday") : tx(`hace ${c.oldestDays} d`, `${c.oldestDays} d old`)) : null,
                         c.opening > 0 ? tx(`saldo inicial ${money(c.opening)}`, `opening balance ${money(c.opening)}`) : null,
                         c.unpaidCuts > 0 ? `${c.unpaidCuts} ${tx(c.unpaidCuts === 1 ? "trabajo" : "trabajos", c.unpaidCuts === 1 ? "job" : "jobs")}` : null,
                       ].filter(Boolean).join(" · ")}

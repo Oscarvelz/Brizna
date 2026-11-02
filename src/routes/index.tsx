@@ -268,7 +268,7 @@ function Home() {
             disabled={pendingToday === 0}
             onClick={() => setAskAcc("today")}
           >
-            {tx("Pasar pendientes de hoy", "Move today's pending")}
+            {tx("Pasar los de hoy", "Move today's")}
           </Button>
         </div>
       ) : null}

@@ -521,7 +521,7 @@ function AgendaPage() {
               {tx("Pasar atrasados", "Move late ones")}
             </Button>
             <Button variant="outline" size="sm" onClick={() => setAskAcc("today")}>
-              {tx("Pasar pendientes de hoy", "Move today's pending")}
+              {tx("Pasar los de hoy", "Move today's")}
             </Button>
           </div>
         </section>

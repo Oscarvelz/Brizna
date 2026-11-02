@@ -48,7 +48,8 @@ export function CountUp({ value, format, duration = 900, className }: { value: n
     const a = from.current;
     let raf = 0;
     const step = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
+      // rAF stamps can predate performance.now(): clamp so the ease never dips below the start (it showed -$25).
+      const t = Math.min(1, Math.max(0, (now - start) / duration));
       const e = 1 - Math.pow(1 - t, 3);
       const v = a + (value - a) * e;
       setShown(t >= 1 ? value : Math.round(v));

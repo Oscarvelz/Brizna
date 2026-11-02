@@ -1707,6 +1707,8 @@ async function markJobDone(
     }
     tags.push(`Hecho:abono:${pay}`);
   }
+  // Tag owed jobs too, so undo never mistakes another job's same-amount payment for this one.
+  if (!tags.some((t) => t.startsWith("Hecho:"))) tags.push("Hecho:owe");
   if (tags.length) {
     await sql.query(`update jobs set notes = $3 where user_id = $1 and id = $2`, [
       userId,
@@ -1811,7 +1813,9 @@ export const reopenJob = createServerFn({ method: "POST" })
         limit 1`,
       [context.userId, job.client_id, amount],
     );
-    if (notes.includes("Hecho:paid") || (pays[0] && !notes.includes("Hecho:abono"))) {
+    // Jobs carry a Hecho:* tag; only untagged (older) jobs fall back to matching a payment by amount.
+    const tagged = notes.includes("Hecho:");
+    if (notes.includes("Hecho:paid") || (!tagged && pays[0])) {
       if (pays[0]) {
         await sql.query(`delete from payments where user_id = $1 and id = $2`, [
           context.userId,
@@ -1820,13 +1824,23 @@ export const reopenJob = createServerFn({ method: "POST" })
       }
     } else {
       if (notes.includes("Hecho:abono")) {
-        const abonos = await sql.query<{ id: number; amount: unknown; kind: string }>(
+        const recent = await sql.query<{ id: number; amount: unknown; kind: string }>(
           `select id, amount, kind from payments
             where user_id = $1 and client_id = $2 and note = 'Abono al marcar hecho'
             order by paid_at desc, id desc
             limit 2`,
           [context.userId, job.client_id],
         );
+        // One abono is at most two rows (debt + credit) summing to the tagged amount; never take an older job's row.
+        const tag = /Hecho:abono:([\d.]+)/.exec(notes);
+        const target = tag ? money(tag[1]) : Infinity;
+        const abonos: typeof recent = [];
+        let sum = 0;
+        for (const p of recent) {
+          if (sum >= target - 0.001) break;
+          abonos.push(p);
+          sum = Math.round((sum + money(p.amount)) * 100) / 100;
+        }
         for (const p of abonos) {
           const paid = money(p.amount);
           if (p.kind === "prepaid") {
