@@ -1564,3 +1564,13 @@ html.theme-dark[data-palette="grafito"] .bz-stat.bz-stat-done .text-done { color
 .mn-find:has(.bz-tsearch) > div, .mn-find .bz-tsearch { flex: 1; }
 .mn-find .bz-tsearch input { width: 100%; max-width: none; }
 .bz-tsearch input { text-overflow: ellipsis; }
+
+/* 1.4.46 Ajustes cards: a very thin frame so each card stands apart (Oscar). Overlay, so no theme shadow can hide it. */
+.bz-fold[id^="aj-"] { position: relative; }
+.bz-fold[id^="aj-"]::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, color-mix(in srgb, var(--color-fg) 14%, transparent));
+}
+html.theme-dark .bz-fold[id^="aj-"]::after, html.theme-amoled .bz-fold[id^="aj-"]::after {
+  border-color: color-mix(in srgb, var(--color-primary) 34%, rgb(255 255 255 / 0.10));
+}
