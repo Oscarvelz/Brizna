@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronUp, ListOrdered } from "lucide-react";
+import { useBackClose } from "@/lib/back-close";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
@@ -18,6 +19,7 @@ export function CifrasOrderButton() {
   const tx = useTx();
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  useBackClose(open, () => setOpen(false));
   const [ask, setAsk] = useState(false);
   const [draft, setDraft] = useState<CifraId[]>([...CIFRAS_DEFAULT]);
 

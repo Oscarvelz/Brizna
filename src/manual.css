@@ -7,7 +7,7 @@
 .mn-body.is-hidden { display: none; }
 
 /* ---------------------------------------------------------------- back row */
-.mn-backrow { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: -0.25rem; }
+.mn-backrow { display: flex; align-items: center; justify-content: flex-start; gap: 0.5rem; margin-top: -0.25rem; }
 .mn-back {
   display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.75rem; padding: 0 1rem 0 0.75rem;
   border-radius: 999px; background: var(--color-surface); box-shadow: var(--shadow-card);
@@ -247,3 +247,8 @@ html.theme-dark .mn mark, html.theme-amoled .mn mark { background: color-mix(in 
 
 /* The page "sprout" scales its child; on a page this tall that would throw deep links off. Fade only. */
 .alive-page > .mn { animation-name: alive-fade !important; transform: none !important; }
+/* 1.4.44: search lives beside "Volver a…" (Oscar) — same pill skin as the back button */
+.mn-find { display: flex; align-items: center; min-width: 0; }
+.mn-find > div > button { width: 2.75rem; height: 2.75rem; background: var(--color-surface); box-shadow: var(--shadow-card); }
+.mn-find > div > button svg { color: var(--color-primary); }
+.mn-find input { height: 2.75rem; border-radius: 999px; }

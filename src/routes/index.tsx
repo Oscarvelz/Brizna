@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Input } from "@/components/ui/input";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CloudRain, AlertTriangle, CheckCheck, CircleDollarSign, Palmtree, Pin, Plus, Scissors, Sprout, Wallet } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -376,12 +377,7 @@ function Home() {
         description={
           <div className="grid gap-2">
             <p>{tx("Elige el día. La razón es opcional.", "Pick the day. The reason is optional.")}</p>
-            <input
-              type="date"
-              value={accDate}
-              onChange={(e) => setAccDate(e.target.value)}
-              className="h-12 rounded-sm bg-surface px-3 shadow-card"
-            />
+            <Input type="date" value={accDate} onChange={(e) => setAccDate(e.target.value)} />
             <ReasonChips value={accReason} onChange={setAccReason} />
           </div>
         }

@@ -13,11 +13,14 @@ import {
   type TextareaHTMLAttributes,
 } from "react";
 import { cn } from "@/lib/utils";
+import { PickerField } from "@/components/ui/picker-field";
+import { useBackClose } from "@/lib/back-close";
 
 const fieldClass =
   "h-12 w-full rounded-sm bg-surface px-3 text-fg shadow-card placeholder:text-subtle transition-[box-shadow] duration-150 focus:shadow-card-hover disabled:opacity-50";
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  if (props.type === "time" || props.type === "date") return <PickerField {...props} type={props.type as "time" | "date"} className={className} />;
   return <input className={cn(fieldClass, className)} {...props} />;
 }
 
@@ -67,6 +70,7 @@ export function NativeSelect({
   const [open, setOpen] = useState(false);
   const [up, setUp] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  useBackClose(open, () => setOpen(false));
 
   useEffect(() => {
     if (!open) return;

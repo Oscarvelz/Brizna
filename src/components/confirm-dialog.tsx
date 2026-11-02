@@ -1,4 +1,5 @@
 import { useEffect, useId, type ReactNode } from "react";
+import { useBackClose } from "@/lib/back-close";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { useI18n, emphasizeTree } from "@/lib/i18n";
@@ -48,6 +49,7 @@ export function ConfirmDialog({
   const yes = confirmLabel ?? t("common.confirm");
   const no = cancelLabel ?? t("common.cancel");
   const dismiss = onDismiss ?? onCancel;
+  useBackClose(open, dismiss);
 
   useEffect(() => {
     if (!open) return;

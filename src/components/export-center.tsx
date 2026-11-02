@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useBackClose } from "@/lib/back-close";
 import {
   CalendarDays,
   Calculator,
@@ -197,6 +198,7 @@ export function ExportSheet({ open, preset, onClose }: { open: boolean; preset: 
   const [shareKind, setShareKind] = useState<"pdf" | "xlsx">("pdf");
   const [canShare, setCanShare] = useState(false);
   const today = todayISO();
+  useBackClose(open, onClose);
 
   useEffect(() => {
     if (!open) return;

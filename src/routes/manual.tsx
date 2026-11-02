@@ -287,19 +287,6 @@ function ManualPage() {
   return (
     <AppShell
       title={tx("Manual", "Manual")}
-      action={
-        <TitleSearch
-          open={findOn}
-          onToggle={() => {
-            setFindOn((v) => !v);
-            setNeedle("");
-          }}
-          value={needle}
-          onChange={setNeedle}
-          placeholder={tx("Buscar en el manual", "Search the manual")}
-          label={tx("Buscar en el manual", "Search the manual")}
-        />
-      }
     >
       <div
         id="mn-doc"
@@ -318,6 +305,19 @@ function ManualPage() {
               Esc
             </kbd>
           </button>
+          <div className="mn-find">
+            <TitleSearch
+              open={findOn}
+              onToggle={() => {
+                setFindOn((v) => !v);
+                setNeedle("");
+              }}
+              value={needle}
+              onChange={setNeedle}
+              placeholder={tx("Buscar en el manual", "Search the manual")}
+              label={tx("Buscar en el manual", "Search the manual")}
+            />
+          </div>
         </div>
 
         {query ? (

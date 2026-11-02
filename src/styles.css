@@ -1499,3 +1499,52 @@ html.theme-dark[data-palette="grafito"] .bz-stat.bz-stat-done .text-done { color
 .aj-num-val { min-width: 2.6rem; }
 .aj-note { text-wrap: pretty; }
 .aj-num-val { min-width: 3.9rem; }
+
+/* 1.4.44 Brizna pickers (never the grey system dialog): trigger, sheet, grids, calendar. */
+.bz-pf-trigger { cursor: pointer; }
+.bz-pf-sheet { border-radius: 1.5rem; padding: 1.1rem 1rem 0.9rem; background: var(--color-surface);
+  box-shadow: 0 18px 50px -18px rgb(0 0 0 / .55), inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 22%, transparent);
+  animation: bz-pf-in .22s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes bz-pf-in { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bz-pf-sheet { animation: none; } }
+.bz-pf-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .35rem .35rem .85rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 9%, transparent); margin-bottom: .6rem; }
+.bz-pf-big { font-family: var(--font-display, inherit); font-size: 2.9rem; font-weight: 700; line-height: 1; letter-spacing: -0.02em; color: var(--color-fg); font-variant-numeric: tabular-nums; }
+.bz-pf-big-date { font-size: 1.7rem; }
+.bz-pf-big-date::first-letter, .bz-pf-month-name::first-letter { text-transform: uppercase; }
+.bz-pf-seg { display: flex; padding: .2rem; gap: .15rem; border-radius: 999px; background: color-mix(in srgb, var(--color-fg) 6%, var(--color-surface)); }
+.bz-pf-seg button { min-width: 3.1rem; height: 2.2rem; border-radius: 999px; font-size: .9rem; font-weight: 650; color: var(--color-muted); transition: background-color .18s ease, color .18s ease, box-shadow .18s ease; }
+.bz-pf-seg button.is-on, .bz-pf-cell.is-on, .bz-pf-day.is-on {
+  color: color-mix(in srgb, var(--color-primary) 78%, var(--color-fg));
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-primary) 70%, transparent); font-weight: 750; }
+.bz-pf-cap { margin: .55rem .3rem .35rem; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--color-muted); }
+.bz-pf-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .35rem; }
+.bz-pf-cell { height: 2.6rem; border-radius: .8rem; font-size: 1rem; font-weight: 600; color: var(--color-fg); font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--color-fg) 4%, var(--color-surface)); transition: transform .14s ease, background-color .18s ease, box-shadow .18s ease; }
+.bz-pf-cell:active, .bz-pf-day:active, .bz-pf-nav:active { transform: scale(.94); }
+.bz-pf-month { display: flex; align-items: center; justify-content: space-between; padding: 0 .1rem .4rem; }
+.bz-pf-month-name { display: inline-block; font-weight: 700; font-size: 1.02rem; color: var(--color-fg); }
+.bz-pf-nav { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 999px; color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)); transition: transform .14s ease; }
+.bz-pf-nav svg { width: 1.15rem; height: 1.15rem; }
+.bz-pf-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .2rem; }
+.bz-pf-wk { display: grid; place-items: center; height: 1.8rem; font-size: .72rem; font-weight: 700; color: var(--color-muted); }
+.bz-pf-day { position: relative; height: 2.55rem; border-radius: 999px; font-size: .95rem; font-weight: 550; color: var(--color-fg); font-variant-numeric: tabular-nums; transition: transform .14s ease, background-color .18s ease, box-shadow .18s ease; }
+.bz-pf-day.is-today:not(.is-on)::after { content: ""; position: absolute; left: 50%; bottom: .3rem; width: .3rem; height: .3rem; margin-left: -.15rem; border-radius: 999px; background: var(--color-primary); }
+.bz-pf-day:disabled { color: var(--color-subtle); filter: saturate(0); cursor: default; }
+.bz-pf-foot { display: flex; align-items: center; gap: .35rem; margin-top: .85rem; padding-top: .7rem; border-top: 1px solid color-mix(in srgb, var(--color-fg) 9%, transparent); }
+.bz-pf-text { height: 2.6rem; padding: 0 .85rem; border-radius: 999px; font-weight: 650; font-size: .95rem; color: var(--color-muted); }
+.bz-pf-text:active { background: color-mix(in srgb, var(--color-fg) 6%, transparent); }
+.bz-pf-done { height: 2.6rem; padding: 0 1.3rem; border-radius: 999px; font-weight: 750; font-size: .95rem; color: var(--color-primary-fg); background: var(--color-primary); box-shadow: var(--shadow-card); transition: transform .14s ease; }
+.bz-pf-done:active { transform: scale(.96); }
+
+/* Ajustes: switch row and compact picker inside .aj-nums */
+.aj-switch { position: relative; flex-shrink: 0; width: 3rem; height: 1.75rem; border-radius: 999px;
+  background: color-mix(in srgb, var(--color-fg) 12%, var(--color-surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 10%, transparent); transition: background-color .2s ease; }
+.aj-switch > span { position: absolute; top: .2rem; left: .2rem; width: 1.35rem; height: 1.35rem; border-radius: 999px; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / .3); transition: transform .2s ease; }
+.aj-switch.is-on { background: var(--color-primary); }
+.aj-switch.is-on > span { transform: translateX(1.25rem); }
+.aj-pf.aj-pf { width: auto; height: 2.35rem; min-width: 6.6rem; padding: 0 .8rem; border-radius: 999px; font-size: .95rem; gap: .45rem; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 26%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface)); }
+.aj-fine { font-size: .8rem; line-height: 1.4; color: var(--color-muted); padding: 0 .2rem; text-wrap: pretty; }

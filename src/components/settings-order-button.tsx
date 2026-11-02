@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronUp, ListOrdered } from "lucide-react";
+import { useBackClose } from "@/lib/back-close";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -15,6 +16,7 @@ import { useTx } from "@/lib/i18n";
 export function SettingsOrderButton() {
   const tx = useTx();
   const [open, setOpen] = useState(false);
+  useBackClose(open, () => setOpen(false));
   const [ask, setAsk] = useState(false);
   const [draft, setDraft] = useState<AjusteId[]>([...AJUSTES_DEFAULT]);
 

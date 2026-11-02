@@ -14,6 +14,7 @@ import { invalidateLawn } from "@/components/job-card";
 import { SoundSettings } from "@/components/settings-finder";
 import { Button } from "@/components/ui/button";
 import { Input, Label, NativeSelect } from "@/components/ui/input";
+import { PickerField } from "@/components/ui/picker-field";
 import { SettingsOrderButton } from "@/components/settings-order-button";
 import { useAjustesRank } from "@/lib/ajustes-order";
 import { useUndo } from "@/lib/undo";
@@ -72,6 +73,11 @@ const NIGHT_THEMES: { id: NightPalette; es: string; en: string; swatch: string }
 ];
 
 const SERVER_PALETTES = new Set<PaletteName>(["jardin", "costa", "barro", "pino", "cielo"]);
+
+function mdToIso(md: string): string {
+  const m = /^(\d{2})-(\d{2})$/.exec(md ?? "");
+  return m ? `${new Date().getFullYear()}-${m[1]}-${m[2]}` : "";
+}
 
 /** One number setting as a calm row: label + plain sub on the left, a compact −/value/+ control on the right. */
 function NumberRow({
@@ -978,25 +984,65 @@ function SeasonBlock({ settings, query }: { settings?: AppSettings; query: strin
     >
       <p className="text-sm text-muted">
         {tx(
-          "Un tramo del año con otro ritmo, sin reescribir cada ficha. Un cliente puede tener la suya. Los patios que ya moviste no vuelven al día viejo.",
-          "A stretch of the year with a different pace, without rewriting each file. A client can have their own. Yards you already moved do not go back to the old day.",
+          "Cambia el ritmo de todos los patios durante una parte del año. Por ejemplo, cada 21 días en invierno.",
+          "Changes the pace of every yard for part of the year. For example, every 21 days in winter.",
         )}
       </p>
-      <label className="mt-3 flex min-h-11 items-center gap-2 text-sm font-medium">
-        <input type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} className="size-5 accent-primary" />
-        {tx("Usar temporada general", "Use the general season")}
-      </label>
-      {on ? (
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          <Input value={start} onChange={(e) => setStart(e.target.value)} placeholder="11-01" />
-          <Input value={end} onChange={(e) => setEnd(e.target.value)} placeholder="02-28" />
-          <Input type="number" min={7} max={60} value={every} onChange={(e) => setEvery(e.target.value)} />
+      <div className="aj-nums mt-3">
+        <div className="aj-num">
+          <div className="min-w-0 flex-1">
+            <p className="aj-num-label">{tx("Usar temporada", "Use a season")}</p>
+            <p className="aj-num-sub">{tx("El mismo ritmo para todos", "The same pace for everyone")}</p>
+          </div>
+          <button type="button" role="switch" aria-checked={on} onClick={() => setOn(!on)} className={cn("aj-switch", on && "is-on")}>
+            <span />
+          </button>
         </div>
-      ) : null}
-      <Label className="mt-3">{tx("Meses por delante", "Months ahead")}</Label>
-      <Input type="number" min={4} max={18} value={horizon} onChange={(e) => setHorizon(e.target.value)} />
+        {on ? (
+          <>
+            <div className="aj-num">
+              <div className="min-w-0 flex-1">
+                <p className="aj-num-label">{tx("Empieza", "Starts")}</p>
+                <p className="aj-num-sub">{tx("Cada año, ese día", "Every year, that day")}</p>
+              </div>
+              <PickerField type="date" noYear className="aj-pf" value={mdToIso(start)} onChange={(e) => e.target.value && setStart(e.target.value.slice(5))} required />
+            </div>
+            <div className="aj-num">
+              <div className="min-w-0 flex-1">
+                <p className="aj-num-label">{tx("Termina", "Ends")}</p>
+                <p className="aj-num-sub">{tx("Luego vuelve el ritmo de siempre", "Then the usual pace returns")}</p>
+              </div>
+              <PickerField type="date" noYear className="aj-pf" value={mdToIso(end)} onChange={(e) => e.target.value && setEnd(e.target.value.slice(5))} required />
+            </div>
+            <NumberRow
+              label={tx("Cada cuántos días", "Every how many days")}
+              sub={tx("Durante la temporada", "During the season")}
+              value={Number(every) || 21}
+              min={7}
+              max={60}
+              step={1}
+              onCommit={(n) => setEvery(String(n))}
+            />
+          </>
+        ) : null}
+        <NumberRow
+          label={tx("Meses por delante", "Months ahead")}
+          sub={tx("Hasta dónde llega la agenda", "How far the schedule reaches")}
+          value={Number(horizon) || 12}
+          min={4}
+          max={18}
+          step={1}
+          onCommit={(n) => setHorizon(String(n))}
+        />
+      </div>
+      <p className="aj-fine mt-2">
+        {tx(
+          "Un cliente puede tener su propia temporada. Los patios que ya moviste se quedan donde están.",
+          "A client can have their own season. Yards you already moved stay where they are.",
+        )}
+      </p>
       <Button
-        className="mt-3"
+        className="mt-3 w-full"
         onClick={() => {
           const months = Number(horizon);
           void updateSettings({
