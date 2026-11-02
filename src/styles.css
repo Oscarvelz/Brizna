@@ -1587,3 +1587,7 @@ html.theme-amoled .rounded-xl.bg-sun { background-color: var(--color-surface); }
 .rounded-xl.bg-sun { position: relative; }
 .rounded-xl.bg-sun::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; border: 1px solid color-mix(in srgb, var(--color-fg) 13%, transparent); }
 html.theme-dark .rounded-xl.bg-sun::after, html.theme-amoled .rounded-xl.bg-sun::after { border-color: rgb(255 255 255 / 0.13); }
+/* 1.4.49 dialogs: framed, calm text, one-line buttons */
+.bz-dialog-text { font-size: 0.95rem; line-height: 1.45; text-wrap: pretty; }
+.bz-dialog button { text-wrap: balance; }
+.bz-dialog h2 { text-wrap: balance; }

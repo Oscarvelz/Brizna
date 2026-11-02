@@ -74,13 +74,13 @@ export function ConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative my-auto w-full min-w-0 max-w-md rounded-xl bg-surface p-4 shadow-card sm:p-5"
+        className="bz-frame bz-dialog relative my-auto w-full min-w-0 max-w-md rounded-xl bg-surface p-5 shadow-card"
       >
         <h2 id={titleId} className="flex items-start gap-2 font-display text-xl font-semibold">
           <span className="min-w-0 flex-1">{title}</span>
           {hint}
         </h2>
-        {description ? <div className="mt-2 text-sm text-muted">{emphasizeTree(description)}</div> : null}
+        {description ? <div className="bz-dialog-text mt-2 text-muted">{emphasizeTree(description)}</div> : null}
         <div className="mt-5 grid gap-2">
           {stack ? (
             <>

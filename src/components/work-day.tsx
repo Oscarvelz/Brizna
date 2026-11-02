@@ -320,10 +320,10 @@ export function WorkDayCard() {
         title={t("common.confirm") === "Confirm" ? "Confirm this day?" : "¿Confirmar este día?"}
         description={
           t("common.confirm") === "Confirm"
-            ? `You are choosing to mark this day as worked, from ${clock12(day.clockIn)} to ${clock12(day.clockOut)}. Those hours stay on the day.`
-            : `Estás eligiendo dejar este día como trabajado, de ${clock12(day.clockIn)} a ${clock12(day.clockOut)}. Esas horas se quedan en el día.`
+            ? `The day is saved as worked, from ${nb(clock12(day.clockIn))} to\u00A0${nb(clock12(day.clockOut))}`
+            : `El día queda como trabajado, de ${nb(clock12(day.clockIn))} a\u00A0${nb(clock12(day.clockOut))}`
         }
-        confirmLabel={t("hours.confirm")}
+        confirmLabel={t("common.confirm") === "Confirm" ? "Yes, confirm" : "Sí, confirmar"}
         onConfirm={() => {
           remember();
           punch.mutate({ kind: "confirm" });
@@ -334,3 +334,5 @@ export function WorkDayCard() {
     </section>
   );
 }
+
+const nb = (x: string) => x.replace(/ /g, "\u00A0");
