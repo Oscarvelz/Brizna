@@ -80,6 +80,7 @@ export function Fold({
   style,
   defaultOpen = false,
   peek,
+  chevronEnd = false,
 }: {
   id: string;
   title: ReactNode;
@@ -96,6 +97,8 @@ export function Fold({
   defaultOpen?: boolean;
   /** A short figure shown in the title row while the section is closed. */
   peek?: ReactNode;
+  /** Put the open/close arrow at the far right (after ? and pin) so the title icon leads. */
+  chevronEnd?: boolean;
 }) {
   const tx = useTx();
   const [pinned, setPinned] = useState(() => readPins().includes(id));
@@ -160,6 +163,20 @@ export function Fold({
     }
   }
 
+  const chevBtn = (
+<button
+      type="button"
+      aria-expanded={shown}
+      aria-label={tx("Abrir o cerrar", "Open or close")}
+      onClick={toggleOpen}
+      className="bz-fold-chev grid size-9 shrink-0 place-items-center"
+    >
+      <span className="bz-fold-chev-dot grid size-7 place-items-center rounded-full">
+        <ChevronDown className={cn("size-4 transition-transform", !shown && "-rotate-90")} />
+      </span>
+    </button>
+  );
+
   return (
     <section
       id={id}
@@ -167,18 +184,8 @@ export function Fold({
       data-open={shown ? "" : undefined}
       className={cn("bz-fold rounded-xl bg-surface shadow-card", className)}
     >
-      <div className="bz-fold-head flex items-center gap-0.5 px-2 py-1">
-        <button
-          type="button"
-          aria-expanded={shown}
-          aria-label={tx("Abrir o cerrar", "Open or close")}
-          onClick={toggleOpen}
-          className="bz-fold-chev grid size-9 shrink-0 place-items-center"
-        >
-          <span className="bz-fold-chev-dot grid size-7 place-items-center rounded-full">
-            <ChevronDown className={cn("size-4 transition-transform", !shown && "-rotate-90")} />
-          </span>
-        </button>
+      <div className={cn("bz-fold-head flex items-center gap-0.5 px-2 py-1", chevronEnd && "bz-fold-head-end")}>
+        {chevronEnd ? null : chevBtn}
         <div
           className={cn("bz-fold-title flex min-h-11 min-w-0 flex-1 items-center overflow-hidden font-display text-base font-semibold", titleClassName)}
           onClick={(event) => {
@@ -202,6 +209,7 @@ export function Fold({
         >
           <Pin className={cn("size-3.5", pinned && "fill-current")} />
         </button>
+        {chevronEnd ? chevBtn : null}
       </div>
       {shown ? <div className={cn("bz-fold-body px-3 pb-3", contentClassName)}>{children}</div> : null}
     </section>

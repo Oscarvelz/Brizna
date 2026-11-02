@@ -21,7 +21,8 @@ export function SoundSettings({ query = "" }: { query?: string }) {
     <Fold
       id="aj-sonidos"
       forceOpen={Boolean(query)}
-      className="order-5 mb-6"
+      className="order-5 mb-4"
+      chevronEnd
       titleClassName="text-lg"
       contentClassName="px-4 pb-4"
       title={

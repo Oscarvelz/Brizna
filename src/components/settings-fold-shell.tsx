@@ -6,7 +6,8 @@ export function SettingsFoldShell({ id, icon, title, peek, children }: { id: str
   return (
     <Fold
       id={id}
-      className="mb-6"
+      className="mb-4"
+      chevronEnd
       titleClassName="text-lg"
       contentClassName="px-4 pb-4"
       peek={peek}

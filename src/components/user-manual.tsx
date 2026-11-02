@@ -55,7 +55,8 @@ export function UserManual({
     <Fold
       id="aj-manual"
       forceOpen={forceOpen}
-      className="order-13 mb-6"
+      className="order-13 mb-4"
+      chevronEnd
       titleClassName="text-lg"
       contentClassName="px-4 pb-4"
       title={

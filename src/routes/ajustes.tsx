@@ -96,7 +96,8 @@ function SettingFold({
     <Fold
       id={id}
       forceOpen={Boolean(query)}
-      className="mb-6"
+      className="mb-4"
+      chevronEnd
       style={{ order: rank }}
       titleClassName="text-lg"
       contentClassName="px-4 pb-4"
