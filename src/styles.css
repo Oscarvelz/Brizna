@@ -1591,3 +1591,15 @@ html.theme-dark .rounded-xl.bg-sun::after, html.theme-amoled .rounded-xl.bg-sun:
 .bz-dialog-text { font-size: 0.95rem; line-height: 1.45; text-wrap: pretty; }
 .bz-dialog button { text-wrap: balance; }
 .bz-dialog h2 { text-wrap: balance; }
+/* 1.4.50: left stripe on the six stat chips (Hoy tiles, Cobros Por cobrar/Cobrado), like the original app:
+   the 4px left border spacer now carries the chip's own tone. */
+:root .bz-stat.bz-stat.bz-stat.bz-stat { border-left-color: var(--stat-tone); }
+/* 1.4.50 night: selected pills inside Por cobrar / Cobrado sit darker than their card (contrast) */
+html.theme-dark .bz-lenses .bz-due-on.bz-due-on,
+html.theme-amoled .bz-lenses .bz-due-on.bz-due-on {
+  background: linear-gradient(165deg, color-mix(in srgb, var(--color-due) 12%, #080806), color-mix(in srgb, var(--color-due) 8%, #060605));
+}
+html.theme-dark .bz-lenses .bz-row-on-wash.bz-row-on-wash,
+html.theme-amoled .bz-lenses .bz-row-on-wash.bz-row-on-wash {
+  background: linear-gradient(165deg, color-mix(in srgb, var(--color-primary) 12%, #060806), color-mix(in srgb, var(--color-primary) 8%, #050605));
+}

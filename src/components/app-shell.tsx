@@ -15,6 +15,7 @@ import {
   PictureInPicture2,
   Rows2,
   Settings,
+  Printer,
   Search,
   Users,
   X,
@@ -22,6 +23,7 @@ import {
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { BrandMark } from "@/components/brand-mark";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { ExportSheet, useExportLaunch } from "@/components/export-center";
 import { Hint } from "@/components/hint";
 import { OfflineBanner } from "@/components/offline-banner";
 import { BackupWatch } from "@/components/backup-watch";
@@ -168,6 +170,7 @@ export function AppShell({
   const { t, locale, setLocale } = useI18n();
   const tx = useTx();
   const businessName = settingsQ.data?.businessName || readStoredBusinessName(DEFAULT_BUSINESS_NAME);
+  const exporter = useExportLaunch();
 
   useEffect(() => {
     const full = { h: window.innerHeight };
@@ -379,13 +382,20 @@ export function AppShell({
           >
             <div className={cn("flex min-h-10 min-w-0 items-center gap-2 lg:hidden", embedded && "hidden", bare && !embedded && "lg:flex")}>
               <BrandMark className="alive-brand size-8 shrink-0" />
-              <div className="flex shrink-0 items-center gap-1.5">
+              <div className="bz-brandstack flex min-w-0 flex-col justify-center">
                 <span className="font-display text-lg font-semibold leading-none tracking-tight">{PRODUCT_NAME}</span>
-                <span className="h-3.5 w-px shrink-0 bg-border" aria-hidden />
-                <EditableBrand name={businessName} quiet nowrap />
+                <EditableBrand name={businessName} quiet nowrap sub />
               </div>
               <div className="ml-auto -mr-1.5 flex shrink-0 items-center">
                 <NotesDoor iconOnly />
+                <button
+                  type="button"
+                  onClick={() => exporter.launch(null)}
+                  className="grid size-10 place-items-center rounded-sm text-muted hover:bg-surface-2 hover:text-fg"
+                  aria-label={tx("Exportar e imprimir", "Export and print")}
+                >
+                  <Printer className="size-5" strokeWidth={1.9} />
+                </button>
                 <Link
                   to="/ajustes"
                   className="grid size-10 place-items-center rounded-sm text-muted hover:bg-surface-2 hover:text-fg"
@@ -400,6 +410,7 @@ export function AppShell({
                 <span className={titleFull ? "leading-tight" : "truncate"}>{title}</span>
                 {titleExtra}
               </h1>
+              <ExportSheet open={exporter.open} preset={exporter.preset} onClose={exporter.close} />
               {pathname === "/agenda" ? null : <UndoBar confirm={pathname !== "/notas" && pathname !== "/fichero"} />}
               {action}
               {embedded ? (
@@ -748,7 +759,7 @@ function TabletDock({
   );
 }
 
-function EditableBrand({ name, quiet, nowrap }: { name: string; quiet?: boolean; nowrap?: boolean }) {
+function EditableBrand({ name, quiet, nowrap, sub }: { name: string; quiet?: boolean; nowrap?: boolean; sub?: boolean }) {
   const tx = useTx();
   const qc = useQueryClient();
   const push = useUndo((s) => s.push);
@@ -808,7 +819,7 @@ function EditableBrand({ name, quiet, nowrap }: { name: string; quiet?: boolean;
 
   if (quiet) {
     return (
-      <button type="button" onClick={() => setEditing(true)} className={cn("text-left font-display font-medium leading-none tracking-tight text-muted", nowrap ? "shrink-0 whitespace-nowrap text-[15px]" : "min-w-0 flex-1 truncate text-base")} aria-label={tx("Nombre del negocio", "Business name")}>
+      <button type="button" onClick={() => setEditing(true)} className={cn("text-left font-display font-medium leading-none tracking-tight text-muted", sub ? "bz-brand-sub mt-1 min-w-0 truncate whitespace-nowrap text-[12.5px]" : nowrap ? "shrink-0 whitespace-nowrap text-[15px]" : "min-w-0 flex-1 truncate text-base")} aria-label={tx("Nombre del negocio", "Business name")}>
         {name}
       </button>
     );
