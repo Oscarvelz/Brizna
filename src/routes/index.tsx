@@ -237,7 +237,7 @@ function Home() {
           label={tx("Hechos hoy", "Done today")}
           value={String(data?.stats.doneToday ?? "—")}
           hint={tx("Abre la lista de lo ya hecho hoy", "Opens the list of what is already done today")}
-          tone="today"
+          tone="done"
           icon={<CircleDollarSign className="size-4" />}
         />
       </section>
