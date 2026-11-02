@@ -764,7 +764,7 @@ function ListSkeleton() {
 function EmptyState() {
   const tx = useTx();
   return (
-    <div className="mb-8 rounded-xl bg-sun px-5 py-8 text-center">
+    <div className="bz-frame mb-8 rounded-xl bg-surface px-5 py-8 text-center">
       <Sprout className="mx-auto mb-3 size-8 text-primary" />
       <h2 className="font-display text-xl font-semibold">{tx("Empieza por un cliente", "Start with a client")}</h2>
       <p className="mx-auto mt-2 max-w-sm text-sm text-muted">

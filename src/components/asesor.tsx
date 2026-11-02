@@ -845,7 +845,7 @@ export function AsesorPanel() {
   const r = q.data;
   if (!r || !r.hasData) {
     return (
-      <section className="as-card as-empty">
+      <section className="as-card as-empty bz-frame">
         <Sprout aria-hidden className="as-empty-sprout" />
         <p className="as-verdict">{tx("Añade clientes y aquí verás consejos.", "Add clients and you'll see advice here.")}</p>
         <p className="as-sub">{tx("Con unos cortes marcados como Hecho, te diré qué cobrar, a quién subir el precio y qué días llenar.", "Once a few cuts are marked Done, I'll tell you what to collect, whose price to raise and which days to fill.")}</p>

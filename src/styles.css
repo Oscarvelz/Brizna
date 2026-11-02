@@ -82,8 +82,8 @@ html.theme-amoled {
 html.theme-amoled {
   --color-bg: #000000;
   --color-sun: #000000;
-  --color-surface: #141416;
-  --color-surface-2: #1f1f22;
+  --color-surface: #13110e;
+  --color-surface-2: #1e1b17;
   --color-fg: #f5f5f5;
   --color-muted: #cfcfcf;
   --color-subtle: #9e9e9e;
@@ -91,26 +91,26 @@ html.theme-amoled {
   --color-primary-fg: #03140a;
   --color-primary-hover: color-mix(in oklab, #4ade80 86%, black);
   --color-accent: #4ade80;
-  --color-border: #38383d;
+  --color-border: #3a352e;
   --color-ring: #4ade80;
   --color-late: #ff6b6b;
-  --color-late-bg: color-mix(in oklab, #ff6b6b 20%, #141416);
+  --color-late-bg: color-mix(in oklab, #ff6b6b 20%, #13110e);
   --color-done: #4ade80;
-  --color-done-bg: color-mix(in oklab, #4ade80 20%, #141416);
+  --color-done-bg: color-mix(in oklab, #4ade80 20%, #13110e);
   --color-pending: #fbbf24;
-  --color-pending-bg: color-mix(in oklab, #fbbf24 20%, #141416);
+  --color-pending-bg: color-mix(in oklab, #fbbf24 20%, #13110e);
   --color-money: #38d4f0;
-  --color-money-bg: color-mix(in oklab, #38d4f0 20%, #141416);
+  --color-money-bg: color-mix(in oklab, #38d4f0 20%, #13110e);
   --color-today: #4ade80;
-  --color-today-bg: color-mix(in oklab, #4ade80 20%, #141416);
+  --color-today-bg: color-mix(in oklab, #4ade80 20%, #13110e);
   --color-due: #facc15;
-  --color-due-bg: color-mix(in oklab, #facc15 20%, #141416);
+  --color-due-bg: color-mix(in oklab, #facc15 20%, #13110e);
   --color-soil: #e0b080;
-  --color-soil-bg: color-mix(in oklab, #e0b080 20%, #141416);
+  --color-soil-bg: color-mix(in oklab, #e0b080 20%, #13110e);
   --color-work: #d0d0d0;
-  --color-work-bg: color-mix(in oklab, #d0d0d0 20%, #141416);
+  --color-work-bg: color-mix(in oklab, #d0d0d0 20%, #13110e);
   --color-hold: #fb923c;
-  --color-hold-bg: color-mix(in oklab, #fb923c 20%, #141416);
+  --color-hold-bg: color-mix(in oklab, #fb923c 20%, #13110e);
   --color-hint: #161618;
   --color-hint-fg: #f5f5f5;
   --color-abono: #fbbf24;
@@ -1577,3 +1577,13 @@ html.theme-dark .bz-fold[id^="aj-"]::after, html.theme-amoled .bz-fold[id^="aj-"
 /* 1.4.47: frame neutral, barely tinted (Oscar: less saturated) */
 .bz-fold[id^="aj-"]::after { border-color: color-mix(in srgb, var(--color-fg) 13%, transparent); }
 html.theme-dark .bz-fold[id^="aj-"]::after, html.theme-amoled .bz-fold[id^="aj-"]::after { border-color: rgb(255 255 255 / 0.13); }
+
+/* 1.4.48: thin neutral frame for standalone cards (empty states), same as Ajustes cards */
+.bz-frame { position: relative; }
+.bz-frame::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; border: 1px solid color-mix(in srgb, var(--color-fg) 13%, transparent); }
+html.theme-dark .bz-frame::after, html.theme-amoled .bz-frame::after { border-color: rgb(255 255 255 / 0.13); }
+/* empty/info boxes (bg-sun) never vanish into black: surface + same thin frame */
+html.theme-amoled .rounded-xl.bg-sun { background-color: var(--color-surface); }
+.rounded-xl.bg-sun { position: relative; }
+.rounded-xl.bg-sun::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; border: 1px solid color-mix(in srgb, var(--color-fg) 13%, transparent); }
+html.theme-dark .rounded-xl.bg-sun::after, html.theme-amoled .rounded-xl.bg-sun::after { border-color: rgb(255 255 255 / 0.13); }
