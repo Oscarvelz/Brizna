@@ -1465,3 +1465,7 @@ html.theme-dark[data-palette="grafito"] .bz-stat.bz-stat-done .text-done { color
 .bz-fold-head-end { padding-left: 0.85rem; }
 .bz-fold-head-end > .bz-fold-pin.bz-fold-pin { margin-right: -0.4rem; }
 .bz-fold-head-end > .bz-fold-chev { margin-right: -0.1rem; }
+/* 1.4.42: smaller arrow at the end of Ajustes folds (lighter than the setting icon). */
+.bz-fold-head-end > .bz-fold-chev { width: 1.875rem; height: 1.875rem; }
+.bz-fold-head-end > .bz-fold-chev .bz-fold-chev-dot { width: 1.375rem; height: 1.375rem; }
+.bz-fold-head-end > .bz-fold-chev svg { width: 0.75rem; height: 0.75rem; }
