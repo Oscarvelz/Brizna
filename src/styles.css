@@ -1456,3 +1456,7 @@ html.theme-dark, html.theme-amoled { --color-cut: #f28a3a; --color-cut-bg: color
 .bz-stat-cut { --stat-tone: var(--color-cut); }
 .bz-cut-bg { background-color: var(--color-cut-bg); }
 .bz-cut-ink { color: var(--color-cut); }
+
+/* 1.4.39 Grafito: Hechos hoy green warmed with a touch of yellow (Oscar), still far from Cortes hoy gold. */
+html.theme-dark[data-palette="grafito"] .bz-stat.bz-stat-done { --stat-tone: #a4d888; --color-done-bg: color-mix(in oklab, #a4d888 12%, #1c1c1a); }
+html.theme-dark[data-palette="grafito"] .bz-stat.bz-stat-done .text-done { color: #a4d888; }
