@@ -363,7 +363,7 @@ function AjustesPage() {
           onToggle={() => setFindOn((value) => !value)}
           value={needle}
           onChange={setNeedle}
-          placeholder={tx("Buscar un ajuste", "Search a setting")}
+          placeholder={tx("Buscar ajuste", "Search")}
           label={tx("Buscar en Ajustes", "Search settings")}
         />
       }

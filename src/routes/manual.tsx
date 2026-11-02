@@ -314,7 +314,7 @@ function ManualPage() {
               }}
               value={needle}
               onChange={setNeedle}
-              placeholder={tx("Buscar en el manual", "Search the manual")}
+              placeholder={tx("Buscar tema", "Search")}
               label={tx("Buscar en el manual", "Search the manual")}
             />
           </div>

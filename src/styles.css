@@ -1548,3 +1548,19 @@ html.theme-dark[data-palette="grafito"] .bz-stat.bz-stat-done .text-done { color
 .aj-pf.aj-pf { width: auto; height: 2.35rem; min-width: 6.6rem; padding: 0 .8rem; border-radius: 999px; font-size: .95rem; gap: .45rem; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 26%, transparent);
   background: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface)); }
 .aj-fine { font-size: .8rem; line-height: 1.4; color: var(--color-muted); padding: 0 .2rem; text-wrap: pretty; }
+
+/* 1.4.45 title search: when open, the magnifier moves inside the field; × closes (Oscar). */
+.bz-tsearch { position: relative; display: flex; align-items: center; min-width: 0; animation: bz-tsearch-in .2s ease-out both; }
+@keyframes bz-tsearch-in { from { opacity: 0; transform: scaleX(.92); transform-origin: left center; } to { opacity: 1; transform: none; } }
+.bz-tsearch-icon { position: absolute; left: .75rem; width: 1.05rem; height: 1.05rem; color: var(--color-primary); pointer-events: none; z-index: 1; }
+.bz-tsearch input { border-radius: 999px; }
+.bz-tsearch-x { position: absolute; right: .35rem; display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 999px; color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-fg) 7%, transparent); }
+.bz-tsearch-x svg { width: .95rem; height: .95rem; }
+.bz-tsearch-x:active { transform: scale(.92); }
+.mn-find .bz-tsearch input { height: 2.75rem; width: 13.5rem; max-width: 52vw; }
+@media (prefers-reduced-motion: reduce) { .bz-tsearch { animation: none; } }
+.mn-find:has(.bz-tsearch) { flex: 1; }
+.mn-find:has(.bz-tsearch) > div, .mn-find .bz-tsearch { flex: 1; }
+.mn-find .bz-tsearch input { width: 100%; max-width: none; }
+.bz-tsearch input { text-overflow: ellipsis; }

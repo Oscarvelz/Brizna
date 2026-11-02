@@ -241,7 +241,7 @@ function FicheroPage() {
             onToggle={() => setFindOn((value) => !value)}
             value={needle}
             onChange={setNeedle}
-            placeholder={tx("Buscar carpeta o nota", "Search a folder or note")}
+            placeholder={tx("Buscar", "Search")}
             label={tx("Buscar en el Fichero", "Search the cabinet")}
           />
           <button

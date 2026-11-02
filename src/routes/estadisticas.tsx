@@ -86,7 +86,7 @@ function EstadisticasPage() {
           onToggle={() => setFindOn((value) => !value)}
           value={needle}
           onChange={setNeedle}
-          placeholder={tx("Buscar una cifra", "Search a figure")}
+          placeholder={tx("Buscar cifra", "Search")}
           label={tx("Buscar en Estudio", "Search Study")}
         />}
           <span className="mr-2 grid w-10 shrink-0 place-items-center">

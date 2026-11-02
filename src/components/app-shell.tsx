@@ -79,27 +79,51 @@ export function TitleSearch({
   placeholder: string;
   label: string;
 }) {
+  // Open: the magnifier steps aside and the field takes its place (icon inside, × to close).
   return (
     <div className="flex min-w-0 items-center gap-1">
       {open ? (
-        <Input
-          value={value}
-          autoFocus
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
+        <div className="bz-tsearch">
+          <Search className="bz-tsearch-icon" aria-hidden />
+          <Input
+            value={value}
+            autoFocus
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggle();
+              }
+            }}
+            onBlur={() => {
+              if (!value.trim()) onToggle();
+            }}
+            placeholder={placeholder}
+            aria-label={label}
+            className="h-10 w-[12.5rem] max-w-[58vw] pl-9 pr-9 sm:w-64"
+          />
+          <button
+            type="button"
+            aria-label={label}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onToggle}
+            className="bz-tsearch-x"
+          >
+            <X aria-hidden />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          aria-pressed={open}
           aria-label={label}
-          className="h-10 w-[9.5rem] max-w-[42vw] sm:w-56"
-        />
-      ) : null}
-      <button
-        type="button"
-        aria-pressed={open}
-        aria-label={label}
-        onClick={onToggle}
-        className="grid size-10 shrink-0 place-items-center rounded-full text-fg"
-      >
-        <Search className="size-5" />
-      </button>
+          onClick={onToggle}
+          className="grid size-10 shrink-0 place-items-center rounded-full text-fg"
+        >
+          <Search className="size-5" />
+        </button>
+      )}
     </div>
   );
 }
