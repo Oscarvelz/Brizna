@@ -1003,6 +1003,29 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         terms: [["Pin", "Pin"], ["Plegar", "Fold"]],
       },
       {
+        id: "nombre-negocio",
+        title: ["Nombre del negocio", "Business name"],
+        sum: ["El nombre que sale arriba y en los reportes.", "The name shown at the top and on reports."],
+        what: [
+          "Es el nombre de tu empresa. Sale en la parte de arriba de Brizna y en lo que exportas o imprimes.",
+          "It is your business name. It shows at the top of Brizna and on what you export or print.",
+        ],
+        how: ["Toca el título de arriba o cámbialo en Ajustes y pulsa Guardar nombre.", "Tap the title at the top or change it in Settings and press Save name."],
+        go: { to: "/ajustes", focus: "aj-nombre", where: ["Ajustes, Nombre del negocio", "Settings, Business name"] },
+        terms: [["Empresa", "Business"]],
+      },
+      {
+        id: "manual-uso",
+        title: ["Manual", "Manual"],
+        sum: ["Todo lo que hace Brizna, explicado corto.", "Everything Brizna does, briefly explained."],
+        what: [
+          "Es la guía de Brizna. Cada (?) de la app abre aquí su tema exacto, y atrás te regresa adonde estabas.",
+          "It is Brizna's guide. Every (?) in the app opens its exact topic here, and back returns you to where you were.",
+        ],
+        go: { to: "/ajustes", focus: "aj-manual", where: ["Ajustes, Manual", "Settings, Manual"] },
+        terms: [["Ayuda", "Help"], ["Guía", "Guide"]],
+      },
+      {
         id: "busca",
         title: ["Buscar en Ajustes", "Search settings"],
         sum: ["La lupa deja solo el ajuste que buscas.", "The magnifying glass leaves only the setting you want."],

@@ -38,7 +38,7 @@ export function SyncStatusCard() {
 
   if (sessionGone()) {
     return (
-      <SettingsFoldShell id="aj-nube" icon={<CloudOff className="size-5 shrink-0 text-muted" />} title={tx("Nube", "Cloud")} peek={<span className="text-xs text-muted">{tx("sesión terminada", "signed out")}</span>}>
+      <SettingsFoldShell id="aj-nube" topic="nube" icon={<CloudOff className="size-5 shrink-0 text-muted" />} title={tx("Nube", "Cloud")} peek={<span className="text-xs text-muted">{tx("sesión terminada", "signed out")}</span>}>
         <div className="flex items-start gap-3">
           <CloudOff className="mt-0.5 size-6 shrink-0 text-muted" />
           <div className="min-w-0 flex-1">
@@ -71,6 +71,7 @@ export function SyncStatusCard() {
   return (
     <SettingsFoldShell
       id="aj-nube"
+      topic="nube"
       icon={<Icon className={`size-5 shrink-0 ${safe ? "text-primary" : "text-muted"}`} />}
       title={tx("Nube", "Cloud")}
       peek={<span className={`text-xs font-semibold ${safe ? "text-primary" : "text-muted"}`}>{busy ? "…" : safe ? tx("guardado", "saved") : info.status === "offline" ? tx("sin internet", "offline") : tx("pendiente", "pending")}</span>}

@@ -1469,3 +1469,33 @@ html.theme-dark[data-palette="grafito"] .bz-stat.bz-stat-done .text-done { color
 .bz-fold-head-end > .bz-fold-chev { width: 1.875rem; height: 1.875rem; }
 .bz-fold-head-end > .bz-fold-chev .bz-fold-chev-dot { width: 1.375rem; height: 1.375rem; }
 .bz-fold-head-end > .bz-fold-chev svg { width: 0.75rem; height: 0.75rem; }
+
+/* 1.4.43 Ajustes polish: number settings as one defined group of rows (label + plain sub, −/value/+). */
+.aj-nums { border-radius: 1rem; background: color-mix(in srgb, var(--color-fg) 3.5%, var(--color-surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 9%, transparent); overflow: hidden; }
+.aj-num { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0.75rem 0.7rem 0.95rem; min-height: 3.6rem; }
+.aj-num + .aj-num { border-top: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent); }
+.aj-num-label { font-size: 0.94rem; font-weight: 600; line-height: 1.25; color: var(--color-fg); }
+.aj-num-sub { margin-top: 0.1rem; font-size: 0.78rem; line-height: 1.25; color: var(--color-muted); }
+.aj-num-ctl { display: flex; align-items: center; gap: 0.25rem; flex-shrink: 0; padding: 0.2rem; border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 26%, transparent); }
+.aj-num-btn { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 999px; font-size: 1.05rem; font-weight: 600; line-height: 1;
+  color: color-mix(in srgb, var(--color-primary) 80%, var(--color-fg)); background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+  transition: transform 0.14s ease, background-color 0.2s ease; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.aj-num-btn:active { transform: scale(0.92); }
+.aj-num-btn:disabled { filter: saturate(0) brightness(0.9); cursor: default; }
+.aj-num-val { display: flex; align-items: baseline; justify-content: center; gap: 0.2rem; min-width: 3.4rem; padding: 0 0.15rem; cursor: text; }
+.aj-num-val input { background: transparent; border: 0; outline: none; text-align: center; padding: 0; font-family: var(--font-display, inherit); font-size: 1.12rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-fg); min-width: 2ch; }
+.aj-num-unit { font-size: 0.74rem; font-weight: 600; color: var(--color-muted); }
+.aj-num-val:focus-within { border-radius: 0.5rem; box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--color-primary) 55%, transparent); }
+.aj-note { padding: 0.65rem 0.85rem; border-radius: 0.85rem; color: var(--color-muted); background: color-mix(in srgb, var(--color-primary) 6%, transparent); box-shadow: inset 2px 0 0 color-mix(in srgb, var(--color-primary) 55%, transparent); }
+/* peek pill (guardado / activada) must never be cut by the ? or pin */
+.bz-fold-head-end .bz-fold-title { overflow: visible; }
+.bz-fold-head-end .bz-fold-title > .bz-fold-peek.bz-fold-peek { margin-right: 0.35rem; max-width: 46%; }
+.aj-num { gap: 0.6rem; padding-right: 0.6rem; }
+.aj-num-label { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aj-num-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aj-num-ctl { gap: 0.1rem; }
+.aj-num-btn { width: 1.75rem; height: 1.75rem; }
+.aj-num-val { min-width: 2.6rem; }
+.aj-note { text-wrap: pretty; }
+.aj-num-val { min-width: 3.9rem; }

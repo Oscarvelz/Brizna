@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowRight, BookOpen } from "lucide-react";
 import { toast } from "sonner";
+import { Hint } from "@/components/hint";
 import { Fold } from "@/components/fold";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
@@ -57,6 +58,7 @@ export function UserManual({
       forceOpen={forceOpen}
       className="order-13 mb-4"
       chevronEnd
+      hint={<Hint topic="manual-uso" />}
       titleClassName="text-lg"
       contentClassName="px-4 pb-4"
       title={

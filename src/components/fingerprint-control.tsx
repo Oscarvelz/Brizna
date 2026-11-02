@@ -47,6 +47,7 @@ export function FingerprintControl() {
   return (
     <SettingsFoldShell
       id="aj-huella"
+      topic="huella"
       icon={<Fingerprint className="size-5 shrink-0 text-primary" />}
       title={tx("Huella", "Fingerprint")}
       peek={<span className={`text-xs font-semibold ${on ? "text-primary" : "text-muted"}`}>{on ? tx("activada", "on") : tx("apagada", "off")}</span>}

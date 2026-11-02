@@ -73,6 +73,74 @@ const NIGHT_THEMES: { id: NightPalette; es: string; en: string; swatch: string }
 
 const SERVER_PALETTES = new Set<PaletteName>(["jardin", "costa", "barro", "pino", "cielo"]);
 
+/** One number setting as a calm row: label + plain sub on the left, a compact −/value/+ control on the right. */
+function NumberRow({
+  label,
+  sub,
+  unit,
+  prefix,
+  value,
+  min,
+  max,
+  step,
+  onCommit,
+}: {
+  label: string;
+  sub?: string;
+  unit?: string;
+  prefix?: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onCommit: (n: number) => unknown;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const clamp = (n: number) => Math.min(max, Math.max(min, Math.round(n)));
+  const commit = (n: number) => {
+    if (!Number.isFinite(n)) {
+      setDraft(String(value));
+      return;
+    }
+    const next = clamp(n);
+    setDraft(String(next));
+    if (next !== value) void onCommit(next);
+  };
+  const cur = Number(draft) || value;
+  return (
+    <div className="aj-num">
+      <div className="min-w-0 flex-1">
+        <p className="aj-num-label">{label}</p>
+        {sub ? <p className="aj-num-sub">{sub}</p> : null}
+      </div>
+      <div className="aj-num-ctl">
+        <button type="button" className="aj-num-btn" aria-label="−" disabled={cur <= min} onClick={() => commit(cur - step)}>
+          <span aria-hidden>−</span>
+        </button>
+        <label className="aj-num-val">
+          {prefix ? <span className="aj-num-unit">{prefix}</span> : null}
+          <input
+            inputMode="numeric"
+            aria-label={label}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ""))}
+            onBlur={() => commit(Number(draft))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            }}
+            style={{ width: `${Math.max(2, draft.length) + 0.5}ch` }}
+          />
+          {unit ? <span className="aj-num-unit">{unit}</span> : null}
+        </label>
+        <button type="button" className="aj-num-btn" aria-label="+" disabled={cur >= max} onClick={() => commit(cur + step)}>
+          <span aria-hidden>+</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SettingFold({
   id,
   order,
@@ -323,6 +391,7 @@ function AjustesPage() {
               {tx("Nombre del negocio", "Business name")}
             </span>
           }
+          hint={<Hint topic="nombre-negocio" />}
         >
           <p className="text-sm text-muted">{tx("Toca el título de arriba o cámbialo aquí.", "Tap the title above or change it here.")}</p>
             <Label className="mt-3">{tx("Cómo se llama la empresa", "What the business is called")}</Label>
@@ -570,67 +639,46 @@ function AjustesPage() {
               ),
             )}
           </p>
-          <Label className="mt-3">{tx("Días para En espera", "Days for Waiting")}</Label>
-          <Input
-            type="number"
-            min={7}
-            max={400}
-            key={`wait-${settings?.waitDays ?? 45}`}
-            defaultValue={settings?.waitDays ?? 45}
-            onBlur={(e) => {
-              const n = Number(e.target.value);
-              if (!Number.isFinite(n) || n < 7 || n > 400 || n === settings?.waitDays) return;
-              void updateSettings({ data: { waitDays: n } }).then(() => qc.invalidateQueries({ queryKey: ["settings"] }));
-            }}
-          />
-          <Label className="mt-3">{tx("Días para alto riesgo", "Days for high risk")}</Label>
-          <Input
-            type="number"
-            min={3}
-            max={400}
-            key={`risk-${settings?.riskDays ?? 21}`}
-            defaultValue={settings?.riskDays ?? 21}
-            onBlur={(e) => {
-              const n = Number(e.target.value);
-              if (!Number.isFinite(n) || n < 3 || n > 400 || n === settings?.riskDays) return;
-              void updateSettings({ data: { riskDays: n } }).then(() => qc.invalidateQueries({ queryKey: ["settings"] }));
-            }}
-          />
-          <Label className="mt-3">{tx("Monto para alto riesgo", "Amount for high risk")}</Label>
-          <Input
-            type="number"
-            min={1}
-            max={100000}
-            key={`amt-${settings?.riskAmount ?? 200}`}
-            defaultValue={settings?.riskAmount ?? 200}
-            onBlur={(e) => {
-              const n = Number(e.target.value);
-              if (!Number.isFinite(n) || n < 1 || n === settings?.riskAmount) return;
-              void updateSettings({ data: { riskAmount: n } }).then(() => qc.invalidateQueries({ queryKey: ["settings"] }));
-            }}
-          />
-          <Label className="mt-3">{tx("Cortes o trabajos sin pagar", "Unpaid cuts or jobs")}</Label>
-          <Input
-            type="number"
-            min={1}
-            max={30}
-            key={`cuts-${settings?.riskCuts ?? 3}`}
-            defaultValue={settings?.riskCuts ?? 3}
-            onBlur={(e) => {
-              const n = Number(e.target.value);
-              if (!Number.isFinite(n) || n < 1 || n > 30 || n === settings?.riskCuts) return;
-              void updateSettings({ data: { riskCuts: n } }).then(() => qc.invalidateQueries({ queryKey: ["settings"] }));
-            }}
-          />
-          <p className="mt-1 text-xs text-muted">
-            {emphasize(
-              tx(
-                "Si todavía debe después de este número de cortes o trabajos hechos, pasa a Alto riesgo.",
-                "If they still owe after this many finished cuts or jobs, they become High risk.",
-              ),
-            )}
-          </p>
-          <p className="mt-3 text-sm text-muted">
+          <div className="aj-nums mt-3">
+            <NumberRow
+              label={tx("Días para En espera", "Days for Waiting")}
+              sub={tx("Atraso que todavía esperas", "Lateness you still wait out")}
+              value={settings?.waitDays ?? 45}
+              min={7}
+              max={400}
+              step={1}
+              onCommit={(n) => updateSettings({ data: { waitDays: n } }).then(() => qc.invalidateQueries({ queryKey: ["settings"] }))}
+            />
+            <NumberRow
+              label={tx("Días para alto riesgo", "Days for high risk")}
+              sub={tx("Después de En espera", "After Waiting")}
+              value={settings?.riskDays ?? 21}
+              min={3}
+              max={400}
+              step={1}
+              onCommit={(n) => updateSettings({ data: { riskDays: n } }).then(() => qc.invalidateQueries({ queryKey: ["settings"] }))}
+            />
+            <NumberRow
+              label={tx("Monto para alto riesgo", "Amount for high risk")}
+              sub={tx("Lo que debe, en total", "What they owe, in total")}
+              prefix="$"
+              value={settings?.riskAmount ?? 200}
+              min={1}
+              max={100000}
+              step={25}
+              onCommit={(n) => updateSettings({ data: { riskAmount: n } }).then(() => qc.invalidateQueries({ queryKey: ["settings"] }))}
+            />
+            <NumberRow
+              label={tx("Cortes sin pagar", "Unpaid cuts")}
+              sub={tx("Cortes o trabajos ya hechos", "Cuts or jobs already done")}
+              value={settings?.riskCuts ?? 3}
+              min={1}
+              max={30}
+              step={1}
+              onCommit={(n) => updateSettings({ data: { riskCuts: n } }).then(() => qc.invalidateQueries({ queryKey: ["settings"] }))}
+            />
+          </div>
+          <p className="aj-note mt-3 text-sm">
             {emphasize(
               tx(
                 "Basta con que se pase del tiempo, del monto o de los cortes. No tienen que cumplirse a la vez.",

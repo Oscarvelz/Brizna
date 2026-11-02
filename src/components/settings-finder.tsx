@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Volume2 } from "lucide-react";
+import { Hint } from "@/components/hint";
 import { Fold } from "@/components/fold";
 import { useTx } from "@/lib/i18n";
 import { smartHit } from "@/lib/fuzzy";
@@ -23,6 +24,7 @@ export function SoundSettings({ query = "" }: { query?: string }) {
       forceOpen={Boolean(query)}
       className="order-5 mb-4"
       chevronEnd
+      hint={<Hint topic="sonidos" />}
       titleClassName="text-lg"
       contentClassName="px-4 pb-4"
       title={
