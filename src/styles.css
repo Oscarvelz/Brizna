@@ -1574,3 +1574,6 @@ html.theme-dark[data-palette="grafito"] .bz-stat.bz-stat-done .text-done { color
 html.theme-dark .bz-fold[id^="aj-"]::after, html.theme-amoled .bz-fold[id^="aj-"]::after {
   border-color: color-mix(in srgb, var(--color-primary) 34%, rgb(255 255 255 / 0.10));
 }
+/* 1.4.47: frame neutral, barely tinted (Oscar: less saturated) */
+.bz-fold[id^="aj-"]::after { border-color: color-mix(in srgb, var(--color-fg) 13%, transparent); }
+html.theme-dark .bz-fold[id^="aj-"]::after, html.theme-amoled .bz-fold[id^="aj-"]::after { border-color: rgb(255 255 255 / 0.13); }

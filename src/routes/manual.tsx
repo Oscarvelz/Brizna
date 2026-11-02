@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ScrollTop } from "@/components/scroll-top";
 import { ArrowLeft, ArrowRight, BookOpen, ChevronDown, Lightbulb, ListOrdered, Printer, SearchX } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AppShell, TitleSearch } from "@/components/app-shell";
@@ -288,6 +289,7 @@ function ManualPage() {
     <AppShell
       title={tx("Manual", "Manual")}
     >
+      <ScrollTop />
       <div
         id="mn-doc"
         className={cn("mn", printing && "is-print", printing && printing !== "all" && "is-print-one")}

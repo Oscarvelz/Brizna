@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ScrollTop } from "@/components/scroll-top";
 import { createFileRoute } from "@tanstack/react-router";
 import { Bell, Check, ChevronDown, CalendarRange, Clock, Download, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -368,6 +369,7 @@ function AjustesPage() {
         />
       }
     >
+      <ScrollTop />
       <div className="flex flex-col">
         <div className="mb-3 flex items-center gap-1.5 px-2">
           <label className="flex min-h-11 shrink-0 items-center gap-1.5 text-xs font-semibold text-muted">
