@@ -33,9 +33,9 @@ export function WideSplit({
 }
 
 /** Columns for a page column of this width (0 = keep the phone's single column). */
-export function masonryCols(width: number, min = 880) {
+export function masonryCols(width: number, min = 880, three = 1500) {
   if (width < min) return 0;
-  return width >= 1500 ? 3 : 2;
+  return width >= three ? 3 : 2;
 }
 
 const UNIT = 4;
@@ -129,9 +129,9 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
 }
 
 /** A box whose children become steady columns on large screens; phones get the box exactly as before. */
-export function Masonry({ className, min = 880, children, gap }: { className?: string; min?: number; children: ReactNode; gap?: number }) {
+export function Masonry({ className, min = 880, three, children, gap }: { className?: string; min?: number; three?: number; children: ReactNode; gap?: number }) {
   const ref = useRef<HTMLDivElement | null>(null);
-  const cols = masonryCols(usePageWidth(), min);
+  const cols = masonryCols(usePageWidth(), min, three);
   useMasonry(ref, cols, gap);
   return (
     <div ref={ref} className={className}>

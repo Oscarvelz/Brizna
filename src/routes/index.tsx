@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CloudRain, AlertTriangle, CheckCheck, CircleDollarSign, Palmtree, Pin, Plus, Scissors, Sprout, Wallet } from "lucide-react";
+import { CloudRain, AlertTriangle, CalendarClock, ChevronRight, CheckCheck, CircleDollarSign, Palmtree, Pin, Plus, Scissors, Sprout, Wallet } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { markJump } from "@/lib/jump-back";
 import { toast } from "sonner";
 import { htmlToNote } from "@/components/rich-notes";
-import { WideSplit } from "@/components/wide-layout";
+import { HoyLayout } from "@/components/hoy-clients";
 import { AppShell } from "@/components/app-shell";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { DensityScope, DensityToggle, useDensity, useQuadCols } from "@/components/density-toggle";
@@ -156,6 +156,9 @@ function Home() {
       }
     >
       <ScrollTop aboveFab />
+      <HoyLayout
+        head={
+          <>
       <p className="mb-3 text-muted first-letter:uppercase">{formatLongDay(today)}</p>
       {pins.data && pins.data.length > 0 ? (
         <section className="mb-4 rounded-xl border-l-4 border-primary bg-surface px-3 py-2 shadow-card">
@@ -251,10 +254,49 @@ function Home() {
         </p>
       )}
 
-      {data && data.stats.activeClients === 0 && <EmptyState />}
-
-      <WideSplit
-        side={
+          </>
+        }
+        empty={data && data.stats.activeClients === 0 ? <EmptyState /> : null}
+        wideTools={
+          <div className="bz-hoy-toolgrid">
+            <WorkDayCard />
+            <section className="bz-hoy-acts rounded-xl bg-surface shadow-card" aria-label={tx("Cambios del día", "Day changes")}>
+              <p className="bz-hoy-acts-kicker">{tx("Cambios del día", "Day changes")}</p>
+              <DayAct
+                tone="hold"
+                icon={<CloudRain />}
+                label={t("stop.button")}
+                sub={tx("Pasa los patios de hoy y avisa", "Moves today's yards and lets them know")}
+                onPress={() => setAskRain(true)}
+              />
+              <DayAct
+                tone="late"
+                icon={<AlertTriangle />}
+                label={tx("Pasar atrasados", "Move late ones")}
+                sub={
+                  (data?.overdue.length ?? 0) > 0
+                    ? tx(`${data?.overdue.length} sin hacer de días pasados`, `${data?.overdue.length} left from past days`)
+                    : tx("No hay nada atrasado", "Nothing is late")
+                }
+                disabled={(data?.overdue.length ?? 0) === 0}
+                onPress={() => setAskAcc("overdue")}
+              />
+              <DayAct
+                tone="due"
+                icon={<CalendarClock />}
+                label={tx("Pasar los de hoy", "Move today's jobs")}
+                sub={
+                  pendingToday > 0
+                    ? tx(`${pendingToday} pendientes para hoy`, `${pendingToday} pending today`)
+                    : tx("Nada pendiente hoy", "Nothing pending today")
+                }
+                disabled={pendingToday === 0}
+                onPress={() => setAskAcc("today")}
+              />
+            </section>
+          </div>
+        }
+        tools={
           <>
       {data && (data.overdue.length > 0 || pendingToday > 0) ? (
         <div className="mb-4 grid grid-cols-2 gap-2">
@@ -281,6 +323,10 @@ function Home() {
         <CloudRain />
         {t("stop.button")}
       </Button>
+          </>
+        }
+        extra={rainReady && rainReady.people.length > 0 ? (
+          <>
       {rainReady && rainReady.people.length > 0 ? (
         <section className="mb-4 rounded-xl border-l-4 border-hold bg-hold-bg p-3">
           <p className="font-semibold text-hold">{tx("Mensajes listos por la lluvia", "Messages ready for the rain")}</p>
@@ -321,11 +367,9 @@ function Home() {
           </ul>
         </section>
       ) : null}
-
           </>
-        }
-      >
-      {data ? (
+        ) : null}
+        list={data ? (
         <DayBoard
           overdue={data.overdue}
           todayJobs={data.today}
@@ -340,8 +384,7 @@ function Home() {
           onAskAll={() => setAskAll(true)}
         />
       ) : null}
-
-      </WideSplit>
+      />
 
       <Link
         to="/nuevo"
@@ -758,6 +801,35 @@ function StatLink({
     <Link to={to} search={search as never} hash={hash} className={className}>
       {inner}
     </Link>
+  );
+}
+
+function DayAct({
+  tone,
+  icon,
+  label,
+  sub,
+  disabled,
+  onPress,
+}: {
+  tone: "hold" | "late" | "due";
+  icon: ReactNode;
+  label: string;
+  sub: string;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <button type="button" className={cn("bz-hoy-act", `is-${tone}`)} disabled={disabled} onClick={onPress}>
+      <span className="bz-hoy-act-ic" aria-hidden>
+        {icon}
+      </span>
+      <span className="bz-hoy-act-txt">
+        <span className="bz-hoy-act-label">{label}</span>
+        <span className="bz-hoy-act-sub">{sub}</span>
+      </span>
+      <ChevronRight className="bz-hoy-act-go" aria-hidden />
+    </button>
   );
 }
 

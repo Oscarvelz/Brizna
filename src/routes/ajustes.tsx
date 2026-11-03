@@ -371,7 +371,7 @@ function AjustesPage() {
       }
     >
       <ScrollTop />
-      <Masonry className="flex flex-col">
+      <Masonry className="flex flex-col" three={1150}>
         <div className="mb-3 flex items-center gap-1.5 px-2" data-masonry-full>
           <label className="flex min-h-11 shrink-0 items-center gap-1.5 text-xs font-semibold text-muted">
             <input

@@ -385,7 +385,7 @@ export function AppShell({
     if (typeof window === "undefined") return 0;
     const vw = window.innerWidth;
     if (vw < 768) return Math.max(0, vw - 24);
-    return Math.min(vw - 96 - 64, 1344 - 64);
+    return Math.min(vw - 96 - (vw >= 1100 ? 72 : 64), 2560 - 72);
   });
   useLayoutEffect(() => {
     if (!mainEl) return;
@@ -496,7 +496,7 @@ export function AppShell({
           <main
             ref={setMainEl}
             className={cn(
-              "bz-main mx-auto w-full min-w-0 max-w-3xl flex-1 overflow-x-clip px-3 py-4 sm:px-5 sm:py-5 md:max-w-[84rem] md:px-8 md:py-6",
+              "bz-main mx-auto w-full min-w-0 max-w-3xl flex-1 overflow-x-clip px-3 py-4 sm:px-5 sm:py-5 md:max-w-[160rem] md:px-8 md:py-6 min-[1100px]:px-9",
               split && "overflow-y-auto",
               embedded && "px-2.5 py-3 sm:px-4 md:px-5 md:py-4",
             )}
