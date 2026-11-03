@@ -14,13 +14,15 @@ import {
   NotebookPen,
   PictureInPicture2,
   Rows2,
+  Columns2,
   Settings,
   Printer,
   Search,
   Users,
   X,
 } from "lucide-react";
-import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, Fragment, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useBackClose } from "@/lib/back-close";
 import { BrandMark } from "@/components/brand-mark";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ExportSheet, useExportLaunch } from "@/components/export-center";
@@ -64,6 +66,16 @@ const nav = [
   { to: "/cobros", label: "nav.payments", icon: CircleDollarSign },
   { to: "/estadisticas", label: "nav.stats", icon: BarChart3 },
 ] as const;
+
+/** Width of the page's content column (main), so screens can lay out for large screens. 0 = unknown. */
+const PageWidthContext = createContext(0);
+/** True when the page column is at least `min` px wide (tablet and computer layouts). Phones never reach it. */
+export function usePageWide(min = 860) {
+  return useContext(PageWidthContext) >= min;
+}
+export function usePageWidth() {
+  return useContext(PageWidthContext);
+}
 
 type ShellTo = "/" | "/clientes" | "/agenda" | "/cobros" | "/estadisticas" | "/ajustes" | "/notas" | "/imprimir";
 
@@ -152,9 +164,10 @@ export function AppShell({
   const pane = usePane();
   const embedded = pane !== null;
   const [float, saveFloat] = useFloatState();
-  const [wide, setWide] = useState(false);
-  const [tabletOn, setTabletOn] = useState(true);
-  const [board, setBoard] = useState<TabletLayout>({ count: 1, flow: "side", slots: ["/", "/agenda", "/clientes", "/cobros", "/estadisticas"], phone: false, ratio: 0.5 });
+  // Read the real values on the first render: a remount on every tab switch must not paint a phone frame first.
+  const [wide, setWide] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches);
+  const [tabletOn, setTabletOn] = useState(() => readTabletEnabled());
+  const [board, setBoard] = useState<TabletLayout>(() => readTabletLayout());
   const [boardOpen, setBoardOpen] = useState(false);
   const [keyboard, setKeyboard] = useState(false);
   const [headerEl, setHeaderEl] = useState<HTMLElement | null>(null);
@@ -163,6 +176,7 @@ export function AppShell({
     scroller: typeof window === "undefined" ? (null as unknown as Window) : window,
     header: headerEl,
     dock: dockEl,
+    pinned: wide,
   });
   const [activePane, setActivePane] = useState(0);
   const [dragRatio, setDragRatio] = useState<number | null>(null);
@@ -210,13 +224,13 @@ export function AppShell({
 
   useLayoutEffect(() => {
     const sync = () => {
-      setWide(window.matchMedia("(min-width: 1024px)").matches);
+      setWide(window.matchMedia("(min-width: 768px)").matches);
       setTabletOn(readTabletEnabled());
       setBoard(readTabletLayout());
     };
     sync();
     window.addEventListener("ols-tablet", sync);
-    const media = window.matchMedia("(min-width: 1024px)");
+    const media = window.matchMedia("(min-width: 768px)");
     media.addEventListener("change", sync);
     return () => {
       window.removeEventListener("ols-tablet", sync);
@@ -227,7 +241,7 @@ export function AppShell({
   const onBoard = (TABLET_TABS as readonly string[]).includes(pathname);
   const phoneSplit = tabletOn && !wide && !embedded && board.phone === true && onBoard;
   const split = !embedded && tabletOn && onBoard && (phoneSplit || (wide && board.count > 1));
-  const flow = phoneSplit ? "stack" : "side";
+  const flow = phoneSplit ? "stack" : board.flow === "stack" ? "stack" : "side";
   const paneCount = phoneSplit ? 2 : board.count;
   const cols = !split ? 1 : flow === "stack" ? 1 : paneCount;
   const slotted = board.slots.slice(0, paneCount);
@@ -345,14 +359,37 @@ export function AppShell({
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  // Page column width (main), measured before paint so large-screen layouts never flash a phone frame.
+  const [mainEl, setMainEl] = useState<HTMLElement | null>(null);
+  const [pageWidth, setPageWidth] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    const vw = window.innerWidth;
+    if (vw < 768) return Math.max(0, vw - 24);
+    return Math.min(vw - 96 - 64, 1344 - 64);
+  });
+  useLayoutEffect(() => {
+    if (!mainEl) return;
+    const read = () => {
+      const cs = getComputedStyle(mainEl);
+      const w = Math.round(mainEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+      setPageWidth((prev) => (Math.abs(prev - w) > 1 ? w : prev));
+    };
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(mainEl);
+    return () => ro.disconnect();
+  }, [mainEl]);
+
   const column = (index: number) => (
         <div
           key="live"
           className={cn(
             "flex min-w-0 flex-col",
-            embedded ? "min-h-full pb-0" : split ? "min-h-0 flex-1 overflow-hidden" : keyboard ? "min-h-dvh pb-2 lg:pb-0" : "min-h-dvh pb-[calc(4.75rem+var(--bz-chin))] lg:pb-0",
+            embedded ? "min-h-full pb-0" : split ? "min-h-0 flex-1 overflow-hidden" : keyboard ? "min-h-dvh pb-2 md:pb-0" : "min-h-dvh pb-[calc(4.75rem+var(--bz-chin))] md:pb-0",
           )}
           onTouchStart={(e) => {
+            // Tablets and computers switch tabs from the rail; a sideways drag there is scrolling, never a tab change.
+            if (wide) return;
             const target = e.target as HTMLElement;
             if (target.closest("input, textarea, select, [contenteditable='true'], [data-no-swipe]")) return;
             const touch = e.changedTouches[0];
@@ -377,11 +414,12 @@ export function AppShell({
           <header
             ref={setHeaderEl}
             className={cn(
-              "pod-header sticky top-0 z-30 border-b border-border/70 bg-bg px-3 pb-2 print:hidden sm:px-5 lg:px-6",
+              "pod-header sticky top-0 z-30 border-b border-border/70 bg-bg px-3 pb-2 print:hidden sm:px-5 md:px-8",
               split || embedded ? "pt-2" : "pt-[calc(0.5rem+env(safe-area-inset-top,0px))]",
+              embedded && "md:px-5",
             )}
           >
-            <div className={cn("flex min-h-10 min-w-0 items-center gap-2 lg:hidden", embedded && "hidden", bare && !embedded && "lg:flex")}>
+            <div className={cn("flex min-h-10 min-w-0 items-center gap-2 md:hidden", embedded && "hidden")}>
               <BrandMark className="alive-brand size-8 shrink-0" />
               <div className="bz-brandstack flex min-w-0 flex-col justify-center">
                 <span className="font-display text-lg font-semibold leading-none tracking-tight">{PRODUCT_NAME}</span>
@@ -406,8 +444,15 @@ export function AppShell({
                 </Link>
               </div>
             </div>
+            {embedded ? null : (
+              <div className="bz-hd-kicker hidden min-w-0 items-center gap-1.5 md:flex">
+                <span className="shrink-0 font-display text-[13px] font-semibold leading-none tracking-tight text-fg/80">{PRODUCT_NAME}</span>
+                <span className="h-3 w-px shrink-0 bg-border" aria-hidden />
+                <EditableBrand name={businessName} quiet kicker />
+              </div>
+            )}
             <div className="mt-0.5 flex min-h-11 min-w-0 items-center gap-2">
-              <h1 className={cn("flex min-w-0 items-center gap-2 font-display font-semibold tracking-tight", titleTight ? "shrink-0 text-lg md:text-2xl" : "flex-1 text-xl sm:text-2xl")}>
+              <h1 className={cn("flex min-w-0 items-center gap-2 font-display font-semibold tracking-tight", titleTight ? "shrink-0 text-lg md:text-2xl" : "flex-1 text-xl sm:text-2xl", !embedded && "md:text-[1.75rem]")}>
                 <span className={titleFull ? "leading-tight" : "truncate"}>{title}</span>
                 {titleExtra}
               </h1>
@@ -415,7 +460,7 @@ export function AppShell({
               {pathname === "/agenda" ? null : <UndoBar confirm={pathname !== "/notas" && pathname !== "/fichero"} />}
               {action}
               {embedded ? (
-                <div className="ml-auto flex shrink-0 items-center">
+                <div className="bz-pane-doors ml-auto flex shrink-0 items-center">
                   <NotesDoor iconOnly />
                   <Link
                     to="/ajustes"
@@ -428,71 +473,91 @@ export function AppShell({
               ) : null}
             </div>
           </header>
-          <main className={cn("mx-auto w-full min-w-0 max-w-3xl flex-1 overflow-x-clip px-3 py-4 sm:px-5 sm:py-5 lg:max-w-4xl lg:px-6 lg:py-6", split && "overflow-y-auto", embedded && "px-2.5 py-3 sm:px-4 lg:px-4 lg:py-4")}>
+          <main
+            ref={setMainEl}
+            className={cn(
+              "bz-main mx-auto w-full min-w-0 max-w-3xl flex-1 overflow-x-clip px-3 py-4 sm:px-5 sm:py-5 md:max-w-[84rem] md:px-8 md:py-6",
+              split && "overflow-y-auto",
+              embedded && "px-2.5 py-3 sm:px-4 md:px-5 md:py-4",
+            )}
+          >
             <OfflineBanner />
             <BackupWatch />
             <SyncNotice />
-            <div key={pathname.split("/")[1] || "hoy"} className="alive-page">{children}</div>
+            <PageWidthContext.Provider value={pageWidth}>
+              <div key={pathname.split("/")[1] || "hoy"} className="alive-page">{children}</div>
+            </PageWidthContext.Provider>
           </main>
         </div>
   );
 
+  const railOn = (to: string) => {
+    const here = split ? visible[Math.min(activePane, visible.length - 1)] : pathname;
+    return to === "/" ? here === "/" : here === to || (typeof here === "string" && here.startsWith(`${to}/`));
+  };
+
   return (
     <RequireAuth>
-      <div className={cn("pod-root min-h-dvh w-full max-w-full overflow-x-clip bg-bg text-fg", !embedded && "lg:grid", !embedded && (split ? "lg:grid-cols-[4.25rem_minmax(0,1fr)]" : "lg:grid-cols-[15.5rem_minmax(0,1fr)]"))}>
-        <aside className={cn("hidden pt-[env(safe-area-inset-top,0px)] lg:flex lg:flex-col lg:border-r lg:border-border lg:bg-surface print:hidden", embedded && "lg:hidden", split && "lg:items-center")}>
-          {split ? (
-            <nav className="flex flex-1 flex-col items-center gap-1 px-1.5 pt-3" aria-label={tx("Pestañas", "Tabs")}>
-              {nav.map((item) => {
-                const Icon = item.icon;
-                const on = pathname === item.to;
-                return (
-                  <button
-                    key={item.to}
-                    type="button"
-                    aria-label={t(item.label)}
-                    aria-pressed={on}
-                    title={t(item.label)}
-                    onClick={() => openTab(item.to as TabletTab)}
-                    className={cn("grid size-11 place-items-center rounded-xl", on ? "bg-sun text-primary" : "text-muted hover:bg-bg hover:text-fg")}
-                  >
-                    <Icon className="size-5" strokeWidth={on ? 2.3 : 1.9} />
-                  </button>
-                );
-              })}
-              <NotesDoor iconOnly />
-              <Link to="/ajustes" aria-label={t("nav.settings")} title={t("nav.settings")} className="grid size-11 place-items-center rounded-xl text-muted hover:bg-bg hover:text-fg">
-                <Settings className="size-5" />
-              </Link>
+      <div className={cn("pod-root min-h-dvh w-full max-w-full overflow-x-clip bg-bg text-fg", !embedded && "md:grid md:grid-cols-[6rem_minmax(0,1fr)]")}>
+        {embedded ? null : (
+          <aside className="bz-rail sticky top-0 z-40 hidden h-dvh flex-col items-center border-r border-border bg-surface pt-[calc(0.85rem+env(safe-area-inset-top,0px))] pb-3 md:flex print:hidden" data-no-swipe>
+            <Link to="/" aria-label={PRODUCT_NAME} className="mb-3 grid size-12 place-items-center rounded-2xl">
+              <BrandMark className="alive-brand size-10" />
+            </Link>
+            <nav className="flex w-full flex-col items-center gap-1.5 px-2" aria-label={tx("Pestañas", "Tabs")}>
+              {nav.map((item) => (
+                <RailItem
+                  key={item.to}
+                  to={item.to}
+                  icon={item.icon}
+                  label={t(item.label)}
+                  on={railOn(item.to)}
+                  onPick={split ? () => openTab(item.to as TabletTab) : undefined}
+                />
+              ))}
             </nav>
-          ) : (
-            <>
-          <div className="flex min-w-0 items-center gap-3 px-5 pt-6 pb-4">
-            <BrandMark className="alive-brand size-10 shrink-0" />
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="shrink-0 font-display text-lg font-semibold leading-none">{PRODUCT_NAME}</span>
-              <span className="h-4 w-px shrink-0 bg-border" aria-hidden />
-              <EditableBrand name={businessName} quiet />
+            <div className="mt-auto flex w-full flex-col items-center gap-1 px-2">
+              <NotesDoor rail />
+              <button
+                type="button"
+                onClick={() => exporter.launch(null)}
+                className="bz-rail-tool"
+                aria-label={tx("Exportar e imprimir", "Export and print")}
+                title={tx("Exportar e imprimir", "Export and print")}
+              >
+                <Printer className="size-5" strokeWidth={1.9} />
+              </button>
+              <Link
+                to="/ajustes"
+                className={cn("bz-rail-tool", pathname === "/ajustes" && "is-on")}
+                aria-label={t("nav.settings")}
+                title={t("nav.settings")}
+              >
+                <Settings className="size-5" strokeWidth={pathname === "/ajustes" ? 2.3 : 1.9} />
+              </Link>
+              {tabletOn && onBoard && wide ? (
+                <TabletViewMenu
+                  layout={board}
+                  split={split}
+                  floatOn={float.open}
+                  floatMin={Boolean(float.min)}
+                  onFloat={foldFloat}
+                  onFloatClose={closeFloat}
+                  onChange={(next) => {
+                    setActivePane(0);
+                    saveBoard(next);
+                  }}
+                />
+              ) : null}
             </div>
-          </div>
-          <nav className="flex flex-1 flex-col gap-1 px-3 pt-2">
-            {nav.map((item) => (
-              <NavLink key={item.to} to={item.to} icon={item.icon} label={t(item.label)} />
-            ))}
-            <NotesDoor />
-            <NavLink to="/ajustes" label={t("nav.settings")} icon={Settings} />
-          </nav>
-          <div className="p-3 pb-5">
-            <AccountChip />
-          </div>
-            </>
-          )}
-        </aside>
+          </aside>
+        )}
 
         <div
           className={cn(
             "min-w-0",
             split && "grid h-dvh overflow-hidden",
+            split && !phoneSplit && "gap-0 bg-surface-2",
           )}
           style={
             tunable
@@ -507,11 +572,16 @@ export function AppShell({
               <Fragment key={index}>
               <div
                 className={cn(
-                  "flex min-h-0 min-w-0 flex-col ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_34%,var(--color-border))]",
-
+                  "bz-pane relative flex min-h-0 min-w-0 flex-col",
+                  phoneSplit
+                    ? "ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_34%,var(--color-border))]"
+                    : index === Math.min(activePane, visible.length - 1) && "is-active",
                 )}
+                onPointerDownCapture={() => {
+                  if (activePane !== index) setActivePane(index);
+                }}
               >
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-bg">
+                <div className="bz-pane-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-bg">
                   <PaneView
                     id={`split-${index}`}
                     path={path}
@@ -548,40 +618,166 @@ export function AppShell({
           : column(0)}
         </div>
 
-        {tabletOn && !embedded && onBoard && !keyboard ? (
-          wide ? (
-          <TabletDock
-            open={boardOpen}
-            layout={board}
+        {tabletOn && !embedded && onBoard && !keyboard && !wide ? (
+          <PhoneViewButton
+            split={phoneSplit}
             floatOn={float.open}
             floatMin={Boolean(float.min)}
+            onSplit={(on) => saveBoard({ ...board, phone: on })}
             onFloat={foldFloat}
             onFloatClose={closeFloat}
-            onToggle={() => setBoardOpen((value) => !value)}
-            onChange={(next) => {
-              setBoard(next);
-              writeTabletLayout(next);
-            }}
           />
-          ) : (
-            <PhoneViewButton
-              split={phoneSplit}
-              floatOn={float.open}
-              floatMin={Boolean(float.min)}
-              onSplit={(on) => saveBoard({ ...board, phone: on })}
-              onFloat={foldFloat}
-              onFloatClose={closeFloat}
-            />
-          )
         ) : null}
+        {split && !phoneSplit ? <ExportSheet open={exporter.open} preset={exporter.preset} onClose={exporter.close} /> : null}
 
-        <nav ref={setDockEl} className={cn("pod-dock pointer-events-auto fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[color-mix(in_srgb,var(--color-primary)_32%,var(--color-border))] bg-surface px-0.5 pt-1 text-fg print:hidden lg:hidden pb-[var(--bz-chin)]", (embedded || split || keyboard) && "hidden")}>
+        <nav ref={setDockEl} className={cn("pod-dock pointer-events-auto fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[color-mix(in_srgb,var(--color-primary)_32%,var(--color-border))] bg-surface px-0.5 pt-1 text-fg print:hidden md:hidden pb-[var(--bz-chin)]", (embedded || split || keyboard) && "hidden")}>
           {nav.map((item) => (
             <NavLink key={item.to} to={item.to} icon={item.icon} label={t(item.label)} compact />
           ))}
         </nav>
       </div>
     </RequireAuth>
+  );
+}
+
+/** Tablet and computer: one tab in the left rail (icon in a pill, short label under it). */
+function RailItem({
+  to,
+  icon: Icon,
+  label,
+  on,
+  onPick,
+}: {
+  to: ShellTo;
+  icon: typeof Home;
+  label: string;
+  on: boolean;
+  /** Split view: put this tab in the active window instead of navigating. */
+  onPick?: () => void;
+}) {
+  const inner = (
+    <>
+      <span className="bz-rail-pill">
+        <Icon className="alive-nav-icon size-[22px]" strokeWidth={on ? 2.3 : 1.9} />
+      </span>
+      <span className="bz-rail-label">{label}</span>
+    </>
+  );
+  if (onPick) {
+    return (
+      <button type="button" onClick={onPick} aria-pressed={on} className={cn("bz-rail-item alive-nav", on && "is-on")}>
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <Link to={to} aria-current={on ? "page" : undefined} className={cn("bz-rail-item alive-nav", on && "is-on")}>
+      {inner}
+    </Link>
+  );
+}
+
+/** Tablet and computer: the View button at the foot of the rail. Opens beside the rail, never over the page's own buttons. */
+function TabletViewMenu({
+  layout,
+  split,
+  floatOn,
+  floatMin,
+  onFloat,
+  onFloatClose,
+  onChange,
+}: {
+  layout: TabletLayout;
+  split: boolean;
+  floatOn: boolean;
+  floatMin: boolean;
+  onFloat: () => void;
+  onFloatClose: () => void;
+  onChange: (next: TabletLayout) => void;
+}) {
+  const tx = useTx();
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement | null>(null);
+  useBackClose(open, () => setOpen(false));
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  const mode: "one" | "side" | "stack" = layout.count < 2 ? "one" : layout.flow === "stack" ? "stack" : "side";
+  const [left, right] = layout.slots;
+  const pick = (next: "one" | "side" | "stack") => {
+    onChange(next === "one" ? { ...layout, count: 1 } : { ...layout, count: 2, flow: next });
+    setOpen(false);
+  };
+  const glyph = (kind: "one" | "side" | "stack") => (
+    <i aria-hidden className={cn("bz-view-glyph", kind === "side" && "is-side")}>
+      {Array.from({ length: kind === "one" ? 1 : 2 }, (_, i) => <b key={i} />)}
+    </i>
+  );
+  const tiles: { id: "one" | "side" | "stack"; label: string }[] = [
+    { id: "one", label: tx("1 pantalla", "1 screen") },
+    { id: "side", label: tx("Lado a lado", "Side by side") },
+    { id: "stack", label: tx("Arriba y abajo", "Top and bottom") },
+  ];
+  return (
+    <div ref={box} className="relative mt-1" data-no-swipe>
+      {open ? (
+        <div role="menu" aria-label={tx("Vista", "View")} className="bz-view-menu">
+          <p className="bz-view-kicker">{tx("Vista", "View")}</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {tiles.map((tile) => (
+              <button
+                key={tile.id}
+                type="button"
+                role="menuitemradio"
+                aria-checked={mode === tile.id}
+                onClick={() => pick(tile.id)}
+                className={cn("bz-view-tile", mode === tile.id && "is-on")}
+              >
+                {glyph(tile.id)}
+                <span>{tile.label}</span>
+              </button>
+            ))}
+          </div>
+          {mode !== "one" && left && right ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onChange({ ...layout, slots: [right, left, ...layout.slots.slice(2)] });
+                setOpen(false);
+              }}
+              className="bz-view-row"
+            >
+              <ArrowLeftRight className="size-4 text-primary" />
+              {tx("Cambiar de lugar", "Swap places")}
+            </button>
+          ) : null}
+          <FloatRow on={floatOn} min={floatMin} onFloat={() => { onFloat(); setOpen(false); }} onClose={() => { onFloatClose(); setOpen(false); }} />
+          <p className="bz-view-note">
+            {tx(
+              "Con 2 pantallas, la barra del medio reparte el espacio (doble toque la centra). Las pestañas de la izquierda cambian la pantalla que tocaste por última vez.",
+              "With 2 screens, the middle bar shares the space (double-tap centers it). The tabs on the left change the screen you touched last.",
+            )}
+          </p>
+        </div>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={tx("Vista: pantallas y ventana flotante", "View: screens and floating window")}
+        title={tx("Vista", "View")}
+        className={cn("bz-rail-tool", (split || floatOn || open) && "is-on")}
+      >
+        {split ? (layout.flow === "stack" ? <Rows2 className="size-5" /> : <Columns2 className="size-5" />) : floatOn ? <PictureInPicture2 className="size-5" /> : <LayoutGrid className="size-5" />}
+      </button>
+    </div>
   );
 }
 
@@ -692,76 +888,7 @@ function SplitHandle({
   );
 }
 
-function TabletDock({
-  open,
-  layout,
-  floatOn,
-  floatMin,
-  onFloat,
-  onFloatClose,
-  onToggle,
-  onChange,
-}: {
-  open: boolean;
-  layout: TabletLayout;
-  floatOn: boolean;
-  floatMin: boolean;
-  onFloat: () => void;
-  onFloatClose: () => void;
-  onToggle: () => void;
-  onChange: (next: TabletLayout) => void;
-}) {
-  const tx = useTx();
-  const [left, right] = layout.slots;
-  return (
-    <div className="fixed right-4 bottom-4 z-40 print:hidden" data-no-swipe>
-      {open ? (
-        <div className="mb-2 w-72 rounded-2xl bg-surface p-3 shadow-card">
-          <p className="text-sm font-semibold">{tx("Vista", "View")}</p>
-          <div className="mt-2 grid grid-cols-2 gap-1">
-            {([1, 2] as const).map((count) => (
-              <button
-                key={count}
-                type="button"
-                onClick={() => onChange({ ...layout, count })}
-                className={cn("h-11 rounded-full text-sm font-semibold", layout.count === count ? "bz-pick" : "bg-bg text-muted")}
-              >
-                {count === 1 ? tx("1 pantalla", "1 screen") : tx("2 pantallas", "2 screens")}
-              </button>
-            ))}
-          </div>
-          {layout.count === 2 && left && right ? (
-            <button
-              type="button"
-              onClick={() => onChange({ ...layout, slots: [right, left, ...layout.slots.slice(2)] })}
-              className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-bg text-sm font-semibold text-muted"
-            >
-              <ArrowLeftRight className="size-4" />
-              {tx("Cambiar de lado", "Swap sides")}
-            </button>
-          ) : null}
-          <FloatRow on={floatOn} min={floatMin} onFloat={onFloat} onClose={onFloatClose} />
-          <p className="mt-2 text-xs text-muted">
-            {tx(
-              "Con 2 pantallas, arrastra la barra del medio para dar más espacio a un lado (doble toque la centra). La ventana flotante se mueve desde su barra de arriba, cambia de tamaño desde las esquinas de abajo y se pliega en una burbuja con –. Alt+\\ parte o junta. Alt+F abre o cierra la ventana flotante. Alt+1 a Alt+5 cambia de pestaña.",
-              "With 2 screens, drag the middle bar to give one side more room (double-tap centers it). Move the floating window by its top bar, resize it from the bottom corners, and fold it into a bubble with –. Alt+\\ splits or joins. Alt+F opens or closes the floating window. Alt+1 to Alt+5 switch tabs.",
-            )}
-          </p>
-        </div>
-      ) : null}
-      <button
-        type="button"
-        onClick={onToggle}
-        className="ml-auto grid size-12 place-items-center rounded-full bg-primary text-primary-fg shadow-card"
-        aria-label={tx("Vista de tableta", "Tablet view")}
-      >
-        <LayoutGrid className="size-5" />
-      </button>
-    </div>
-  );
-}
-
-function EditableBrand({ name, quiet, nowrap, sub }: { name: string; quiet?: boolean; nowrap?: boolean; sub?: boolean }) {
+function EditableBrand({ name, quiet, nowrap, sub, kicker }: { name: string; quiet?: boolean; nowrap?: boolean; sub?: boolean; kicker?: boolean }) {
   const tx = useTx();
   const qc = useQueryClient();
   const push = useUndo((s) => s.push);
@@ -821,7 +948,7 @@ function EditableBrand({ name, quiet, nowrap, sub }: { name: string; quiet?: boo
 
   if (quiet) {
     return (
-      <button type="button" onClick={() => setEditing(true)} className={cn("text-left font-display font-medium leading-none tracking-tight text-muted", sub ? "bz-brand-sub mt-1 min-w-0 truncate whitespace-nowrap text-[12.5px]" : nowrap ? "shrink-0 whitespace-nowrap text-[15px]" : "min-w-0 flex-1 truncate text-base")} aria-label={tx("Nombre del negocio", "Business name")}>
+      <button type="button" onClick={() => setEditing(true)} className={cn("text-left font-display font-medium leading-none tracking-tight text-muted", kicker ? "min-w-0 truncate whitespace-nowrap text-[13px]" : sub ? "bz-brand-sub mt-1 min-w-0 truncate whitespace-nowrap text-[12.5px]" : nowrap ? "shrink-0 whitespace-nowrap text-[15px]" : "min-w-0 flex-1 truncate text-base")} aria-label={tx("Nombre del negocio", "Business name")}>
         {name}
       </button>
     );
@@ -838,7 +965,7 @@ function EditableBrand({ name, quiet, nowrap, sub }: { name: string; quiet?: boo
   );
 }
 
-function NotesDoor({ iconOnly }: { iconOnly?: boolean }) {
+function NotesDoor({ iconOnly, rail }: { iconOnly?: boolean; rail?: boolean }) {
   const { t } = useI18n();
   const tx = useTx();
   const navigate = useNavigate();
@@ -863,6 +990,19 @@ function NotesDoor({ iconOnly }: { iconOnly?: boolean }) {
     }, 320);
   }
 
+  if (rail) {
+    return (
+      <button
+        type="button"
+        onClick={press}
+        title={tx("Notas. Doble toque abre el Fichero.", "Notes. Double tap opens the cabinet.")}
+        aria-label={tx("Notas. Doble toque abre el Fichero.", "Notes. Double tap opens the cabinet.")}
+        className={cn("bz-rail-tool", active && "is-on")}
+      >
+        <NotebookPen className="size-5" strokeWidth={active ? 2.3 : 1.9} />
+      </button>
+    );
+  }
   return (
     <button
       type="button"

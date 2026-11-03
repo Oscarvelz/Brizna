@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { markJump } from "@/lib/jump-back";
 import { toast } from "sonner";
 import { htmlToNote } from "@/components/rich-notes";
+import { WideSplit } from "@/components/wide-layout";
 import { AppShell } from "@/components/app-shell";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { DensityScope, DensityToggle, useDensity, useQuadCols } from "@/components/density-toggle";
@@ -252,6 +253,9 @@ function Home() {
 
       {data && data.stats.activeClients === 0 && <EmptyState />}
 
+      <WideSplit
+        side={
+          <>
       {data && (data.overdue.length > 0 || pendingToday > 0) ? (
         <div className="mb-4 grid grid-cols-2 gap-2">
           <Button
@@ -318,6 +322,9 @@ function Home() {
         </section>
       ) : null}
 
+          </>
+        }
+      >
       {data ? (
         <DayBoard
           overdue={data.overdue}
@@ -333,6 +340,8 @@ function Home() {
           onAskAll={() => setAskAll(true)}
         />
       ) : null}
+
+      </WideSplit>
 
       <Link
         to="/nuevo"

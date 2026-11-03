@@ -1,6 +1,7 @@
+import { masonryCols, useMasonry, usePageWidth } from "@/components/wide-layout";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import {
   Bar,
   BarChart,
@@ -46,6 +47,9 @@ export function CobrosCharts({
   const { t, locale } = useI18n();
   const tx = useTx();
   const [ready, setReady] = useState(false);
+  // Large screens: the sections flow into steady columns (phones keep one column).
+  const box = useRef<HTMLDivElement | null>(null);
+  useMasonry(box, embedded ? 0 : masonryCols(usePageWidth()));
   const navigate = useNavigate();
   useEffect(() => setReady(true), []);
   const q = useQuery({ queryKey: ["finance"], queryFn: () => getFinanceStats() });
@@ -57,7 +61,7 @@ export function CobrosCharts({
 
   if (!ready || q.isLoading || q.isError || !data) {
     return (
-      <div className={cn("grid gap-4", !embedded && "mb-6")}>
+      <div ref={box} className={cn("grid gap-4", !embedded && "mb-6")}>
         {effort}
         {extra}
         {!ready || q.isLoading ? (
@@ -98,7 +102,7 @@ export function CobrosCharts({
   }
 
   return (
-    <div className={cn("grid gap-4", !embedded && "mb-6")}>
+    <div ref={box} className={cn("grid gap-4", !embedded && "mb-6")}>
       {effort}
       {extra}
       {show("horas entrada salida parados") ? (

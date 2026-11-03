@@ -1,3 +1,4 @@
+import { WideSplit } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, ChevronLeft, Download, Pencil, Pin, Plus, Search, Share2, Trash2, X } from "lucide-react";
@@ -444,6 +445,18 @@ function PadBody({
 
   return (
     <>
+      <WideSplit
+        sideFirst={false}
+        side={
+      <div className="mt-6">
+        <WeekAccordion
+          days={data.weekDays}
+          openDay={openDay}
+          onToggle={(date) => setOpenDay((prev) => (prev === date ? "" : date))}
+        />
+      </div>
+        }
+      >
       <section ref={editorRef} className="note-halo p-3">
         <div className="mb-2 flex items-center gap-1">
           <button
@@ -699,13 +712,7 @@ function PadBody({
         onCancel={() => setAfterFolder(null)}
       />
 
-      <div className="mt-6">
-        <WeekAccordion
-          days={data.weekDays}
-          openDay={openDay}
-          onToggle={(date) => setOpenDay((prev) => (prev === date ? "" : date))}
-        />
-      </div>
+      </WideSplit>
       <ConfirmDialog
         open={askUnpin}
         title={tx("¿Quitar esta nota de fijadas?", "Unpin this note?")}

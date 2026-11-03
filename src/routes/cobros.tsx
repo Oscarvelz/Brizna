@@ -1,3 +1,4 @@
+import { WideSplit } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode, useRef } from "react";
@@ -200,6 +201,9 @@ function CobrosPage() {
       }
     >
       <ScrollTop />
+      <WideSplit
+        side={
+          <>
       <section className="bz-lenses relative mb-3 grid min-w-0 grid-cols-2 items-stretch gap-3">
         <div
           className={cn(
@@ -304,6 +308,9 @@ function CobrosPage() {
         current={view}
       />
 
+          </>
+        }
+      >
       {paying && (
         <PayDialog
           open
@@ -512,6 +519,7 @@ function CobrosPage() {
           <DoneList jobs={data?.doneYear ?? []} empty={tx("Todavía no hay cortes hechos este año.", "There are no completed cuts this year yet.")} dense={dense} media={media} quad={quad} cols={cols} />
         )}
       </div>
+      </WideSplit>
 
       <ConfirmDialog
         open={askBulk === "paid"}

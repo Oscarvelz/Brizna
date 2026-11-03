@@ -1,3 +1,4 @@
+import { Masonry } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScrollTop } from "@/components/scroll-top";
 import { createFileRoute } from "@tanstack/react-router";
@@ -370,8 +371,8 @@ function AjustesPage() {
       }
     >
       <ScrollTop />
-      <div className="flex flex-col">
-        <div className="mb-3 flex items-center gap-1.5 px-2">
+      <Masonry className="flex flex-col">
+        <div className="mb-3 flex items-center gap-1.5 px-2" data-masonry-full>
           <label className="flex min-h-11 shrink-0 items-center gap-1.5 text-xs font-semibold text-muted">
             <input
               type="checkbox"
@@ -955,7 +956,7 @@ function AjustesPage() {
           </p>
         </section>
         ) : null}
-      </div>
+      </Masonry>
     </AppShell>
   );
 }

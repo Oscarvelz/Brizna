@@ -1,3 +1,4 @@
+import { useMasonry, usePageWidth } from "@/components/wide-layout";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
@@ -18,7 +19,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CountUp, useArrived } from "@/components/cifras-visuals";
 import { MessageComposer } from "@/components/message-composer";
 import { money } from "@/lib/format";
@@ -189,7 +190,7 @@ function Hero({ r }: { r: AdvisorReading }) {
   const tx = useTx();
   const v = verdict(r, tx);
   return (
-    <section className={cn("as-card as-hero", TONE_CLASS[r.tone])} style={{ "--i": 0 } as CSSProperties}>
+    <section className={cn("as-card as-hero", TONE_CLASS[r.tone])} data-masonry-full style={{ "--i": 0 } as CSSProperties}>
       <div className="as-hero-top">
         <div className="min-w-0 flex-1">
           <p className="as-kicker"><Sprout aria-hidden />{tx("Tu negocio, en claro", "Your business, plainly")}</p>
@@ -609,11 +610,14 @@ function ActionCard({ a, i, r }: { a: AdvisorAction; i: number; r: AdvisorReadin
 
 function Actions({ r }: { r: AdvisorReading }) {
   const tx = useTx();
+  const acts = useRef<HTMLOListElement | null>(null);
+  const width = usePageWidth();
+  useMasonry(acts, width >= 1150 ? 3 : width >= 600 ? 2 : 0, 11);
   return (
-    <section className="as-card" style={{ "--i": 1 } as CSSProperties}>
+    <section className="as-card" data-masonry-full style={{ "--i": 1 } as CSSProperties}>
       <h3 className="as-h3"><Leafy />{tx("Lo que yo haría ahora", "What I'd do now")}</h3>
       {r.actions.length ? (
-        <ol className="as-acts">
+        <ol ref={acts} className="as-acts">
           {r.actions.map((a, i) => <ActionCard key={a.kind} a={a} i={i} r={r} />)}
         </ol>
       ) : (
@@ -853,8 +857,16 @@ export function AsesorPanel() {
       </section>
     );
   }
+  return <AsesorBoard r={r} />;
+}
+
+/** Phones: one column. Large screens: verdict and actions across, the rest in steady columns. */
+function AsesorBoard({ r }: { r: AdvisorReading }) {
+  const wrap = useRef<HTMLDivElement | null>(null);
+  const width = usePageWidth();
+  useMasonry(wrap, width >= 880 ? 2 : 0, 14);
   return (
-    <div className="as-wrap">
+    <div ref={wrap} className="as-wrap">
       <Hero r={r} />
       <Actions r={r} />
       <Groups r={r} />

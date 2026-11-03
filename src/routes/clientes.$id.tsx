@@ -1,3 +1,4 @@
+import { WideSplit } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { MessageComposer, WhatsAppButton } from "@/components/message-composer";
@@ -197,6 +198,93 @@ function ClientDetailPage() {
         </div>
       ) : (
         <>
+          <WideSplit
+            sideFirst={false}
+            side={
+              <>
+          <section className="mt-4 rounded-xl border-l-4 border-hold bg-hold-bg p-4 shadow-card">
+            <h2 className="font-display text-lg font-semibold text-hold">{tx("Fiabilidad", "Reliability")}</h2>
+            <p className="mt-1 text-sm">
+              {emphasize(
+                client.servicePaused
+                ? tx(
+                    "En pausa. No se le hará el patio hasta que decidas Continuar.",
+                    "Paused. The yard is not done until you tap Play.",
+                  )
+                : client.payTier === "serio"
+                ? tx("Espera seria. También está en Alto riesgo.", "Serious wait. It is also in High risk.")
+                : client.payTier === "espera"
+                  ? tx(
+                      "En espera. Sigue debiendo y todavía no llega al límite que pusiste.",
+                      "Waiting. They still owe and have not reached the limit you set.",
+                    )
+                  : client.balance > 0
+                    ? tx(
+                        "Al corriente. Debe, pero dentro del tiempo que aceptas.",
+                        "On track. They owe, but within the time you accept.",
+                      )
+                    : tx("Al día. No tiene saldo.", "Up to date. There is no balance."),
+              )}
+            </p>
+            <p className="mt-2 text-sm tabular-nums">
+              {tx(`Puntaje ${client.reliability}`, `Score ${client.reliability}`)}
+              {client.daysSincePay != null
+                ? tx(
+                    ` · ${client.daysSincePay} días desde el último pago o corte`,
+                    ` · ${client.daysSincePay} days since the last payment or cut`,
+                  )
+                : ""}
+            </p>
+          </section>
+
+          {PHOTOS_ENABLED ? <ClientPhotos clientId={client.id} photos={data?.photos ?? []} /> : null}
+
+          <section className="mt-8">
+            <h2 className="mb-1 font-display text-lg font-semibold">{tx("Próximos cortes", "Upcoming cuts")}</h2>
+            <p className="mb-3 text-sm text-muted">
+              {tx(
+                "La regla sigue en la ficha. Si mueves una fecha, no vuelve al día viejo.",
+                "The rule stays on the file. If you move a date, it does not go back to the old day.",
+              )}
+            </p>
+            <UpcomingCuts jobs={(data?.jobs ?? []).filter((j) => j.status === "pending")} />
+          </section>
+
+          <section className="mt-8">
+            <HistoryBlock
+              clientId={client.id}
+              since={client.startDate || client.createdAt}
+              paid={client.collectedTotal}
+              jobs={(data?.jobs ?? []).filter((j) => j.status !== "pending")}
+            />
+          </section>
+
+          <div className="mt-10 grid gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => (client.isActive ? setAskOff(true) : setAskOn(true))}
+            >
+              {client.isActive ? tx("Mover a archivos", "Move to archive") : tx("Reactivar", "Reactivate")}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                void setBlacklist({ data: { id: client.id, blacklisted: !client.blacklisted } }).then(async () => {
+                  toast(client.blacklisted ? tx("Salió de la lista negra", "Left the blacklist") : tx("Pasó a la lista negra", "Added to the blacklist"));
+                  await invalidateLawn(qc);
+                });
+              }}
+            >
+              {client.blacklisted ? tx("Quitar de la lista negra", "Remove from the blacklist") : tx("Pasar a lista negra", "Add to the blacklist")}
+            </Button>
+            <Button variant="ghost" className="text-late" onClick={() => setAskDelete(true)}>
+              {tx("Eliminar para siempre", "Delete forever")}
+            </Button>
+          </div>
+
+              </>
+            }
+          >
           <section className="min-w-0 max-w-full overflow-hidden rounded-xl bg-surface p-4 shadow-card">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
@@ -410,86 +498,7 @@ function ClientDetailPage() {
             </Button>
           </div>
 
-          <section className="mt-4 rounded-xl border-l-4 border-hold bg-hold-bg p-4 shadow-card">
-            <h2 className="font-display text-lg font-semibold text-hold">{tx("Fiabilidad", "Reliability")}</h2>
-            <p className="mt-1 text-sm">
-              {emphasize(
-                client.servicePaused
-                ? tx(
-                    "En pausa. No se le hará el patio hasta que decidas Continuar.",
-                    "Paused. The yard is not done until you tap Play.",
-                  )
-                : client.payTier === "serio"
-                ? tx("Espera seria. También está en Alto riesgo.", "Serious wait. It is also in High risk.")
-                : client.payTier === "espera"
-                  ? tx(
-                      "En espera. Sigue debiendo y todavía no llega al límite que pusiste.",
-                      "Waiting. They still owe and have not reached the limit you set.",
-                    )
-                  : client.balance > 0
-                    ? tx(
-                        "Al corriente. Debe, pero dentro del tiempo que aceptas.",
-                        "On track. They owe, but within the time you accept.",
-                      )
-                    : tx("Al día. No tiene saldo.", "Up to date. There is no balance."),
-              )}
-            </p>
-            <p className="mt-2 text-sm tabular-nums">
-              {tx(`Puntaje ${client.reliability}`, `Score ${client.reliability}`)}
-              {client.daysSincePay != null
-                ? tx(
-                    ` · ${client.daysSincePay} días desde el último pago o corte`,
-                    ` · ${client.daysSincePay} days since the last payment or cut`,
-                  )
-                : ""}
-            </p>
-          </section>
-
-          {PHOTOS_ENABLED ? <ClientPhotos clientId={client.id} photos={data?.photos ?? []} /> : null}
-
-          <section className="mt-8">
-            <h2 className="mb-1 font-display text-lg font-semibold">{tx("Próximos cortes", "Upcoming cuts")}</h2>
-            <p className="mb-3 text-sm text-muted">
-              {tx(
-                "La regla sigue en la ficha. Si mueves una fecha, no vuelve al día viejo.",
-                "The rule stays on the file. If you move a date, it does not go back to the old day.",
-              )}
-            </p>
-            <UpcomingCuts jobs={(data?.jobs ?? []).filter((j) => j.status === "pending")} />
-          </section>
-
-          <section className="mt-8">
-            <HistoryBlock
-              clientId={client.id}
-              since={client.startDate || client.createdAt}
-              paid={client.collectedTotal}
-              jobs={(data?.jobs ?? []).filter((j) => j.status !== "pending")}
-            />
-          </section>
-
-          <div className="mt-10 grid gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => (client.isActive ? setAskOff(true) : setAskOn(true))}
-            >
-              {client.isActive ? tx("Mover a archivos", "Move to archive") : tx("Reactivar", "Reactivate")}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                void setBlacklist({ data: { id: client.id, blacklisted: !client.blacklisted } }).then(async () => {
-                  toast(client.blacklisted ? tx("Salió de la lista negra", "Left the blacklist") : tx("Pasó a la lista negra", "Added to the blacklist"));
-                  await invalidateLawn(qc);
-                });
-              }}
-            >
-              {client.blacklisted ? tx("Quitar de la lista negra", "Remove from the blacklist") : tx("Pasar a lista negra", "Add to the blacklist")}
-            </Button>
-            <Button variant="ghost" className="text-late" onClick={() => setAskDelete(true)}>
-              {tx("Eliminar para siempre", "Delete forever")}
-            </Button>
-          </div>
-
+          </WideSplit>
           <ConfirmDialog
             open={payAsk}
             title={tx("¿Cómo paga este cliente?", "How does this client pay?")}

@@ -1,3 +1,4 @@
+import { WideSplit } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { markJump } from "@/lib/jump-back";
@@ -338,6 +339,10 @@ function AgendaPage() {
         </div>
       ) : null}
 
+      <WideSplit
+        className="is-roomy"
+        side={
+          <>
       <div className="relative mb-3">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-subtle" />
         <Input
@@ -542,6 +547,9 @@ function AgendaPage() {
       </div>
       )}
 
+          </>
+        }
+      >
       <div id="agenda-trabajos">
         {cal ? (
           <MonthBoard
@@ -645,6 +653,8 @@ function AgendaPage() {
           </div>
         )}
       </div>
+
+      </WideSplit>
 
       <ScrollTop lift={undoPast + undoFuture > 0} />
       {undoPast + undoFuture > 0 ? (

@@ -19,7 +19,8 @@ export function ScrollTop({ lift = false, aboveFab = false }: { lift?: boolean; 
       aria-label={tx("Subir", "Go up")}
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       className={cn(
-        "fixed right-2 z-30 grid place-items-center rounded-full bg-surface/90 text-muted shadow-card ring-1 ring-border",
+        "bz-scrolltop fixed right-2 z-30 grid place-items-center rounded-full bg-surface/90 text-muted shadow-card ring-1 ring-border",
+        aboveFab && "is-above",
         aboveFab
           ? "size-9 right-[1.625rem] bottom-[calc(9.75rem+var(--bz-chin))]"
           : lift

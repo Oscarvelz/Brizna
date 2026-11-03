@@ -87,9 +87,10 @@ export function pickDensity(scope: string, next: Density): void {
 }
 
 export function viewGrid(density: Density, cols: QuadCols, gap = "gap-2"): string {
-  if (density !== "quad") return `grid min-w-0 [&>*]:min-w-0 ${gap}`;
+  // bz-vg-*: large screens (tablet.css container queries) give the list more columns; phones ignore it.
+  if (density !== "quad") return `bz-vg bz-vg-${density} grid min-w-0 [&>*]:min-w-0 ${gap}`;
   const columns = cols === 4 ? "grid-cols-4" : cols === 3 ? "grid-cols-3" : "grid-cols-2";
-  return `grid min-w-0 items-stretch gap-1.5 [&>*]:min-w-0 ${columns}`;
+  return `bz-vg bz-vg-quad grid min-w-0 items-stretch gap-1.5 [&>*]:min-w-0 ${columns}`;
 }
 
 /** Fixed tile height so a Malla row lines up. */

@@ -68,7 +68,7 @@ export function readTabletLayout(): TabletLayout {
     for (const tab of DEFAULT_SLOTS) {
       if (!filled.includes(tab)) filled.push(tab);
     }
-    return { count, slots: filled.slice(0, 5), flow: "side", phone, ratio: share(raw.ratio, 0.5), sideRatio: share(raw.sideRatio, 0.5) };
+    return { count, slots: filled.slice(0, 5), flow: raw.flow === "stack" ? "stack" : "side", phone, ratio: share(raw.ratio, 0.5), sideRatio: share(raw.sideRatio, 0.5) };
   } catch {
     return { count: 1, slots: DEFAULT_SLOTS, flow: "side", phone: false, ratio: 0.5, sideRatio: 0.5 };
   }
