@@ -274,6 +274,7 @@ function mapClient(row: ClientDb, today = todayISO(), risk: number | RiskOpts = 
     seasonEnd: mmddOrNull(row.season_end),
     seasonEvery: row.season_every == null ? null : Number(row.season_every) || null,
     daysSincePay: profile.daysSincePay,
+    lastPaidDate: lastPaid,
     payTier: profile.payTier,
     reliability: profile.reliability,
   };

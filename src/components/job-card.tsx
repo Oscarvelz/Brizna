@@ -290,7 +290,7 @@ export function JobCard({
       <ConfirmDialog
         open={askDone}
         stack
-        title={tx(`¿Cómo cerrar ${job.clientName}?`, `How should ${job.clientName} be closed?`)}
+        title={tx(`¿Cómo cerrar ${job.clientName}?`, `How do you want to close ${job.clientName}'s cut?`)}
         description={
           <div className="grid gap-2">
             <p>

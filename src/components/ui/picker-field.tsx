@@ -45,7 +45,17 @@ function dateLabel(v: string, en: boolean, long = false, noYear = false) {
   const p = parseIso(v);
   if (!p) return "";
   const d = new Date(p.y, p.m, p.d, 12);
-  return new Intl.DateTimeFormat(en ? "en-US" : "es-US", long ? (noYear ? { day: "numeric", month: "long" } : { weekday: "long", day: "numeric", month: "long" }) : noYear ? { day: "numeric", month: "short" } : { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(d);
+  // Short label fits a half-width field on one line: "Tue, Nov 3" this year, "Jan 5, 2027" another year.
+  const thisYear = p.y === new Date().getFullYear();
+  const short: Intl.DateTimeFormatOptions = noYear ? { day: "numeric", month: "short" } : thisYear ? { weekday: "short", day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" };
+  if (!long && !en) {
+    // Spanish without the "de" fillers: "mar, 3 nov" / "6 ene 2027".
+    const parts = new Intl.DateTimeFormat("es-US", short).formatToParts(d);
+    const get = (t: string) => parts.find((x) => x.type === t)?.value.replace(".", "") ?? "";
+    const dm = `${get("day")} ${get("month")}`;
+    return short.year ? `${dm} ${get("year")}` : short.weekday ? `${get("weekday")}, ${dm}` : dm;
+  }
+  return new Intl.DateTimeFormat(en ? "en-US" : "es-US", long ? (noYear ? { day: "numeric", month: "long" } : { weekday: "long", day: "numeric", month: "long" }) : short).format(d);
 }
 
 export function PickerField({ type, noYear, value, defaultValue, onChange, onBlur, min, max, className, disabled, required, id, "aria-label": ariaLabel }: Props) {

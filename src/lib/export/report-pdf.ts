@@ -403,8 +403,10 @@ function chart(ctx: Ctx, bars: { label: string; a: number; b: number }[], height
   const axisW = 40;
   const x0 = L + axisW;
   const w = CW - axisW;
-  const max = Math.max(1, ...list.map((b) => Math.max(b.a, showB ? b.b : 0)));
-  const step = niceStep(max / 3);
+  const top0 = Math.max(0, ...list.map((b) => Math.max(b.a, showB ? b.b : 0)));
+  const max = Math.max(1, top0);
+  // Whole-unit ticks (no "$1, $1, $0" from rounding halves); an empty chart keeps only the $0 baseline.
+  const step = Math.max(1, niceStep(max / 3));
   const ceil = Math.max(step * Math.ceil(max / step), step);
   // Legend.
   doc.round(L, ctx.y, 9, 7, 2, C.money);
@@ -414,7 +416,7 @@ function chart(ctx: Ctx, bars: { label: string; a: number; b: number }[], height
     doc.round(lx, ctx.y, 9, 7, 2, C.greenSoft, C.leaf, 0.6);
     doc.text(lx + 13, ctx.y - 0.5, bLabel, { size: 7.5, color: C.muted });
   }
-  for (let v = 0; v <= ceil + 0.001; v += step) {
+  for (let v = 0; v <= (top0 > 0 ? ceil : 0) + 0.001; v += step) {
     const y = top + height - (v / ceil) * height;
     doc.line(x0, y, R, y, v === 0 ? C.muted : C.rule, v === 0 ? 0.7 : 0.4, v === 0 ? undefined : [2, 2]);
     doc.text(x0 - 5, y - 3, fmt(v), { size: 6.5, color: C.subtle, align: "right" });
@@ -535,7 +537,7 @@ function drawCover(ctx: Ctx, known: Partial<Record<SectionId, number>> | null) {
   const facts: { label: string; value: string; sub: string; color: RGB }[] = [];
   const best = m.trabajos.byClient[0];
   if (best) facts.push({ label: tx("CLIENTE CON MÁS TRABAJO", "CLIENT WITH THE MOST WORK"), value: best.name, sub: m.amounts ? tx(`${usd0(best.value)} en ${best.jobs} ${best.jobs === 1 ? "trabajo" : "trabajos"}`, `${usd0(best.value)} over ${best.jobs} ${best.jobs === 1 ? "job" : "jobs"}`) : tx(`${best.jobs} trabajos`, `${best.jobs} jobs`), color: C.green });
-  if (k.minutes > 0) facts.push({ label: m.amounts ? tx("CADA HORA DEJÓ", "EACH HOUR BROUGHT") : tx("HORAS TRABAJADAS", "HOURS WORKED"), value: m.amounts ? usd0(m.horas.perHour) : fmtHours(k.minutes / 60), sub: tx(`${fmtHours(k.minutes / 60)} horas en ${k.workDays} días`, `${fmtHours(k.minutes / 60)} hours over ${k.workDays} days`), color: C.money });
+  if (k.minutes > 0) facts.push({ label: m.amounts ? tx("CADA HORA DEJÓ", "EACH HOUR BROUGHT") : tx("HORAS TRABAJADAS", "HOURS WORKED"), value: m.amounts ? usd0(m.horas.perHour) : fmtHours(k.minutes / 60), sub: tx(`${fmtHours(k.minutes / 60)} horas en ${k.workDays} ${k.workDays === 1 ? "día" : "días"}`, `${fmtHours(k.minutes / 60)} hours over ${k.workDays} ${k.workDays === 1 ? "day" : "days"}`), color: C.money });
   const old = m.cobros.buckets.filter((b) => b.key === "b61" || b.key === "b91");
   const oldAmt = old.reduce((a, b) => a + b.amount, 0);
   if (m.amounts && m.cobros.rows.length) {
@@ -662,7 +664,7 @@ function drawCobros(ctx: Ctx) {
         text: r.oldestDays != null ? age(r.oldestDays, tx) : tx("inicial", "opening"),
       },
       tierChip(r.tier),
-      r.sincePay != null ? ago(r.sincePay, tx) : "—",
+      r.sincePay != null ? ago(r.sincePay, tx) : tx("Sin pagos", "No payments"),
     ]),
     { totals: [tx(`${c.rows.length} clientes`, `${c.rows.length} clients`), "", { text: usd(total), bold: true, color: C.late }, "", "", ""] },
   );

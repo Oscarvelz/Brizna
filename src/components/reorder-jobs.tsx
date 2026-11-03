@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { useDensity, useQuadCols } from "@/components/density-toggle";
 import { JobCard } from "@/components/job-card";
 import { viewGrid } from "@/lib/density";
+import { useTx } from "@/lib/i18n";
 import { reorderJobs } from "@/lib/server/lawn";
 import type { JobRow } from "@/lib/types";
 
@@ -16,6 +17,7 @@ export function ReorderableJobs({
   const orderRef = useRef(order);
   const drag = useRef<{ id: number; pointerId: number } | null>(null);
   const density = useDensity();
+  const tx = useTx();
   const cols = useQuadCols();
   const grid = viewGrid(density, cols, density === "dense" ? "gap-1.5" : density === "compact" ? "gap-2" : "gap-3");
 
@@ -84,7 +86,7 @@ export function ReorderableJobs({
     <div className={grid}>
       {density === "dense" ? null : (
         <p className="col-span-full text-xs font-medium text-muted">
-          Mantén el asa a la izquierda y mueve con el dedo para ordenar la ruta.
+          {tx("Mantén el asa a la izquierda y mueve con el dedo para ordenar la ruta.", "Hold the handle on the left and drag to order the route.")}
         </p>
       )}
       {ordered.map((job) => (

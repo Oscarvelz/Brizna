@@ -200,6 +200,7 @@ function cellFor(col: Col, value: Val, zebra: boolean): XCell {
     return { v: n, s: { ...base, fmt: "date", align: "left" } };
   }
   if (col.type === "money") return { v: typeof value === "number" ? Math.round(value * 100) / 100 : null, s: { ...base, fmt: "money" } };
+  if (col.type === "int" && typeof value === "string" && value) return { v: value, s: { ...base, align: "right", color: MUTED } as Style };
   if (col.type === "int") return { v: typeof value === "number" ? value : null, s: { ...base, fmt: "int" } };
   if (col.type === "num1") return { v: typeof value === "number" ? Math.round(value * 100) / 100 : null, s: { ...base, fmt: "num1" } };
   if (col.type === "check") return { v: "☐", s: { ...base, align: "center", size: 12, color: MUTED } };
@@ -321,7 +322,7 @@ export function reportXlsxBytes(m: Model): Uint8Array {
           { h: tx("Días desde el último pago", "Days since last payment"), w: 13, type: "int" },
           { h: tx("Trabajos sin pagar", "Unpaid jobs"), w: 11, type: "int", total: "sum" },
         ],
-        m.cobros.rows.map((r) => [r.name, r.phone, r.balance, r.b0, r.b31, r.b61, r.b91, r.opening, r.oldestDays, r.tier, r.sincePay, r.unpaidJobs]),
+        m.cobros.rows.map((r) => [r.name, r.phone, r.balance, r.b0, r.b31, r.b61, r.b91, r.opening, r.oldestDays, r.tier, r.sincePay ?? tx("Sin pagos", "No payments"), r.unpaidJobs]),
         a,
         LATE,
       );

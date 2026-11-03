@@ -56,7 +56,7 @@ export function OffDayDialog({
           </p>
           <p>
             {tx("Viene de ", "This comes from ")}
-            <NameLink term={tx("Días libres de esta semana", "Days off this week")} />
+            <NameLink term={tx("Días libres", "Days off this week")} />
             .
           </p>
         </div>

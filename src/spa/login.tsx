@@ -3,6 +3,7 @@ import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, CloudOff, Eye, EyeOff
 import { BrandMark } from "@/components/brand-mark";
 import { DEFAULT_BUSINESS_NAME, PRODUCT_NAME } from "@/lib/format";
 import { useI18n, useTx } from "@/lib/i18n";
+import { LOCALE_PICKED_KEY } from "@/lib/theme";
 import { emitUser, keepSignedIn, rememberUser, setKeepSignedIn, supabase } from "./cloud";
 import { LawnScene } from "./lawn-scene";
 
@@ -95,12 +96,22 @@ export function Login({ recovery, note }: { recovery?: boolean; note?: string })
     : mode === "reset" ? tx("Guardando…", "Saving…")
     : tx("Entrando…", "Signing in…");
 
+  // An explicit pick here wins over the saved setting once the app opens (app-shell saves it).
+  const pickLocale = (next: "es" | "en") => {
+    setLocale(next);
+    try {
+      window.localStorage.setItem(LOCALE_PICKED_KEY, next);
+    } catch {
+      /* ignore */
+    }
+  };
+
   return (
     <main className="bz-login">
       <LawnScene />
       <div className="bz-lang" role="group" aria-label={tx("Idioma", "Language")}>
-        <button type="button" aria-pressed={locale === "es"} onClick={() => setLocale("es")}>ES</button>
-        <button type="button" aria-pressed={locale === "en"} onClick={() => setLocale("en")}>EN</button>
+        <button type="button" aria-pressed={locale === "es"} onClick={() => pickLocale("es")}>ES</button>
+        <button type="button" aria-pressed={locale === "en"} onClick={() => pickLocale("en")}>EN</button>
       </div>
       <div className="bz-shell">
         <header className="bz-brand">

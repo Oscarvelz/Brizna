@@ -32,7 +32,7 @@ import { Input, Label, NativeSelect, Textarea } from "@/components/ui/input";
 import { stampDay, todayISO } from "@/lib/dates";
 import { meshFrame, viewGrid } from "@/lib/density";
 import { DEFAULT_ARRIVAL_PRESETS, DEFAULT_TASK_PRESETS } from "@/lib/types";
-import { formatDay, formatTime, frequencyLabel, money, payDueLabel, telHref, weekdayLabel } from "@/lib/format";
+import { DEFAULT_CUT_TITLE, formatDay, formatTime, frequencyLabel, jobKindLabel, money, payDueLabel, telHref, weekdayLabel } from "@/lib/format";
 import { downloadHref } from "@/lib/save-file";
 import { emphasize, useI18n, useTx } from "@/lib/i18n";
 import { noteMatches, notePlain } from "@/lib/note-search";
@@ -228,7 +228,9 @@ function ClientDetailPage() {
             </p>
             <p className="mt-2 text-sm tabular-nums">
               {tx(`Puntaje ${client.reliability}`, `Score ${client.reliability}`)}
-              {client.daysSincePay != null
+              {client.daysSincePay != null && client.balance > 0 && !client.lastPaidDate
+                ? tx(" · Sin pagos todavía", " · No payments yet")
+                : client.daysSincePay != null
                 ? tx(
                     ` · ${client.daysSincePay} días desde el último pago o corte`,
                     ` · ${client.daysSincePay} days since the last payment or cut`,
@@ -956,7 +958,7 @@ function UpcomingCuts({ jobs }: { jobs: JobRow[] }) {
       {jobs.map((job) => (
         <div key={job.id} className="grid min-w-0 gap-2 rounded-xl bg-surface p-3 shadow-card">
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="min-w-0 break-words text-sm font-semibold">{job.title || tx("Corte de césped", "Lawn cut")}</p>
+            <p className="min-w-0 break-words text-sm font-semibold">{jobKindLabel(job.kind, job.title)}</p>
             <Input
               type="date"
               value={job.scheduledDate}
@@ -1124,7 +1126,7 @@ function JobHistory({ jobs }: { jobs: JobRow[] }) {
           <li key={job.id} className={cn("min-w-0 overflow-hidden rounded-xl bg-surface shadow-card", quad ? meshFrame(cols) : dense ? "px-2 py-1.5" : "px-3 py-3")}>
             <div className={cn(quad ? "grid gap-1" : "flex items-center justify-between gap-2")}>
               <div className="min-w-0">
-                <p className={cn("truncate font-medium", quad || dense ? "text-xs" : "text-base")}>{job.title || tx("Corte", "Cut")}</p>
+                <p className={cn("truncate font-medium", quad || dense ? "text-xs" : "text-base")}>{job.title && job.title !== DEFAULT_CUT_TITLE ? job.title : tx("Corte", "Cut")}</p>
                 {!quad || cols < 4 ? <p className="truncate text-xs text-muted">{formatDay(job.scheduledDate)}</p> : null}
               </div>
               <div className={cn("flex items-center gap-2", quad ? "justify-between" : "shrink-0")}>

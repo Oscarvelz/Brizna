@@ -15,7 +15,7 @@ import { formatDay, mapsHref, money, weekdayLabel, weekdayOptions } from "@/lib/
 import { useTx } from "@/lib/i18n";
 import { getSettings, listClients, updateSettings } from "@/lib/server/lawn";
 import { useUndo } from "@/lib/undo";
-import { DEFAULT_ARRIVAL_PRESETS, DEFAULT_CUE_PRESETS, DEFAULT_DEBT_PRESETS, DEFAULT_PRICE_PRESETS, DEFAULT_TASK_PRESETS, DEFAULT_VISIT_PRESETS, type ClientKind, type ClientRow, type CutsPerMonth } from "@/lib/types";
+import { cuePresetsFor, DEFAULT_ARRIVAL_PRESETS, DEFAULT_DEBT_PRESETS, DEFAULT_PRICE_PRESETS, DEFAULT_TASK_PRESETS, DEFAULT_VISIT_PRESETS, type ClientKind, type ClientRow, type CutsPerMonth } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export type FrequencyMode = "1" | "2" | "3" | "4" | "5" | "custom";
@@ -377,7 +377,7 @@ export function ClientForm({
         label={tx("Pista o referencia (opcional)", "Cue or reference (optional)")}
         topic="pista"
       >
-        <CueField value={value.cue} onChange={(next) => set("cue", next)} presets={settingsQ.data?.cuePresets ?? DEFAULT_CUE_PRESETS} />
+        <CueField value={value.cue} onChange={(next) => set("cue", next)} presets={cuePresetsFor(settingsQ.data?.cuePresets, tx("es", "en") === "en")} />
       </Field>
 
       {PHOTOS_ENABLED ? <Field

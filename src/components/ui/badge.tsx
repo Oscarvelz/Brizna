@@ -1,29 +1,31 @@
 import { Ban, Check, Clock, TriangleAlert } from "lucide-react";
+import { useTx } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { ComputedStatus } from "@/lib/types";
 
 export function StatusBadge({ status }: { status: ComputedStatus }) {
+  const tx = useTx();
   const map: Record<
     ComputedStatus,
     { label: string; className: string; icon: typeof Clock }
   > = {
     pending: {
-      label: "Pendiente",
+      label: tx("Pendiente", "Pending"),
       className: "bg-pending-bg text-pending ring-1 ring-pending/30",
       icon: Clock,
     },
     late: {
-      label: "Tarde",
+      label: tx("Tarde", "Late"),
       className: "bg-late text-primary-fg",
       icon: TriangleAlert,
     },
     done: {
-      label: "Realizado",
+      label: tx("Realizado", "Done"),
       className: "bg-done-bg text-done ring-1 ring-done/30",
       icon: Check,
     },
     cancelled: {
-      label: "Cancelado",
+      label: tx("Cancelado", "Cancelled"),
       className: "bg-surface-2 text-muted ring-1 ring-border",
       icon: Ban,
     },

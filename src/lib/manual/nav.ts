@@ -90,7 +90,7 @@ const SCREEN_NAMES: Record<string, [string, string]> = {
   "/agenda": ["Agenda", "Schedule"],
   "/clientes": ["Clientes", "Clients"],
   "/cobros": ["Cobros", "Payments"],
-  "/estadisticas": ["Estudio", "Study"],
+  "/estadisticas": ["Estudio", "Stats"],
   "/ajustes": ["Ajustes", "Settings"],
   "/notas": ["Bloc", "Pad"],
   "/fichero": ["Fichero", "Cabinet"],

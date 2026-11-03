@@ -42,6 +42,7 @@ import { useI18n, useTx } from "@/lib/i18n";
 import {
   applyLocale,
   ensureAppearance,
+  LOCALE_PICKED_KEY,
   readStoredBusinessName,
   storeBusinessName,
 } from "@/lib/theme";
@@ -182,6 +183,7 @@ export function AppShell({
   const [dragRatio, setDragRatio] = useState<number | null>(null);
   const tabs = ["/", "/agenda", "/clientes", "/cobros", "/estadisticas"] as const;
   const settingsQ = useQuery({ queryKey: ["settings"], queryFn: () => getSettings() });
+  const shellQc = useQueryClient();
   const { t, locale, setLocale } = useI18n();
   const tx = useTx();
   const businessName = settingsQ.data?.businessName || readStoredBusinessName(DEFAULT_BUSINESS_NAME);
@@ -207,9 +209,27 @@ export function AppShell({
   useEffect(() => {
     if (!settingsQ.data) return;
     ensureAppearance(settingsQ.data.theme, settingsQ.data.palette);
-    if (settingsQ.data.locale !== locale) setLocale(settingsQ.data.locale);
+    let picked: string | null = null;
+    try {
+      picked = window.localStorage.getItem(LOCALE_PICKED_KEY);
+    } catch {
+      /* ignore */
+    }
+    if (picked === "es" || picked === "en") {
+      // The person chose a language on the sign-in screen: that choice wins and is saved.
+      try {
+        window.localStorage.removeItem(LOCALE_PICKED_KEY);
+      } catch {
+        /* ignore */
+      }
+      if (picked !== locale) setLocale(picked);
+      if (settingsQ.data.locale !== picked) {
+        shellQc.setQueryData(["settings"], { ...settingsQ.data, locale: picked });
+        void updateSettings({ data: { locale: picked } }).then(() => shellQc.invalidateQueries({ queryKey: ["settings"] }));
+      }
+    } else if (settingsQ.data.locale !== locale) setLocale(settingsQ.data.locale);
     storeBusinessName(settingsQ.data.businessName);
-  }, [settingsQ.data, locale, setLocale]);
+  }, [settingsQ.data, locale, setLocale, shellQc]);
 
   useEffect(() => {
     ensureAppearance();

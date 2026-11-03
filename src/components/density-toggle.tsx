@@ -74,13 +74,14 @@ export function useQuadCols(): QuadCols {
   return cols;
 }
 
-export function DensityToggle() {
+/** fabGap: on phones, leave room on the right for the round + button so it never sits on the last option. */
+export function DensityToggle({ fabGap = false }: { fabGap?: boolean } = {}) {
   const scope = useDensityScope();
   const density = useDensity();
   const cols = useQuadCols();
   const { t } = useI18n();
   return (
-    <div className="flex w-full min-w-0 rounded-md bg-surface-2 p-0.5 ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-border))]" role="group" aria-label={t("density.label")}>
+    <div className={cn("flex w-full min-w-0 rounded-md bg-surface-2 p-0.5 ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-border))]", fabGap && "max-md:w-[calc(100%-4.5rem)]")} role="group" aria-label={t("density.label")}>
       {OPTIONS.map((opt) => {
         const Icon = opt.icon;
         const on = density === opt.value;

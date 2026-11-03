@@ -364,11 +364,12 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   const months = [...monthMap.values()].sort((a, b) => a.key.localeCompare(b.key)).map((m) => ({ ...m, value: r2(m.value), collected: r2(m.collected), tips: r2(m.tips), forgiven: r2(m.forgiven) }));
 
   /* ---------- cobros */
-  const tierWord = (t: string) => (t === "serio" ? tx("Serio", "Serious") : t === "espera" ? tx("En espera", "Waiting") : tx("Al día", "Current"));
+  // "Al día" read as "paid up" next to a balance: a client who owes but is not late is "Reciente".
+  const tierWord = (t: string) => (t === "serio" ? tx("Serio", "Serious") : t === "espera" ? tx("En espera", "Waiting") : tx("Reciente", "Recent"));
   const cobrosRows = owingKept
     .map((c) => {
       const a = raw.aging[c.id] ?? { oldestDays: null, opening: c.balance, b0: 0, b31: 0, b61: 0, b91: 0, unpaidJobs: 0 };
-      return { id: c.id, name: nameOf(c.id), phone: phoneOf(c), balance: c.balance, oldestDays: a.oldestDays, opening: a.opening, b0: a.b0, b31: a.b31, b61: a.b61, b91: a.b91, tier: tierWord(c.payTier), sincePay: c.daysSincePay, unpaidJobs: a.unpaidJobs };
+      return { id: c.id, name: nameOf(c.id), phone: phoneOf(c), balance: c.balance, oldestDays: a.oldestDays, opening: a.opening, b0: a.b0, b31: a.b31, b61: a.b61, b91: a.b91, tier: tierWord(c.payTier), sincePay: c.lastPaidDate ? c.daysSincePay : null, unpaidJobs: a.unpaidJobs };
     })
     .sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name));
   const bucketDefs = [
@@ -633,10 +634,15 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
       )
     : tx("Nadie te debe nada. ¡Todo cobrado!", "Nobody owes you anything. All collected!");
   const topMethod = pagos.byMethod[0];
+  // "La mayoría en efectivo (80%)"; when no method was written down: "Todo sin medio anotado" / "Medio sin anotar en el 60%".
+  const topShare = topMethod && kpi.collected > 0 ? Math.round((topMethod.amount / kpi.collected) * 100) : 0;
+  const unnoted = topMethod?.label === tx("Sin anotar", "Not noted");
+  const methodLineEs = !topMethod ? "" : unnoted ? (topShare >= 100 ? " Todo sin medio de pago anotado." : ` El ${topShare}% sin medio de pago anotado.`) : topShare >= 100 ? ` Todo en ${topMethod.label.toLowerCase()}.` : ` La mayoría en ${topMethod.label.toLowerCase()} (${topShare}%).`;
+  const methodLineEn = !topMethod ? "" : unnoted ? (topShare >= 100 ? " No payment method noted." : ` ${topShare}% with no method noted.`) : topShare >= 100 ? ` All by ${topMethod.label.toLowerCase()}.` : ` Most by ${topMethod.label.toLowerCase()} (${topShare}%).`;
   takeaway.pagos = kpi.payments
     ? tx(
-        `Entraron ${m(kpi.collected)} en ${kpi.payments} ${plural(kpi.payments, "pago", "pagos")}.${topMethod && kpi.collected > 0 ? ` La mayoría en ${topMethod.label.toLowerCase()} (${Math.round((topMethod.amount / kpi.collected) * 100)}%).` : ""}${kpi.forgiven > 0 ? ` Perdonaste ${m(kpi.forgiven)}.` : ""}`,
-        `${m(kpi.collected)} came in over ${kpi.payments} ${plural(kpi.payments, "payment", "payments")}.${topMethod && kpi.collected > 0 ? ` Most by ${topMethod.label.toLowerCase()} (${Math.round((topMethod.amount / kpi.collected) * 100)}%).` : ""}${kpi.forgiven > 0 ? ` You forgave ${m(kpi.forgiven)}.` : ""}`,
+        `Entraron ${m(kpi.collected)} en ${kpi.payments} ${plural(kpi.payments, "pago", "pagos")}.${topMethod && kpi.collected > 0 ? methodLineEs : ""}${kpi.forgiven > 0 ? ` Perdonaste ${m(kpi.forgiven)}.` : ""}`,
+        `${m(kpi.collected)} came in over ${kpi.payments} ${plural(kpi.payments, "payment", "payments")}.${topMethod && kpi.collected > 0 ? methodLineEn : ""}${kpi.forgiven > 0 ? ` You forgave ${m(kpi.forgiven)}.` : ""}`,
       )
     : tx(`No entraron pagos ${perIn}.`, `No payments came in ${perIn}.`);
   takeaway.trabajos = kpi.jobsDone

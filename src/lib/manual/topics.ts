@@ -84,15 +84,15 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         sum: ["Cuánto detalle ves en cada tarjeta.", "How much detail each card shows."],
         what: [
           "Grande, Media, Lista y Malla cambian cuánto ves de cada patio. Cada pantalla recuerda la suya: Hoy, Clientes, Agenda, Cobros, la ficha y el Fichero no se pisan.",
-          "Large, Medium, List, and Mesh change how much you see of each yard. Each screen remembers its own: Today, Clients, Schedule, Payments, the file, and the cabinet do not overwrite each other.",
+          "Large, Medium, List, and Grid change how much you see of each yard. Each screen remembers its own: Today, Clients, Schedule, Payments, the file, and the cabinet do not overwrite each other.",
         ],
         how: [
           "Malla empieza en 2 columnas. Otro toque pone 3, luego 4, y vuelve a 2. En 2 hay detalle y algunas acciones; en 4, solo el nombre. En Clientes, Lista pone el precio junto al nombre. En Cobros, Grande muestra el corte, el atraso y Perdonar.",
-          "Mesh starts at 2 columns. Another tap gives 3, then 4, then back to 2. At 2 there is detail and some actions; at 4, only the name. In Clients, List puts the price next to the name. In Payments, Large shows the cut, the lateness, and Forgive.",
+          "Grid starts at 2 columns. Another tap gives 3, then 4, then back to 2. At 2 there is detail and some actions; at 4, only the name. In Clients, List puts the price next to the name. In Payments, Large shows the cut, the lateness, and Forgive.",
         ],
         tip: ["Usa Lista para cobrar rápido y Grande para revisar un caso.", "Use List to collect fast and Large to review one case."],
         go: { to: "/", where: ["Hoy, arriba de la lista", "Today, above the list"] },
-        terms: [["Malla", "Mesh"], ["Grande", "Large"], ["Media", "Medium"], ["Lista", "List"]],
+        terms: [["Malla", "Grid"], ["Grande", "Large"], ["Media", "Medium"], ["Lista", "List"]],
       },
       {
         id: "desplegar-hoy",
@@ -149,19 +149,20 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Parar por lluvia mueve los pendientes de hoy al siguiente día abierto. También puedes parar por médico, dentista u otra razón escrita a mano. Se guarda la hora exacta.",
           "Stop for rain moves today's pending yards to the next open day. You can also stop for a doctor, the dentist, or a reason you type. The exact time is saved.",
         ],
-        tip: ["Estudio cuenta esos días en Días parados.", "Study counts those days under Stopped days."],
+        tip: ["Estudio cuenta esos días en Días parados.", "Stats counts those days under Stopped days."],
         go: { to: "/", where: ["Hoy", "Today"] },
         terms: [["Parar por lluvia", "Stop for rain"], ["Lluvia", "Rain"]],
       },
       {
         id: "pasar-pendientes",
-        title: ["Pasar los pendientes de hoy", "Move today's pending yards"],
+        title: ["Pasar los de hoy", "Move today's jobs"],
         sum: ["Mueve lo que falta de hoy a otro día.", "Moves what is left today to another day."],
         what: [
-          "Pasa los patios de hoy que siguen pendientes al día que elijas. Los que ya marcaste Hecho se quedan. No se cobra al pasarlos. La razón, si la pones, queda en esa fecha.",
-          "Moves today's yards that are still pending to the day you choose. Ones you already marked Done stay. Nothing is collected by moving them. The reason, if you add one, stays on that date.",
+          "El botón Pasar los de hoy pasa los patios de hoy que siguen pendientes al día que elijas. Los que ya marcaste Hecho se quedan. No se cobra al pasarlos. La razón, si la pones, queda en esa fecha.",
+          "The Move today's jobs button moves today's yards that are still pending to the day you choose. Ones you already marked Done stay. Nothing is collected by moving them. The reason, if you add one, stays on that date.",
         ],
         go: { to: "/", where: ["Hoy", "Today"] },
+        terms: [["Pasar los de hoy", "Move today's jobs"]],
       },
       {
         id: "pasar-atrasado",
@@ -277,7 +278,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Lo que ya debía antes de entrar en la app, como $80 de cortes pasados. Queda en Por cobrar. Si no debe nada, déjalo vacío.",
           "What they already owed before joining the app, such as $80 from past cuts. It goes to To collect. If they owe nothing, leave it empty.",
         ],
-        tip: ["En Estudio sale aparte, como Saldo inicial.", "In Study it shows apart, as Opening balance."],
+        tip: ["En Estudio sale aparte, como Saldo inicial.", "In Stats it shows apart, as Opening balance."],
         go: { to: "/nuevo", where: ["Nuevo cliente", "New client"] },
         terms: [["Saldo inicial", "Opening balance"]],
       },
@@ -629,7 +630,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Si alguien da más de lo que debe, anótalo como propina al marcar Hecho o al cobrar. La propina no baja ni sube la deuda y no entra en Cobrado.",
           "If someone gives more than they owe, record it as a tip when you mark Done or take a payment. A tip does not change the debt and does not go into Collected.",
         ],
-        tip: ["Estudio la suma en el mes y en el año, en Propinas.", "Study adds it up for the month and the year, in Tips."],
+        tip: ["Estudio la suma en el mes y en el año, en Propinas.", "Stats adds it up for the month and the year, in Tips."],
         go: { to: "/", where: ["Hoy, al marcar Hecho", "Today, when you mark Done"] },
       },
     ],
@@ -638,23 +639,23 @@ export const MANUAL_CHAPTERS: Chapter[] = [
   /* ------------------------------------------------------------------ 5 */
   {
     id: "estudio",
-    title: ["Estudio y Asesor", "Study and Advisor"],
+    title: ["Estudio y Asesor", "Stats and Advisor"],
     intro: ["Tus cifras en el tiempo, y un consejo claro.", "Your figures over time, and plain advice."],
     topics: [
       {
         id: "estudio",
-        title: ["Estudio | Asesor", "Study | Advisor"],
+        title: ["Estudio | Asesor", "Stats | Advisor"],
         sum: ["Dos vistas: tus cifras, o qué hacer con ellas.", "Two views: your figures, or what to do with them."],
         what: [
           "Arriba hay dos botones: Estudio y Asesor. Estudio son tus cifras en el tiempo. Asesor te dice en palabras simples cómo va el negocio. La pantalla recuerda cuál elegiste.",
-          "At the top there are two buttons: Study and Advisor. Study is your figures over time. Advisor tells you in plain words how the business is doing. The screen remembers your choice.",
+          "At the top there are two buttons: Stats and Advisor. Stats is your figures over time. Advisor tells you in plain words how the business is doing. The screen remembers your choice.",
         ],
         how: [
           "Cada bloque de Estudio empieza con su cifra grande y una frase; el detalle va debajo. Cada bloque se pliega y el pin lo deja abierto. La palomilla de arriba despliega todo. La lupa busca una cifra.",
-          "Each Study block starts with its big figure and one sentence; detail goes below. Each block folds and the pin keeps it open. The check at the top expands everything. The magnifying glass finds a figure.",
+          "Each Stats block starts with its big figure and one sentence; detail goes below. Each block folds and the pin keeps it open. The check at the top expands everything. The magnifying glass finds a figure.",
         ],
-        go: { to: "/estadisticas", view: "estudio", where: ["Estudio", "Study"] },
-        terms: [["Cifras", "Figures"], ["Estudio", "Study"]],
+        go: { to: "/estadisticas", view: "estudio", where: ["Estudio", "Stats"] },
+        terms: [["Cifras", "Figures"], ["Estudio", "Stats"]],
       },
       {
         id: "este-mes",
@@ -664,7 +665,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "El anillo grande es lo cobrado este mes. El de adentro, el trabajo ya hecho. Los dos se miden contra lo esperado: lo que vale todo el trabajo agendado del mes (hecho, por hacer y atrasado).",
           "The big ring is what you collected this month. The inner one is the work already done. Both are measured against expected: what all of this month's scheduled work is worth (done, still to do, and late).",
         ],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-pulso", where: ["Estudio, Este mes", "Study, This month"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-pulso", where: ["Estudio, Este mes", "Stats, This month"] },
         terms: [["Anillo", "Ring"], ["Esperado", "Expected"]],
       },
       {
@@ -675,7 +676,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "La meta del mes suma la meta de patios de cada día de trabajo del mes (la que pones en Esfuerzo de la semana). Los días libres y las vacaciones no cuentan. Cuenta cada trabajo hecho, como Esfuerzo. La rayita marca dónde deberías ir hoy.",
           "The month goal adds up the yard goal of every working day this month (the one you set in This week's effort). Days off and vacation don't count. It counts every job done, like Effort. The tick marks where you should be today.",
         ],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-meta", where: ["Estudio, Meta del mes", "Study, Month goal"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-meta", where: ["Estudio, Meta del mes", "Stats, Month goal"] },
         terms: [["Meta", "Goal"]],
       },
       {
@@ -686,7 +687,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Toca un día para poner su meta de patios. La meta de un lunes (o el día que toques) se mantiene las semanas siguientes. Si cambias un día concreto, solo cambia esa fecha. Si te ayudan, súbela. Si quieres, iguala la meta a lo que ya cortaste.",
           "Tap a day to set its yard goal. A Monday goal (or the day you tap) stays for later weeks. Changing one date changes only that date. Raise it if you have help. You can also match the goal to what you already cut.",
         ],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-esfuerzo", where: ["Estudio, Esfuerzo de la semana", "Study, This week's effort"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-esfuerzo", where: ["Estudio, Esfuerzo de la semana", "Stats, This week's effort"] },
       },
       {
         id: "ingreso-fijo",
@@ -696,7 +697,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Lo que dejan tus clientes fijos activos en un mes normal: visitas al mes (según su frecuencia) por su precio. No cuenta extras, trabajos de una vez, clientes en pausa ni temporadas. Es tu piso: lo que entra si todo sigue igual.",
           "What your active regular clients bring in a normal month: visits a month (from their frequency) times their price. It leaves out extras, one-time jobs, paused clients, and seasons. It is your floor: what comes in if nothing changes.",
         ],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-fijo", where: ["Estudio, Ingreso fijo del mes", "Study, Steady monthly income"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-fijo", where: ["Estudio, Ingreso fijo del mes", "Stats, Steady monthly income"] },
         terms: [["Ingreso fijo", "Fixed income"]],
       },
       {
@@ -708,7 +709,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "What you collected divided by your confirmed work hours, for the week and the month. It counts up to the last day with confirmed hours. The ring compares the week with the month: full means as good or better.",
         ],
         tip: ["Confirma tus horas al final del día para que la cifra sea real.", "Confirm your hours at day's end so the figure is real."],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-hora", where: ["Estudio, $ por hora", "Study, $ per hour"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-hora", where: ["Estudio, $ por hora", "Stats, $ per hour"] },
       },
       {
         id: "ingresos-mes",
@@ -718,7 +719,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Verde: lo cobrado cada mes. Línea punteada: lo que valió el trabajo hecho ese mes. Si la línea va por encima del verde, quedó dinero por cobrar. El último mes va en curso. Toca un mes para ver el detalle.",
           "Green: collected each month. Dotted line: what the work done that month was worth. When the line runs above the green, money was left to collect. The last month is in progress. Tap a month for details.",
         ],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-mes", where: ["Estudio, Ingresos mes a mes", "Study, Income month by month"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-mes", where: ["Estudio, Ingresos mes a mes", "Stats, Income month by month"] },
       },
       {
         id: "quien-debe",
@@ -729,7 +730,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "What you are owed, split by the age of each unpaid job. A payment covers the oldest first, so what is still owed is the most recent jobs. What was owed before the first recorded cut goes apart, as Opening balance. Waiting and High risk follow your limits in Settings.",
         ],
         tip: ["Fiabilidad de pago mide si pagan a tiempo. No es el mismo número que Por cobrar.", "Payment reliability measures whether they pay on time. It is not the same number as To collect."],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-fiabilidad", where: ["Estudio, Quién debe", "Study, Who owes"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-fiabilidad", where: ["Estudio, Quién debe", "Stats, Who owes"] },
         terms: [["Fiabilidad de pago", "Payment reliability"], ["Antigüedad de la deuda", "Debt age"]],
       },
       {
@@ -740,7 +741,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Cada fila es un mes y cada columna un día de la semana. Más verde, más trabajos hechos. Abajo, cuánto deja cada día de la semana en los últimos 12 meses: así ves qué ruta vale más. Toca un cuadro para ver el número.",
           "Each row is a month and each column a weekday. Greener means more jobs done. Below, what each weekday brought in over the last 12 months, so you can see which route is worth more. Tap a square for its number.",
         ],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-calendario", where: ["Estudio, Días y temporadas", "Study, Days and seasons"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-calendario", where: ["Estudio, Días y temporadas", "Stats, Days and seasons"] },
         terms: [["Mapa de calor", "Heat map"]],
       },
       {
@@ -751,7 +752,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Lo que valió el trabajo hecho para cada cliente en los últimos 12 meses (cortes, extras y trabajos de una vez). La barra compara con el primero. Toca un nombre para abrir su ficha.",
           "What the work done for each client was worth over the last 12 months (cuts, extras, and one-time jobs). The bar compares with the first one. Tap a name to open their card.",
         ],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-mejores", where: ["Estudio, Mejores clientes", "Study, Best clients"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-mejores", where: ["Estudio, Mejores clientes", "Stats, Best clients"] },
       },
       {
         id: "precio-trabajo",
@@ -761,7 +762,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Promedio de lo que valió cada trabajo hecho en los últimos 12 meses, separado por tipo. Los trabajos de $0 (cortesías) no cuentan. La línea es el precio medio de un corte, mes a mes.",
           "Average value of each job done over the last 12 months, by kind. $0 jobs (courtesies) don't count. The line is the average price of a cut, month by month.",
         ],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-precio", where: ["Estudio, Precio por trabajo", "Study, Price per job"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-precio", where: ["Estudio, Precio por trabajo", "Stats, Price per job"] },
         terms: [["Ticket promedio", "Average ticket"], ["Cortesía", "Courtesy"]],
       },
       {
@@ -772,7 +773,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Dinero de más que no cambia la deuda ni entra en Cobrado. Arriba, lo de este año; las barras son los últimos 12 meses.",
           "Extra money that does not change the debt or count as Collected. On top, this year; the bars are the last 12 months.",
         ],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-propinas", where: ["Estudio, Propinas", "Study, Tips"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-propinas", where: ["Estudio, Propinas", "Stats, Tips"] },
       },
       {
         id: "semana-vs",
@@ -782,7 +783,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Arriba, esta semana hasta hoy contra la semana pasada hasta el mismo día. Abajo, las últimas 8 semanas: verde es lo cobrado; la barra de al lado es lo que valió el trabajo hecho, por tipo (cortes, extras, una vez), aunque aún no te hayan pagado.",
           "On top, this week so far against last week up to the same day. Below, the last 8 weeks: green is collected; the bar beside it is what the work done was worth, by kind (cuts, extras, one time), even if not paid yet.",
         ],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-semana", where: ["Estudio, Esta semana", "Study, This week"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-semana", where: ["Estudio, Esta semana", "Stats, This week"] },
       },
       {
         id: "dias-parados",
@@ -790,7 +791,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         sum: ["Cuántos días paraste y por qué.", "How many days you stopped, and why."],
         what: ["Días en los que paraste el trabajo y la razón que quedó guardada.", "Days you stopped work and the reason that was saved."],
         tip: ["Salen de Parar el día, en Hoy.", "They come from Stop the day, on Today."],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-horas", where: ["Estudio, Horas", "Study, Hours"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-horas", where: ["Estudio, Horas", "Stats, Hours"] },
       },
       {
         id: "cada-anio",
@@ -801,7 +802,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "How much you collected and how many cuts you made each year. On top, lifetime: everything collected since the first payment (tips apart) and every cut done. The count is not erased when the year changes.",
         ],
         tip: ["Son dos cuentas distintas: dinero y patios. Un patio sin pagar también cuenta como corte.", "They are two different counts: money and yards. An unpaid yard still counts as a cut."],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-anio", where: ["Estudio, Cada año", "Study, Each year"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-anio", where: ["Estudio, Cada año", "Stats, Each year"] },
         terms: [["De por vida", "Lifetime"]],
       },
       {
@@ -809,7 +810,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         title: ["Por qué se pospuso", "Why it was postponed"],
         sum: ["Las razones de los patios movidos.", "The reasons yards were moved."],
         what: ["Últimos 90 días. Cuenta los patios movidos con una razón.", "Last 90 days. Counts yards moved with a reason."],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-pospuesto", where: ["Estudio, Por qué se pospuso", "Study, Why it was postponed"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-pospuesto", where: ["Estudio, Por qué se pospuso", "Stats, Why it was postponed"] },
       },
       {
         id: "altas-bajas",
@@ -819,7 +820,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Altas: patios que añadiste ese mes. Bajas: clientes que diste de baja ese mes.",
           "New: yards you added that month. Departures: clients you deactivated that month.",
         ],
-        go: { to: "/estadisticas", view: "estudio", focus: "cif-clientes", where: ["Estudio, Clientes nuevos y bajas", "Study, New clients and departures"] },
+        go: { to: "/estadisticas", view: "estudio", focus: "cif-clientes", where: ["Estudio, Clientes nuevos y bajas", "Stats, New clients and departures"] },
         terms: [["Altas", "New"], ["Bajas", "Departures"]],
       },
       {
@@ -828,9 +829,9 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         sum: ["Pon arriba lo que más miras.", "Put what you check most at the top."],
         what: [
           "El botón junto a Estudio sube o baja cada bloque. Guardar pregunta antes de dejar ese orden. Cancelar no cambia nada. Orden de siempre empieza con Este mes y Meta del mes.",
-          "The button next to Study moves each block up or down. Save asks before keeping that order. Cancel changes nothing. Usual order starts with This month and Month goal.",
+          "The button next to Stats moves each block up or down. Save asks before keeping that order. Cancel changes nothing. Usual order starts with This month and Month goal.",
         ],
-        go: { to: "/estadisticas", view: "estudio", where: ["Estudio, junto al título", "Study, next to the title"] },
+        go: { to: "/estadisticas", view: "estudio", where: ["Estudio, junto al título", "Stats, next to the title"] },
       },
       {
         id: "asesor",
@@ -840,7 +841,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Asesor te dice en palabras simples cómo va el negocio, con un puntaje de 0 a 100. Con 75 o más, va bien. Debajo: lo que te deben, tu ingreso fijo al mes y tus clientes activos.",
           "Advisor tells you in plain words how the business is doing, with a score from 0 to 100. At 75 or more, it is doing well. Below: what you are owed, your fixed monthly income, and your active clients.",
         ],
-        go: { to: "/estadisticas", view: "asesor", where: ["Estudio, botón Asesor", "Study, Advisor button"] },
+        go: { to: "/estadisticas", view: "asesor", where: ["Estudio, botón Asesor", "Stats, Advisor button"] },
         terms: [["Puntaje", "Score"], ["Asesor", "Advisor"]],
       },
       {
@@ -1095,12 +1096,12 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Choose what goes in (everything or just some parts), which dates and which clients. It comes out as a PDF to read and print, a worksheet to filter and sum, or straight to the printer.",
         ],
         how: [
-          "Empieza con un atajo: Todo, Cobros y deudas, Agenda de la semana, Resumen del mes, Clientes o Para el contador. Luego elige fechas, secciones y clientes. En Privacidad puedes ocultar teléfonos, dejar solo iniciales o quitar los montos para un ayudante. Al final: PDF, Hoja (XLSX), Imprimir o Compartir.",
-          "Start with a shortcut: Everything, Payments and debts, Week schedule, Month summary, Clients, or For the accountant. Then pick dates, sections, and clients. In Privacy you can hide phone numbers, show initials only, or drop the amounts for a helper. Finally: PDF, Sheet (XLSX), Print, or Share.",
+          "Empieza con un atajo: Todo, Cobros y deudas, Agenda semanal, Resumen del mes, Clientes o Para el contador. Luego elige fechas, secciones y clientes. En Privacidad puedes ocultar teléfonos, dejar solo iniciales o quitar los montos para un ayudante. Al final: PDF, Hoja (XLSX), Imprimir o Compartir.",
+          "Start with a shortcut: Everything, Payments & debts, This week's route, Month summary, Clients, or For the CPA. Then pick dates, sections, and clients. In Privacy you can hide phone numbers, show initials only, or drop the amounts for a helper. Finally: PDF, Sheet (XLSX), Print, or Share.",
         ],
         tip: ["Si cambias una casilla, el atajo pasa a A medida.", "If you change a box, the shortcut becomes Custom."],
         go: { to: "/ajustes", focus: "aj-exportar", where: ["Ajustes, Exportar e imprimir", "Settings, Export and print"] },
-        terms: [["PDF", "PDF"], ["XLSX", "XLSX"], ["Hoja de cálculo", "Worksheet"], ["Privacidad", "Privacy"], ["Para el contador", "For the accountant"], ["Compartir", "Share"], ["Informe", "Report"]],
+        terms: [["PDF", "PDF"], ["XLSX", "XLSX"], ["Hoja de cálculo", "Worksheet"], ["Privacidad", "Privacy"], ["Para el contador", "For the CPA"], ["Compartir", "Share"], ["Informe", "Report"]],
       },
       {
         id: "copia",

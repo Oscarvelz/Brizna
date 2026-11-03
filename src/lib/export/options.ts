@@ -100,7 +100,7 @@ export const PRESETS: PresetDef[] = [
   {
     id: "cobros",
     es: "Cobros y deudas",
-    en: "Payments and debts",
+    en: "Payments & debts",
     noteEs: "Quién debe y lo que entró",
     noteEn: "Who owes and what came in",
     period: "month",
@@ -112,7 +112,7 @@ export const PRESETS: PresetDef[] = [
   },
   {
     id: "agenda",
-    es: "Agenda de la semana",
+    es: "Agenda semanal",
     en: "This week's route",
     noteEs: "Hoja de ruta para llevar",
     noteEn: "A route sheet to carry",
@@ -153,7 +153,7 @@ export const PRESETS: PresetDef[] = [
   {
     id: "contador",
     es: "Para el contador",
-    en: "For the accountant",
+    en: "For the CPA",
     noteEs: "Ingresos por mes, propinas, pagos",
     noteEn: "Income by month, tips, payments",
     period: "lastYear",

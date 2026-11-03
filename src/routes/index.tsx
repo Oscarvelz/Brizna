@@ -272,7 +272,7 @@ function Home() {
             disabled={pendingToday === 0}
             onClick={() => setAskAcc("today")}
           >
-            {tx("Pasar los de hoy", "Move today's")}
+            {tx("Pasar los de hoy", "Move today's jobs")}
           </Button>
         </div>
       ) : null}
@@ -497,7 +497,7 @@ function DayBoard({
   return (
     <div className="mb-6 grid gap-2">
       <div className="mb-1 grid gap-2">
-        <DensityToggle />
+        <DensityToggle fabGap />
       </div>
 
       {pinned.length > 0 ? (

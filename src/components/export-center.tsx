@@ -156,7 +156,7 @@ function Chip({ on, onClick, children, disabled, title, data }: { on: boolean; o
         on ? "bz-pick" : "bg-surface-2 text-fg hover:bg-border",
       )}
     >
-      {on ? <Check className="size-4" /> : null}
+      {/* .bz-pick draws its own check */}
       {children}
     </button>
   );
@@ -353,7 +353,7 @@ export function ExportSheet({ open, preset, onClose }: { open: boolean; preset: 
                       <Icon className="size-4 shrink-0" />
                       {tx(p.es, p.en)}
                     </span>
-                    <span className={cn("text-xs leading-snug", on ? "text-primary-fg/85" : "text-muted")}>{tx(p.noteEs, p.noteEn)}</span>
+                    <span className={cn("text-xs leading-snug", on ? "opacity-80" : "text-muted")}>{tx(p.noteEs, p.noteEn)}</span>
                   </button>
                 );
               })}

@@ -47,7 +47,7 @@ const MASONRY_FULL = "#cif-pulso, #cif-mes";
  * so opening a fold only pushes what is below it in that column). Children keep their CSS order.
  * A child with data-masonry-full spans every column. cols = 0 turns it off (phones).
  */
-export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap = 16) {
+export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap = 16, fillLast = false) {
   useLayoutEffect(() => {
     const box = ref.current;
     if (!box) return;
@@ -71,15 +71,21 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
         .map((el, i) => ({ el, i, o: Number.parseInt(getComputedStyle(el).order, 10) || 0 }))
         .sort((a, b) => a.o - b.o || a.i - b.i);
       let k = 0;
+      let last: { el: HTMLElement; c: number } | null = null;
       for (const { el } of list) {
         if (el.hasAttribute("data-masonry-full") || el.matches(MASONRY_FULL)) {
           el.style.gridColumn = "1 / -1";
+          last = null;
           continue;
         }
         if (getComputedStyle(el).display === "none") continue;
-        el.style.gridColumn = String((k % cols) + 1);
+        const c = (k % cols) + 1;
+        el.style.gridColumn = String(c);
+        last = { el, c };
         k += 1;
       }
+      // An odd last card (3 cards in 2 columns) takes the rest of the row instead of leaving a hole.
+      if (fillLast && last && k % cols !== 0) last.el.style.gridColumn = `${last.c} / -1`;
     };
     const size = () => {
       for (const el of kids()) {
@@ -90,6 +96,8 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
       }
     };
     // Write spans on the next frame: writing inside the observer callback trips its loop guard.
+    // Rows are minmax(4px, auto) in CSS, so a section that grew before its span caught up pushes
+    // its rows taller (a brief gap at worst) instead of drawing over the section below it.
     let raf = 0;
     const ro = new ResizeObserver(() => {
       if (raf) return;
@@ -117,7 +125,7 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
       mo.disconnect();
       clear();
     };
-  }, [ref, cols, gap]);
+  }, [ref, cols, gap, fillLast]);
 }
 
 /** A box whose children become steady columns on large screens; phones get the box exactly as before. */

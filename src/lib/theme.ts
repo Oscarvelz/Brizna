@@ -3,6 +3,8 @@ import type { LocaleName, PaletteName, ThemeName } from "@/lib/types";
 export const THEME_KEY = "ols-theme";
 export const PALETTE_KEY = "ols-palette";
 export const LOCALE_KEY = "ols-locale";
+/** A language the person tapped outside Ajustes (sign-in screen); saved to settings on next open. */
+export const LOCALE_PICKED_KEY = "ols-locale-picked";
 export const NAME_KEY = "ols-business-name";
 const LOOK_KEY = "ols-look-v2";
 const MODE_KEY = "ols-appearance-mode";

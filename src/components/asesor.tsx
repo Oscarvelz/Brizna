@@ -167,7 +167,9 @@ const shortAgo = (days: number, tx: Tx) => (days >= 365 ? tx(`${Math.floor(days 
 
 export function verdict(r: AdvisorReading, tx: Tx): { title: string; sub: string; word: string } {
   const w = worstPillar(r);
-  const issue = tx(...ISSUE[w.key]);
+  // Collection check failing with nothing overdue: the problem is unpaid recent work, not late debt.
+  const slowPay = w.key === "cobro" && w.b === 0;
+  const issue = slowPay ? tx(`solo has cobrado el ${w.a}% de tu trabajo`, `you've collected only ${w.a}% of your work`) : tx(...ISSUE[w.key]);
   const word = r.tone === "good" ? tx("Bien", "Good") : r.tone === "warn" ? tx("Regular", "Fair") : tx("Atención", "Needs care");
   let title: string;
   if (w.status === "pass") title = tx("Tu negocio va muy bien.", "Your business is doing great.");
@@ -176,6 +178,7 @@ export function verdict(r: AdvisorReading, tx: Tx): { title: string; sub: string
   else title = tx(`Tu negocio necesita atención: ${issue}.`, `Your business needs care: ${issue}.`);
   let sub = "";
   if (w.status === "pass") sub = tx("Sigue así: cobra a tiempo y cuida a tus mejores clientes.", "Keep it up: collect on time and look after your best clients.");
+  else if (slowPay) sub = tx(`De lo que hiciste en 90 días te falta cobrar ${100 - Math.min(100, w.a)}%. Nada tiene atraso todavía.`, `${100 - Math.min(100, w.a)}% of your last 90 days of work is still unpaid. Nothing is overdue yet.`);
   else if (w.key === "cobro") sub = tx(`${w.b} ${plural(w.b, "cliente te debe", "clientes te deben")} ${usd(w.c)} con atraso.`, `${w.b} ${plural(w.b, "client owes", "clients owe")} you ${usd(w.c)}, overdue.`);
   else if (w.key === "precios") sub = tx(`${w.a} de ${w.b} clientes de más de un año pagan menos de lo normal.`, `${w.a} of ${w.b} clients of over a year pay less than usual.`);
   else if (w.key === "clientes") sub = tx(`${w.a} de ${w.b} clientes fijos se están alejando.`, `${w.a} of ${w.b} regular clients are drifting away.`);
@@ -193,7 +196,7 @@ function Hero({ r }: { r: AdvisorReading }) {
     <section className={cn("as-card as-hero", TONE_CLASS[r.tone])} data-masonry-full style={{ "--i": 0 } as CSSProperties}>
       <div className="as-hero-top">
         <div className="min-w-0 flex-1">
-          <p className="as-kicker"><Sprout aria-hidden />{tx("Tu negocio, en claro", "Your business, plainly")}</p>
+          <p className="as-kicker"><Sprout aria-hidden />{tx("Tu negocio, en claro", "Business, in short")}</p>
           <h2 className="as-verdict">{v.title}</h2>
           <p className="as-sub">{v.sub}</p>
         </div>
@@ -206,7 +209,7 @@ function Hero({ r }: { r: AdvisorReading }) {
           {r.owedLate > 0 ? <small className="text-late">{usd(r.owedLate)} {tx("con atraso", "overdue")}</small> : <small>{tx("todo al día", "all current")}</small>}
         </div>
         <div>
-          <span>{tx("Fijo al mes", "Fixed a month")}</span>
+          <span>{tx("Fijo al mes", "Monthly")}</span>
           <CountUp className="as-stat-num" value={r.monthly} format={usd} />
           <small>{tx("de tus clientes fijos", "from regular clients")}</small>
         </div>
@@ -612,7 +615,7 @@ function Actions({ r }: { r: AdvisorReading }) {
   const tx = useTx();
   const acts = useRef<HTMLOListElement | null>(null);
   const width = usePageWidth();
-  useMasonry(acts, width >= 1150 ? 3 : width >= 600 ? 2 : 0, 11);
+  useMasonry(acts, width >= 1150 ? 3 : width >= 600 ? 2 : 0, 11, true);
   return (
     <section className="as-card" data-masonry-full style={{ "--i": 1 } as CSSProperties}>
       <h3 className="as-h3"><Leafy />{tx("Lo que yo haría ahora", "What I'd do now")}</h3>

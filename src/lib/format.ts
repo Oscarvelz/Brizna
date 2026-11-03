@@ -43,7 +43,7 @@ export function formatStamp(iso: string): string {
   let hour = date.getHours();
   const minute = String(date.getMinutes()).padStart(2, "0");
   const second = String(date.getSeconds()).padStart(2, "0");
-  const suffix = hour >= 12 ? "p. m." : "a. m.";
+  const suffix = english() ? (hour >= 12 ? "PM" : "AM") : hour >= 12 ? "p. m." : "a. m.";
   hour = hour % 12 || 12;
   return `${day}, ${hour}:${minute}:${second} ${suffix}`;
 }
@@ -58,7 +58,7 @@ export function formatTime(hhmm: string | null | undefined): string | null {
   if (!m) return hhmm;
   let h = Number(m[1]);
   const min = m[2];
-  const suffix = h >= 12 ? "p.m." : "a.m.";
+  const suffix = english() ? (h >= 12 ? "PM" : "AM") : h >= 12 ? "p.m." : "a.m.";
   h = h % 12;
   if (h === 0) h = 12;
   return min === "00" ? `${h} ${suffix}` : `${h}:${min} ${suffix}`;
@@ -179,8 +179,13 @@ export function frequencyLabel(
   return "Cada 2 semanas";
 }
 
+/** Title the app stores on every scheduled cut; shown in the current language, never rewritten. */
+export const DEFAULT_CUT_TITLE = "Corte de césped";
+
 export function jobKindLabel(kind: string, title?: string | null): string {
-  if (title?.trim()) return title.trim();
+  const own = title?.trim();
+  if (own && own !== DEFAULT_CUT_TITLE) return own;
+  if (own === DEFAULT_CUT_TITLE) return english() ? "Lawn cut" : DEFAULT_CUT_TITLE;
   if (english()) {
     if (kind === "extra") return "Extra job";
     if (kind === "one_time") return "One-time job";

@@ -474,8 +474,8 @@ export function RichNotes({
         ))}
         <button
           type="button"
-          aria-label="Título"
-          title="Título"
+          aria-label={tx("Título", "Heading")}
+          title={tx("Título", "Heading")}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => format("formatBlock", "h2")}
           className={cn(
@@ -483,14 +483,14 @@ export function RichNotes({
             marks.h2 && "format-on",
           )}
         >
-          Título
+          {tx("Título", "Heading")}
         </button>
         <span className="inline-flex items-center">
           <button
             type="button"
             aria-expanded={colorsOpen}
-            aria-label="Color del texto"
-            title="Color del texto"
+            aria-label={tx("Color del texto", "Text color")}
+            title={tx("Color del texto", "Text color")}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setColorsOpen((open) => !open)}
             className="grid size-10 place-items-center rounded-sm bg-surface text-fg shadow-card"

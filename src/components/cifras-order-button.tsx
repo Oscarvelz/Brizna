@@ -76,7 +76,7 @@ export function CifrasOrderButton() {
                   {emphasize(
                     tx(
                       "Sube o baja cada bloque. Orden de siempre prepara el orden original, pero no lo guarda solo. Al guardar, Estudio queda en ese orden en este teléfono. No se borra nada.",
-                      "Move each block up or down. Usual order prepares the original order, but it does not save by itself. When you save, Study stays in that order on this phone. Nothing is deleted.",
+                      "Move each block up or down. Usual order prepares the original order, but it does not save by itself. When you save, Stats stays in that order on this phone. Nothing is deleted.",
                     ),
                   )}
                 </p>

@@ -368,7 +368,7 @@ function AgendaPage() {
       ) : null}
 
       <div className="mb-3 flex items-center gap-0.5">
-      <div id="agenda-controles" className="grid min-w-0 flex-1 grid-cols-5 gap-1">
+      <div id="agenda-controles" className="grid min-w-0 flex-1 grid-cols-[repeat(5,auto)] justify-between gap-0.5">
         {FILTERS.filter((item) => item.value !== "cancelled").map((item) => {
           const on = !onlyMoved && status === item.value;
           return (
@@ -380,7 +380,7 @@ function AgendaPage() {
                 setFilter(item.value);
                 scrollCases();
               }}
-              className={cn("h-10 min-w-0 truncate rounded-full px-1 text-[11px] font-semibold sm:text-xs", on ? item.on : "text-muted")}
+              className={cn("h-10 min-w-0 truncate rounded-full px-1.5 text-[11px] font-semibold sm:text-xs", on ? item.on : "text-muted")}
             >
               {filterLabel(item.value)}
             </button>
@@ -393,7 +393,7 @@ function AgendaPage() {
             scrollCases();
           }}
           className={cn(
-            "h-10 min-w-0 truncate rounded-full px-1 text-[11px] font-semibold sm:text-xs",
+            "h-10 min-w-0 truncate rounded-full px-1.5 text-[11px] font-semibold sm:text-xs",
             onlyMoved ? "bg-soil-bg text-soil" : "text-muted",
           )}
         >
@@ -407,7 +407,7 @@ function AgendaPage() {
             scrollCases();
           }}
           className={cn(
-            "h-10 min-w-0 truncate rounded-full px-1 text-[11px] font-semibold sm:text-xs",
+            "h-10 min-w-0 truncate rounded-full px-1.5 text-[11px] font-semibold sm:text-xs",
             !onlyMoved && status === "cancelled" ? FILTERS.find((item) => item.value === "cancelled")?.on : "text-muted",
           )}
         >
@@ -526,7 +526,7 @@ function AgendaPage() {
               {tx("Pasar atrasados", "Move late ones")}
             </Button>
             <Button variant="outline" size="sm" onClick={() => setAskAcc("today")}>
-              {tx("Pasar los de hoy", "Move today's")}
+              {tx("Pasar los de hoy", "Move today's jobs")}
             </Button>
           </div>
         </section>

@@ -210,7 +210,8 @@ function TrendSection({ data, query }: { data: CifrasInsights; query: string }) 
   const prevSel = idx > 0 ? shown[idx - 1] : undefined;
   const complete = months.filter((m) => !m.partial);
   const total12 = months.reduce((s, m) => s + m.collected, 0);
-  const best = [...complete].sort((a, b) => b.collected - a.collected)[0];
+  // Best real month: any month with money in (the current one counts), never an empty one.
+  const best = [...months].filter((m) => m.collected > 0).sort((a, b) => b.collected - a.collected || b.key.localeCompare(a.key))[0];
   const lastFull = complete[complete.length - 1];
   const beforeFull = complete[complete.length - 2];
   return (

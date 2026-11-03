@@ -61,6 +61,9 @@ async function readTables(pg: Pg): Promise<Record<string, unknown[]>> {
   for (const t of TABLES) {
     const r = await pg.query<{ j: unknown[] | null }>(`select json_agg(x) as j from ${t} x`);
     const rows = (r.rows[0]?.j ?? []) as Record<string, unknown>[];
+    // TODO(F4, photos are off: PHOTOS_ENABLED=false): the snapshot drops job photos, and a pull replaces
+    // whole tables, so turning photos back on would wipe every device's photos on the next pull.
+    // Before enabling photos: sync them separately (own table/storage) or keep local photos on pull.
     if (t === "jobs") for (const row of rows) if ("photo" in row) row.photo = null;
     out[t] = rows;
   }

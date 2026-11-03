@@ -39,7 +39,7 @@ function StudyToggle({ view, onChange }: { view: StudyView; onChange: (v: StudyV
       <span className="as-toggle-thumb" aria-hidden />
       <button type="button" role="tab" aria-selected={view === "estudio"} className={view === "estudio" ? "is-on" : undefined} onClick={() => onChange("estudio")}>
         <BarChart3 aria-hidden />
-        {tx("Estudio", "Study")}
+        {tx("Estudio", "Stats")}
       </button>
       <button type="button" role="tab" aria-selected={view === "asesor"} className={view === "asesor" ? "is-on" : undefined} onClick={() => onChange("asesor")}>
         <Compass aria-hidden />
@@ -76,7 +76,7 @@ function EstadisticasPage() {
 
   return (
     <AppShell
-      title={tx("Estudio", "Study")}
+      title={tx("Estudio", "Stats")}
       titleExtra={view === "estudio" ? <CifrasOrderButton /> : undefined}
       action={
         <span className="inline-flex items-center gap-3">
@@ -87,7 +87,7 @@ function EstadisticasPage() {
           value={needle}
           onChange={setNeedle}
           placeholder={tx("Buscar cifra", "Search")}
-          label={tx("Buscar en Estudio", "Search Study")}
+          label={tx("Buscar en Estudio", "Search Stats")}
         />}
           <span className="mr-2 grid w-10 shrink-0 place-items-center">
             <DayNightSwitch />

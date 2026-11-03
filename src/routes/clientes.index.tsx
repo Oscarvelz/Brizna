@@ -488,7 +488,7 @@ function ClientesPage() {
           {filter === "triple" ? tx(" con 3 o más cortes este mes", " with 3 or more cuts this month") : null}
           <Hint topic={inArchive ? "archivo" : "lista-clientes"} />
         </p>
-        <DensityToggle />
+        <DensityToggle fabGap />
       </div>
 
       {query.isLoading && (

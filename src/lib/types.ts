@@ -49,6 +49,8 @@ export type ClientRow = {
   seasonEnd: string | null;
   seasonEvery: number | null;
   daysSincePay: number | null;
+  /** Local date of the newest payment; null when the client never paid (daysSincePay then counts from the last cut). */
+  lastPaidDate?: string | null;
   payTier: PayTier;
   reliability: number;
 };
@@ -221,6 +223,13 @@ export const DEFAULT_PRICE_PRESETS = [30, 35, 40, 45, 50, 60];
 export const DEFAULT_DEBT_PRESETS = [40, 60, 80, 100, 150, 200];
 export const DEFAULT_VISIT_PRESETS = ["Orilla", "Soplado", "Perro suelto", "Recoger hojas"];
 export const DEFAULT_CUE_PRESETS = ["Casa azul", "Esquina", "El de la cerca", "Vecino de @"];
+/** The same default cue chips in English (shown only while the list is still the untouched default). */
+export const DEFAULT_CUE_PRESETS_EN = ["Blue house", "Corner", "Fence one", "Next to @"];
+export function cuePresetsFor(list: string[] | undefined, english: boolean): string[] {
+  const value = list ?? DEFAULT_CUE_PRESETS;
+  const isDefault = value.length === DEFAULT_CUE_PRESETS.length && value.every((v, i) => v === DEFAULT_CUE_PRESETS[i]);
+  return english && isDefault ? DEFAULT_CUE_PRESETS_EN : value;
+}
 
 export type BackupSummary = {
   id: number;

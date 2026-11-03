@@ -1,4 +1,5 @@
 import { smartHit } from "@/lib/fuzzy";
+import { readStoredLocale } from "@/lib/theme";
 
 export const APP_TZ = "America/New_York";
 
@@ -49,7 +50,7 @@ export function clock12(value: string): string {
   if (!match) return value;
   const hour = Number(match[1]);
   if (!Number.isFinite(hour) || hour > 23) return value;
-  const suffix = hour >= 12 ? "p. m." : "a. m.";
+  const suffix = readStoredLocale() === "en" ? (hour >= 12 ? "PM" : "AM") : hour >= 12 ? "p. m." : "a. m.";
   const h12 = hour % 12 || 12;
   return `${h12}:${match[2]} ${suffix}`;
 }
