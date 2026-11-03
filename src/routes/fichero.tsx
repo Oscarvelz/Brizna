@@ -10,7 +10,7 @@ import { DensityScope, DensityToggle, useDensity, useQuadCols } from "@/componen
 import { htmlToNote } from "@/components/rich-notes";
 import { Button } from "@/components/ui/button";
 import { Input, NativeSelect } from "@/components/ui/input";
-import { addDaysISO, startOfWeekISO, todayISO } from "@/lib/dates";
+import { addDaysISO, stampDay, startOfWeekISO, todayISO } from "@/lib/dates";
 import { formatDay } from "@/lib/format";
 import { meshFrame, viewGrid, type Density, type QuadCols } from "@/lib/density";
 import { useTx } from "@/lib/i18n";
@@ -144,7 +144,7 @@ function FicheroPage() {
   }
 
   function matchesWhen(page: PadPage) {
-    const day = (page.createdAt || page.updatedAt || "").slice(0, 10);
+    const day = stampDay(page.createdAt || page.updatedAt || "");
     if (when === "all") return true;
     if (!day) return false;
     const today = todayISO();
@@ -740,7 +740,7 @@ function FolderGrid({
               {density !== "dense" && density !== "quad" && latest ? (
                 <span className="mt-0.5 block truncate text-xs text-muted">
                   {latest.title || tx("Nota", "Note")}
-                  {density === "full" && latest.createdAt ? ` · ${formatDay(latest.createdAt.slice(0, 10), "d MMM")}` : ""}
+                  {density === "full" && latest.createdAt ? ` · ${formatDay(stampDay(latest.createdAt), "d MMM")}` : ""}
                 </span>
               ) : null}
               {density === "quad" && cols < 4 && latest ? (
@@ -912,7 +912,7 @@ function NoteList({
     <>
     <ul className={ficheroGrid(density, cols)}>
       {notes.map((page) => {
-        const day = (page.createdAt || page.updatedAt || "").slice(0, 10);
+        const day = stampDay(page.createdAt || page.updatedAt || "");
         const people = page.clientIds
           .map((id) => clients.find((client) => client.id === id)?.name)
           .filter(Boolean)

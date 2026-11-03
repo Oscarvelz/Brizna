@@ -33,7 +33,13 @@ export function formatDay(iso: string, pattern = "EEE d MMM"): string {
 export function formatStamp(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso.slice(0, 16);
-  const day = formatDay(iso.slice(0, 10), "d MMM yyyy");
+  // Day from the same local clock as the hour (not the UTC day of the ISO text).
+  let day: string;
+  try {
+    day = format(date, "d MMM yyyy", { locale: dateLocale() });
+  } catch {
+    day = iso.slice(0, 10);
+  }
   let hour = date.getHours();
   const minute = String(date.getMinutes()).padStart(2, "0");
   const second = String(date.getSeconds()).padStart(2, "0");

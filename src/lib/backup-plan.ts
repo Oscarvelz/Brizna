@@ -1,3 +1,5 @@
+import { stampDay } from "@/lib/dates";
+
 export type BackupStamp = { id: number; at: string };
 
 function fnv(text: string, seed: number) {
@@ -22,11 +24,11 @@ export function checksumMatches(raw: Record<string, unknown>) {
 }
 
 function dayKey(at: string) {
-  return at.slice(0, 10);
+  return stampDay(at);
 }
 
 function weekKey(at: string) {
-  const date = new Date(`${at.slice(0, 10)}T12:00:00Z`);
+  const date = new Date(`${dayKey(at)}T12:00:00Z`);
   const day = date.getUTCDay() || 7;
   date.setUTCDate(date.getUTCDate() - day + 1);
   return date.toISOString().slice(0, 10);
@@ -38,7 +40,7 @@ export function idsToKeep(rows: BackupStamp[], now = new Date()) {
   const keep = new Set<number>();
   const days = new Set<string>();
   const weeks = new Set<string>();
-  const today = now.toISOString().slice(0, 10);
+  const today = stampDay(now);
   sorted.forEach((row, index) => {
     const day = dayKey(row.at);
     const age = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / 86_400_000);

@@ -14,7 +14,9 @@ import {
   startOfWeekISO,
   todayISO,
   nowHHMM,
+  stampDay,
   weekdayFromISO,
+  APP_TZ,
 } from "@/lib/dates";
 import { DEFAULT_BUSINESS_NAME } from "@/lib/format";
 import { PHOTOS_ENABLED } from "@/lib/photos-flag";
@@ -73,7 +75,7 @@ function intId(v: unknown): number {
 
 function asIsoDate(v: unknown): string {
   if (typeof v === "string") return v.slice(0, 10);
-  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  if (v instanceof Date) return stampDay(v);
   return String(v ?? "").slice(0, 10);
 }
 
@@ -1145,13 +1147,13 @@ export const listClients = createServerFn({ method: "GET" })
     if (data.flow === "altas" && data.since) {
       const until = data.until ?? "9999-12-31";
       list = list.filter((c) => {
-        const d = c.createdAt.slice(0, 10);
+        const d = stampDay(c.createdAt);
         return d >= data.since! && d <= until;
       });
     } else if (data.flow === "bajas" && data.since) {
       const until = data.until ?? "9999-12-31";
       list = list.filter((c) => {
-        const d = c.deactivatedAt?.slice(0, 10) ?? "";
+        const d = c.deactivatedAt ? stampDay(c.deactivatedAt) : "";
         return d >= data.since! && d <= until;
       });
     }
@@ -1813,13 +1815,31 @@ export const reopenJob = createServerFn({ method: "POST" })
         limit 1`,
       [context.userId, job.client_id, amount],
     );
-    // Jobs carry a Hecho:* tag; only untagged (older) jobs fall back to matching a payment by amount.
+    // Jobs carry a Hecho:* tag. Untagged (older) jobs count as paid only when a 'Pago de este corte'
+    // payment of the same amount was made at/after this job's completion on the same local day;
+    // a job that used credit (Adelanto:) never does, so its credit is given back below.
     const tagged = notes.includes("Hecho:");
-    if (notes.includes("Hecho:paid") || (!tagged && pays[0])) {
-      if (pays[0]) {
+    let legacyPay: { id: number } | undefined;
+    if (!tagged && !notes.includes("Adelanto:") && job.completed_at && amount > 0) {
+      const legacy = await sql.query<{ id: number }>(
+        `select p.id from payments p, jobs j
+          where p.user_id = $1 and p.client_id = $2 and p.kind = 'paid'
+            and p.amount = $3 and p.note in ('Pago el mismo día', 'Pago de este corte')
+            and j.user_id = $1 and j.id = $4 and j.completed_at is not null
+            and p.paid_at >= j.completed_at
+            and (p.paid_at at time zone $5)::date = (j.completed_at at time zone $5)::date
+          order by p.paid_at asc, p.id asc
+          limit 1`,
+        [context.userId, job.client_id, amount, data.id, APP_TZ],
+      );
+      legacyPay = legacy[0];
+    }
+    if (notes.includes("Hecho:paid") || legacyPay) {
+      const target = notes.includes("Hecho:paid") ? pays[0] : legacyPay;
+      if (target) {
         await sql.query(`delete from payments where user_id = $1 and id = $2`, [
           context.userId,
-          pays[0].id,
+          target.id,
         ]);
       }
     } else {
@@ -3960,7 +3980,7 @@ export const exportReport = createServerFn({ method: "GET" })
         amount: money(row.amount),
       })),
       payments: payments.map((row) => ({
-        date: asIsoStamp(row.paid_at).slice(0, 10),
+        date: stampDay(asIsoStamp(row.paid_at)),
         name: row.name,
         amount: money(row.amount),
         kind: row.kind,
@@ -4817,7 +4837,7 @@ export const exportScope = createServerFn({ method: "GET" })
     );
     const payHeader = ["Fecha", "Cliente", "Monto", "Tipo", "Medio", "Nota"];
     const payLines = payments.map((p) =>
-      [asIsoStamp(p.paid_at).slice(0, 10), p.name, money(p.amount), p.kind, p.method ?? "", p.note ?? ""]
+      [stampDay(asIsoStamp(p.paid_at)), p.name, money(p.amount), p.kind, p.method ?? "", p.note ?? ""]
         .map(csvCell)
         .join(","),
     );
@@ -4837,7 +4857,7 @@ export const exportScope = createServerFn({ method: "GET" })
         amount: money(j.amount),
       })),
       payments: payments.map((p) => ({
-        date: asIsoStamp(p.paid_at).slice(0, 10),
+        date: stampDay(asIsoStamp(p.paid_at)),
         name: p.name,
         amount: money(p.amount),
         kind: p.kind,
@@ -6058,13 +6078,13 @@ export const getAdvisor = createServerFn({ method: "GET" })
     for (const c of clients) {
       if (c.blacklisted) continue;
       const s = stat.get(c.id);
-      const recentlyOff = !c.isActive && c.deactivatedAt != null && daysBetween(c.deactivatedAt.slice(0, 10), today) <= 120;
+      const recentlyOff = !c.isActive && c.deactivatedAt != null && daysBetween(stampDay(c.deactivatedAt), today) <= 120;
       if (!c.isActive && !recentlyOff) continue;
       const visits = visitsOf(c);
       const every = visits > 0 ? Math.round(30.44 / visits) : 0;
       const since = c.lastCutDate ? daysBetween(c.lastCutDate, today) : null;
       const first = s?.first_done ? asIsoDate(s.first_done) : null;
-      const start = [c.startDate, first, c.createdAt.slice(0, 10)].filter(Boolean).sort()[0] as string;
+      const start = [c.startDate, first, stampDay(c.createdAt)].filter(Boolean).sort()[0] as string;
       const years = Math.max(0, daysBetween(start, today) / 365.25);
       const moved = intId(s?.moved90) + intId(s?.cancel90);
       const done90c = intId(s?.done90);
@@ -6468,7 +6488,7 @@ export const exportCenterData = createServerFn({ method: "GET" })
       payments: payments.map((p) => ({
         id: intId(p.id),
         clientId: intId(p.client_id),
-        date: asIsoStamp(p.paid_at).slice(0, 10),
+        date: stampDay(asIsoStamp(p.paid_at)),
         amount: money(p.amount),
         kind: (p.kind as PaymentKind) ?? "paid",
         method: p.method,

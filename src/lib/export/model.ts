@@ -1,4 +1,4 @@
-import { addDaysISO, startOfWeekISO, weekdayFromISO } from "@/lib/dates";
+import { addDaysISO, stampDay, startOfWeekISO, weekdayFromISO } from "@/lib/dates";
 import { frequencyLabel, jobKindLabel, money } from "@/lib/format";
 import { methodLabel } from "@/components/method-field";
 import { reasonLabel } from "@/lib/i18n";
@@ -479,7 +479,7 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
     last: x.raw.lastCutDate ?? "",
     balance: x.raw.balance,
     credit: x.raw.credit,
-    since: x.raw.startDate ?? x.raw.createdAt?.slice(0, 10) ?? "",
+    since: x.raw.startDate ?? (x.raw.createdAt ? stampDay(x.raw.createdAt) : ""),
     notes: clean([x.raw.notes ?? "", x.raw.richNotes ?? ""].filter((t) => t.trim()).join("\n")).slice(0, 400),
   }));
 
@@ -575,7 +575,7 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   };
 
   /* ---------- notes */
-  const pagesKept = raw.notes.filter((n) => o.period === "all" || n.pinned || (n.updated.slice(0, 10) >= from && n.updated.slice(0, 10) <= to) || (n.due != null && inRange(n.due)));
+  const pagesKept = raw.notes.filter((n) => o.period === "all" || n.pinned || (stampDay(n.updated) >= from && stampDay(n.updated) <= to) || (n.due != null && inRange(n.due)));
   const notas: Model["notas"] = {
     day: raw.dayNotes.map((d) => ({ date: d.date, text: clean(d.body) })).filter((d) => d.text),
     pages: pagesKept.map((n) => ({ title: clean(n.title) || tx("Nota", "Note"), folder: n.folder, due: n.due ?? "", text: clean(n.body), pinned: n.pinned })).filter((n) => n.text || n.title),

@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MeshName } from "@/components/mesh-name";
 import { meshFrame } from "@/lib/density";
-import { addDaysISO, todayISO } from "@/lib/dates";
+import { addDaysISO, stampDay, todayISO } from "@/lib/dates";
 import { formatDay, formatTime, jobKindLabel, money, telHref } from "@/lib/format";
 import { isHechoConfirmSkipped, subscribeHechoConfirm } from "@/lib/hecho-confirm";
 import { useI18n, useTx } from "@/lib/i18n";
@@ -283,7 +283,7 @@ export function JobCard({
   const completedToday =
     live.status === "done" &&
     !queued &&
-    (live.scheduledDate === today || (live.completedAt ? live.completedAt.slice(0, 10) === today : false));
+    (live.scheduledDate === today || (live.completedAt ? stampDay(live.completedAt) === today : false));
 
   const dialogs = (
     <>

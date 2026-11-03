@@ -15,6 +15,23 @@ export function todayISO(timeZone = APP_TZ): string {
   }).format(new Date());
 }
 
+const dayFmt = new Map<string, Intl.DateTimeFormat>();
+
+/** Calendar day (YYYY-MM-DD) of a moment, on the app's clock (same zone as todayISO),
+ *  never the UTC day. A plain YYYY-MM-DD string is returned as is. */
+export function stampDay(v: string | Date | null | undefined, timeZone = APP_TZ): string {
+  if (v == null || v === "") return "";
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const d = v instanceof Date ? v : new Date(v);
+  if (Number.isNaN(d.getTime())) return String(v).slice(0, 10);
+  let f = dayFmt.get(timeZone);
+  if (!f) {
+    f = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+    dayFmt.set(timeZone, f);
+  }
+  return f.format(d);
+}
+
 export function nowHHMM(timeZone = APP_TZ): string {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone,

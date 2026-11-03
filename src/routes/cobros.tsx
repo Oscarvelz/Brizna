@@ -21,6 +21,7 @@ import {
   isPaymentLate,
   lastDayOfMonthISO,
   monthParts,
+  stampDay,
   startOfWeekISO,
   todayISO,
 } from "@/lib/dates";
@@ -174,15 +175,15 @@ function CobrosPage() {
   const abonoSum = abonoPays.reduce((sum, p) => sum + p.amount, 0);
   const abonoPeople = abonoClients.length;
   const paidWeek = paid.filter((p) => {
-    const d = p.paidAt.slice(0, 10);
+    const d = stampDay(p.paidAt);
     return d >= weekStart && d <= weekEnd;
   });
   const paidMonth = paid.filter((p) => {
-    const d = p.paidAt.slice(0, 10);
+    const d = stampDay(p.paidAt);
     return d >= monthStart && d <= monthEnd;
   });
   const waivedMonth = (data?.payments ?? []).filter((p) => {
-    const d = p.paidAt.slice(0, 10);
+    const d = stampDay(p.paidAt);
     return p.kind === "waived" && d >= monthStart && d <= monthEnd;
   });
 
@@ -836,7 +837,7 @@ function PayList({
               </Link>
               {!dense && (!quad || (cols ?? 2) < 4) ? (
                 <p className="truncate text-[11px] text-muted">
-                  {formatDay(p.paidAt.slice(0, 10), "EEE d MMM")}
+                  {formatDay(stampDay(p.paidAt), "EEE d MMM")}
                   {" · "}
                   {p.kind === "waived" ? tx("Perdonado", "Forgiven") : tx("Cobrado", "Collected")}
                   {methodLabel(p.method) ? ` · ${methodLabel(p.method)}` : ""}

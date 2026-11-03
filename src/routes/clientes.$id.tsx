@@ -28,7 +28,7 @@ import { RichNotes } from "@/components/rich-notes";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Label, NativeSelect, Textarea } from "@/components/ui/input";
-import { todayISO } from "@/lib/dates";
+import { stampDay, todayISO } from "@/lib/dates";
 import { meshFrame, viewGrid } from "@/lib/density";
 import { DEFAULT_ARRIVAL_PRESETS, DEFAULT_TASK_PRESETS } from "@/lib/types";
 import { formatDay, formatTime, frequencyLabel, money, payDueLabel, telHref, weekdayLabel } from "@/lib/format";
@@ -385,7 +385,7 @@ function ClientDetailPage() {
                   <li key={p.id} className="flex min-h-11 items-center justify-between gap-2 text-sm">
                     <span className="min-w-0 truncate">
                       <span className="font-semibold">{payKindLabel(p, tx)}</span>
-                      <span className="text-muted"> · {formatDay(p.paidAt.slice(0, 10), "d MMM")}</span>
+                      <span className="text-muted"> · {formatDay(stampDay(p.paidAt), "d MMM")}</span>
                       {methodLabel(p.method) ? <span className="text-muted"> · {methodLabel(p.method)}</span> : null}
                     </span>
                     <span className={cn(p.kind === "waived" ? "text-muted" : p.kind === "opening" ? "font-semibold tabular-nums text-due" : "font-semibold tabular-nums")}>
@@ -599,7 +599,7 @@ function ChangeHistory({ clientId }: { clientId: number }) {
               <li key={c.id} className="flex min-h-11 items-center justify-between gap-2 text-sm">
                 <span className="min-w-0 truncate">
                   <span className="font-semibold">{c.summary}</span>
-                  <span className="text-muted"> · {formatDay(c.createdAt.slice(0, 10), "d MMM")}</span>
+                  <span className="text-muted"> · {formatDay(stampDay(c.createdAt), "d MMM")}</span>
                 </span>
                 <Button variant="ghost" size="sm" onClick={() => setRestoreId(c.id)}>
                   {tx("Restaurar", "Restore")}
