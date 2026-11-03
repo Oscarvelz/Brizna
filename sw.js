@@ -1,13 +1,13 @@
 // Brizna service worker: the app opens with no internet. Bump VERSION on every release.
-const VERSION = "brizna-1.4.56";
-const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-180.png", "./precache.json"];
+const VERSION = "brizna-1.4.57";
+const CORE = ["./", "./index.html", "./icon-192.png", "./icon-512.png", "./icon-180.png", "./precache.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(VERSION);
     let files = [];
     try { files = await (await fetch("./precache.json", { cache: "no-store" })).json(); } catch { /* ignore */ }
-    await cache.addAll([...new Set([...CORE, ...files])].map((u) => new Request(u, { cache: "reload" })));
+    await cache.addAll([...new Set([...CORE, ...files])].filter((u) => !u.endsWith(".webmanifest")).map((u) => new Request(u, { cache: "reload" })));
     self.skipWaiting();
   })());
 });
