@@ -28,6 +28,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ExportSheet, useExportLaunch } from "@/components/export-center";
 import { Hint } from "@/components/hint";
 import { OfflineBanner } from "@/components/offline-banner";
+import { SampleChip } from "@/components/sample-data";
 import { BackupWatch } from "@/components/backup-watch";
 import { SyncNotice } from "@/components/sync-notice";
 import { RequireAuth } from "@/components/require-auth";
@@ -442,7 +443,10 @@ export function AppShell({
             <div className={cn("flex min-h-10 min-w-0 items-center gap-2 md:hidden", embedded && "hidden")}>
               <BrandMark className="alive-brand size-8 shrink-0" />
               <div className="bz-brandstack flex min-w-0 flex-col justify-center">
-                <span className="font-display text-lg font-semibold leading-none tracking-tight">{PRODUCT_NAME}</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="font-display text-lg font-semibold leading-none tracking-tight">{PRODUCT_NAME}</span>
+                  <SampleChip />
+                </span>
                 <EditableBrand name={businessName} quiet nowrap sub />
               </div>
               <div className="ml-auto -mr-1.5 flex shrink-0 items-center">
@@ -469,6 +473,7 @@ export function AppShell({
                 <span className="shrink-0 font-display text-[13px] font-semibold leading-none tracking-tight text-fg/80">{PRODUCT_NAME}</span>
                 <span className="h-3 w-px shrink-0 bg-border" aria-hidden />
                 <EditableBrand name={businessName} quiet kicker />
+                <SampleChip className="ml-1" />
               </div>
             )}
             <div className="mt-0.5 flex min-h-11 min-w-0 items-center gap-2">

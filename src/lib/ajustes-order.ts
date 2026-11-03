@@ -11,6 +11,7 @@ export const AJUSTES_DEFAULT = [
   "aj-tableta",
   "aj-exportar",
   "aj-copia",
+  "aj-ejemplo",
 ] as const;
 
 export type AjusteId = (typeof AJUSTES_DEFAULT)[number];
@@ -40,6 +41,8 @@ export function ajusteLabel(id: AjusteId, tx: (es: string, en: string) => string
       return tx("Exportar e imprimir", "Export and print");
     case "aj-copia":
       return tx("Copia de seguridad", "Backup");
+    case "aj-ejemplo":
+      return tx("Datos de ejemplo", "Sample data");
   }
 }
 

@@ -2,7 +2,7 @@ import { Masonry } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScrollTop } from "@/components/scroll-top";
 import { createFileRoute } from "@tanstack/react-router";
-import { Bell, Check, ChevronDown, CalendarRange, Clock, Download, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
+import { Bell, Check, ChevronDown, CalendarRange, Clock, FlaskConical, Download, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell, SignOutControl, TitleSearch } from "@/components/app-shell";
@@ -14,6 +14,7 @@ import { Fold, foldsOpen, setFoldsOpen } from "@/components/fold";
 import { Hint } from "@/components/hint";
 import { invalidateLawn } from "@/components/job-card";
 import { SoundSettings } from "@/components/settings-finder";
+import { SampleSettings } from "@/components/sample-data";
 import { Button } from "@/components/ui/button";
 import { Input, Label, NativeSelect } from "@/components/ui/input";
 import { PickerField } from "@/components/ui/picker-field";
@@ -818,6 +819,22 @@ function AjustesPage() {
           <ExportCenterCard onOpen={exporter.launch} />
         </SettingFold>
         <ExportSheet open={exporter.open} preset={exporter.preset} onClose={exporter.close} />
+
+        <SettingFold
+          id="aj-ejemplo"
+          order="order-12"
+          query={query}
+          blob="datos de ejemplo muestra demo probar cargar quitar sample data try load remove"
+          title={
+            <span className="flex items-center gap-2">
+              <FlaskConical className="size-5 shrink-0 text-primary" />
+              {tx("Datos de ejemplo", "Sample data")}
+            </span>
+          }
+          hint={<Hint topic="ejemplo" />}
+        >
+          <SampleSettings />
+        </SettingFold>
 
         <SettingFold
           id="aj-copia"

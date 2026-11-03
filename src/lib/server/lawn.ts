@@ -489,7 +489,7 @@ let lastSnapshotAt = 0;
 
 // Automatic safety copies: at most one every 10 minutes during normal work (a full copy of
 // years of records on every tap made "Hecho" slow). Risky actions pass force = true.
-async function snapshotBackup(userId: string, force = false): Promise<void> {
+export async function snapshotBackup(userId: string, force = false): Promise<void> {
   if (!force && Date.now() - lastSnapshotAt < BACKUP_GAP_MS) return;
   lastSnapshotAt = Date.now();
   const sql = await getSql();
@@ -558,7 +558,7 @@ async function ensureScheduleForUser(userId: string): Promise<void> {
   }
 }
 
-async function ensureScheduleForUserInner(userId: string): Promise<void> {
+export async function ensureScheduleForUserInner(userId: string): Promise<void> {
   const sql = await getSql();
   const today = todayISO();
   const { year, month } = monthParts(today);
@@ -878,7 +878,7 @@ async function loadPrefs(userId: string) {
   };
 }
 
-async function logClientChange(
+export async function logClientChange(
   userId: string,
   clientId: number,
   summary: string,
@@ -1593,7 +1593,7 @@ export const deleteClient = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-async function markJobDone(
+export async function markJobDone(
   userId: string,
   jobId: number,
   settlement: "paid" | "owe" | "abono" | "auto",

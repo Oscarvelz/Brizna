@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronRight, Plus, Search, Sprout, Users, X } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { usePageWidth } from "@/components/app-shell";
+import { SampleTryButton } from "@/components/sample-data";
 import { formatDay, money } from "@/lib/format";
 import { useTx } from "@/lib/i18n";
 import { listClients } from "@/lib/server/lawn";
@@ -245,6 +246,7 @@ function PanelEmpty() {
         <Plus className="size-4" />
         {tx("Añadir primer cliente", "Add the first client")}
       </Link>
+      <SampleTryButton className="mt-2" />
       <ol className="bz-cp-steps">
         <li>
           <b>1</b>

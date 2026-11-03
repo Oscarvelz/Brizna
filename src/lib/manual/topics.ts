@@ -188,6 +188,17 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         terms: [["Entrada", "Clock-in"], ["Salida", "Clock-out"]],
       },
       {
+        id: "ejemplo",
+        title: ["Datos de ejemplo", "Sample data"],
+        sum: ["Un negocio de ejemplo para ver la app en acción.", "A sample business to see the app in action."],
+        what: [
+          "Cargar ejemplo añade 14 clientes con dos meses de cortes, cobros, horas y notas. Quitar ejemplo los borra todos; lo que añadiste tú se queda.",
+          "Load sample adds 14 clients with two months of cuts, payments, hours and notes. Remove sample deletes them all; what you added yourself stays.",
+        ],
+        tip: ["Mientras está cargado, arriba se ve Ejemplo.", "While it is loaded, Sample shows at the top."],
+        go: { to: "/ajustes", focus: "aj-ejemplo", where: ["Ajustes, Datos de ejemplo", "Settings, Sample data"] },
+      },
+      {
         id: "sonidos",
         title: ["Sonidos", "Sounds"],
         sum: ["Un ding suave al cerrar el día.", "A soft ding when you close the day."],

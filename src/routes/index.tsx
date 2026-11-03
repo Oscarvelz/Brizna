@@ -7,6 +7,7 @@ import { markJump } from "@/lib/jump-back";
 import { toast } from "sonner";
 import { htmlToNote } from "@/components/rich-notes";
 import { HoyLayout } from "@/components/hoy-clients";
+import { SampleTryButton } from "@/components/sample-data";
 import { AppShell } from "@/components/app-shell";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { DensityScope, DensityToggle, useDensity, useQuadCols } from "@/components/density-toggle";
@@ -857,6 +858,9 @@ function EmptyState() {
       <Button asChild className="mt-5">
         <Link to="/nuevo">{tx("Añadir primer cliente", "Add the first client")}</Link>
       </Button>
+      <div className="mt-2">
+        <SampleTryButton />
+      </div>
     </div>
   );
 }
