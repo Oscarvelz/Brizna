@@ -12,15 +12,24 @@ export function backupChecksum(json: string) {
   return fnv(json, 0x811c9dc5) + fnv(json, 0x811c9dc5 ^ 0x9e3779b9);
 }
 
+/** JSON with object keys sorted at every level: the database (jsonb) reorders keys, so a
+ *  checksum over plain JSON.stringify never matched a copy read back from it. */
+export function canonicalJson(value: unknown): string {
+  return JSON.stringify(value, (_k, v) =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(Object.keys(v as Record<string, unknown>).sort().map((k) => [k, (v as Record<string, unknown>)[k]]))
+      : v,
+  );
+}
+
 export function withChecksum<T extends object>(body: T) {
-  const json = JSON.stringify(body);
-  return { ...body, checksum: backupChecksum(json) };
+  return { ...body, checksum: backupChecksum(canonicalJson(body)) };
 }
 
 export function checksumMatches(raw: Record<string, unknown>) {
   if (typeof raw.checksum !== "string") return true;
   const { checksum, ...rest } = raw;
-  return backupChecksum(JSON.stringify(rest)) === checksum;
+  return backupChecksum(canonicalJson(rest)) === checksum || backupChecksum(JSON.stringify(rest)) === checksum;
 }
 
 function dayKey(at: string) {

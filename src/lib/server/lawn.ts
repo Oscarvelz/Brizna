@@ -458,8 +458,14 @@ async function collectBackup(userId: string) {
     [userId],
   );
   const settings = await sql.query(`select * from app_settings where user_id = $1`, [userId]);
+  // v5: the rest of the user's tables, so a safety copy taken before a sync overwrite is complete.
+  const clientChanges = await sql.query(`select * from client_changes where user_id = $1 order by id`, [userId]);
+  const dayGoals = await sql.query(`select * from day_goals where user_id = $1 order by goal_date`, [userId]);
+  const dayNotes = await sql.query(`select * from day_notes where user_id = $1 order by note_date`, [userId]);
+  const padLinks = await sql.query(`select * from pad_links where user_id = $1 order by id`, [userId]);
+  const weekOff = await sql.query(`select * from week_off_dates where user_id = $1 order by off_date`, [userId]);
   return withChecksum({
-    version: 4,
+    version: 5,
     savedAt: new Date().toISOString(),
     clients,
     jobs,
@@ -469,6 +475,11 @@ async function collectBackup(userId: string) {
     workDays,
     dayMarks: marks,
     settings: settings[0] ?? null,
+    clientChanges,
+    dayGoals,
+    dayNotes,
+    padLinks,
+    weekOff,
   });
 }
 
@@ -2792,6 +2803,13 @@ type BackupPayload = {
   padPages?: Record<string, unknown>[];
   workDays?: Record<string, unknown>[];
   dayMarks?: Record<string, unknown>[];
+  // v5 copies only (older copies leave these tables as they are).
+  settings?: Record<string, unknown> | null;
+  clientChanges?: Record<string, unknown>[];
+  dayGoals?: Record<string, unknown>[];
+  dayNotes?: Record<string, unknown>[];
+  padLinks?: Record<string, unknown>[];
+  weekOff?: Record<string, unknown>[];
 };
 
 function asRecordArray(v: unknown): Record<string, unknown>[] {
@@ -2799,11 +2817,13 @@ function asRecordArray(v: unknown): Record<string, unknown>[] {
   return v.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object");
 }
 
-function parseBackup(raw: unknown): BackupPayload {
+function parseBackup(raw: unknown, trusted = false): BackupPayload {
   const obj = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
   if (!obj || typeof obj !== "object") throw new Error("Copia inválida");
   const data = obj as Record<string, unknown>;
-  if (!checksumMatches(data)) throw new Error("Copia dañada");
+  // Copies kept in this device's own database are trusted (their old checksums were taken before
+  // the database reordered keys, so they could never match); files still have to match.
+  if (!trusted && !checksumMatches(data)) throw new Error("Copia dañada");
   return {
     clients: asRecordArray(data.clients),
     jobs: asRecordArray(data.jobs),
@@ -2812,6 +2832,15 @@ function parseBackup(raw: unknown): BackupPayload {
     padPages: Array.isArray(data.padPages) ? asRecordArray(data.padPages) : undefined,
     workDays: Array.isArray(data.workDays) ? asRecordArray(data.workDays) : undefined,
     dayMarks: Array.isArray(data.dayMarks) ? asRecordArray(data.dayMarks) : undefined,
+    settings:
+      Number(data.version) >= 5 && data.settings && typeof data.settings === "object"
+        ? (data.settings as Record<string, unknown>)
+        : undefined,
+    clientChanges: Array.isArray(data.clientChanges) ? asRecordArray(data.clientChanges) : undefined,
+    dayGoals: Array.isArray(data.dayGoals) ? asRecordArray(data.dayGoals) : undefined,
+    dayNotes: Array.isArray(data.dayNotes) ? asRecordArray(data.dayNotes) : undefined,
+    padLinks: Array.isArray(data.padLinks) ? asRecordArray(data.padLinks) : undefined,
+    weekOff: Array.isArray(data.weekOff) ? asRecordArray(data.weekOff) : undefined,
   };
 }
 
@@ -2996,12 +3025,13 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
       [userId, sanitizeHtml(payload.padNotes).slice(0, 20000)],
     );
   }
+  const pageMap = new Map<number, number>();
   if (payload.padPages) {
     await sql.query(`delete from pad_pages where user_id = $1`, [userId]);
     for (const row of payload.padPages) {
-      await sql.query(
+      const ins = await sql.query<{ id: number }>(
         `insert into pad_pages (user_id, title, body, sort_order, pinned, tags, due_date, due_time)
-         values ($1,$2,$3,$4,$5,$6,$7,$8)`,
+         values ($1,$2,$3,$4,$5,$6,$7,$8) returning id`,
         [
           userId,
           (strField(row, "title") ?? "Nota").slice(0, 160),
@@ -3013,6 +3043,9 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
           strField(row, "due_time", "dueTime"),
         ],
       );
+      const oldPage = intId(row.id);
+      const newPage = intId(ins[0]?.id);
+      if (oldPage && newPage) pageMap.set(oldPage, newPage);
     }
   }
   if (payload.workDays) {
@@ -3052,7 +3085,75 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
       );
     }
   }
+  await restoreV5Tables(userId, payload, idMap, pageMap);
   return { clients: payload.clients?.length ?? 0, jobs: payload.jobs?.length ?? 0 };
+}
+
+// Rows as the copy holds them, only the columns this table has (a missing column takes its default).
+async function insertRows(table: string, rows: Record<string, unknown>[], dropId: boolean): Promise<void> {
+  if (!rows.length) return;
+  const sql = await getSql();
+  const tableCols = new Set(await tableColumns(table));
+  const keys = new Set<string>();
+  for (const row of rows) for (const k of Object.keys(row)) keys.add(k);
+  const cols = [...keys].filter((k) => tableCols.has(k) && !(dropId && k === "id"));
+  if (!cols.length) return;
+  const list = cols.map((c) => `"${c}"`).join(", ");
+  for (let i = 0; i < rows.length; i += 800) {
+    await sql.query(
+      `insert into ${table} (${list}) select ${list} from jsonb_populate_recordset(null::${table}, $1::jsonb) on conflict do nothing`,
+      [JSON.stringify(rows.slice(i, i + 800))],
+    );
+  }
+}
+
+/** v5 copies: settings, client history, day goals/notes, off days and note links. */
+async function restoreV5Tables(
+  userId: string,
+  payload: BackupPayload,
+  idMap: Map<number, number>,
+  pageMap: Map<number, number>,
+): Promise<void> {
+  const sql = await getSql();
+  if (payload.settings) {
+    const tableCols = new Set(await tableColumns("app_settings"));
+    const cols = Object.keys(payload.settings).filter((k) => tableCols.has(k) && k !== "user_id" && k !== "last_backup_at");
+    if (cols.length) {
+      await sql.query(`insert into app_settings (user_id) values ($1) on conflict (user_id) do nothing`, [userId]);
+      await sql.query(
+        `update app_settings a set ${cols.map((c) => `"${c}" = r."${c}"`).join(", ")}
+           from jsonb_populate_record(null::app_settings, $2::jsonb) r where a.user_id = $1`,
+        [userId, JSON.stringify(payload.settings)],
+      );
+    }
+  }
+  const mine = (rows: Record<string, unknown>[]): Record<string, unknown>[] => rows.map((row) => ({ ...row, user_id: userId }));
+  if (payload.dayGoals) {
+    await sql.query(`delete from day_goals where user_id = $1`, [userId]);
+    await insertRows("day_goals", mine(payload.dayGoals), false);
+  }
+  if (payload.dayNotes) {
+    await sql.query(`delete from day_notes where user_id = $1`, [userId]);
+    await insertRows("day_notes", mine(payload.dayNotes), false);
+  }
+  if (payload.weekOff) {
+    await sql.query(`delete from week_off_dates where user_id = $1`, [userId]);
+    await insertRows("week_off_dates", mine(payload.weekOff), false);
+  }
+  if (payload.clientChanges) {
+    // Clients were re-created above (cascade removed their old history); point rows at the new ids.
+    const rows = mine(payload.clientChanges)
+      .map((row) => ({ ...row, client_id: idMap.get(intId(row.client_id)) }))
+      .filter((row) => row.client_id);
+    await insertRows("client_changes", rows, true);
+  }
+  if (payload.padLinks && payload.padPages) {
+    await sql.query(`delete from pad_links where user_id = $1`, [userId]);
+    const rows = mine(payload.padLinks)
+      .map((row) => ({ ...row, page_id: pageMap.get(intId(row.page_id)), client_id: idMap.get(intId(row.client_id)) }))
+      .filter((row) => row.page_id && row.client_id);
+    await insertRows("pad_links", rows, true);
+  }
 }
 
 export const restoreBackup = createServerFn({ method: "POST" })
@@ -3065,7 +3166,7 @@ export const restoreBackup = createServerFn({ method: "POST" })
       [context.userId, data.id],
     );
     if (!rows[0]) return { ok: false as const };
-    const counts = await applyBackup(context.userId, parseBackup(rows[0].payload));
+    const counts = await applyBackup(context.userId, parseBackup(rows[0].payload, true));
     return { ok: true as const, ...counts };
   });
 

@@ -36,3 +36,25 @@ begin
 end $$;
 revoke execute on function public.brizna_push(text, bigint, timestamptz, text) from anon, public;
 grant execute on function public.brizna_push(text, bigint, timestamptz, text) to authenticated;
+
+-- 1.4.56: push only over the copy this device last saw (revision = p_base); the server's clock
+-- stamps updated_at. Additive: brizna_push stays for older app versions.
+create or replace function public.brizna_push_v2(p_data text, p_base bigint, p_device text)
+returns table (revision bigint, updated_at timestamptz, device_id text, won boolean)
+language plpgsql security invoker set search_path = public as $$
+declare uid uuid := auth.uid(); prev record; wins boolean;
+begin
+  if uid is null then raise exception 'not signed in'; end if;
+  if length(p_data) > 3000000 then raise exception 'too large'; end if;
+  select b.revision into prev from brizna_books b where b.user_id = uid for update;
+  wins := prev is null or prev.revision = p_base;
+  if wins then
+    insert into brizna_books as b (user_id, data_gz, revision, updated_at, device_id)
+    values (uid, p_data, greatest(coalesce(prev.revision, 0), p_base, 0) + 1, now(), left(p_device, 80))
+    on conflict (user_id) do update set data_gz = excluded.data_gz, revision = excluded.revision,
+      updated_at = excluded.updated_at, device_id = excluded.device_id;
+  end if;
+  return query select b.revision, b.updated_at, b.device_id, wins from brizna_books b where b.user_id = uid;
+end $$;
+revoke execute on function public.brizna_push_v2(text, bigint, text) from anon, public;
+grant execute on function public.brizna_push_v2(text, bigint, text) to authenticated;

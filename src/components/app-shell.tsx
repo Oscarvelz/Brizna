@@ -27,6 +27,7 @@ import { ExportSheet, useExportLaunch } from "@/components/export-center";
 import { Hint } from "@/components/hint";
 import { OfflineBanner } from "@/components/offline-banner";
 import { BackupWatch } from "@/components/backup-watch";
+import { SyncNotice } from "@/components/sync-notice";
 import { RequireAuth } from "@/components/require-auth";
 import { UndoBar } from "@/components/undo-bar";
 import { useUndo } from "@/lib/undo";
@@ -430,6 +431,7 @@ export function AppShell({
           <main className={cn("mx-auto w-full min-w-0 max-w-3xl flex-1 overflow-x-clip px-3 py-4 sm:px-5 sm:py-5 lg:max-w-4xl lg:px-6 lg:py-6", split && "overflow-y-auto", embedded && "px-2.5 py-3 sm:px-4 lg:px-4 lg:py-4")}>
             <OfflineBanner />
             <BackupWatch />
+            <SyncNotice />
             <div key={pathname.split("/")[1] || "hoy"} className="alive-page">{children}</div>
           </main>
         </div>
