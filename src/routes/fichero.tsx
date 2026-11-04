@@ -709,7 +709,7 @@ function FolderGrid({
     return <p className="rounded-xl bg-sun px-4 py-5 text-sm text-muted">{tx("Ninguna carpeta con eso.", "No folder matches that.")}</p>;
   }
   return (
-    <ul className={ficheroGrid(density, cols)}>
+    <ul data-spot="fichero" className={ficheroGrid(density, cols)}>
       {visible.map((folder) => {
         const owned = notes.filter((page) => (page.folder || unsorted) === folder.name);
         const tint = colorMode === "custom" && folder.color ? folder.color : undefined;

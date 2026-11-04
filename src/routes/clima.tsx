@@ -327,7 +327,7 @@ function ClimaPage() {
           ) : null}
         </div>
 
-        <section className={cn("clx-hero clx-rise", `is-${hk}`, night && hk === "sun" && "is-night", !pack && "is-empty")} style={rise(1)} aria-live="polite">
+        <section data-spot="clima" className={cn("clx-hero clx-rise", `is-${hk}`, night && hk === "sun" && "is-night", !pack && "is-empty")} style={rise(1)} aria-live="polite">
           <div className="clx-hero-top">
             <p className="clx-kicker">{tx("Para el trabajo", "For the work")}</p>
             {ready && pack ? <span className={cn("clx-verdict", `is-${tone}`)}>{chip}</span> : null}

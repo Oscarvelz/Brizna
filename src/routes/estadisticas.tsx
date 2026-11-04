@@ -46,7 +46,7 @@ function readView(): StudyView {
 function StudyToggle({ view, onChange }: { view: StudyView; onChange: (v: StudyView) => void }) {
   const tx = useTx();
   return (
-    <div className={`as-toggle${view === "asesor" ? " is-right" : ""}`} role="tablist" aria-label={tx("Vista", "View")}>
+    <div data-spot="estudio" className={`as-toggle${view === "asesor" ? " is-right" : ""}`} role="tablist" aria-label={tx("Vista", "View")}>
       <span className="as-toggle-thumb" aria-hidden />
       <button type="button" role="tab" aria-selected={view === "estudio"} className={view === "estudio" ? "is-on" : undefined} onClick={() => onChange("estudio")}>
         <BarChart3 aria-hidden />

@@ -1741,3 +1741,47 @@ html.theme-amoled :is(.bz-dialog, [role="dialog"][aria-modal="true"], [role="ale
     inset 0 2px 0 rgb(255 240 218 / 0.05),
     0 18px 40px -18px rgb(0 0 0 / 0.8) !important;
 }
+
+/* 1.4.67 (Oscar): Inventario de clientes tiles get a fine hairline in their own tone, a little deeper
+   than the fill (never grey, never thick). Night: a touch stronger so it reads over the dark fill. */
+.bz-inv-tile { --inv-tone: var(--color-primary); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--inv-tone) 30%, transparent); }
+.bz-inv-tile.is-today { --inv-tone: var(--color-today); }
+.bz-inv-tile.is-pending { --inv-tone: var(--color-pending); }
+.bz-inv-tile.is-sun { --inv-tone: var(--color-primary); }
+.bz-inv-tile.is-soil { --inv-tone: var(--color-soil); }
+html.theme-dark .bz-inv-tile, html.theme-amoled .bz-inv-tile { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--inv-tone) 42%, transparent); }
+
+/* 1.4.67 (Oscar): the Tarde badge gets a soft halo behind it, in its own red, that grows a few px and
+   fades: "aquí estoy" without shouting. Slow (2.8 s), low (peak ~30%), never moves the badge or the layout.
+   Reduced motion: a still soft glow. */
+.bz-late-pulse { position: relative; isolation: isolate; }
+.bz-late-pulse::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-late) 32%, transparent);
+  animation: bz-late-halo 2.8s ease-in-out infinite;
+}
+@keyframes bz-late-halo {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-late) 32%, transparent); }
+  70% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-late) 0%, transparent); }
+  100% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-late) 0%, transparent); }
+}
+html.theme-dark .bz-late-pulse::before, html.theme-amoled .bz-late-pulse::before { animation-name: bz-late-halo-night; }
+@keyframes bz-late-halo-night {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-late) 36%, transparent); }
+  70% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-late) 0%, transparent); }
+  100% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-late) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bz-late-pulse::before { animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-late) 18%, transparent); }
+}
+
+/* 1.4.67 (Oscar): Fijados group on Hoy: a fine parchment a shade deeper than the page with a warm-neutral
+   hairline (like Ajustes cards), instead of the café fill. Night: a quiet warm lift, never muddy brown. */
+.bz-pinned {
+  background: color-mix(in srgb, var(--color-bg) 84%, #c4ab84);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #6b5a43 20%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.35);
+}
+html.theme-dark .bz-pinned, html.theme-amoled .bz-pinned {
+  background: color-mix(in srgb, var(--color-surface) 93%, #ffeed4);
+  box-shadow: inset 0 0 0 1px rgb(255 238 212 / 0.13), inset 0 1px 0 rgb(255 238 212 / 0.05);
+}

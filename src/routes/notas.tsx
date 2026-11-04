@@ -457,7 +457,7 @@ function PadBody({
       </div>
         }
       >
-      <section ref={editorRef} className="note-halo p-3">
+      <section ref={editorRef} data-spot="notas" className="note-halo p-3">
         <div className="mb-2 flex items-center gap-1">
           <button
             type="button"

@@ -2,6 +2,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { canGoBack, historyKey, scrollMemory, takeFocus } from "@/lib/manual/nav";
 import { clearRing, showRing } from "@/lib/manual/ring";
+import { markJump } from "@/lib/jump-back";
 
 const OPEN_LAYER =
   '.bz-hint, [role="dialog"], [role="alertdialog"], [role="menu"], [data-mention-open], [data-radix-popper-content-wrapper]';
@@ -123,7 +124,7 @@ export function NavHost() {
 
   useEffect(() => {
     prevPath.current = pathname;
-    clearRing(); // a screen change always ends the "Ir allí" ring
+    clearRing(); // a screen change always ends the highlight
   }, [pathname]);
 
   /* ----------------------------------------------- "Ver en la app" focus */
@@ -135,43 +136,115 @@ export function NavHost() {
       if (!want) return;
       const started = Date.now();
       let opened = false;
+      const openFold = (id: string) => {
+        if (opened) return;
+        opened = true;
+        window.dispatchEvent(new CustomEvent("ols-open-fold", { detail: id }));
+      };
+      const firstVisible = (sel: string) => Array.from(document.querySelectorAll(sel)).find(visible) ?? null;
       const step = () => {
         if (cancelled) return;
         const elapsed = Date.now() - started;
-        let el: Element | null = null;
-        if (want.id && !opened && document.getElementById(want.id)) {
-          opened = true;
-          window.dispatchEvent(new CustomEvent("ols-open-fold", { detail: want.id }));
+        if (want.id && document.getElementById(want.id)) openFold(want.id);
+        const t = want.topic ? CSS.escape(want.topic) : "";
+        // 1) the exact element the topic talks about (data-spot), 2) its fallback (data-spot-alt),
+        // 3) the fold/section id, 4) the topic's own (?) and its card.
+        let box: Element | null = t ? firstVisible(`[data-spot~="${t}"]`) : null;
+        // a spot can sit inside a closed fold: open the fold it lives in
+        if (!box && t) {
+          const hidden = document.querySelector(`[data-spot~="${t}"]`);
+          const fold = hidden?.closest("section[id], details[id]");
+          if (fold?.id) openFold(fold.id);
         }
-        if (want.topic) {
-          el = Array.from(document.querySelectorAll(`[data-topic="${CSS.escape(want.topic)}"]`)).find(visible) ?? null;
+        // data still loading: give the exact element a moment before settling for less
+        const patient = elapsed > 1500;
+        if (!box && t && patient) box = firstVisible(`[data-spot-alt~="${t}"]`);
+        if (!box && want.id && (patient || !t)) {
+          const el = document.getElementById(want.id);
+          if (el && visible(el)) box = el;
         }
-        if (!el && want.id) {
-          const box = document.getElementById(want.id);
-          if (box && !opened) {
-            opened = true;
-            window.dispatchEvent(new CustomEvent("ols-open-fold", { detail: want.id }));
+        let dot: Element | null = null;
+        if (!box && t && patient) {
+          const el = firstVisible(`[data-topic="${t}"]`);
+          if (el) {
+            dot = el;
+            box =
+              cardOf(el) ??
+              el.closest("section, fieldset, details, li, article, label") ??
+              el.parentElement ??
+              el;
           }
-          // give the fold a moment to show the topic's own (?) before settling for the whole box
-          if (box && (!want.topic || elapsed > 1600)) el = box;
         }
-        if (!el) {
+        if (!box) {
           if (elapsed < 14000) timer = window.setTimeout(step, 120);
           return;
         }
-        const isBox = want.id && el.id === want.id;
-        const box =
-          (isBox ? el : null) ??
-          cardOf(el) ??
-          el.closest("section, fieldset, details, li, article, label") ??
-          el.parentElement ??
-          el;
-        (box as HTMLElement).scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "center" });
-        // 1.4.61 (Oscar): the ring stays on while you read; it no longer fades by itself.
-        window.setTimeout(() => {
+        if (!dot && t) dot = Array.from(box.querySelectorAll(`[data-topic="${t}"]`)).find(visible) ?? null;
+        const target = box as HTMLElement;
+        const mark = dot;
+        const refind = (): Element | null =>
+          (t ? firstVisible(`[data-spot~="${t}"]`) ?? firstVisible(`[data-spot-alt~="${t}"]`) : null) ??
+          (want.id ? document.getElementById(want.id) : null);
+        // Wait until the screen stops filling in (Estudio's columns, Hoy's data), then glide there once,
+        // and light the frame only when the glide has landed, so the few seconds happen where you look.
+        const stableSince = { at: Date.now(), y: NaN };
+        const waitStable = () => {
           if (cancelled) return;
-          showRing(box, isBox ? null : (el as Element), reduced() ? 150 : 900);
-        }, reduced() ? 0 : 320);
+          if (!target.isConnected) {
+            // the block was drawn again while data arrived: start over on the new one
+            timer = window.setTimeout(step, 60);
+            return;
+          }
+          const y = target.getBoundingClientRect().top + window.scrollY;
+          if (Math.abs(y - stableSince.y) > 2) {
+            stableSince.y = y;
+            stableSince.at = Date.now();
+          }
+          const quiet = Date.now() - stableSince.at >= 280;
+          if (!quiet && Date.now() - started < 6000) {
+            timer = window.setTimeout(waitStable, 70);
+            return;
+          }
+          glide();
+        };
+        const glide = () => {
+          const r = target.getBoundingClientRect();
+          const head = document.querySelector(".pod-header")?.getBoundingClientRect().bottom ?? 0;
+          const inView = Boolean(target.closest(".pod-header")) || (r.top >= head + 8 && r.bottom <= window.innerHeight - 8);
+          if (inView) {
+            showRing(target, mark, 300, refind);
+            return;
+          }
+          // phone back returns to where this screen opened. The router answers that history step with
+          // its own scroll-to-top a moment later, so the glide starts after it, never under it.
+          markJump();
+          timer = window.setTimeout(() => go(r.height > window.innerHeight - head - 32, head), 140);
+        };
+        const go = (tall: boolean, head: number) => {
+          if (cancelled) return;
+          const keep = target.style.scrollMarginTop;
+          target.style.scrollMarginTop = `${Math.round(head + 16)}px`; // clear of the sticky header
+          target.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: tall ? "start" : "center" });
+          window.setTimeout(() => {
+            target.style.scrollMarginTop = keep;
+          }, 2500);
+          const landed = { y: window.scrollY, at: Date.now(), from: Date.now() };
+          const waitLand = () => {
+            if (cancelled) return;
+            if (Math.abs(window.scrollY - landed.y) > 1) {
+              landed.y = window.scrollY;
+              landed.at = Date.now();
+            }
+            const still = Date.now() - landed.at >= 140 && Date.now() - landed.from >= 160;
+            if (!still && Date.now() - landed.from < 2000) {
+              timer = window.setTimeout(waitLand, 50);
+              return;
+            }
+            showRing(target, mark, 400, refind);
+          };
+          timer = window.setTimeout(waitLand, 60);
+        };
+        waitStable();
       };
       timer = window.setTimeout(step, 80);
     };

@@ -307,6 +307,7 @@ function AgendaPage() {
             <button
               key={item.value}
               type="button"
+              data-spot={item.value === "all" ? "agenda-todo" : undefined}
               onClick={() => {
                 setCal(false);
                 setRange(item.value);
@@ -367,7 +368,7 @@ function AgendaPage() {
         </button>
       ) : null}
 
-      <div className="mb-3 flex items-center gap-0.5">
+      <div className="mb-3 flex items-center gap-0.5 rounded-full" data-spot="agenda">
       <div id="agenda-controles" className="grid min-w-0 flex-1 grid-cols-[repeat(5,auto)] justify-between gap-0.5">
         {FILTERS.filter((item) => item.value !== "cancelled").map((item) => {
           const on = !onlyMoved && status === item.value;

@@ -193,7 +193,7 @@ function Hero({ r }: { r: AdvisorReading }) {
   const tx = useTx();
   const v = verdict(r, tx);
   return (
-    <section className={cn("as-card as-hero", TONE_CLASS[r.tone])} data-masonry-full style={{ "--i": 0 } as CSSProperties}>
+    <section data-spot="asesor" className={cn("as-card as-hero", TONE_CLASS[r.tone])} data-masonry-full style={{ "--i": 0 } as CSSProperties}>
       <div className="as-hero-top">
         <div className="min-w-0 flex-1">
           <p className="as-kicker"><Sprout aria-hidden />{tx("Tu negocio, en claro", "Business, in short")}</p>
@@ -617,7 +617,7 @@ function Actions({ r }: { r: AdvisorReading }) {
   const width = usePageWidth();
   useMasonry(acts, width >= 1150 ? 3 : width >= 600 ? 2 : 0, 11, true);
   return (
-    <section className="as-card" data-masonry-full style={{ "--i": 1 } as CSSProperties}>
+    <section data-spot="asesor-pasos" className="as-card" data-masonry-full style={{ "--i": 1 } as CSSProperties}>
       <h3 className="as-h3"><Leafy />{tx("Lo que yo haría ahora", "What I'd do now")}</h3>
       {r.actions.length ? (
         <ol ref={acts} className="as-acts">
@@ -661,7 +661,7 @@ function Groups({ r }: { r: AdvisorReading }) {
   const moneyLabel = (k: AdvisorGroupKey, v: number) =>
     k === "morosos" ? tx(`${usd(v)} deben`, `${usd(v)} owed`) : k === "ocasionales" ? tx(`${usd(v)} en el año`, `${usd(v)} this year`) : tx(`${usd(v)}/mes`, `${usd(v)}/mo`);
   return (
-    <section className="as-card" style={{ "--i": 2 } as CSSProperties}>
+    <section data-spot="asesor-grupos" className="as-card" style={{ "--i": 2 } as CSSProperties}>
       <h3 className="as-h3"><Leafy />{tx("Tus clientes, en grupos", "Your clients, in groups")}</h3>
       <div className="as-share" aria-hidden>
         {groups.filter((g) => g.count > 0).map((g) => (
@@ -776,7 +776,7 @@ function Checks({ r }: { r: AdvisorReading }) {
   const arrived = useArrived();
   const passed = r.pillars.filter((p) => p.status === "pass").length;
   return (
-    <section className="as-card" style={{ "--i": 3 } as CSSProperties}>
+    <section data-spot="asesor-chequeos" className="as-card" style={{ "--i": 3 } as CSSProperties}>
       <h3 className="as-h3">
         <Leafy />{tx("Cinco chequeos", "Five checks")}
         <span className="as-h3-note">{tx(`${passed} de 5 bien`, `${passed} of 5 good`)}</span>
@@ -852,7 +852,7 @@ export function AsesorPanel() {
   const r = q.data;
   if (!r || !r.hasData) {
     return (
-      <section className="as-card as-empty bz-frame">
+      <section data-spot-alt="asesor asesor-pasos asesor-grupos asesor-chequeos" className="as-card as-empty bz-frame">
         <Sprout aria-hidden className="as-empty-sprout" />
         <p className="as-verdict">{tx("Añade clientes y aquí verás consejos.", "Add clients and you'll see advice here.")}</p>
         <p className="as-sub">{tx("Con unos cortes marcados como Hecho, te diré qué cobrar, a quién subir el precio y qué días llenar.", "Once a few cuts are marked Done, I'll tell you what to collect, whose price to raise and which days to fill.")}</p>

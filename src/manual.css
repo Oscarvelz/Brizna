@@ -211,25 +211,35 @@ html.theme-dark .mn mark, html.theme-amoled .mn mark { background: color-mix(in 
 @keyframes bz-glow-dot { 0%, 100% { transform: none; } 20% { transform: scale(1.25); } 40% { transform: scale(0.95); } 60% { transform: scale(1.12); } }
 .bz-glow-dot > button { animation: bz-glow-dot 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both; color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 18%, transparent); }
 
-/* "Ir allí" ring (1.4.61): gentle entrance, then steady until you move on (no pulse loop). */
-@keyframes bz-ring-in {
-  0% { box-shadow: 0 0 0 0 transparent, 0 0 0 0 transparent; }
-  100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 72%, transparent), 0 0 22px 2px color-mix(in srgb, var(--color-primary) 26%, transparent); }
+/* "Ver en la app" highlight (1.4.67): a solid frame over the target, ~2.8 s:
+   fade in 200 ms, one gentle glow, fade out. Its own layer, so no parent clips it. */
+.bz-spot {
+  position: fixed; left: 0; top: 0; z-index: 25; pointer-events: none;
+  box-sizing: border-box;
+  border: 2px solid var(--color-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 22%, transparent), 0 0 18px 2px color-mix(in srgb, var(--color-primary) 30%, transparent);
+  opacity: 0;
+  animation: bz-spot var(--bz-spot-ms, 2800ms) linear both;
 }
-.bz-ring {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 72%, transparent), 0 0 22px 2px color-mix(in srgb, var(--color-primary) 26%, transparent);
-  animation: bz-ring-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-  scroll-margin: 6rem 0;
-  transition: box-shadow 0.25s ease-out;
+html.theme-dark .bz-spot, html.theme-amoled .bz-spot {
+  border-color: color-mix(in srgb, var(--color-primary) 88%, white);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, transparent), 0 0 20px 3px color-mix(in srgb, var(--color-primary) 34%, transparent);
 }
-@keyframes bz-ring-dot-in { 0% { transform: scale(0.85); opacity: 0.4; } 100% { transform: none; opacity: 1; } }
-.bz-ring-dot > button { color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 18%, transparent); animation: bz-ring-dot-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both; }
+@keyframes bz-spot {
+  0% { opacity: 0; }
+  7% { opacity: 1; }
+  36% { opacity: 1; box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, transparent), 0 0 26px 6px color-mix(in srgb, var(--color-primary) 40%, transparent); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.bz-spot.is-still { animation: bz-spot-still var(--bz-spot-ms, 2800ms) linear both; box-shadow: none; }
+@keyframes bz-spot-still { 0%, 82% { opacity: 1; } 100% { opacity: 0; } }
+.bz-ring-dot > button { color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 18%, transparent); transition: background-color 0.2s, color 0.2s; }
 
 @media (prefers-reduced-motion: reduce) {
   .mn-glow, .bz-glow { animation: none; outline: 3px solid var(--color-primary); outline-offset: 2px; transition: outline-color 0.01ms; }
   .mn-glow::after { display: none; }
   .bz-glow-dot > button { animation: none; }
-  .bz-ring, .bz-ring-dot > button { animation: none; }
   .mn-back svg, .mn-go svg { transition: none; }
 }
 

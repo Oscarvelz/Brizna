@@ -1,102 +1,140 @@
 /**
- * "Ir allí" focus ring (1.4.61, Oscar). The ring is a class on the target itself, so it follows it
- * on scroll, resize and layout changes. After a gentle entrance it stays steady (no pulse) while you read.
+ * "Ver en la app" highlight (1.4.67, Oscar: "la cajita que se ilumina por unos segundos").
  *
- * It goes away on: your first tap, a scroll you make (not the jump's own), phone back (closes the ring
- * only, you stay on the screen), a screen change, the fingerprint lock, or after 60 s.
- * If the target's own (?) bubble is open, the ring stays until that bubble closes.
- * Only one ring exists at a time.
+ * A solid frame drawn over the target (its own layer, so no parent can clip it and no card shadow can
+ * hide it). It copies the target's corner radius, follows it while the page settles, fades in (~200 ms),
+ * glows once and fades out: about 2.8 s in all. No bounce, no looping pulse.
+ * Reduced motion: a still outline that fades out at the end.
+ *
+ * It ends early on your first tap, a scroll you make (not the jump's own), a screen change or the
+ * fingerprint lock. The topic's own (?) gets a soft mark for the same few seconds.
+ * Only one highlight exists at a time.
  */
-import { pushBackStep } from "@/lib/back-close";
 
-const RING = "bz-ring";
 const DOT = "bz-ring-dot";
-export const RING_CAP_MS = 60_000;
+/** Total life of one highlight (fade in + glow + fade out). */
+export const RING_MS = 2800;
 
-type Live = { box: Element; dot: Element | null; stop: () => void };
+type Live = { box: Element; stop: () => void };
 let live: Live | null = null;
 
-/** Remove the current ring, if any. */
+/** The element currently highlighted (tests and other layers). */
+export function ringTarget(): Element | null {
+  return live?.box ?? null;
+}
+
+/** Remove the current highlight, if any. */
 export function clearRing() {
   const cur = live;
   live = null;
   if (cur) cur.stop();
 }
 
-/** True while a ring is on screen (for tests and other layers). */
+/** True while a highlight is on screen. */
 export function ringOn(): boolean {
   return live !== null;
 }
 
-/** An open (?) bubble that belongs to the ringed target. */
-function ownBubbleOpen(box: Element, dot: Element | null): boolean {
-  const btns = Array.from(box.querySelectorAll<HTMLElement>('[data-topic] > button[aria-expanded="true"]'));
-  if (dot) btns.push(...Array.from(dot.querySelectorAll<HTMLElement>('button[aria-expanded="true"]')));
-  return btns.length > 0;
+function reduced(): boolean {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function inOwnHint(node: Node | null, box: Element, dot: Element | null): boolean {
-  if (!node || !(node instanceof Element)) return false;
-  const tip = node.closest('[role="tooltip"]');
-  if (tip && ownBubbleOpen(box, dot)) return true;
-  const hintBtn = node.closest("[data-topic]");
-  return Boolean(hintBtn && (box.contains(hintBtn) || (dot && dot.contains(hintBtn))));
+/** Bottom edge of whatever sits fixed on top of the page (header), so the frame never paints over it. */
+function topEdge(): number {
+  const head = document.querySelector(".pod-header");
+  if (!head) return 0;
+  const cs = getComputedStyle(head);
+  if (cs.position !== "sticky" && cs.position !== "fixed") return 0;
+  return Math.max(0, head.getBoundingClientRect().bottom);
 }
 
 /**
- * Put the ring on `box` (and a soft mark on the (?) `dot`, when the jump was to a topic).
+ * Highlight `box` (and give the topic's (?) `dot` a soft mark).
  * `settleMs`: the jump's own smooth scroll still running; scrolling in that window is not yours.
  */
-export function showRing(box: Element, dot: Element | null = null, settleMs = 900) {
+export function showRing(first: Element, dot: Element | null = null, settleMs = 900, refind?: () => Element | null) {
+  let box = first;
   clearRing();
   const started = Date.now();
-  box.classList.add(RING);
+  const still = reduced();
+  const life = RING_MS;
+  let settleUntil = started + settleMs;
+
+  const frame = document.createElement("div");
+  frame.className = "bz-spot";
+  frame.setAttribute("aria-hidden", "true");
+  if (still) frame.classList.add("is-still");
+  frame.style.setProperty("--bz-spot-ms", `${life}ms`);
+  // a target inside the sticky header (Agenda's Semana/Mes/Todo) is drawn above it, unclipped
+  const inHeader = Boolean(box.closest(".pod-header"));
+  if (inHeader) frame.style.zIndex = "35";
+  document.body.appendChild(frame);
+  box.setAttribute("data-spot-on", "");
   dot?.classList.add(DOT);
 
-  let heldByBubble = false;
-  let settleUntil = started + settleMs;
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  // Screens that are still filling in (Estudio's columns) can push the target away after the jump:
-  // for the first moments, bring it back into view. That scroll is ours, not the user's.
-  const keepInView = () => {
+  const cs = getComputedStyle(box);
+  const pad = 3; // frame sits just outside the element's edge
+  // square elements (a field and its label) get a soft corner instead of a hard box
+  const radius = (v: string) => `${(parseFloat(v) || 0) > 0 ? (parseFloat(v) || 0) + pad : 10}px`;
+  frame.style.borderTopLeftRadius = radius(cs.borderTopLeftRadius);
+  frame.style.borderTopRightRadius = radius(cs.borderTopRightRadius);
+  frame.style.borderBottomLeftRadius = radius(cs.borderBottomLeftRadius);
+  frame.style.borderBottomRightRadius = radius(cs.borderBottomRightRadius);
+
+  let raf = 0;
+  const place = () => {
     const r = box.getBoundingClientRect();
-    const head = document.querySelector(".pod-header")?.getBoundingClientRect().bottom ?? 0;
+    const top = r.top - pad;
+    frame.style.transform = `translate(${Math.round(r.left - pad)}px, ${Math.round(top)}px)`;
+    frame.style.width = `${Math.round(r.width + pad * 2)}px`;
+    frame.style.height = `${Math.round(r.height + pad * 2)}px`;
+    // never paint over the sticky header
+    const cut = inHeader ? 0 : topEdge() - top;
+    frame.style.clipPath = cut > 0 ? `inset(${Math.round(cut)}px -40px -40px -40px)` : "";
+    raf = requestAnimationFrame(place);
+  };
+  place();
+
+  // Screens that are still filling in (Estudio's columns) can push the target away after the jump:
+  // for the first moment, bring it back into view. That scroll is ours, not the user's.
+  const keepInView = () => {
+    if (inHeader) return;
+    const r = box.getBoundingClientRect();
+    const head = topEdge();
     const out = r.bottom < head + 24 || r.top > window.innerHeight - 24;
     if (!out) return;
     settleUntil = Date.now() + 900;
-    (box as HTMLElement).scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: r.height > window.innerHeight - head ? "start" : "center" });
+    (box as HTMLElement).scrollIntoView({ behavior: still ? "auto" : "smooth", block: r.height > window.innerHeight - head ? "start" : "center" });
   };
-  let backDone: (() => void) | null = null;
-  const timers: number[] = [];
 
   const dismiss = () => {
-    if (live && live.box === box) clearRing();
+    if (live && live.stop === stop) clearRing();
   };
   const userScroll = (e: Event) => {
     if (Date.now() < settleUntil) return;
-    if (ownBubbleOpen(box, dot)) return;
     if (e.type === "keydown") {
       const k = (e as KeyboardEvent).key;
       if (!["PageDown", "PageUp", "ArrowDown", "ArrowUp", " ", "Home", "End"].includes(k)) return;
     }
     dismiss();
   };
-  const onTap = (e: PointerEvent) => {
-    // Opening (or using) the target's own (?) keeps the ring; it then waits for that bubble to close.
-    if (inOwnHint(e.target as Node, box, dot)) return;
-    if (ownBubbleOpen(box, dot)) return; // this tap closes the bubble; the watcher ends the ring after it
-    dismiss();
-  };
+  const onTap = () => dismiss();
   const onLeave = () => dismiss();
 
   const watch = window.setInterval(() => {
-    if (!box.isConnected) return dismiss();
-    if (Date.now() - started < 2500) keepInView();
-    const open = ownBubbleOpen(box, dot);
-    if (open) heldByBubble = true;
-    else if (heldByBubble) return dismiss();
-    if (!open && Date.now() - started > RING_CAP_MS) dismiss();
-  }, 250);
+    if (!box.isConnected) {
+      // the screen re-drew the same block (data arrived): follow the new one
+      const again = refind?.();
+      if (!again) return dismiss();
+      box.removeAttribute("data-spot-on");
+      box = again;
+      box.setAttribute("data-spot-on", "");
+      if (live) live.box = box;
+    }
+    // only after our own glide has finished, so it is never restarted mid-way
+    if (Date.now() - started < 2400 && Date.now() > settleUntil) keepInView();
+  }, 200);
+  const end = window.setTimeout(dismiss, life);
 
   document.addEventListener("pointerdown", onTap, true);
   window.addEventListener("wheel", userScroll, { passive: true });
@@ -106,30 +144,27 @@ export function showRing(box: Element, dot: Element | null = null, settleMs = 90
   window.addEventListener("bz-locked", onLeave);
   window.addEventListener("pagehide", onLeave);
 
-  // Phone back: the first back only takes the ring away, like a sheet; you stay where you are.
-  backDone = pushBackStep(() => {
-    backDone = null;
-    dismiss();
-  });
-
-  live = {
-    box,
-    dot,
-    stop: () => {
-      window.clearInterval(watch);
-      for (const t of timers) window.clearTimeout(t);
-      document.removeEventListener("pointerdown", onTap, true);
-      window.removeEventListener("wheel", userScroll);
-      window.removeEventListener("touchmove", userScroll);
-      window.removeEventListener("keydown", userScroll);
-      window.removeEventListener("hashchange", onLeave);
-      window.removeEventListener("bz-locked", onLeave);
-      window.removeEventListener("pagehide", onLeave);
-      box.classList.remove(RING);
-      dot?.classList.remove(DOT);
-      const done = backDone;
-      backDone = null;
-      done?.();
-    },
-  };
+  function stop() {
+    cancelAnimationFrame(raf);
+    window.clearInterval(watch);
+    window.clearTimeout(end);
+    document.removeEventListener("pointerdown", onTap, true);
+    window.removeEventListener("wheel", userScroll);
+    window.removeEventListener("touchmove", userScroll);
+    window.removeEventListener("keydown", userScroll);
+    window.removeEventListener("hashchange", onLeave);
+    window.removeEventListener("bz-locked", onLeave);
+    window.removeEventListener("pagehide", onLeave);
+    box.removeAttribute("data-spot-on");
+    dot?.classList.remove(DOT);
+    // a quick fade if it ended early; at its natural end the animation already faded it
+    const now = getComputedStyle(frame).opacity;
+    frame.style.opacity = now;
+    frame.style.animation = "none";
+    if (parseFloat(now) > 0.02 && typeof frame.animate === "function") {
+      frame.animate([{ opacity: now }, { opacity: 0 }], { duration: 200, easing: "ease-out", fill: "forwards" });
+      window.setTimeout(() => frame.remove(), 230);
+    } else frame.remove();
+  }
+  live = { box, stop };
 }

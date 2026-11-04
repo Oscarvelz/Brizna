@@ -1551,8 +1551,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Brizna's guide. Every (?) opens its topic here, and back returns you to where you were.",
         ],
         how: [
-          "El (?) da la idea en una o dos frases; Más en el manual abre aquí el detalle.\nCada tema tiene: Cómo funciona, Cómo se calcula, un Ejemplo, Si pasa… y temas relacionados.\nLa lupa busca en todo el texto del manual.\nVolver, la flecha del teléfono o Esc te regresan a la pantalla de antes.\nVer en la app te lleva al lugar exacto y lo ilumina.\nImprimir todo o un capítulo, y el Índice A–Z, están arriba.",
-          "The (?) gives the idea in one or two sentences; More in the manual opens the detail here.\nEach topic has: How it works, How it's counted, an Example, What if…, and related topics.\nThe magnifying glass searches the whole manual text.\nBack, the phone's back arrow, or Esc returns you to the screen you came from.\nSee it in the app takes you to the exact spot and lights it up.\nPrint all or one chapter, and the A–Z index, are on top.",
+          "El (?) da la idea en una o dos frases; Más en el manual abre aquí el detalle.\nCada tema tiene: Cómo funciona, Cómo se calcula, un Ejemplo, Si pasa… y temas relacionados.\nLa lupa busca en todo el texto del manual.\nVolver, la flecha del teléfono o Esc te regresan a la pantalla de antes.\nVer en la app te lleva al lugar exacto y lo enmarca con una luz unos segundos; un toque o un desliz la quitan antes.\nImprimir todo o un capítulo, y el Índice A–Z, están arriba.",
+          "The (?) gives the idea in one or two sentences; More in the manual opens the detail here.\nEach topic has: How it works, How it's counted, an Example, What if…, and related topics.\nThe magnifying glass searches the whole manual text.\nBack, the phone's back arrow, or Esc returns you to the screen you came from.\nSee it in the app takes you to the exact spot and frames it with a light for a few seconds; a tap or a scroll clears it sooner.\nPrint all or one chapter, and the A–Z index, are on top.",
         ],
         example: [
           "En Ajustes no entiendes cuándo alguien pasa a naranja. Tocas el (?) de Espera y alto riesgo y luego Más en el manual: el ejemplo explica los 45 + 21 días. Tocas Volver y estás otra vez en Ajustes, donde estabas.",
@@ -1723,7 +1723,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "You sign out: your data stays in the cloud; sign in again with the same email.\nA new device with data and an empty cloud: Brizna never wipes the device; it uploads its own.",
         ],
         related: ["copia", "huella"],
-        go: { to: "/ajustes", where: ["Ajustes, al final", "Settings, at the end"] },
+        go: { to: "/ajustes", focus: "aj-nube", where: ["Ajustes, al final", "Settings, at the end"] },
         terms: [["Sincronizar", "Sync"], ["Sin internet", "Offline"], ["Sesión", "Session"], ["Cerrar sesión", "Sign out"], ["Mantener sesión abierta", "Keep me signed in"], ["Cambios en dos lugares", "Changes in two places"]],
       },
       {
@@ -1751,7 +1751,7 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Your phone has no fingerprint or face unlock: it cannot be turned on.\nIt is per device: on the tablet you turn it on separately.",
         ],
         related: ["nube"],
-        go: { to: "/ajustes", where: ["Ajustes, Huella", "Settings, Fingerprint"] },
+        go: { to: "/ajustes", focus: "aj-huella", where: ["Ajustes, Huella", "Settings, Fingerprint"] },
         terms: [["Desbloqueo", "Unlock"], ["Bloqueo", "Lock"]],
       },
       {

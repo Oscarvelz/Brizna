@@ -377,7 +377,7 @@ function ClientesPage() {
           <Link
             to="/clientes"
             search={{ filter: "regular" }}
-            className="rounded-sm bg-today-bg px-1.5 py-1.5 text-center"
+            className="bz-inv-tile is-today rounded-sm bg-today-bg px-1.5 py-1.5 text-center"
           >
             <p className="font-display text-lg font-semibold tabular-nums text-today">
               {inventory.data?.regular ?? "—"}
@@ -387,7 +387,7 @@ function ClientesPage() {
           <Link
             to="/clientes"
             search={{ filter: "one_time" }}
-            className="rounded-sm bg-pending-bg px-1.5 py-1.5 text-center"
+            className="bz-inv-tile is-pending rounded-sm bg-pending-bg px-1.5 py-1.5 text-center"
           >
             <p className="font-display text-lg font-semibold tabular-nums text-pending">
               {inventory.data?.oneTime ?? "—"}
@@ -397,7 +397,7 @@ function ClientesPage() {
           <Link
             to="/clientes"
             search={{ filter: "active" }}
-            className="rounded-sm bg-sun px-1.5 py-1.5 text-center"
+            className="bz-inv-tile is-sun rounded-sm bg-sun px-1.5 py-1.5 text-center"
           >
             <p className="font-display text-lg font-semibold tabular-nums">{inventory.data?.total ?? "—"}</p>
             <p className="text-xs text-muted">{tx("Juntos", "Together")}</p>
@@ -405,7 +405,7 @@ function ClientesPage() {
           <Link
             to="/clientes"
             search={{ filter: "inactive" }}
-            className="rounded-sm bg-soil-bg px-1.5 py-1.5 text-center"
+            className="bz-inv-tile is-soil rounded-sm bg-soil-bg px-1.5 py-1.5 text-center"
           >
             <p className="font-display text-lg font-semibold tabular-nums text-soil">
               {inventory.data?.archived ?? "—"}
@@ -431,7 +431,7 @@ function ClientesPage() {
       />
 
       <div className="relative mb-4" data-no-swipe>
-        <div className="flex h-11 w-full items-center gap-1 rounded-full bg-surface pr-1 pl-3 text-sm font-semibold shadow-card">
+        <div data-spot="clientes-filtros" data-spot-alt="archivo" className="flex h-11 w-full items-center gap-1 rounded-full bg-surface pr-1 pl-3 text-sm font-semibold shadow-card">
           <button
             type="button"
             aria-expanded={filtersOpen}
@@ -477,7 +477,7 @@ function ClientesPage() {
       </div>
 
       {inArchive && clients.length > 0 ? (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-surface p-2 shadow-card">
+        <div data-spot="archivo" className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-surface p-2 shadow-card">
           <button
             type="button"
             onClick={selectAll}
@@ -732,6 +732,7 @@ function ClientListCard({
         }
       >
         <article
+          data-spot="lista-clientes ficha-deuda precio"
           className={cn(
             "min-w-0 max-w-full overflow-hidden rounded-xl bg-surface shadow-card",
             quad ? meshFrame(cols) : dense ? "px-2 py-1.5" : media ? "p-2.5" : "p-4",

@@ -266,6 +266,7 @@ function Home() {
               <p className="bz-hoy-acts-kicker">{tx("Cambios del día", "Day changes")}</p>
               <DayAct
                 tone="hold"
+                spot="parar-dia"
                 icon={<CloudRain />}
                 label={t("stop.button")}
                 sub={tx("Pasa los patios de hoy y avisa", "Moves today's yards and lets them know")}
@@ -285,6 +286,7 @@ function Home() {
               />
               <DayAct
                 tone="due"
+                spot="pasar-pendientes"
                 icon={<CalendarClock />}
                 label={tx("Pasar los de hoy", "Move today's jobs")}
                 sub={
@@ -301,7 +303,7 @@ function Home() {
         tools={
           <>
       {data && (data.overdue.length > 0 || pendingToday > 0) ? (
-        <div className="mb-4 grid grid-cols-2 gap-2">
+        <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg" data-spot="pasar-pendientes">
           <Button
             variant="outline"
             size="sm"
@@ -321,7 +323,7 @@ function Home() {
         </div>
       ) : null}
       <WorkDayCard />
-      <Button variant="outline" className="mb-4 w-full" onClick={() => setAskRain(true)}>
+      <Button variant="outline" className="mb-4 w-full" data-spot="parar-dia" onClick={() => setAskRain(true)}>
         <CloudRain />
         {t("stop.button")}
       </Button>
@@ -561,8 +563,8 @@ function DayBoard({
       </div>
 
       {pinned.length > 0 ? (
-        <section id="en-la-mira" className="rounded-xl bg-soil-bg p-2">
-          <p className="mb-1 px-1 text-xs font-semibold tracking-wide text-soil uppercase">
+        <section id="en-la-mira" className="bz-pinned rounded-xl p-2">
+          <p className="mb-1 px-1 text-xs font-semibold tracking-wide text-muted uppercase">
             {tx(`Fijados · ${pinned.length}`, `Pinned · ${pinned.length}`)}
           </p>
           <p className="mb-2 px-1 text-xs text-muted">
@@ -617,6 +619,8 @@ function DayBoard({
             ) : null}
             <DayFold
             id={isToday ? "dia-hoy" : undefined}
+            spot={isToday ? "hoy" : undefined}
+            spotAlt={isToday ? "hecho propina todos pasar-pendientes" : undefined}
             title={isToday ? tx("Hoy", "Today") : `${label} ${date.slice(8)}`}
             count={items.length}
             open={open.includes(date)}
@@ -624,7 +628,7 @@ function DayBoard({
             onToggle={() => toggle(date)}
             extra={
               isToday && items.length > 1 ? (
-                <Button variant="outline" size="sm" onClick={onAskAll}>
+                <Button variant="outline" size="sm" data-spot="todos" onClick={onAskAll}>
                   <CheckCheck />
                   {tx("Todos", "All")}
                 </Button>
@@ -693,6 +697,8 @@ function DayFold({
   extra,
   children,
   id,
+  spot,
+  spotAlt,
 }: {
   title: string;
   count: number;
@@ -702,11 +708,16 @@ function DayFold({
   extra?: ReactNode;
   children: ReactNode;
   id?: string;
+  /** Manual topics this block is the place for ("Ver en la app" highlight). */
+  spot?: string;
+  spotAlt?: string;
 }) {
   const tx = useTx();
   return (
     <section
       id={id}
+      data-spot={spot}
+      data-spot-alt={spotAlt}
       className={cn(
         "overflow-hidden rounded-xl bg-surface shadow-card",
         tone === "late" && "ring-1 ring-late/40",
@@ -829,7 +840,9 @@ function DayAct({
   sub,
   disabled,
   onPress,
+  spot,
 }: {
+  spot?: string;
   tone: "hold" | "late" | "due";
   icon: ReactNode;
   label: string;
@@ -838,7 +851,7 @@ function DayAct({
   onPress: () => void;
 }) {
   return (
-    <button type="button" className={cn("bz-hoy-act", `is-${tone}`)} disabled={disabled} onClick={onPress}>
+    <button type="button" data-spot={spot} className={cn("bz-hoy-act", `is-${tone}`)} disabled={disabled} onClick={onPress}>
       <span className="bz-hoy-act-ic" aria-hidden>
         {icon}
       </span>

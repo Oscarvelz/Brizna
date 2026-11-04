@@ -39,6 +39,7 @@ export function StatusBadge({ status }: { status: ComputedStatus }) {
       className={cn(
         "inline-flex items-center gap-1 rounded-full font-semibold tracking-tight",
         big ? "h-8 px-3 text-sm" : "h-7 px-2.5 text-xs",
+        big && "bz-late-pulse", // 1.4.67 (Oscar): a calm "aquí estoy" halo behind Tarde
         item.className,
       )}
     >

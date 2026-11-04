@@ -88,6 +88,7 @@ export function TitleSearch({
   onChange,
   placeholder,
   label,
+  spot,
 }: {
   open: boolean;
   onToggle: () => void;
@@ -95,6 +96,8 @@ export function TitleSearch({
   onChange: (value: string) => void;
   placeholder: string;
   label: string;
+  /** Manual topic this magnifier is the place for ("Ver en la app"). */
+  spot?: string;
 }) {
   // Open: the magnifier steps aside and the field takes its place (icon inside, × to close).
   return (
@@ -135,6 +138,7 @@ export function TitleSearch({
           type="button"
           aria-pressed={open}
           aria-label={label}
+          data-spot={spot}
           onClick={onToggle}
           className="grid size-10 shrink-0 place-items-center rounded-full text-fg"
         >
@@ -412,7 +416,7 @@ export function AppShell({
             // Tablets and computers switch tabs from the rail; a sideways drag there is scrolling, never a tab change.
             if (wide) return;
             const target = e.target as HTMLElement;
-            if (target.closest("input, textarea, select, [contenteditable='true'], [data-no-swipe]")) return;
+            if (target.closest("input, textarea, select, [contenteditable='true'], [data-no-swipe], [data-swipe-own], .bz-swipe")) return;
             const touch = e.changedTouches[0];
             if (!touch) return;
             swipe.current = { x: touch.clientX, y: touch.clientY };

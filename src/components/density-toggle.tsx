@@ -129,7 +129,7 @@ export function DensityToggle() {
   const cols = useQuadCols();
   const { t } = useI18n();
   return (
-    <div ref={box} className={cn("flex w-full min-w-0 rounded-md bg-surface-2 p-0.5 ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-border))]")} role="group" aria-label={t("density.label")}>
+    <div ref={box} data-spot="vistas" className={cn("flex w-full min-w-0 rounded-md bg-surface-2 p-0.5 ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-border))]")} role="group" aria-label={t("density.label")}>
       {OPTIONS.map((opt) => {
         const Icon = opt.icon;
         const on = density === opt.value;

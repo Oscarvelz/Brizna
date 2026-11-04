@@ -785,7 +785,7 @@ export function ClientForm({
         </div>
       )}
 
-      <fieldset className="rounded-lg bg-surface p-3 shadow-card">
+      <fieldset data-spot="cobro-cliente" className="rounded-lg bg-surface p-3 shadow-card">
         <legend className="flex items-center gap-1 px-1 text-sm font-medium text-muted">
           {tx("Cobro", "Payment")}
           <Hint topic="cobro-cliente" />
@@ -897,7 +897,7 @@ function Field({
   children: ReactNode;
 }) {
   return (
-    <div>
+    <div data-spot={topic}>
       <div className="mb-1.5 flex items-center gap-0.5">
         <Label className="mb-0">{label}</Label>
         {topic ? <Hint topic={topic} /> : hint ? <Hint text={hint} /> : null}
@@ -920,7 +920,7 @@ function KindToggle({
     { id: "one_time", label: tx("Trabajo de una vez", "One-time job") },
   ];
   return (
-    <div>
+    <div data-spot="tipo-cliente">
       <div className="mb-1.5 flex items-center gap-0.5">
         <Label className="mb-0">{tx("Tipo", "Type")}</Label>
         <Hint topic="tipo-cliente" />

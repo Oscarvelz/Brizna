@@ -206,6 +206,7 @@ function CobrosPage() {
           <>
       <section className="bz-lenses relative mb-3 grid min-w-0 grid-cols-2 items-stretch gap-3">
         <div
+          data-spot="por-cobrar"
           className={cn(
             "bz-stat bz-stat-due flex min-h-24 min-w-0 flex-col rounded-xl border-l-4 bg-due-bg p-3 text-left",
             (view === "owing" || view === "abonos") && "bz-stat-on",
@@ -560,6 +561,7 @@ function CollectedNest({
   const tx = useTx();
   return (
     <div
+      data-spot="cobrado"
       className={cn(
         "bz-stat bz-stat-done bz-stat-nest rounded-xl border-l-4 bg-done-bg p-2.5",
         active && "bz-stat-on",

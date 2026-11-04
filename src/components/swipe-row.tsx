@@ -79,7 +79,9 @@ export function SwipeRow({
   }
 
   return (
-    <div className={cn("relative overflow-hidden rounded-xl touch-pan-y", className)}>
+    // 1.4.67 (Oscar): a sideways drag that starts on the card belongs to the card (its Baja/Borrar),
+    // never to the screen-to-screen swipe; the page swipe ignores touches inside [data-swipe-own].
+    <div className={cn("bz-swipe relative overflow-hidden rounded-xl touch-pan-y", className)} data-swipe-own>
       {leftActions ? (
         <div className="absolute inset-y-0 left-0 flex w-36 items-stretch">{leftActions}</div>
       ) : null}

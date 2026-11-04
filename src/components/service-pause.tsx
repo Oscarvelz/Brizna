@@ -47,6 +47,7 @@ export function ServicePause({
       <button
         type="button"
         aria-pressed={paused}
+        data-spot="pausa"
         aria-label={paused ? tx(`Reanudar a ${name}`, `Resume ${name}`) : tx(`Pausar a ${name}`, `Pause ${name}`)}
         onClick={() => setOpen(true)}
         className={cn(

@@ -368,6 +368,7 @@ function AjustesPage() {
           onChange={setNeedle}
           placeholder={tx("Buscar ajuste", "Search")}
           label={tx("Buscar en Ajustes", "Search settings")}
+          spot="busca"
         />
       }
     >
@@ -970,7 +971,7 @@ function AjustesPage() {
         </div>
         ) : null}
         {!query || smartHit(query, "salir cerrar sesion cuenta sign out huella fingerprint nube sincronizar sync cloud") ? (
-        <section className="order-14">
+        <section className="order-14 rounded-xl" data-spot-alt="nube huella">
           <SignOutControl full />
           <p className="mt-2 text-center text-xs text-muted">
             {tx("La cuenta y los clientes quedan en la nube y en este equipo. Entras otra vez con el mismo correo.", "The account and the clients stay in the cloud and on this device. Sign in again with the same email.")}

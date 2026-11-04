@@ -589,12 +589,26 @@ export function JobCard({
             </Button>
           ) : null}
           {cols === 2 && pending ? (
-            <Button size="sm" className="mt-auto h-8 w-full px-1 text-xs" onClick={onHecho} disabled={complete.isPending}>
+            <Button size="sm" className="mt-auto h-8 w-full px-1 text-xs" data-spot="hecho propina" onClick={onHecho} disabled={complete.isPending}>
               {tx("Hecho", "Done")}
             </Button>
           ) : null}
           {cols === 3 && pending ? (
-            <Button size="sm" className="mt-auto h-7 w-full px-1 text-[11px]" onClick={onHecho} disabled={complete.isPending}>
+            <Button size="sm" className="mt-auto h-7 w-full px-1 text-[11px]" data-spot="hecho propina" onClick={onHecho} disabled={complete.isPending}>
+              {tx("Hecho", "Done")}
+            </Button>
+          ) : null}
+          {/* 1.4.67 (Oscar): x4 tiles get a small Hecho too (same flow); a done tile shows the green check instead */}
+          {cols === 4 && pending ? (
+            <Button
+              size="sm"
+              className="relative mt-auto h-7 w-full gap-0.5 px-1 text-[11px] after:absolute after:-inset-y-1 after:inset-x-0 after:content-[''] [&_svg]:size-3"
+              data-spot="hecho propina"
+              aria-label={tx(`Hecho: ${job.clientName}`, `Done: ${job.clientName}`)}
+              onClick={onHecho}
+              disabled={complete.isPending}
+            >
+              <Check strokeWidth={3} />
               {tx("Hecho", "Done")}
             </Button>
           ) : null}
@@ -648,7 +662,7 @@ export function JobCard({
             </Button>
           ) : null}
           {pending ? (
-            <Button size="sm" className="h-8 shrink-0 px-2 text-xs" onClick={onHecho} disabled={complete.isPending}>
+            <Button size="sm" className="h-8 shrink-0 px-2 text-xs" data-spot="hecho propina" onClick={onHecho} disabled={complete.isPending}>
               {tx("Hecho", "Done")}
             </Button>
           ) : completedToday ? (
@@ -700,13 +714,13 @@ export function JobCard({
               </span>
             ) : null}
             {/* 1.4.64 (Oscar): price sits right after the name; contact chips grouped; pin last, top-right */}
-            <div className="flex min-w-0 flex-1 items-baseline gap-2">
+            <div className="flex min-w-0 flex-1 items-baseline gap-3">
               <Link
                 to="/clientes/$id"
                 params={{ id: String(job.clientId) }}
                 className="min-w-0 font-display text-[1.0625rem] font-semibold leading-none hover:underline"
               >
-                <OneLineName name={job.clientName} />
+                <OneLineName name={job.clientName} minRem={1.0625} maxRem={1.3} />
               </Link>
               <span className="shrink-0 font-display text-sm font-semibold leading-none tabular-nums text-fg/70">{money(job.amount)}</span>
             </div>
@@ -735,14 +749,14 @@ export function JobCard({
           ) : (
           <>
           {/* 1.4.64 (Oscar): name + price on one line, pin in the top-right corner */}
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="flex min-w-0 flex-1 items-baseline gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 flex-1 items-baseline gap-4">
               <Link
                 to="/clientes/$id"
                 params={{ id: String(job.clientId) }}
                 className="min-w-0 font-display text-[1.3rem] font-semibold leading-snug hover:underline"
               >
-                <OneLineName name={job.clientName} />
+                <OneLineName name={job.clientName} minRem={1.3} maxRem={1.75} />
               </Link>
               <span className="shrink-0 font-display text-base font-semibold tabular-nums text-fg/70">{money(job.amount)}</span>
             </div>
@@ -751,11 +765,13 @@ export function JobCard({
           {/* 1.4.65 (Oscar): service – date – time on one line; contact chips with the status badge
               right-aligned on the same row, vertically centered */}
           <FitLine
+            underName
             className="mt-1.5 min-w-0 text-sm font-medium leading-tight text-fg/75"
             forms={[
               [jobKindLabel(job.kind, job.title), capFirst(formatDay(job.scheduledDate, "EEE d MMM")), timeLabel].filter(Boolean).join(" – "),
               [jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM"), timeLabel].filter(Boolean).join(" – "),
             ]}
+            lastResort={[jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM")].join(" – ")}
           />
           <div className="mt-2 flex min-w-0 items-center gap-1.5" data-contact-chips>
             {job.clientPhone ? (
@@ -805,7 +821,7 @@ export function JobCard({
 
       {pending && !compact && (
         <div className={cn("grid grid-cols-2 items-center", media ? "mt-2 gap-2" : "mt-4 gap-2.5")}>
-          <Button onClick={onHecho} disabled={complete.isPending} className={cn("w-full", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
+          <Button data-spot="hecho propina" onClick={onHecho} disabled={complete.isPending} className={cn("w-full", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
             <Check />
             {tx("Hecho", "Done")}
           </Button>
@@ -869,7 +885,9 @@ function nameForms(full: string): string[] {
   return out;
 }
 
-function OneLineName({ name }: { name: string }) {
+/** 1.4.67 (Oscar): the name grows to use the room it has (between `minRem` and `maxRem`), still one
+    line. A long name first drops its middle names (as before) and never goes below `minRem`. */
+function OneLineName({ name, minRem, maxRem }: { name: string; minRem?: number; maxRem?: number }) {
   const forms = nameForms(name);
   const [step, setStep] = useState(0);
   const ref = useRef<HTMLSpanElement | null>(null);
@@ -886,18 +904,26 @@ function OneLineName({ name }: { name: string }) {
       let others = 0;
       for (const kid of Array.from(row.children)) if (kid !== link) others += (kid as HTMLElement).getBoundingClientRect().width + gap;
       const room = row.getBoundingClientRect().width - others - 1;
+      const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const minPx = minRem ? minRem * rootPx : 0;
+      const maxPx = maxRem ? maxRem * rootPx : 0;
       const twin = el.cloneNode(false) as HTMLSpanElement;
       twin.style.cssText = "position:absolute;visibility:hidden;left:-9999px;top:0;display:inline-block;white-space:nowrap;width:auto;max-width:none;overflow:visible";
+      if (minPx) twin.style.fontSize = `${minPx}px`;
       link.appendChild(twin);
       let pick = forms.length - 1;
+      let size = minPx;
       for (let i = 0; i < forms.length; i += 1) {
         twin.textContent = forms[i]!;
-        if (twin.getBoundingClientRect().width <= room + 0.5) {
+        const w = twin.getBoundingClientRect().width;
+        if (w <= room + 0.5) {
           pick = i;
+          if (minPx && maxPx && w > 0) size = Math.max(minPx, Math.min(maxPx, Math.floor((minPx * (room - 2)) / w * 4) / 4));
           break;
         }
       }
       twin.remove();
+      if (minPx) el.style.fontSize = `${size}px`;
       setStep(pick);
     };
     fit();
@@ -905,49 +931,64 @@ function OneLineName({ name }: { name: string }) {
     ro.observe(row);
     return () => ro.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, minRem, maxRem]);
   return (
-    <span ref={ref} className="block overflow-hidden whitespace-nowrap" title={step > 0 ? name : undefined}>
+    <span ref={ref} data-card-name className="block overflow-hidden whitespace-nowrap" title={step > 0 ? name : undefined}>
       {forms[Math.min(step, forms.length - 1)]}
     </span>
   );
 }
 
-/** 1.4.65 (Oscar): the card's subline (service – date – time) on one line: if the full form does not
-    fit, the date drops its weekday. Words shorten, the font never shrinks. */
-function FitLine({ forms, className }: { forms: string[]; className?: string }) {
-  const [step, setStep] = useState(0);
+/** The card's subline (service – date – time) on one line, never cut. 1.4.65: if the full form does not
+    fit, the date drops its weekday. 1.4.67 (Oscar): the name above stays the widest line, so the subline
+    takes the first option narrower than the name: full, no weekday, then a slightly smaller font (never
+    under 0.8rem). If none is narrower (a very short name), it takes the narrowest that fits. */
+function FitLine({ forms, className, underName, lastResort }: { forms: string[]; className?: string; underName?: boolean; lastResort?: string }) {
+  const [pick, setPick] = useState<{ i: number; rem: number | null }>({ i: 0, rem: null });
   const ref = useRef<HTMLParagraphElement | null>(null);
-  const key = forms.join("|");
+  const all = lastResort && lastResort !== forms[forms.length - 1] ? [...forms, lastResort] : forms;
+  const key = all.join("|");
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    const nameEl = underName ? (el.previousElementSibling?.querySelector("[data-card-name]") as HTMLElement | null) : null;
     const fit = () => {
       if (!el.isConnected || !el.clientWidth) return;
       const room = el.getBoundingClientRect().width - 1;
+      const cap = nameEl && nameEl.isConnected ? nameEl.getBoundingClientRect().width - 10 : Infinity;
       const twin = document.createElement("span");
       twin.style.cssText = "position:absolute;visibility:hidden;left:-9999px;top:0;white-space:nowrap";
       el.appendChild(twin);
-      let pick = forms.length - 1;
-      for (let i = 0; i < forms.length; i += 1) {
-        twin.textContent = forms[i]!;
-        if (twin.getBoundingClientRect().width <= room) {
-          pick = i;
+      const options: { i: number; rem: number | null }[] = forms.map((_, i) => ({ i, rem: null }));
+      if (underName) for (const rem of [0.8125, 0.8]) for (let i = 0; i < forms.length; i += 1) options.push({ i, rem });
+      // still wider than the name: the time goes (Oscar: weekday first, then time), at the normal size if it fits
+      if (underName && all.length > forms.length) for (const rem of [null, 0.8125, 0.8]) options.push({ i: forms.length, rem });
+      let best: { i: number; rem: number | null } | null = null;
+      let narrowest: { o: { i: number; rem: number | null }; w: number } | null = null;
+      for (const o of options) {
+        twin.style.fontSize = o.rem ? `${o.rem}rem` : "";
+        twin.textContent = all[o.i]!;
+        const w = twin.getBoundingClientRect().width;
+        if (w > room) continue;
+        if (o.i < forms.length && (!narrowest || w < narrowest.w)) narrowest = { o, w }; // a fallback keeps the time
+        if (w <= cap) {
+          best = o;
           break;
         }
       }
       twin.remove();
-      setStep(pick);
+      setPick(best ?? (underName && narrowest ? narrowest.o : { i: forms.length - 1, rem: null }));
     };
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(el);
+    if (nameEl) ro.observe(nameEl);
     return () => ro.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, underName]);
   return (
-    <p ref={ref} className={cn("relative", className)} data-card-subline>
-      {forms[Math.min(step, forms.length - 1)]}
+    <p ref={ref} className={cn("relative whitespace-nowrap", className)} style={pick.rem ? { fontSize: `${pick.rem}rem` } : undefined} data-card-subline>
+      {all[Math.min(pick.i, all.length - 1)]}
     </p>
   );
 }
