@@ -1920,13 +1920,17 @@ export const reopenJob = createServerFn({ method: "POST" })
 
 export const cancelJob = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((data: unknown) => z.object({ id: z.coerce.number().int() }).parse(data))
+  .validator((data: unknown) =>
+    z.object({ id: z.coerce.number().int(), reason: z.string().trim().max(80).optional().default("") }).parse(data),
+  )
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    // 1.4.65: Posponer with the reason Cancelado lands here and keeps that reason
     await sql.query(
-      `update jobs set status = 'cancelled'
+      `update jobs set status = 'cancelled',
+              postpone_reason = case when $3 = '' then postpone_reason else $3 end
         where user_id = $1 and id = $2 and status = 'pending'`,
-      [context.userId, data.id],
+      [context.userId, data.id, data.reason],
     );
     return { ok: true };
   });

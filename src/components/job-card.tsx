@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Check, Clock, GripVertical, Phone, Pin, RotateCcw, X } from "lucide-react";
+import { Check, Clock, GripVertical, Phone, Pin, RotateCcw } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AddressLine } from "@/components/address-line";
@@ -26,7 +26,10 @@ import { isHechoConfirmSkipped, subscribeHechoConfirm } from "@/lib/hecho-confir
 import { useI18n, useTx } from "@/lib/i18n";
 import { applyOutboxJob, enqueue, isOfflineError, useOutbox } from "@/lib/offline-queue";
 import { cancelJob, completeJob, reopenJob, rescheduleJob, toggleJobPin, undoPostpone } from "@/lib/server/lawn";
-import { DEFAULT_ABONO_PRESETS, type JobRow } from "@/lib/types";
+import { CANCEL_REASON, DEFAULT_ABONO_PRESETS, POSTPONE_REASONS, type JobRow } from "@/lib/types";
+
+/** 1.4.65: the card's Posponer reasons add Cancelado (before Otro), which cancels the cut instead of moving it. */
+const CARD_REASONS = [...POSTPONE_REASONS.filter((r) => r !== "Otro"), CANCEL_REASON, "Otro"];
 import { useUndo } from "@/lib/undo";
 import { playTick } from "@/lib/sounds";
 import { cn } from "@/lib/utils";
@@ -51,7 +54,6 @@ export function JobCard({
   const [askDone, setAskDone] = useState(false);
   const [askAbono, setAskAbono] = useState(false);
   const [abono, setAbono] = useState("");
-  const [askCancel, setAskCancel] = useState(false);
   const [askUndo, setAskUndo] = useState(false);
   const [askPost, setAskPost] = useState(false);
   const [askReturn, setAskReturn] = useState(false);
@@ -159,10 +161,11 @@ export function JobCard({
     onError: () => toast.error(tx("No se pudo guardar", "Could not save")),
   });
   const cancel = useMutation({
-    mutationFn: () => cancelJob({ data: { id: job.id } }),
+    mutationFn: () => cancelJob({ data: { id: job.id, reason: CANCEL_REASON } }),
     onSuccess: async () => {
-      toast(tx("Trabajo cancelado", "Job canceled"));
-      setAskCancel(false);
+      toast(tx(`Cancelado: ${job.clientName}. El cliente no se borra.`, `Canceled: ${job.clientName}. The client is not deleted.`));
+      setAskPost(false);
+      setReason("");
       await invalidateLawn(qc);
     },
   });
@@ -261,6 +264,7 @@ export function JobCard({
   const isExtra = job.kind === "extra";
   const postponed = pending && Boolean(job.originDate) && job.originDate !== job.scheduledDate;
   const skipThis = skip && job.scheduledDate === today;
+  const isCancel = reason === CANCEL_REASON;
 
   function onPin() {
     if (job.pinLocked) {
@@ -444,16 +448,6 @@ export function JobCard({
         onCancel={() => setSure(null)}
       />
       <ConfirmDialog
-        open={askCancel}
-        title={tx("¿Quitar este trabajo?", "Remove this job?")}
-        description={tx("Se marca como cancelado. El cliente no se borra.", "It is marked canceled. The client is not deleted.")}
-        confirmLabel={tx("Quitar", "Remove")}
-        danger
-        pending={cancel.isPending}
-        onConfirm={() => cancel.mutate()}
-        onCancel={() => setAskCancel(false)}
-      />
-      <ConfirmDialog
         open={askUndo}
         title={tx(`¿Volver ${job.clientName} a pendiente?`, `Move ${job.clientName} back to pending?`)}
         description={tx(
@@ -467,17 +461,27 @@ export function JobCard({
       />
       <ConfirmDialog
         open={askPost}
-        title={tx("¿Por qué pospuso?", "Why was it postponed?")}
+        title={isCancel ? tx("¿Cancelar este corte?", "Cancel this cut?") : tx("¿Por qué pospuso?", "Why was it postponed?")}
         description={
           <div className="grid gap-2">
-            <p>{tx(`${job.clientName} pasa a otro día.`, `${job.clientName} moves to another day.`)}</p>
-            <Input type="date" value={postDate} onChange={(e) => setPostDate(e.target.value)} />
-            <ReasonChips value={reason} onChange={setReason} history />
+            <p>
+              {isCancel
+                ? tx(`${job.clientName} no se hace ni se cobra. Queda como Cancelado con su razón. El cliente no se borra.`, `${job.clientName} is not done or charged. It stays as Canceled with its reason. The client is not deleted.`)
+                : tx(`${job.clientName} pasa a otro día.`, `${job.clientName} moves to another day.`)}
+            </p>
+            {isCancel ? null : <Input type="date" value={postDate} onChange={(e) => setPostDate(e.target.value)} />}
+            {/* 1.4.65 (Oscar): Quitar left the card; Posponer covers it with the reason Cancelado */}
+            <ReasonChips value={reason} onChange={setReason} reasons={CARD_REASONS} history={!isCancel} />
           </div>
         }
-        confirmLabel={tx("Sí, posponer", "Yes, postpone")}
-        pending={postpone.isPending}
+        confirmLabel={isCancel ? tx("Sí, cancelar", "Yes, cancel") : tx("Sí, posponer", "Yes, postpone")}
+        danger={isCancel}
+        pending={postpone.isPending || cancel.isPending}
         onConfirm={() => {
+          if (isCancel) {
+            cancel.mutate();
+            return;
+          }
           const kind = rare.kindOf(postDate);
           if (kind) {
             setAskPost(false);
@@ -696,11 +700,11 @@ export function JobCard({
               </span>
             ) : null}
             {/* 1.4.64 (Oscar): price sits right after the name; contact chips grouped; pin last, top-right */}
-            <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
+            <div className="flex min-w-0 flex-1 items-baseline gap-2">
               <Link
                 to="/clientes/$id"
                 params={{ id: String(job.clientId) }}
-                className="min-w-0 font-display text-base font-semibold leading-none hover:underline"
+                className="min-w-0 font-display text-[1.0625rem] font-semibold leading-none hover:underline"
               >
                 <OneLineName name={job.clientName} />
               </Link>
@@ -732,11 +736,11 @@ export function JobCard({
           <>
           {/* 1.4.64 (Oscar): name + price on one line, pin in the top-right corner */}
           <div className="flex min-w-0 items-center gap-2">
-            <div className="flex min-w-0 flex-1 items-baseline gap-2">
+            <div className="flex min-w-0 flex-1 items-baseline gap-3">
               <Link
                 to="/clientes/$id"
                 params={{ id: String(job.clientId) }}
-                className="min-w-0 font-display text-lg font-semibold leading-snug hover:underline"
+                className="min-w-0 font-display text-[1.3rem] font-semibold leading-snug hover:underline"
               >
                 <OneLineName name={job.clientName} />
               </Link>
@@ -744,36 +748,34 @@ export function JobCard({
             </div>
             {pinButton("size-8", "size-3.5")}
           </div>
-          {/* 1.4.64 (Oscar): service + time over the contact chips (Mensaje, WA, Llamar) on the left;
-              the status badge with its date centered under it on the right */}
-          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
-            <div className="flex min-w-0 flex-col gap-2">
-              <p className="min-w-0 text-sm font-medium leading-tight text-fg/75">
-                {jobKindLabel(job.kind, job.title)}
-                {timeLabel ? <span className="whitespace-nowrap">{` · ${timeLabel}`}</span> : null}
-              </p>
-              {job.clientPhone ? (
-                <div className="flex items-center gap-1.5" data-contact-chips>
-                  <MessageComposer phone={job.clientPhone} name={job.clientName} compact />
-                  <WhatsAppButton phone={job.clientPhone} name={job.clientName} />
-                  <ConfirmLink
-                    href={telHref(job.clientPhone)}
-                    kind="call"
-                    name={job.clientName}
-                    className="bz-tone bz-tone-call grid size-11 shrink-0 place-items-center rounded-sm"
-                  >
-                    <Phone className="size-[18px]" />
-                    <span className="sr-only">{tx("Llamar", "Call")}</span>
-                  </ConfirmLink>
-                </div>
-              ) : null}
-            </div>
-            <div className="flex flex-col items-center gap-1.5" data-status-col>
+          {/* 1.4.65 (Oscar): service – date – time on one line; contact chips with the status badge
+              right-aligned on the same row, vertically centered */}
+          <FitLine
+            className="mt-1.5 min-w-0 text-sm font-medium leading-tight text-fg/75"
+            forms={[
+              [jobKindLabel(job.kind, job.title), capFirst(formatDay(job.scheduledDate, "EEE d MMM")), timeLabel].filter(Boolean).join(" – "),
+              [jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM"), timeLabel].filter(Boolean).join(" – "),
+            ]}
+          />
+          <div className="mt-2 flex min-w-0 items-center gap-1.5" data-contact-chips>
+            {job.clientPhone ? (
+              <>
+                <MessageComposer phone={job.clientPhone} name={job.clientName} compact />
+                <WhatsAppButton phone={job.clientPhone} name={job.clientName} />
+                <ConfirmLink
+                  href={telHref(job.clientPhone)}
+                  kind="call"
+                  name={job.clientName}
+                  className="bz-tone bz-tone-call grid size-11 shrink-0 place-items-center rounded-sm"
+                >
+                  <Phone className="size-[18px]" />
+                  <span className="sr-only">{tx("Llamar", "Call")}</span>
+                </ConfirmLink>
+              </>
+            ) : null}
+            <span className="ml-auto shrink-0" data-status-col>
               <StatusBadge status={live.computedStatus} />
-              <span className="whitespace-nowrap text-sm tabular-nums text-muted" data-card-date>
-                {capFirst(formatDay(job.scheduledDate, "EEE d MMM"))}
-              </span>
-            </div>
+            </span>
           </div>
           </>
           )}
@@ -802,7 +804,7 @@ export function JobCard({
       )}
 
       {pending && !compact && (
-        <div className={cn("grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center", media ? "mt-2 gap-2" : "mt-4 gap-2")}>
+        <div className={cn("grid grid-cols-2 items-center", media ? "mt-2 gap-2" : "mt-4 gap-2.5")}>
           <Button onClick={onHecho} disabled={complete.isPending} className={cn("w-full", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
             <Check />
             {tx("Hecho", "Done")}
@@ -812,18 +814,6 @@ export function JobCard({
             <Clock />
             {tx("Posponer", "Postpone")}
           </Button>
-          {/* 1.4.64 (Oscar): Quitar is an X chip in the bottom-right corner, on the pin's vertical axis */}
-          <button
-            type="button"
-            aria-label={tx("Quitar", "Remove")}
-            title={tx("Quitar", "Remove")}
-            onClick={() => setAskCancel(true)}
-            disabled={cancel.isPending}
-            className="bz-tone bz-tone-x grid size-8 shrink-0 place-items-center justify-self-end rounded-sm"
-            data-remove-x
-          >
-            <X className="size-3.5" strokeWidth={2.4} />
-          </button>
         </div>
       )}
 
@@ -920,5 +910,44 @@ function OneLineName({ name }: { name: string }) {
     <span ref={ref} className="block overflow-hidden whitespace-nowrap" title={step > 0 ? name : undefined}>
       {forms[Math.min(step, forms.length - 1)]}
     </span>
+  );
+}
+
+/** 1.4.65 (Oscar): the card's subline (service – date – time) on one line: if the full form does not
+    fit, the date drops its weekday. Words shorten, the font never shrinks. */
+function FitLine({ forms, className }: { forms: string[]; className?: string }) {
+  const [step, setStep] = useState(0);
+  const ref = useRef<HTMLParagraphElement | null>(null);
+  const key = forms.join("|");
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      if (!el.isConnected || !el.clientWidth) return;
+      const room = el.getBoundingClientRect().width - 1;
+      const twin = document.createElement("span");
+      twin.style.cssText = "position:absolute;visibility:hidden;left:-9999px;top:0;white-space:nowrap";
+      el.appendChild(twin);
+      let pick = forms.length - 1;
+      for (let i = 0; i < forms.length; i += 1) {
+        twin.textContent = forms[i]!;
+        if (twin.getBoundingClientRect().width <= room) {
+          pick = i;
+          break;
+        }
+      }
+      twin.remove();
+      setStep(pick);
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return (
+    <p ref={ref} className={cn("relative", className)} data-card-subline>
+      {forms[Math.min(step, forms.length - 1)]}
+    </p>
   );
 }

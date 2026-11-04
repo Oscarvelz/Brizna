@@ -201,6 +201,9 @@ export const DEFAULT_TASK_PRESETS = [
   "Limpieza leve",
 ];
 
+/** 1.4.65: the Posponer reason that cancels the cut (what Quitar did). */
+export const CANCEL_REASON = "Cancelado";
+
 export const POSTPONE_REASONS = ["Lluvia", "Cita médica", "Cita dental", "Negocios", "Otro"];
 
 export const STOP_REASONS = ["Lluvia", "Visita al médico", "Dentista", "Otro"];

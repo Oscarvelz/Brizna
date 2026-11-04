@@ -284,6 +284,7 @@ const REASON_EN: Record<string, string> = {
   "Cita dental": "Dental appointment",
   Dentista: "Dentist",
   Negocios: "Business",
+  Cancelado: "Canceled",
   Otro: "Other",
 };
 

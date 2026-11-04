@@ -104,8 +104,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "It is Tuesday. Monday it rained and you skipped the Pérez yard. Today you open Brizna: the Pérez yard sits on top in red, under Late, with your 9 Tuesday yards below. Do it first, or move it to Thursday.",
         ],
         cases: [
-          "Marcaste Hecho por error: abre Hechos hoy, toca el patio y usa Deshacer Hecho; el cobro de ese corte también se revierte.\nUn día de la semana no tiene patios: su bloque dice Sin patios este día.\nUn cliente está en pausa o archivado: sus cortes pendientes se quitaron y no salen aquí.",
-          "You marked Done by mistake: open Done today, tap the yard, and use Undo Done; that cut's payment is reversed too.\nA day has no yards: its block says No yards this day.\nA client is paused or archived: their pending cuts were removed and do not show here.",
+          "Marcaste Hecho por error: abre Hechos hoy, toca el patio y usa Deshacer Hecho; el cobro de ese corte también se revierte.\nNo vas a hacer un patio: toca Posponer y elige la razón Cancelado; el corte se cancela, no se cobra y el cliente no se borra.\nUn día de la semana no tiene patios: su bloque dice Sin patios este día.\nUn cliente está en pausa o archivado: sus cortes pendientes se quitaron y no salen aquí.",
+          "You marked Done by mistake: open Done today, tap the yard, and use Undo Done; that cut's payment is reversed too.\nYou will not do a yard: tap Postpone and pick the reason Canceled; the cut is canceled, not charged, and the client is not deleted.\nA day has no yards: its block says No yards this day.\nA client is paused or archived: their pending cuts were removed and do not show here.",
         ],
         related: ["hecho", "todos", "pasar-pendientes", "vistas"],
         go: { to: "/", where: ["Hoy", "Today"] },
@@ -675,8 +675,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Pick the period: Week (Monday to Sunday), Month, All, or Calendar (the month in squares).\nPick the state: Pending, Late, Done, Postponed, or Canceled.\nThe list shows only what matches both.\nTap a calendar day to see its yards and, if it was not a normal day, the reason.",
         ],
         calc: [
-          "Pendiente: por hacer desde hoy. Tarde: pendiente con fecha pasada (no sale en Pendiente). Realizado: marcado Hecho. Pospuesto: movido de su fecha original, con la razón. Cancelado: quitado a mano.",
-          "Pending: to do from today. Late: pending with a past date (it does not show under Pending). Done: marked Done. Postponed: moved from its original date, with the reason. Canceled: removed by hand.",
+          "Pendiente: por hacer desde hoy. Tarde: pendiente con fecha pasada (no sale en Pendiente). Realizado: marcado Hecho. Pospuesto: movido de su fecha original, con la razón. Cancelado: lo cancelaste con Posponer y la razón Cancelado.",
+          "Pending: to do from today. Late: pending with a past date (it does not show under Pending). Done: marked Done. Postponed: moved from its original date, with the reason. Canceled: you canceled it with Postpone and the reason Canceled.",
         ],
         example: [
           "Quieres saber cuánto hiciste en octubre: Mes + Realizado (estando en octubre). Para ver qué se movió por la lluvia esta semana: Semana + Pospuesto; cada patio dice de qué día venía y por qué.",
