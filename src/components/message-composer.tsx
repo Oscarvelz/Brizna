@@ -264,7 +264,7 @@ export function MessageComposer({
           onClick={(e) => openSheet(e)}
           className={cn(
             "grid shrink-0 place-items-center rounded-sm font-bold tracking-tight",
-            channel === "whatsapp" ? "bg-done-bg text-done" : "bg-sun text-fg",
+            channel === "whatsapp" ? "bz-tone bz-tone-wa" : "bz-tone bz-tone-msg",
             tight ? "size-8 text-[10px]" : "size-11 text-[11px]",
           )}
         >

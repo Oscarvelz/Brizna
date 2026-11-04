@@ -1,5 +1,5 @@
 import { LayoutGrid, LayoutList, Rows3, StretchHorizontal } from "lucide-react";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import {
   pickDensity,
   readDensity,
@@ -74,14 +74,62 @@ export function useQuadCols(): QuadCols {
   return cols;
 }
 
-/** fabGap: on phones, leave room on the right for the round + button so it never sits on the last option. */
-export function DensityToggle({ fabGap = false }: { fabGap?: boolean } = {}) {
+/** Toggles whose row currently sits under the round + button. */
+const under = new Set<object>();
+
+/**
+ * 1.4.62 (Oscar): the four segments stretch across the full width; no dead gap on the right.
+ * When the page scrolls the row under the round + button, the button steps aside (fades out)
+ * until the row moves on, so Malla is never covered.
+ */
+function useFabTuck(ref: RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const me = {};
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      const el = ref.current;
+      const fab = [...document.querySelectorAll<HTMLElement>(".alive-fab")].find((f) => f.getBoundingClientRect().width > 0);
+      let hit = false;
+      if (el && fab) {
+        const a = el.getBoundingClientRect();
+        const r = fab.getBoundingClientRect();
+        // use the button's full size, not its tucked (scaled) one, so it does not flicker at the edge
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2, hw = fab.offsetWidth / 2 + 4, hh = fab.offsetHeight / 2 + 4;
+        hit = a.bottom > cy - hh && a.top < cy + hh && a.right > cx - hw && a.left < cx + hw;
+      }
+      if (hit) under.add(me);
+      else under.delete(me);
+      document.documentElement.toggleAttribute("data-fab-tuck", under.size > 0);
+    };
+    const queue = () => {
+      if (!raf) raf = requestAnimationFrame(check);
+    };
+    check();
+    // layout settles after mount (folds open, the + button mounts later): re-check now and then
+    const tick = window.setInterval(queue, 800);
+    window.addEventListener("scroll", queue, { passive: true, capture: true });
+    window.addEventListener("resize", queue);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.clearInterval(tick);
+      window.removeEventListener("scroll", queue, { capture: true });
+      window.removeEventListener("resize", queue);
+      under.delete(me);
+      document.documentElement.toggleAttribute("data-fab-tuck", under.size > 0);
+    };
+  }, [ref]);
+}
+
+export function DensityToggle() {
+  const box = useRef<HTMLDivElement | null>(null);
+  useFabTuck(box);
   const scope = useDensityScope();
   const density = useDensity();
   const cols = useQuadCols();
   const { t } = useI18n();
   return (
-    <div className={cn("flex w-full min-w-0 rounded-md bg-surface-2 p-0.5 ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-border))]", fabGap && "max-md:w-[calc(100%-4.5rem)]")} role="group" aria-label={t("density.label")}>
+    <div ref={box} className={cn("flex w-full min-w-0 rounded-md bg-surface-2 p-0.5 ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-border))]")} role="group" aria-label={t("density.label")}>
       {OPTIONS.map((opt) => {
         const Icon = opt.icon;
         const on = density === opt.value;

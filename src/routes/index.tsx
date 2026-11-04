@@ -62,6 +62,7 @@ function Home() {
   const data = q.data;
   const [skip, setSkip] = useState(false);
   const [askAll, setAskAll] = useState(false);
+  const [askSkip, setAskSkip] = useState(false);
   const [accDate, setAccDate] = useState(addDaysISO(today, 1));
   const [accReason, setAccReason] = useState("");
   const [askAcc, setAskAcc] = useState<"overdue" | "today" | null>(null);
@@ -381,7 +382,7 @@ function Home() {
           focusLate={jumpLate}
           focusDone={jumpDone}
           skip={skip}
-          onSkip={(checked) => setHechoConfirmSkipped(checked, today)}
+          onSkip={(checked) => (checked ? setAskSkip(true) : setHechoConfirmSkipped(false, today))}
           onAskAll={() => setAskAll(true)}
         />
       ) : null}
@@ -396,6 +397,20 @@ function Home() {
       </Link>
 
       <SettleDay jobs={data?.today ?? []} open={askAll} onClose={() => setAskAll(false)} />
+      <ConfirmDialog
+        open={askSkip}
+        title={tx("¿Cerrar con un toque hoy?", "Close in one tap today?")}
+        description={tx(
+          "Un toque en Hecho lo cierra: cobrado si paga el mismo día, si no, a su cuenta.",
+          "One tap on Done closes it: paid if they pay same day, otherwise on their balance.",
+        )}
+        confirmLabel={tx("Activar", "Turn on")}
+        onConfirm={() => {
+          setAskSkip(false);
+          setHechoConfirmSkipped(true, today);
+        }}
+        onCancel={() => setAskSkip(false)}
+      />
       <ConfirmDialog
         front
         open={unpinNote != null}
@@ -541,7 +556,7 @@ function DayBoard({
   return (
     <div className="mb-6 grid gap-2">
       <div className="mb-1 grid gap-2">
-        <DensityToggle fabGap />
+        <DensityToggle />
       </div>
 
       {pinned.length > 0 ? (

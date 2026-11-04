@@ -525,7 +525,16 @@ export function JobCard({
               <MeshName name={job.clientName} cols={cols} />
             </Link>
           </div>
-          {cols < 4 ? <p className="truncate text-[11px] text-muted">{job.scheduledDate ? formatDay(job.scheduledDate, "d MMM") : ""}</p> : null}
+          {cols < 4 ? (
+            <p className="truncate text-[11px] text-muted">{job.scheduledDate ? formatDay(job.scheduledDate, "d MMM") : ""}</p>
+          ) : (
+            <p className="flex min-w-0 items-center gap-1 whitespace-nowrap text-[11px] leading-tight text-muted">
+              {live.status === "done" ? (
+                <Check className="size-3.5 shrink-0 text-done" strokeWidth={3} aria-label={tx("Hecho", "Done")} />
+              ) : null}
+              <span className="min-w-0 overflow-hidden">{job.scheduledDate ? formatDay(job.scheduledDate, "d MMM") : ""}</span>
+            </p>
+          )}
           <p className={cn("truncate font-semibold tabular-nums", cols === 4 ? "text-[11px]" : "text-xs")}>{money(job.amount)}</p>
           {cols === 2 ? (
             <ContactIcons phone={job.clientPhone} address={job.clientAddress} name={job.clientName} tight variant="some" />
@@ -570,8 +579,8 @@ export function JobCard({
             aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
             onClick={onPin}
             className={cn(
-              "grid size-8 shrink-0 place-items-center rounded-sm",
-              job.pinned ? "text-soil" : "text-muted",
+              "bz-tone bz-tone-pin grid size-8 shrink-0 place-items-center rounded-sm",
+              job.pinned && "bz-tone-on",
             )}
           >
             <Pin className="size-3.5" />
@@ -657,8 +666,8 @@ export function JobCard({
               aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
               onClick={onPin}
               className={cn(
-                "grid size-8 shrink-0 place-items-center rounded-sm",
-                job.pinned ? "bg-soil-bg text-soil" : "text-muted",
+                "bz-tone bz-tone-pin grid size-8 shrink-0 place-items-center rounded-sm",
+                job.pinned && "bz-tone-on",
               )}
             >
               <Pin className="size-4" />
@@ -687,8 +696,8 @@ export function JobCard({
               aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
               onClick={onPin}
               className={cn(
-                "grid size-8 shrink-0 place-items-center rounded-sm",
-                job.pinned ? "bg-soil-bg text-soil" : "text-muted",
+                "bz-tone bz-tone-pin grid size-8 shrink-0 place-items-center rounded-sm",
+                job.pinned && "bz-tone-on",
               )}
             >
               <Pin className="size-4" />
@@ -744,7 +753,7 @@ export function JobCard({
             {tx("Hecho", "Done")}
           </Button>
           {/* 1.4.61 (Oscar): Posponer is a real button in the action row, not a loose line under it */}
-          <Button variant="outline" onClick={() => setAskPost(true)} className={cn("w-full whitespace-nowrap", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
+          <Button variant="outline" onClick={() => setAskPost(true)} className={cn("bz-tone bz-tone-post w-full whitespace-nowrap", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
             <Clock />
             {tx("Posponer", "Postpone")}
           </Button>
@@ -754,7 +763,7 @@ export function JobCard({
               kind="call"
               name={job.clientName}
               className={cn(
-                "grid place-items-center rounded-sm bg-surface text-fg shadow-card",
+                "bz-tone bz-tone-call grid place-items-center rounded-sm",
                 media ? "size-9" : "size-12",
               )}
             >

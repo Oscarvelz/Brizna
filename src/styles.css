@@ -1663,3 +1663,39 @@ button.bz-sample-chip:hover { background: color-mix(in srgb, var(--color-abono, 
 .bz-sample-try:hover { background: color-mix(in srgb, var(--color-primary) 10%, transparent); }
 .bz-sample-try:active { transform: scale(.97); }
 @media (prefers-reduced-motion: reduce) { .bz-sample-chip { animation: none; } }
+
+/* 1.4.62 (Oscar): job-card action icons each get their own tone: a tinted chip + fine ring, never solid.
+   Fixed hues spaced around the wheel so no two ever match in any theme:
+   Fijar = rose, Mensaje = cyan, WA = green, Llamar = indigo, Posponer = amber, Mapa = red. */
+:root { --tone-pin: #b0306a; --tone-msg: #0b7285; --tone-wa: #1b7a3a; --tone-call: #4a4fc4; --tone-post: #a35400; --tone-map: #c0392b; }
+html.theme-dark, html.theme-amoled { --tone-pin: #ff8fc0; --tone-msg: #6fdcf0; --tone-wa: #7ee08f; --tone-call: #aeb0ff; --tone-post: #ffb35c; --tone-map: #ff8b7b; }
+.bz-tone {
+  --bz-t: var(--color-fg);
+  background: color-mix(in oklab, var(--bz-t) 14%, var(--color-surface)) !important;
+  color: var(--bz-t) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--bz-t) 40%, transparent) !important;
+  border-color: transparent !important;
+}
+html.theme-dark .bz-tone, html.theme-amoled .bz-tone {
+  background: color-mix(in oklab, var(--bz-t) 17%, var(--color-surface)) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--bz-t) 52%, transparent) !important;
+}
+.bz-tone:hover { background: color-mix(in oklab, var(--bz-t) 20%, var(--color-surface)) !important; }
+html.theme-dark .bz-tone:hover, html.theme-amoled .bz-tone:hover { background: color-mix(in oklab, var(--bz-t) 26%, var(--color-surface)) !important; }
+.bz-tone.bz-tone-on { background: color-mix(in oklab, var(--bz-t) 24%, var(--color-surface)) !important; box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--bz-t) 75%, transparent) !important; }
+html.theme-dark .bz-tone.bz-tone-on, html.theme-amoled .bz-tone.bz-tone-on { background: color-mix(in oklab, var(--bz-t) 30%, var(--color-surface)) !important; }
+.bz-tone-pin { --bz-t: var(--tone-pin); }
+.bz-tone-msg { --bz-t: var(--tone-msg); }
+.bz-tone-wa { --bz-t: var(--tone-wa); }
+.bz-tone-call { --bz-t: var(--tone-call); }
+.bz-tone-post { --bz-t: var(--tone-post); }
+.bz-tone-map { --bz-t: var(--tone-map); }
+
+/* 1.4.62 (Oscar): client/job cards breathe a little more in Grande, Media and Lista. */
+.bz-vg-full { gap: 0.875rem; }
+.bz-vg-compact { gap: 0.75rem; }
+.bz-vg-dense { row-gap: 0.5rem; }
+
+/* 1.4.62: the round + button steps aside while the view-mode row passes under it (density-toggle.tsx). */
+.alive-fab { transition: opacity .18s ease, transform .18s ease; }
+html[data-fab-tuck] .alive-fab { opacity: 0; transform: scale(.6); pointer-events: none; }

@@ -15,7 +15,7 @@ import { invalidateLawn } from "@/components/job-card";
 import { SwipeRow } from "@/components/swipe-row";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { frequencyLabel, mapsHref, money, telHref, weekdayLabel } from "@/lib/format";
+import { formatDay, frequencyLabel, mapsHref, money, telHref, weekdayLabel } from "@/lib/format";
 import { MeshName } from "@/components/mesh-name";
 import { meshFrame, viewGrid } from "@/lib/density";
 import { useTx } from "@/lib/i18n";
@@ -510,7 +510,7 @@ function ClientesPage() {
           {filter === "triple" ? tx(" con 3 o más cortes este mes", " with 3 or more cuts this month") : null}
           <Hint topic={inArchive ? "archivo" : "lista-clientes"} />
         </p>
-        <DensityToggle fabGap />
+        <DensityToggle />
       </div>
 
       {query.isLoading && (
@@ -765,8 +765,8 @@ function ClientListCard({
             <div className="min-w-0 flex-1">
               <div className="flex items-start gap-1">
                 <Link to="/clientes/$id" params={{ id: String(client.id) }} className="min-w-0 flex-1 block">
-                  <div className={cn("flex min-w-0", quad && cols === 4 ? "flex-col items-stretch gap-0.5" : dense ? "items-center justify-between gap-2" : "items-start justify-between gap-2")}>
-                    <div className={cn("min-w-0", quad && cols === 4 ? "" : "flex-1")}>
+                  <div className={cn("flex min-w-0", quad && cols >= 3 ? "flex-col items-stretch gap-0.5" : dense ? "items-center justify-between gap-2" : "items-start justify-between gap-2")}>
+                    <div className={cn("min-w-0", quad && cols >= 3 ? "" : "flex-1")}>
                       {quad ? (
                         <MeshName name={client.name} cols={cols} />
                       ) : (
@@ -780,7 +780,7 @@ function ClientListCard({
                       </p>
                       )}
                       {!dense && !media && !quad && client.cue ? <CueChip text={client.cue} className="mt-1" /> : null}
-                      {!dense && (!quad || cols < 4) ? (
+                      {!dense && (!quad || cols < 3) ? (
                         <p className={cn("truncate text-muted", quad || dense ? "text-[11px]" : media ? "text-xs" : "text-sm")}>
                           {client.kind === "one_time"
                             ? tx("Trabajo de una vez", "One-time job")
@@ -804,6 +804,9 @@ function ClientListCard({
                     >
                       {money(client.pricePerCut)}
                     </p>
+                    {quad && cols >= 3 && client.nextCutDate ? (
+                      <p className="whitespace-nowrap text-[11px] leading-tight text-muted">{formatDay(client.nextCutDate, "d MMM")}</p>
+                    ) : null}
                     {quad && cols === 4 && client.balance > 0 && Math.round(client.balance * 100) !== Math.round(client.pricePerCut * 100) ? (
                       <p className="truncate text-[11px] text-muted">
                         {tx("Debe", "Owes")} <span className="font-semibold tabular-nums text-due">{money(client.balance)}</span>

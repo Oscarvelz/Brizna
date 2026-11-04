@@ -25,12 +25,12 @@ export function ContactIcons({
   const dial = phone?.trim() ?? "";
   const street = address?.trim() ?? "";
   if (!dial && !street) return null;
-  const box = cn("grid shrink-0 place-items-center rounded-sm bg-sun text-fg", tight ? "size-8" : "size-10");
+  const box = cn("bz-tone grid shrink-0 place-items-center rounded-sm", tight ? "size-8" : "size-10");
   const icon = tight ? "size-3.5" : "size-4";
   return (
     <div className={cn("flex flex-wrap items-center gap-1", className)}>
       {dial ? (
-        <ConfirmLink href={telHref(dial)} kind="call" name={name} className={box}>
+        <ConfirmLink href={telHref(dial)} kind="call" name={name} className={cn(box, "bz-tone-call")}>
           <Phone className={icon} />
           <span className="sr-only">{tx("Llamar", "Call")}</span>
         </ConfirmLink>
@@ -38,7 +38,7 @@ export function ContactIcons({
       {dial && variant === "all" ? <MessageComposer phone={dial} name={name} compact tight={tight} /> : null}
       {dial && variant === "all" ? <WhatsAppButton phone={dial} name={name} tight={tight} /> : null}
       {street ? (
-        <ConfirmLink href={mapsHref(street)} kind="maps" name={name} className={box}>
+        <ConfirmLink href={mapsHref(street)} kind="maps" name={name} className={cn(box, "bz-tone-map")}>
           <MapPin className={icon} />
           <span className="sr-only">{tx("Mapa", "Map")}</span>
         </ConfirmLink>
