@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { BarChart3, CalendarDays, CircleDollarSign, Droplet, GripHorizontal, Home, Maximize2, Minus, Users, X } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { PaneView, usePane } from "@/lib/pane-context";
-import { usePaneWidthClasses } from "@/lib/pane-width";
+import { syncPaneWidth, usePaneWidthClasses } from "@/lib/pane-width";
 import { useI18n, useTx } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { readFloat, readTabletEnabled, tabletTabLabel, writeFloat, type FloatState, type TabletTab } from "@/lib/tablet-mode";
@@ -82,17 +82,24 @@ function resized(a: FloatState, edge: Edge, dx: number, dy: number): FloatState 
 export function FloatHost() {
   const pane = usePane();
   const [state, save] = useFloatState();
-  const [dragging, setDragging] = useState(false);
   const win = useRef<HTMLDivElement | null>(null);
   const bubble = useRef<HTMLButtonElement | null>(null);
   const frame = useRef(0);
+  const settle = useRef(0);
   const [body, setBody] = useState<HTMLDivElement | null>(null);
   usePaneWidthClasses(body);
   const [tabletOn, setTabletOn] = useState(true);
   const navigate = useNavigate();
   const { t } = useI18n();
   const tx = useTx();
-  const gesture = useRef<{ kind: Kind; px: number; py: number; start: FloatState; next: FloatState; moved: boolean } | null>(null);
+  const gesture = useRef<{
+    kind: Kind;
+    px: number;
+    py: number;
+    start: FloatState;
+    next: FloatState;
+    moved: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const sync = () => setTabletOn(readTabletEnabled());
@@ -138,13 +145,47 @@ export function FloatHost() {
     });
   }
 
+  // 1.4.70: the page inside keeps its width while a resize is in flight (one relayout on a pause and on release,
+  // not one per frame), and the gesture never re-renders React: classes are set on the element directly.
+  function freeze() {
+    const el = win.current;
+    if (!el || !body) return;
+    el.style.setProperty("--bz-freeze-w", `${body.clientWidth}px`);
+  }
+  function thaw() {
+    const el = win.current;
+    if (settle.current) {
+      window.clearTimeout(settle.current);
+      settle.current = 0;
+    }
+    if (!el) return;
+    el.classList.remove("is-dragging", "is-moving", "is-resizing");
+    el.style.removeProperty("--bz-freeze-w");
+    if (body) syncPaneWidth(body, body.getBoundingClientRect().width);
+  }
+
   function begin(kind: Kind, event: ReactPointerEvent<HTMLElement>) {
     if (event.button !== 0 && event.pointerType === "mouse") return;
     event.preventDefault();
     event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    gesture.current = { kind, px: event.clientX, py: event.clientY, start: state, next: state, moved: false };
-    if (kind !== "bubble") setDragging(true);
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      /* pointer already gone */
+    }
+    gesture.current = {
+      kind,
+      px: event.clientX,
+      py: event.clientY,
+      start: state,
+      next: state,
+      moved: false,
+    };
+    const el = win.current;
+    if (kind !== "bubble" && el) {
+      if (kind !== "move") freeze();
+      el.classList.add("is-dragging", kind === "move" ? "is-moving" : "is-resizing");
+    }
   }
 
   function move(event: ReactPointerEvent<HTMLElement>) {
@@ -160,6 +201,19 @@ export function FloatHost() {
     else next = resized(a, g.kind, dx, dy);
     g.next = next;
     paint(next, g.kind);
+    if (g.kind !== "move" && g.kind !== "bubble") {
+      // A real pause (420 ms without a move) while resizing: let the page take the new width once, then keep holding it.
+      if (settle.current) window.clearTimeout(settle.current);
+      settle.current = window.setTimeout(() => {
+        settle.current = 0;
+        if (gesture.current && body) {
+          const el = win.current;
+          el?.style.removeProperty("--bz-freeze-w");
+          syncPaneWidth(body, body.getBoundingClientRect().width);
+          freeze();
+        }
+      }, 420);
+    }
   }
 
   function end() {
@@ -181,8 +235,9 @@ export function FloatHost() {
     }
     // Clear the in-flight styles; React paints the saved values in the same frame.
     for (const el of [win.current, bubble.current]) if (el) el.style.transform = "";
-    setDragging(false);
     save(fit(next));
+    // Let the saved size land first, then give the page its new width once (next frame).
+    requestAnimationFrame(thaw);
   }
 
   const narrow = s.w < 380;
@@ -193,85 +248,95 @@ export function FloatHost() {
         ref={win}
         role="dialog"
         aria-label={tx(`Ventana flotante: ${label[0]}`, `Floating window: ${label[1]}`)}
-        className={cn("bz-float print:hidden", s.min && "invisible pointer-events-none", dragging && "is-dragging", narrow && "is-narrow")}
+        className={cn("bz-float print:hidden", s.min && "invisible pointer-events-none", narrow && "is-narrow")}
         style={{ left: s.x, top: s.y, width: s.w, height: s.h, opacity: s.alpha }}
         data-no-swipe
       >
-        <div
-          className="bz-float-bar"
-          onPointerDown={(e) => {
-            if ((e.target as HTMLElement).closest("button")) return;
-            begin("move", e);
-          }}
-          onPointerMove={move}
-          onPointerUp={end}
-          onPointerCancel={end}
-        >
-          <GripHorizontal className="bz-float-grip" aria-hidden />
-          <Icon className="size-4 shrink-0 text-primary" aria-hidden />
-          <span className="bz-float-title">{tx(label[0], label[1])}</span>
-          <button
-            type="button"
-            className="bz-float-btn"
-            aria-label={tx("Transparencia", "Transparency")}
-            title={tx("Transparencia", "Transparency")}
-            onClick={() => save({ ...state, alpha: state.alpha > 0.9 ? 0.8 : state.alpha > 0.7 ? 0.6 : 1 })}
-          >
-            <Droplet className="size-4" fill={state.alpha < 1 ? "currentColor" : "none"} />
-          </button>
-          <button
-            type="button"
-            className="bz-float-btn"
-            aria-label={tx("Plegar en burbuja", "Fold into a bubble")}
-            title={tx("Plegar", "Fold")}
-            onClick={() => save(fit({ ...state, min: true, bx: Math.min(state.x + state.w - BUBBLE, window.innerWidth - BUBBLE - 6), by: state.y }))}
-          >
-            <Minus className="size-4" />
-          </button>
-          <button
-            type="button"
-            className="bz-float-btn"
-            aria-label={tx("Abrir en pantalla completa", "Open full screen")}
-            title={tx("Pantalla completa", "Full screen")}
-            onClick={() => {
-              save({ ...state, open: false, min: false });
-              void navigate({ to: state.path });
+        <div className="bz-float-frame">
+          <div
+            className="bz-float-bar"
+            onPointerDown={(e) => {
+              if ((e.target as HTMLElement).closest("button")) return;
+              begin("move", e);
             }}
+            onPointerMove={move}
+            onPointerUp={end}
+            onPointerCancel={end}
           >
-            <Maximize2 className="size-4" />
-          </button>
-          <button
-            type="button"
-            className="bz-float-btn"
-            aria-label={tx("Cerrar ventana flotante", "Close floating window")}
-            title={tx("Cerrar", "Close")}
-            onClick={() => save({ ...state, open: false, min: false })}
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-        <div ref={setBody} className="bz-float-body">
-          <FloatPane path={state.path} />
-          {dragging ? <div className="absolute inset-0" /> : null}
-        </div>
-        <div className="bz-float-tabs">
-          <div className="bz-float-tabset">
-            {TABS.map((tab) => {
-              const on = tab.to === s.path;
-              const TabIcon = tab.icon;
-              return (
-                <button
-                  key={tab.to}
-                  type="button"
-                  aria-label={t(tab.label)}
-                  aria-pressed={on}
-                  onClick={() => save({ ...state, path: tab.to })}
-                  className={cn("bz-float-tab", on && "is-on")}
-                >
-                  <TabIcon className="size-4" strokeWidth={on ? 2.4 : 1.8} />
-                </button>
-              );
-            })}
+            <GripHorizontal className="bz-float-grip" aria-hidden />
+            <Icon className="size-4 shrink-0 text-primary" aria-hidden />
+            <span className="bz-float-title">{tx(label[0], label[1])}</span>
+            <button
+              type="button"
+              className="bz-float-btn"
+              aria-label={tx("Transparencia", "Transparency")}
+              title={tx("Transparencia", "Transparency")}
+              onClick={() => save({ ...state, alpha: state.alpha > 0.9 ? 0.8 : state.alpha > 0.7 ? 0.6 : 1 })}
+            >
+              <Droplet className="size-4" fill={state.alpha < 1 ? "currentColor" : "none"} />
+            </button>
+            <button
+              type="button"
+              className="bz-float-btn"
+              aria-label={tx("Plegar en burbuja", "Fold into a bubble")}
+              title={tx("Plegar", "Fold")}
+              onClick={() =>
+                save(
+                  fit({
+                    ...state,
+                    min: true,
+                    bx: Math.min(state.x + state.w - BUBBLE, window.innerWidth - BUBBLE - 6),
+                    by: state.y,
+                  }),
+                )
+              }
+            >
+              <Minus className="size-4" />
+            </button>
+            <button
+              type="button"
+              className="bz-float-btn"
+              aria-label={tx("Abrir en pantalla completa", "Open full screen")}
+              title={tx("Pantalla completa", "Full screen")}
+              onClick={() => {
+                save({ ...state, open: false, min: false });
+                void navigate({ to: state.path });
+              }}
+            >
+              <Maximize2 className="size-4" />
+            </button>
+            <button
+              type="button"
+              className="bz-float-btn"
+              aria-label={tx("Cerrar ventana flotante", "Close floating window")}
+              title={tx("Cerrar", "Close")}
+              onClick={() => save({ ...state, open: false, min: false })}
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+          <div ref={setBody} className="bz-float-body">
+            <FloatPane path={state.path} />
+          </div>
+          <div className="bz-float-tabs">
+            <div className="bz-float-tabset">
+              {TABS.map((tab) => {
+                const on = tab.to === s.path;
+                const TabIcon = tab.icon;
+                return (
+                  <button
+                    key={tab.to}
+                    type="button"
+                    aria-label={t(tab.label)}
+                    aria-pressed={on}
+                    onClick={() => save({ ...state, path: tab.to })}
+                    className={cn("bz-float-tab", on && "is-on")}
+                  >
+                    <TabIcon className="size-4" strokeWidth={on ? 2.4 : 1.8} />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
         {EDGES.map((edge) => (

@@ -931,9 +931,14 @@ function OneLineName({ name, minRem, maxRem }: { name: string; minRem?: number; 
       setStep(pick);
     };
     fit();
-    const ro = new ResizeObserver(fit);
+    // 1.4.70: re-fit on the next frame, not inside the observer (changing the font there re-sized the row it
+    // watches: "ResizeObserver loop" on big width jumps such as releasing a floating-window resize).
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      if (!raf) raf = requestAnimationFrame(() => { raf = 0; fit(); });
+    });
     ro.observe(row);
-    return () => ro.disconnect();
+    return () => { ro.disconnect(); if (raf) cancelAnimationFrame(raf); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, minRem, maxRem]);
   return (
@@ -1007,10 +1012,13 @@ function FitLine({ forms, className, underName, lastResort }: { forms: string[];
       setPick((prev) => (prev.i === next.i && prev.rem === next.rem ? prev : next));
     };
     fit();
-    const ro = new ResizeObserver(fit);
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      if (!raf) raf = requestAnimationFrame(() => { raf = 0; fit(); });
+    });
     ro.observe(el);
     if (nameEl) ro.observe(nameEl);
-    return () => ro.disconnect();
+    return () => { ro.disconnect(); if (raf) cancelAnimationFrame(raf); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, underName]);
   return (

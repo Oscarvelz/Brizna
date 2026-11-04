@@ -107,11 +107,11 @@ export function WorkDayCard() {
   return (
     <section className="bz-wd mb-4 rounded-xl bg-surface p-3 shadow-card">
       {/* 1.4.69 (Oscar): status is a chip on the title row; Entrada/Salida are real controls that show their time;
-          undo/redo close the Entrada/Salida row, stacked beside the controls they undo (no row of their own). */}
+          1.4.70: undo/redo sit small, side by side, at the end of the title row; Entrada/Salida share the full row. */}
       <div className="bz-wd-head flex items-center gap-2">
         <h2 className="flex shrink-0 items-center gap-1 font-display text-base font-semibold">
           <span className="whitespace-nowrap">{t("hours.title")}</span>
-          <Hint topic="horas" />
+          <Hint compact topic="horas" />
         </h2>
         {day.confirmed ? (
           <span className="bz-statchip is-done" title={t("hours.confirmed")}>
@@ -124,27 +124,7 @@ export function WorkDayCard() {
             {t("hours.unconfirmed")}
           </span>
         )}
-      </div>
-      <div className="bz-wd-row mt-3">
-        {(["in", "out"] as const).map((kind) => {
-          const Ico = kind === "in" ? LogIn : LogOut;
-          return (
-            <button
-              key={kind}
-              type="button"
-              className={cn("bz-wd-punch", kind === "out" && "is-out")}
-              disabled={punch.isPending}
-              onClick={() => setAsk(kind)}
-            >
-              <Ico aria-hidden />
-              <span className="bz-wd-punch-t">
-                <span className="bz-wd-punch-k">{t(kind === "in" ? "hours.in" : "hours.out")}</span>
-                <span className="bz-wd-punch-v">{clock12(kind === "in" ? day.clockIn : day.clockOut)}</span>
-              </span>
-            </button>
-          );
-        })}
-          <div className="bz-wd-tools">
+          <div className="bz-wd-tools ml-auto">
             <button
               type="button"
               aria-label={t("common.cancel") === "Cancel" ? "Undo" : "Deshacer"}
@@ -170,7 +150,7 @@ export function WorkDayCard() {
               }}
               className="bz-wd-tool"
             >
-              <Undo2 className="size-4" />
+              <Undo2 aria-hidden />
             </button>
             <button
               type="button"
@@ -196,9 +176,30 @@ export function WorkDayCard() {
               }}
               className="bz-wd-tool"
             >
-              <Redo2 className="size-4" />
+              <Redo2 aria-hidden />
             </button>
           </div>
+      </div>
+      <div className="bz-wd-row mt-3">
+        {(["in", "out"] as const).map((kind) => {
+          const Ico = kind === "in" ? LogIn : LogOut;
+          return (
+            <button
+              key={kind}
+              type="button"
+              className={cn("bz-wd-punch", kind === "out" && "is-out")}
+              disabled={punch.isPending}
+              onClick={() => setAsk(kind)}
+            >
+              <Ico aria-hidden />
+              <span className="bz-wd-punch-t">
+                <span className="bz-wd-punch-k">{t(kind === "in" ? "hours.in" : "hours.out")}</span>
+                <span className="bz-wd-punch-v">{clock12(kind === "in" ? day.clockIn : day.clockOut)}</span>
+              </span>
+            </button>
+          );
+        })}
+
       </div>
       {day.stoppedReason || day.stoppedAt ? (
         <p className="mt-2 text-sm text-muted">

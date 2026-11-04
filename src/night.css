@@ -5,7 +5,7 @@ html.theme-dark { --nv-moon: #f3dfa2; }
 html.theme-dark[data-palette="noche"]      { --nv-top: #06130c; --nv-mid: #091a10; --nv-low: #0c2315; --nv-moon: #f3dfa2; }
 html.theme-dark[data-palette="medianoche"] { --nv-top: #050914; --nv-mid: #081023; --nv-low: #0c1832; --nv-moon: #dbe6ff; }
 html.theme-dark[data-palette="ciruela"]    { --nv-top: #0c0712; --nv-mid: #130c1e; --nv-low: #1c112a; --nv-moon: #f6dcff; }
-html.theme-dark[data-palette="grafito"]    { --nv-top: #0a0a0c; --nv-mid: #0f0f11; --nv-low: #161613; --nv-moon: #f3dfa2; }
+html.theme-dark[data-palette="grafito"]    { --nv-top: #0a0a0c; --nv-mid: #0f0f11; --nv-low: #151517; --nv-moon: #f3dfa2; }
 html.theme-dark[data-palette="luciernaga"] { --nv-top: #060904; --nv-mid: #0a1106; --nv-low: #111b09; --nv-moon: #eef7a6; }
 
 html.theme-dark,

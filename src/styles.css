@@ -106,8 +106,8 @@ html.theme-amoled {
 html.theme-amoled {
   --color-bg: #000000;
   --color-sun: #000000;
-  --color-surface: #13110e;
-  --color-surface-2: #1e1b17;
+  --color-surface: #141415;
+  --color-surface-2: #222224;
   --color-fg: #f5f5f5;
   --color-muted: #cfcfcf;
   --color-subtle: #9e9e9e;
@@ -115,26 +115,26 @@ html.theme-amoled {
   --color-primary-fg: #03140a;
   --color-primary-hover: color-mix(in oklab, #4ade80 86%, black);
   --color-accent: #4ade80;
-  --color-border: #3a352e;
+  --color-border: #2c2c2f;
   --color-ring: #4ade80;
   --color-late: #ff6b6b;
-  --color-late-bg: color-mix(in oklab, #ff6b6b 20%, #13110e);
+  --color-late-bg: color-mix(in oklab, #ff6b6b 20%, #141415);
   --color-done: #4ade80;
-  --color-done-bg: color-mix(in oklab, #4ade80 20%, #13110e);
+  --color-done-bg: color-mix(in oklab, #4ade80 20%, #141415);
   --color-pending: #fbbf24;
-  --color-pending-bg: color-mix(in oklab, #fbbf24 20%, #13110e);
+  --color-pending-bg: color-mix(in oklab, #fbbf24 20%, #141415);
   --color-money: #38d4f0;
-  --color-money-bg: color-mix(in oklab, #38d4f0 20%, #13110e);
+  --color-money-bg: color-mix(in oklab, #38d4f0 20%, #141415);
   --color-today: #4ade80;
-  --color-today-bg: color-mix(in oklab, #4ade80 20%, #13110e);
+  --color-today-bg: color-mix(in oklab, #4ade80 20%, #141415);
   --color-due: #facc15;
-  --color-due-bg: color-mix(in oklab, #facc15 20%, #13110e);
+  --color-due-bg: color-mix(in oklab, #facc15 20%, #141415);
   --color-soil: #e0b080;
-  --color-soil-bg: color-mix(in oklab, #e0b080 20%, #13110e);
+  --color-soil-bg: color-mix(in oklab, #e0b080 20%, #141415);
   --color-work: #d0d0d0;
-  --color-work-bg: color-mix(in oklab, #d0d0d0 20%, #13110e);
+  --color-work-bg: color-mix(in oklab, #d0d0d0 20%, #141415);
   --color-hold: #fb923c;
-  --color-hold-bg: color-mix(in oklab, #fb923c 20%, #13110e);
+  --color-hold-bg: color-mix(in oklab, #fb923c 20%, #141415);
   --color-hint: #161618;
   --color-hint-fg: #f5f5f5;
   --color-abono: #fbbf24;
@@ -488,8 +488,8 @@ html.theme-dark[data-palette="ciruela"] {
 html.theme-dark[data-palette="grafito"] {
   --color-bg: #0a0a0c;
   --color-sun: #101011;
-  --color-surface: #242321;
-  --color-surface-2: #32302c;
+  --color-surface: #232325;
+  --color-surface-2: #303033;
   --color-fg: #f2f2f0;
   --color-muted: #cececa;
   --color-subtle: #ababa7;
@@ -497,26 +497,26 @@ html.theme-dark[data-palette="grafito"] {
   --color-primary-fg: #1c1503;
   --color-primary-hover: color-mix(in oklab, #e9c46a 86%, black);
   --color-accent: #e9c46a;
-  --color-border: #4b4740;
+  --color-border: #48484c;
   --color-ring: #e9c46a;
   --color-late: #ff7b70;
-  --color-late-bg: color-mix(in oklab, #ff7b70 22%, #242321);
+  --color-late-bg: color-mix(in oklab, #ff7b70 22%, #232325);
   --color-done: #7fd8a2;
-  --color-done-bg: color-mix(in oklab, #7fd8a2 22%, #242321);
+  --color-done-bg: color-mix(in oklab, #7fd8a2 22%, #232325);
   --color-pending: #e9c46a;
-  --color-pending-bg: color-mix(in oklab, #e9c46a 22%, #242321);
+  --color-pending-bg: color-mix(in oklab, #e9c46a 22%, #232325);
   --color-money: #82cfe0;
-  --color-money-bg: color-mix(in oklab, #82cfe0 22%, #242321);
+  --color-money-bg: color-mix(in oklab, #82cfe0 22%, #232325);
   --color-today: #e9c46a;
-  --color-today-bg: color-mix(in oklab, #e9c46a 22%, #242321);
+  --color-today-bg: color-mix(in oklab, #e9c46a 22%, #232325);
   --color-due: #f0d27e;
-  --color-due-bg: color-mix(in oklab, #f0d27e 22%, #242321);
+  --color-due-bg: color-mix(in oklab, #f0d27e 22%, #232325);
   --color-soil: #d8bc98;
-  --color-soil-bg: color-mix(in oklab, #d8bc98 22%, #242321);
+  --color-soil-bg: color-mix(in oklab, #d8bc98 22%, #232325);
   --color-work: #cfcfc8;
-  --color-work-bg: color-mix(in oklab, #cfcfc8 22%, #242321);
+  --color-work-bg: color-mix(in oklab, #cfcfc8 22%, #232325);
   --color-hold: #f0a070;
-  --color-hold-bg: color-mix(in oklab, #f0a070 22%, #242321);
+  --color-hold-bg: color-mix(in oklab, #f0a070 22%, #232325);
   --color-hint: #242428;
   --color-hint-fg: #f2f2f0;
   --color-abono: #e9c46a;
@@ -1761,8 +1761,8 @@ html.theme-dark .bz-late-card, html.theme-amoled .bz-late-card { box-shadow: ins
 html.theme-dark :is(.bz-dialog, [role="dialog"][aria-modal="true"], [role="alertdialog"], .bz-pf-sheet),
 html.theme-amoled :is(.bz-dialog, [role="dialog"][aria-modal="true"], [role="alertdialog"], .bz-pf-sheet) {
   box-shadow:
-    inset 0 0 0 1px rgb(255 238 212 / 0.13),
-    inset 0 2px 0 rgb(255 240 218 / 0.05),
+    inset 0 0 0 1px rgb(255 255 255 / 0.13),
+    inset 0 2px 0 rgb(255 255 255 / 0.05),
     0 18px 40px -18px rgb(0 0 0 / 0.8) !important;
 }
 
@@ -1782,8 +1782,8 @@ html.theme-amoled :is(.bz-dialog, [role="dialog"][aria-modal="true"], [role="ale
 }
 html.theme-dark .bz-dialog.bz-dialog, html.theme-amoled .bz-dialog.bz-dialog {
   box-shadow:
-    inset 0 0 0 1px rgb(255 238 212 / 0.13),
-    inset 0 1px 0 rgb(255 240 218 / 0.06),
+    inset 0 0 0 1px rgb(255 255 255 / 0.13),
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
     0 2px 6px rgb(0 0 0 / 0.35),
     0 30px 64px -26px rgb(0 0 0 / 0.88) !important;
 }
@@ -1828,7 +1828,7 @@ html.theme-dark .bz-dialog-actions button:is(.bg-primary, .bg-late), html.theme-
 .bz-dialog-actions button.bg-surface-2:hover { background: var(--color-surface-2); }
 html.theme-dark .bz-dialog-actions button.bg-surface-2, html.theme-amoled .bz-dialog-actions button.bg-surface-2 {
   background: color-mix(in srgb, var(--color-surface-2) 80%, var(--color-surface));
-  box-shadow: inset 0 0 0 1px rgb(255 238 212 / 0.10);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.10);
 }
 @media (min-width: 640px) {
   .bz-dialog { padding: 1.75rem; }
@@ -1906,8 +1906,8 @@ html.theme-dark .bz-late-pulse::before, html.theme-amoled .bz-late-pulse::before
   box-shadow: inset 0 0 0 1px color-mix(in srgb, #6b5a43 20%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.35);
 }
 html.theme-dark .bz-pinned, html.theme-amoled .bz-pinned {
-  background: color-mix(in srgb, var(--color-surface) 93%, #ffeed4);
-  box-shadow: inset 0 0 0 1px rgb(255 238 212 / 0.13), inset 0 1px 0 rgb(255 238 212 / 0.05);
+  background: color-mix(in srgb, var(--color-surface) 94%, #ffffff);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.13), inset 0 1px 0 rgb(255 255 255 / 0.05);
 }
 
 /* ───────── 1.4.69 ───────── */
@@ -1920,35 +1920,35 @@ html.theme-dark .bz-pinned, html.theme-amoled .bz-pinned {
 @media (min-width: 640px) { .bz-dialog-title .bz-dialog-chip { margin-top: calc((1.375rem * 1.25 - 1.875rem) / 2); } }
 
 /* AMOLED warm elevation ladder (1.4.69, Oscar: black must be integrated; calm middle contrast).
-   L0 page #000 · L1 panel #0c0b09 (a day, Fijados, a list that holds cards) · L2 card #15130f · L3 inset/row #1c1914.
+   L0 page #000 · L1 panel #0c0b09 (a day, Fijados, a list that holds cards) · L2 card #141415 · L3 inset/row #1b1b1d (1.4.70: charcoal, neutral above L1).
    Each level has a warm 1px hairline; text and tone colours are unchanged. */
 html.theme-amoled {
   --bz-l1: #0c0b09;
-  --bz-l2: #15130f;
-  --bz-l3: #1c1914;
-  --bz-hair-1: rgb(255 240 220 / 0.07);
-  --bz-hair-2: rgb(255 240 220 / 0.085);
-  --bz-hair-3: rgb(255 240 220 / 0.10);
+  --bz-l2: #141415;
+  --bz-l3: #1b1b1d;
+  --bz-hair-1: rgb(255 255 255 / 0.07);
+  --bz-hair-2: rgb(255 255 255 / 0.085);
+  --bz-hair-3: rgb(255 255 255 / 0.10);
   --color-surface: var(--bz-l2);
-  --color-surface-2: #211e18;
+  --color-surface-2: #222224;
   --color-sun: var(--bz-l3);
-  --color-border: #2f2a23;
-  --color-late-bg: color-mix(in oklab, #ff6b6b 17%, #15130f);
-  --color-done-bg: color-mix(in oklab, #4ade80 17%, #15130f);
-  --color-pending-bg: color-mix(in oklab, #fbbf24 17%, #15130f);
-  --color-money-bg: color-mix(in oklab, #38d4f0 17%, #15130f);
-  --color-today-bg: color-mix(in oklab, #4ade80 17%, #15130f);
-  --color-due-bg: color-mix(in oklab, #facc15 17%, #15130f);
-  --color-soil-bg: color-mix(in oklab, #e0b080 17%, #15130f);
-  --color-hold-bg: color-mix(in oklab, #fb923c 17%, #15130f);
-  --shadow-card: inset 0 1px 0 rgb(255 240 220 / 0.03), 0 0 0 1px var(--bz-hair-2), 0 10px 24px -16px rgb(0 0 0 / 0.9);
-  --shadow-card-hover: inset 0 1px 0 rgb(255 240 220 / 0.04), 0 0 0 1px rgb(255 240 220 / 0.15), 0 10px 24px -16px rgb(0 0 0 / 0.9);
+  --color-border: #2c2c2f;
+  --color-late-bg: color-mix(in oklab, #ff6b6b 17%, #141415);
+  --color-done-bg: color-mix(in oklab, #4ade80 17%, #141415);
+  --color-pending-bg: color-mix(in oklab, #fbbf24 17%, #141415);
+  --color-money-bg: color-mix(in oklab, #38d4f0 17%, #141415);
+  --color-today-bg: color-mix(in oklab, #4ade80 17%, #141415);
+  --color-due-bg: color-mix(in oklab, #facc15 17%, #141415);
+  --color-soil-bg: color-mix(in oklab, #e0b080 17%, #141415);
+  --color-hold-bg: color-mix(in oklab, #fb923c 17%, #141415);
+  --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.03), 0 0 0 1px var(--bz-hair-2), 0 10px 24px -16px rgb(0 0 0 / 0.9);
+  --shadow-card-hover: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 0 0 1px rgb(255 255 255 / 0.15), 0 10px 24px -16px rgb(0 0 0 / 0.9);
 }
 /* L1 panels: containers that hold cards sit one step under them. */
 html.theme-amoled :is(.bz-dayfold, .bz-cp, .bz-pinned) {
   background-color: var(--bz-l1);
 }
-html.theme-amoled .bz-pinned { box-shadow: inset 0 0 0 1px var(--bz-hair-1), inset 0 1px 0 rgb(255 240 220 / 0.03); }
+html.theme-amoled .bz-pinned { box-shadow: inset 0 0 0 1px var(--bz-hair-1), inset 0 1px 0 rgb(255 255 255 / 0.03); }
 html.theme-amoled .bz-dayfold > .border-t { border-color: var(--bz-hair-1); }
 /* L3 insets: a filled box or control inside a card (rows, prompts, inputs, quiet buttons). */
 html.theme-amoled .bg-surface :is(.bg-sun, .bg-bg):not(article) ,
@@ -1994,7 +1994,7 @@ html:is(.theme-dark, .theme-amoled) .bz-statchip { color: color-mix(in oklab, va
 .bz-wd-tool:disabled { opacity: 0.42; }
 .bz-wd-tool::after { content: ""; position: absolute; inset: -0.25rem -0.125rem; }
 .bz-wd-tool svg { width: 1rem; height: 1rem; }
-html:is(.theme-dark, .theme-amoled) .bz-wd-tool { color: color-mix(in srgb, var(--color-fg) 78%, transparent); background: color-mix(in srgb, var(--color-fg) 6%, var(--color-surface)); box-shadow: inset 0 0 0 1px rgb(255 240 220 / 0.13); }
+html:is(.theme-dark, .theme-amoled) .bz-wd-tool { color: color-mix(in srgb, var(--color-fg) 78%, transparent); background: color-mix(in srgb, var(--color-fg) 6%, var(--color-surface)); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.13); }
 html:is(.theme-dark, .theme-amoled) .bz-wd-tool:disabled { opacity: 0.5; }
 .bz-wd-punch {
   --pt: var(--color-primary);
@@ -2102,7 +2102,7 @@ h1:has(> .bz-title-date) { container-type: inline-size; }
 .bz-chiptoggle > svg { width: 0.875rem; height: 0.875rem; stroke-width: 2.2; }
 .bz-chiptoggle:hover { color: var(--color-fg); }
 .bz-chiptoggle.is-on { color: var(--color-soil); background: color-mix(in srgb, var(--color-soil) 12%, var(--color-surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-soil) 45%, transparent); }
-html:is(.theme-dark, .theme-amoled) .bz-chiptoggle { box-shadow: inset 0 0 0 1px rgb(255 240 220 / 0.14); }
+html:is(.theme-dark, .theme-amoled) .bz-chiptoggle { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14); }
 html:is(.theme-dark, .theme-amoled) .bz-chiptoggle.is-on { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-soil) 55%, transparent); }
 
 /* 1.4.69: list tallies ("14 clientes · $910 por ronda", "33 trabajos · $1,915") sit in a quiet framed pill instead of a loose line. */
@@ -2114,9 +2114,50 @@ html:is(.theme-dark, .theme-amoled) .bz-chiptoggle.is-on { box-shadow: inset 0 0
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 9%, transparent);
   animation: bz-tally-in .2s ease-out both;
 }
-html:is(.theme-dark, .theme-amoled) .bz-tally { background: color-mix(in srgb, var(--color-fg) 5%, var(--color-surface)); box-shadow: inset 0 0 0 1px rgb(255 240 220 / 0.11); }
+html:is(.theme-dark, .theme-amoled) .bz-tally { background: color-mix(in srgb, var(--color-fg) 5%, var(--color-surface)); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.11); }
 html.theme-amoled .bz-tally { background: var(--bz-l1); }
 /* the (?) keeps its tap area but doesn't make the pill taller */
 .bz-tally > [data-topic] { margin-block: -0.625rem; }
 @keyframes bz-tally-in { from { opacity: 0; transform: translateY(2px); } }
 @media (prefers-reduced-motion: reduce) { .bz-tally { animation: none; } }
+
+/* ───────── 1.4.70 ───────── */
+/* Day: "Pasar los de hoy" a little firmer (Oscar: looked washed out). Only this button, day themes only. */
+html:not(.theme-dark):not(.theme-amoled) .bz-actbtn.is-due {
+  background: color-mix(in oklab, var(--color-due) 12%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-due) 42%, transparent), 0 1px 2px rgb(30 42 34 / 0.06);
+}
+html:not(.theme-dark):not(.theme-amoled) .bz-actbtn.is-due > svg { color: color-mix(in oklab, var(--color-due) 80%, #000); }
+html:not(.theme-dark):not(.theme-amoled) .bz-actbtn.is-due:hover:not(:disabled) { background: color-mix(in oklab, var(--color-due) 17%, var(--color-surface)); }
+/* AMOLED charcoal (Oscar: L1 #0c0b09 is right, the brown L2 #15130f was not). Insets inside a card: their own
+   neutral L3 fill + a clear tone edge, so Entrada and Salida never melt into the panel. */
+html.theme-amoled .bz-wd-punch { background: color-mix(in oklab, var(--pt) 9%, var(--bz-l3)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pt) 40%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.04); }
+html.theme-amoled .bz-wd-punch:hover:not(:disabled) { background: color-mix(in oklab, var(--pt) 14%, var(--bz-l3)); }
+html.theme-amoled .bz-wd-tool { background: var(--bz-l3); box-shadow: inset 0 0 0 1px var(--bz-hair-3); }
+html.theme-amoled .bz-actbtn { background: color-mix(in oklab, var(--pt) 8%, var(--bz-l2)); }
+html.theme-amoled .bz-dialog-actions button.bg-surface-2 { background: var(--bz-l3); box-shadow: inset 0 0 0 1px var(--bz-hair-3); }
+/* Horas de trabajo (1.4.70): undo/redo small and side by side at the end of the title row; Entrada/Salida = two equal halves. */
+.bz-wd-row.bz-wd-row { grid-template-columns: 1fr 1fr; }
+.bz-wd-head > .bz-wd-tools { display: flex; grid-template-rows: none; gap: 0.25rem; flex: none; }
+.bz-wd-head > .bz-wd-tools > .bz-wd-tool { width: 1.75rem; height: 1.75rem; min-height: 0; border-radius: 0.5rem;
+  color: color-mix(in srgb, var(--color-fg) 72%, var(--color-surface));
+  background: color-mix(in srgb, var(--color-surface-2) 70%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 20%, transparent), 0 1px 1px rgb(30 42 34 / 0.06); }
+.bz-wd-head > .bz-wd-tools > .bz-wd-tool::after { inset: -0.25rem -0.125rem; }
+.bz-wd-head > .bz-wd-tools > .bz-wd-tool svg { width: 0.875rem; height: 0.875rem; stroke-width: 2.2; }
+.bz-wd-head > .bz-wd-tools > .bz-wd-tool:disabled { opacity: 0.58; }
+html:is(.theme-dark, .theme-amoled) .bz-wd-head > .bz-wd-tools > .bz-wd-tool { color: color-mix(in srgb, var(--color-fg) 80%, transparent); background: color-mix(in srgb, var(--color-fg) 6%, var(--color-surface)); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14); }
+html.theme-amoled .bz-wd-head > .bz-wd-tools > .bz-wd-tool { background: var(--bz-l3); }
+@container (max-width: 380px) {
+  .bz-wd-head { gap: 0.375rem; }
+  .bz-wd-head .bz-statchip { gap: 0.3125rem; height: 1.375rem; padding-inline: 0.375rem 0.4375rem; font-size: 0.6875rem; }
+}
+/* Narrow phone fallback (≤330px card, e.g. 360 screens): title, ? and the arrows keep the first line; the status chip
+   drops right under the title (never "…", never squeezed). */
+@container (max-width: 330px) {
+  .bz-wd-head { flex-wrap: wrap; row-gap: 0.375rem; }
+  .bz-wd-head > .bz-wd-tools { order: 1; }
+  .bz-wd-head > .bz-statchip { order: 2; }
+}
+/* AMOLED: Posponer's quiet stone tone goes neutral graphite so its fill sits in the charcoal family (no brown cast). */
+html.theme-amoled { --tone-post: #bcbcc1; }

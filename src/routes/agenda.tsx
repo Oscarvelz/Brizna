@@ -287,7 +287,7 @@ function AgendaPage() {
       title={tx("Agenda", "Schedule")}
       titleTight
       action={
-        <div className="ml-auto flex min-w-0 items-center gap-0.5">
+        <div className="bz-ag-views ml-auto flex min-w-0 items-center gap-0.5">
           <button
             type="button"
             onClick={() => {
@@ -368,7 +368,8 @@ function AgendaPage() {
         </button>
       ) : null}
 
-      <div className="bz-ag-filters mb-3 flex items-center gap-0.5 rounded-full" data-spot="agenda">
+      <div className="bz-ag-filters mb-3" data-spot="agenda">
+      <div className="bz-ag-filters-in flex items-center gap-0.5 rounded-full">
       <div id="agenda-controles" className="grid min-w-0 flex-1 grid-cols-[repeat(5,auto)] justify-between gap-0.5">
         {FILTERS.filter((item) => item.value !== "cancelled").map((item) => {
           const on = !onlyMoved && status === item.value;
@@ -417,6 +418,7 @@ function AgendaPage() {
       </div>
       <Hint compact topic="agenda" />
       </div>
+      </div>
 
       <section id="ag-libres" className="bz-ag-libres mb-3 rounded-xl bg-surface shadow-card">
         <div className="bz-ag-libres-head flex min-h-11 items-center gap-0.5 px-1.5">
@@ -436,7 +438,7 @@ function AgendaPage() {
             className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 text-left"
           >
             <ChevronDown className={cn("size-4 shrink-0 text-muted transition-transform", !(pinnedOff || offOpen) && "-rotate-90")} />
-            <span className="min-w-0 pr-1.5 text-sm font-semibold leading-tight text-pretty max-[420px]:text-[0.8125rem] min-[380px]:whitespace-nowrap">{tx("Días libres de esta semana", "Days off this week")}</span>
+            <span className="min-w-0 pr-1.5 text-sm font-semibold leading-tight text-pretty max-[420px]:text-[0.8125rem] bz-ag-libres-t">{tx("Días libres de esta semana", "Days off this week")}</span>
           </button>
           <button
             type="button"

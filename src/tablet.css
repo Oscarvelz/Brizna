@@ -383,18 +383,24 @@
 }
 
 /* ── Floating window (1.4.69): Brizna frame, resize from every edge and corner, content reflows by its own width ── */
-.bz-float {
-  position: fixed; z-index: 60; display: flex; flex-direction: column; overflow: hidden;
-  border-radius: 1.125rem; background: var(--color-bg); color: var(--color-fg);
-  container: bzfloat / inline-size;
+.bz-float { position: fixed; z-index: 60; contain: layout style; color: var(--color-fg); }
+/* 1.4.70: the frame clips and rounds; the grab zones live outside it so they can reach past the edge (≥44px for a finger). */
+.bz-float-frame {
+  position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden;
+  border-radius: 1.125rem; background: var(--color-bg);
+  container: bzfloat / inline-size; contain: layout paint;
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--color-primary) 38%, var(--color-border)),
     0 1px 0 0 rgb(255 255 255 / 0.06) inset,
     0 22px 48px -18px rgb(0 0 0 / 0.45), 0 4px 12px -6px rgb(0 0 0 / 0.2);
 }
 /* Not a modal: the generic [role=dialog] cap (28rem wide, 88dvh tall) is what kept it from growing sideways. */
-.bz-float[role="dialog"] { max-width: none; max-height: none; overflow: hidden; contain: layout paint; }
-.bz-float.is-dragging { will-change: transform; user-select: none; -webkit-user-select: none; }
+.bz-float[role="dialog"] { max-width: none; max-height: none; overflow: visible; }
+.bz-float.is-dragging { will-change: left, top, width, height; user-select: none; -webkit-user-select: none; touch-action: none; }
+.bz-float.is-moving { will-change: transform; }
+.bz-float.is-dragging .bz-float-body { pointer-events: none; }
+/* While a resize is in flight the page inside keeps its width (no relayout per frame); it settles on a pause and on release. */
+.bz-float.is-resizing .bz-float-body > * { width: var(--bz-freeze-w, auto); min-width: var(--bz-freeze-w, 0); max-width: none; flex: none; }
 .bz-float-bar {
   display: flex; align-items: center; gap: 0.25rem; height: 2.625rem; flex: none;
   padding: 0 0.875rem 0 0.75rem; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
@@ -411,53 +417,62 @@
 .bz-float-tabset { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); width: 100%; max-width: 16rem; height: 2rem; padding: 0.125rem; border-radius: 999px; background: var(--color-surface-2); }
 .bz-float-tab { display: grid; place-items: center; border-radius: 999px; color: var(--color-muted); }
 .bz-float-tab.is-on { background: var(--color-surface); color: var(--color-primary); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12), inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, transparent); }
-/* Handles: wide invisible grab zones (touch, S Pen, mouse) with a quiet visible mark. */
-.bz-float-h { position: absolute; z-index: 12; touch-action: none; }
-.bz-float-h > span { position: absolute; border-radius: 999px; background: color-mix(in srgb, var(--color-primary) 55%, var(--color-muted)); opacity: 0.32; transition: opacity .15s ease, transform .15s ease; }
+/* Handles (1.4.70): 44px grab zones that sit mostly OUTSIDE the frame (n 38 out/6 in, s 36/8, e/w 28/16,
+   corners 52px with 32 out), so a finger catches them easily and they never cover the bar's buttons or the tabs. */
+.bz-float-h { position: absolute; z-index: 12; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.bz-float-h > span { position: absolute; border-radius: 999px; background: color-mix(in srgb, var(--color-primary) 55%, var(--color-muted)); opacity: 0.32; transition: opacity .15s ease; pointer-events: none; }
 .bz-float-h:hover > span, .bz-float-h:active > span, .bz-float.is-dragging .bz-float-h > span { opacity: 0.8; }
-.bz-float-h.is-n, .bz-float-h.is-s { left: 1.5rem; right: 1.5rem; height: 0.75rem; cursor: ns-resize; }
-.bz-float-h.is-n { top: -0.125rem; } .bz-float-h.is-s { bottom: -0.125rem; }
-.bz-float-h.is-e, .bz-float-h.is-w { top: 1.5rem; bottom: 1.5rem; width: 0.75rem; cursor: ew-resize; }
-.bz-float-h.is-e { right: -0.125rem; } .bz-float-h.is-w { left: -0.125rem; }
+.bz-float-h.is-n, .bz-float-h.is-s { left: 1.25rem; right: 1.25rem; height: 2.75rem; cursor: ns-resize; }
+.bz-float-h.is-n { top: -2.375rem; } .bz-float-h.is-s { bottom: -2.25rem; }
+.bz-float-h.is-e, .bz-float-h.is-w { top: 1.25rem; bottom: 1.25rem; width: 2.75rem; cursor: ew-resize; }
+.bz-float-h.is-e { right: -1.75rem; } .bz-float-h.is-w { left: -1.75rem; }
 .bz-float-h.is-n > span, .bz-float-h.is-s > span { left: 50%; width: 2rem; height: 3px; margin-left: -1rem; }
-.bz-float-h.is-n > span { top: 3px; } .bz-float-h.is-s > span { bottom: 3px; }
+.bz-float-h.is-n > span { bottom: 2px; } .bz-float-h.is-s > span { top: 3px; }
 .bz-float-h.is-e > span, .bz-float-h.is-w > span { top: 50%; height: 2rem; width: 3px; margin-top: -1rem; }
-.bz-float-h.is-e > span { right: 3px; } .bz-float-h.is-w > span { left: 3px; }
-.bz-float-h.is-ne, .bz-float-h.is-nw, .bz-float-h.is-se, .bz-float-h.is-sw { width: 1.625rem; height: 1.625rem; z-index: 13; }
-.bz-float-h.is-ne { top: -0.125rem; right: -0.125rem; cursor: nesw-resize; }
-.bz-float-h.is-nw { top: -0.125rem; left: -0.125rem; cursor: nwse-resize; }
-.bz-float-h.is-se { bottom: -0.125rem; right: -0.125rem; cursor: nwse-resize; }
-.bz-float-h.is-sw { bottom: -0.125rem; left: -0.125rem; cursor: nesw-resize; }
-/* Corner marks: a small rounded L on the two bottom corners only (the top corners sit under the bar's buttons). */
+.bz-float-h.is-e > span { left: 10px; } .bz-float-h.is-w > span { right: 10px; }
+.bz-float-h.is-ne, .bz-float-h.is-nw { width: 2.75rem; height: 2.75rem; top: -2rem; z-index: 13; }
+.bz-float-h.is-ne { right: -2rem; cursor: nesw-resize; } .bz-float-h.is-nw { left: -2rem; cursor: nwse-resize; }
+.bz-float-h.is-se, .bz-float-h.is-sw { width: 3.25rem; height: 3.25rem; bottom: -2rem; z-index: 13; }
+.bz-float-h.is-se { right: -2rem; cursor: nwse-resize; } .bz-float-h.is-sw { left: -2rem; cursor: nesw-resize; }
+/* Corner marks: a small rounded L on the two bottom corners only (the top corners sit beside the bar's buttons). */
 .bz-float-h.is-ne > span, .bz-float-h.is-nw > span { display: none; }
-.bz-float-h.is-se > span, .bz-float-h.is-sw > span { width: 0.625rem; height: 0.625rem; bottom: 6px; background: none; border-radius: 0 0 4px 0; border: solid color-mix(in srgb, var(--color-primary) 60%, var(--color-muted)); border-width: 0 2px 2px 0; }
-.bz-float-h.is-se > span { right: 6px; }
-.bz-float-h.is-sw > span { left: 6px; transform: scaleX(-1); }
-/* Touch: bigger grab zones (S Pen and fingers), same marks. */
-@media (pointer: coarse) {
-  .bz-float-h.is-n, .bz-float-h.is-s { height: 1.125rem; }
-  .bz-float-h.is-e, .bz-float-h.is-w { width: 1.125rem; }
-  .bz-float-h.is-ne, .bz-float-h.is-nw, .bz-float-h.is-se, .bz-float-h.is-sw { width: 2rem; height: 2rem; }
-}
-/* The n handle overlaps the title bar: keep the bar's buttons above it. */
+.bz-float-h.is-se > span, .bz-float-h.is-sw > span { width: 0.625rem; height: 0.625rem; top: 4px; background: none; border-radius: 0 0 4px 0; border: solid color-mix(in srgb, var(--color-primary) 60%, var(--color-muted)); border-width: 0 2px 2px 0; }
+.bz-float-h.is-se > span { left: 4px; }
+.bz-float-h.is-sw > span { right: 4px; transform: scaleX(-1); }
 .bz-float-bar .bz-float-btn { position: relative; z-index: 11; }
-html:is(.theme-dark, .theme-amoled) .bz-float { box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 34%, rgb(255 240 220 / 0.12)), 0 22px 48px -18px rgb(0 0 0 / 0.85); }
+html:is(.theme-dark, .theme-amoled) .bz-float-frame { box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 34%, rgb(255 255 255 / 0.12)), 0 22px 48px -18px rgb(0 0 0 / 0.85); }
 @media (prefers-reduced-motion: reduce) { .bz-float-h > span { transition: none; } }
 /* Inside a split window or the floating window: the title row lets its buttons drop under the title
    when the window is narrow, instead of clipping them. */
 :is(.bz-float-body, .bz-pane-scroll) .bz-hd-row { flex-wrap: wrap; row-gap: 0.125rem; }
 :is(.bz-float-body, .bz-pane-scroll) .bz-hd-row > .ml-auto { margin-left: auto; }
-/* Agenda filters: one row while they fit, three columns in a very narrow window (never "…"). */
+/* Agenda filters (1.4.70): one row while they fit; when narrow (window or phone) the chips flow as one tight
+   wrapped line with the ? right after the last chip (no 3-column spread, no lone ? on the side). */
 .bz-ag-filters { container-type: inline-size; }
 @container (max-width: 345px) {
-  #agenda-controles { grid-template-columns: repeat(3, minmax(0, 1fr)); justify-items: stretch; }
+  .bz-ag-filters-in { display: flex; flex-wrap: wrap; align-items: center; gap: 0.125rem 0.25rem; }
+  .bz-ag-filters-in > #agenda-controles { display: contents; }
+  .bz-ag-filters-in > #agenda-controles > button { height: 2.25rem; padding-inline: 0.5rem; }
 }
-/* Días libres head in a very narrow window: the title takes its own line, the week arrows sit under it. */
+/* Días libres head: one line always. The title wraps inside its button (two short lines) before the
+   pin / week arrows / ? would drop to a row of their own. */
 .bz-ag-libres { container-type: inline-size; }
+.bz-ag-libres-t { white-space: normal; }
+@container (min-width: 400px) { .bz-ag-libres-t { white-space: nowrap; } }
 @container (max-width: 330px) {
+  .bz-ag-libres-head > div > button { width: 1.5rem; }
+}
+@container (max-width: 250px) {
   .bz-ag-libres-head { flex-wrap: wrap; padding-top: 0.25rem; }
   .bz-ag-libres-head > button:first-child { flex: 1 0 100%; }
   .bz-ag-libres-head > button:first-child + button { margin-left: auto; }
+}
+/* Agenda header in a narrow pane or window: "Agenda" + Notas/Ajustes share the first line,
+   Calendario/Semana/Mes/Todo take the whole second line (was: title, tabs, then the icons alone on a third row). */
+.bz-lt-sm .bz-hd-row:has(> .bz-pane-doors):has(> .bz-ag-views) { flex-wrap: wrap; }
+@container bzfloat (max-width: 520px) {
+  .bz-hd-row:has(> .bz-pane-doors) > .bz-pane-doors { order: 1; margin-left: auto; }
+  .bz-hd-row:has(> .bz-pane-doors) > .bz-ag-views { order: 2; flex: 1 0 100%; margin-left: 0; justify-content: space-between; }
 }
 /* Side menus (1.4.69): open/close in 200 ms, transform + opacity only (GPU), always mounted, reversible mid-way.
    No layout or height animation, no backdrop blur. */
@@ -475,4 +490,13 @@ html:is(.theme-dark, .theme-amoled) .bz-float { box-shadow: 0 0 0 1px color-mix(
 }
 @media (prefers-reduced-motion: reduce) {
   .bz-view-menu, .bz-phone-view-menu, .bz-view-menu.is-open, .bz-phone-view-menu.is-open { transform: none; transition-property: opacity, visibility; }
+}
+/* Agenda tabs on a narrow phone (1.4.70): a step smaller and tighter so "Agenda" + Calendario/Semana/Mes/Todo
+   stay on one line at 360; below that they drop as one full line under the title (never clipped). */
+@media (max-width: 400px) {
+  .bz-ag-views > button { padding-inline: 0.375rem; font-size: 0.8125rem; }
+}
+@media (max-width: 350px) {
+  .bz-hd-row:has(> .bz-ag-views) { flex-wrap: wrap; }
+  .bz-hd-row > .bz-ag-views { flex: 1 0 100%; justify-content: space-between; margin-left: 0; }
 }

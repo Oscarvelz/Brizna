@@ -221,6 +221,41 @@ if (navigator.locks?.request) {
 }
 
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
-  window.addEventListener("load", () => { void navigator.serviceWorker.register("./sw.js"); });
+  // 1.4.70: pick up a new release promptly. Check for a new sw.js on open and each time the app comes back to the
+  // front (at most once a minute; the browser fetches sw.js bypassing HTTP cache). The new worker skips waiting and
+  // claims the page; we then reload once, but only at a calm moment: right away while the page is hidden or within
+  // the first seconds after open/resume, otherwise the next time it is hidden (never mid-task, never in a loop).
+  const swc = navigator.serviceWorker;
+  const hadController = !!swc.controller;
+  let lastCheck = 0;
+  let calmUntil = Date.now() + 8000;
+  let pendingReload = false;
+  let reloaded = false;
+  const check = (reg?: ServiceWorkerRegistration) => {
+    if (Date.now() - lastCheck < 60000) return;
+    lastCheck = Date.now();
+    void (reg ? Promise.resolve(reg) : swc.getRegistration()).then((r) => r?.update()).catch(() => undefined);
+  };
+  const reloadOnce = () => {
+    if (reloaded) return;
+    reloaded = true;
+    window.location.reload();
+  };
+  swc.addEventListener("controllerchange", () => {
+    if (!hadController) return; // first install: this page already runs the newest code
+    if (document.visibilityState === "hidden" || Date.now() < calmUntil) reloadOnce();
+    else pendingReload = true;
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      if (pendingReload) reloadOnce();
+      return;
+    }
+    calmUntil = Date.now() + 8000;
+    check();
+  });
+  window.addEventListener("load", () => {
+    void swc.register("./sw.js", { updateViaCache: "none" }).then((reg) => { lastCheck = 0; check(reg); }).catch(() => undefined);
+  });
 }
 if (navigator.storage?.persist) void navigator.storage.persist().catch(() => undefined);
