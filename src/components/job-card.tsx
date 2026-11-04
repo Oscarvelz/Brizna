@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Check, Clock, GripVertical, Phone, Pin, RotateCcw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, Clock, GripVertical, Phone, Pin, RotateCcw, X } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AddressLine } from "@/components/address-line";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -287,6 +287,17 @@ export function JobCard({
     live.status === "done" &&
     !queued &&
     (live.scheduledDate === today || (live.completedAt ? stampDay(live.completedAt) === today : false));
+
+  const pinButton = (box: string, icon: string) => (
+    <button
+      type="button"
+      aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
+      onClick={onPin}
+      className={cn("bz-tone bz-tone-pin grid shrink-0 place-items-center rounded-sm", box, job.pinned && "bz-tone-on")}
+    >
+      <Pin className={icon} />
+    </button>
+  );
 
   const dialogs = (
     <>
@@ -673,6 +684,7 @@ export function JobCard({
         ) : null}
         <div className="min-w-0 flex-1">
           {media ? (
+          <>
           <div className="flex min-w-0 items-center gap-1.5">
             {dragHandle && pending ? (
               <span
@@ -683,75 +695,87 @@ export function JobCard({
                 <GripVertical className="size-4" />
               </span>
             ) : null}
-            <Link
-              to="/clientes/$id"
-              params={{ id: String(job.clientId) }}
-              className="min-w-0 flex-1 truncate font-display text-base font-semibold leading-none hover:underline"
-            >
-              {job.clientName}
-            </Link>
-            <button
-              type="button"
-              aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
-              onClick={onPin}
-              className={cn(
-                "bz-tone bz-tone-pin grid size-8 shrink-0 place-items-center rounded-sm",
-                job.pinned && "bz-tone-on",
-              )}
-            >
-              <Pin className="size-3.5" />
-            </button>
+            {/* 1.4.64 (Oscar): price sits right after the name; contact chips grouped; pin last, top-right */}
+            <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
+              <Link
+                to="/clientes/$id"
+                params={{ id: String(job.clientId) }}
+                className="min-w-0 font-display text-base font-semibold leading-none hover:underline"
+              >
+                <OneLineName name={job.clientName} />
+              </Link>
+              <span className="shrink-0 font-display text-sm font-semibold leading-none tabular-nums text-fg/70">{money(job.amount)}</span>
+            </div>
             {job.clientPhone ? (
               <MessageComposer phone={job.clientPhone} name={job.clientName} compact tight />
             ) : null}
             {job.clientPhone ? <WhatsAppButton phone={job.clientPhone} name={job.clientName} tight /> : null}
-            <p className="shrink-0 pl-0.5 font-display text-base font-semibold leading-none tabular-nums">{money(job.amount)}</p>
+            {job.clientPhone ? (
+              <ConfirmLink
+                href={telHref(job.clientPhone)}
+                kind="call"
+                name={job.clientName}
+                className="bz-tone bz-tone-call grid size-8 shrink-0 place-items-center rounded-sm"
+              >
+                <Phone className="size-3.5" />
+                <span className="sr-only">{tx("Llamar", "Call")}</span>
+              </ConfirmLink>
+            ) : null}
+            {pinButton("size-8", "size-3.5")}
           </div>
+          <p className={cn("mt-1 truncate text-xs leading-none text-muted", dragHandle && pending && "pl-10")}>
+            {jobKindLabel(job.kind, job.title)}
+            {timeLabel ? ` · ${timeLabel}` : ""}
+          </p>
+          </>
           ) : (
           <>
-          <div className="flex items-start justify-between gap-3">
-            <Link
-              to="/clientes/$id"
-              params={{ id: String(job.clientId) }}
-              className="min-w-0 flex-1 font-display text-lg font-semibold leading-snug hover:underline"
-            >
-              {job.clientName}
-            </Link>
-            <p className="shrink-0 font-display text-lg font-semibold tabular-nums">{money(job.amount)}</p>
+          {/* 1.4.64 (Oscar): name + price on one line, pin in the top-right corner */}
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-baseline gap-2">
+              <Link
+                to="/clientes/$id"
+                params={{ id: String(job.clientId) }}
+                className="min-w-0 font-display text-lg font-semibold leading-snug hover:underline"
+              >
+                <OneLineName name={job.clientName} />
+              </Link>
+              <span className="shrink-0 font-display text-base font-semibold tabular-nums text-fg/70">{money(job.amount)}</span>
+            </div>
+            {pinButton("size-8", "size-3.5")}
           </div>
-          <div className="mt-1.5 flex items-center gap-1">
-            <button
-              type="button"
-              aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
-              onClick={onPin}
-              className={cn(
-                "bz-tone bz-tone-pin grid size-8 shrink-0 place-items-center rounded-sm",
-                job.pinned && "bz-tone-on",
-              )}
-            >
-              <Pin className="size-3.5" />
-            </button>
-            {job.clientPhone ? (
-              <MessageComposer phone={job.clientPhone} name={job.clientName} compact />
-            ) : null}
-            {job.clientPhone ? <WhatsAppButton phone={job.clientPhone} name={job.clientName} /> : null}
-            <span className="ml-auto"><StatusBadge status={live.computedStatus} /></span>
+          {/* 1.4.64 (Oscar): service + time over the contact chips (Mensaje, WA, Llamar) on the left;
+              the status badge with its date centered under it on the right */}
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+            <div className="flex min-w-0 flex-col gap-2">
+              <p className="min-w-0 text-sm font-medium leading-tight text-fg/75">
+                {jobKindLabel(job.kind, job.title)}
+                {timeLabel ? <span className="whitespace-nowrap">{` · ${timeLabel}`}</span> : null}
+              </p>
+              {job.clientPhone ? (
+                <div className="flex items-center gap-1.5" data-contact-chips>
+                  <MessageComposer phone={job.clientPhone} name={job.clientName} compact />
+                  <WhatsAppButton phone={job.clientPhone} name={job.clientName} />
+                  <ConfirmLink
+                    href={telHref(job.clientPhone)}
+                    kind="call"
+                    name={job.clientName}
+                    className="bz-tone bz-tone-call grid size-11 shrink-0 place-items-center rounded-sm"
+                  >
+                    <Phone className="size-[18px]" />
+                    <span className="sr-only">{tx("Llamar", "Call")}</span>
+                  </ConfirmLink>
+                </div>
+              ) : null}
+            </div>
+            <div className="flex flex-col items-center gap-1.5" data-status-col>
+              <StatusBadge status={live.computedStatus} />
+              <span className="whitespace-nowrap text-sm tabular-nums text-muted" data-card-date>
+                {capFirst(formatDay(job.scheduledDate, "EEE d MMM"))}
+              </span>
+            </div>
           </div>
           </>
-          )}
-          {!media ? (
-            <p className="mt-1.5 flex min-w-0 items-baseline justify-between gap-3 text-sm text-muted">
-              <span className="min-w-0 font-medium text-fg/75">
-                {jobKindLabel(job.kind, job.title)}
-                {timeLabel ? ` · ${timeLabel}` : ""}
-              </span>
-              <span className="shrink-0 whitespace-nowrap tabular-nums">{capFirst(formatDay(job.scheduledDate, "EEE d MMM"))}</span>
-            </p>
-          ) : (
-            <p className={cn("mt-1 truncate text-xs leading-none text-muted", dragHandle && pending && "pl-10")}>
-              {jobKindLabel(job.kind, job.title)}
-              {timeLabel ? ` · ${timeLabel}` : ""}
-            </p>
           )}
           {job.clientCue ? <CueChip text={job.clientCue} className="mt-1" /> : null}
           {job.standingExtras.length > 0 ? (
@@ -778,7 +802,7 @@ export function JobCard({
       )}
 
       {pending && !compact && (
-        <div className={cn("grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]", media ? "mt-2 gap-2" : "mt-4 gap-1.5")}>
+        <div className={cn("grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center", media ? "mt-2 gap-2" : "mt-4 gap-2")}>
           <Button onClick={onHecho} disabled={complete.isPending} className={cn("w-full", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
             <Check />
             {tx("Hecho", "Done")}
@@ -788,29 +812,18 @@ export function JobCard({
             <Clock />
             {tx("Posponer", "Postpone")}
           </Button>
-          {job.clientPhone && (
-            <ConfirmLink
-              href={telHref(job.clientPhone)}
-              kind="call"
-              name={job.clientName}
-              className={cn(
-                "bz-tone bz-tone-call grid place-items-center rounded-sm",
-                media ? "size-9" : "size-12",
-              )}
-            >
-              <Phone className={media ? "size-4" : "size-5"} />
-              <span className="sr-only">{tx("Llamar", "Call")}</span>
-            </ConfirmLink>
-          )}
-          <Button
-            variant="ghost"
+          {/* 1.4.64 (Oscar): Quitar is an X chip in the bottom-right corner, on the pin's vertical axis */}
+          <button
+            type="button"
+            aria-label={tx("Quitar", "Remove")}
+            title={tx("Quitar", "Remove")}
             onClick={() => setAskCancel(true)}
             disabled={cancel.isPending}
-            className="px-2 text-muted"
-            size="sm"
+            className="bz-tone bz-tone-x grid size-8 shrink-0 place-items-center justify-self-end rounded-sm"
+            data-remove-x
           >
-            {tx("Quitar", "Remove")}
-          </Button>
+            <X className="size-3.5" strokeWidth={2.4} />
+          </button>
         </div>
       )}
 
@@ -854,4 +867,58 @@ export async function invalidateLawn(qc: ReturnType<typeof useQueryClient>) {
 
 function capFirst(text: string): string {
   return text ? text.charAt(0).toLocaleUpperCase() + text.slice(1) : text;
+}
+
+/** 1.4.64 (Oscar): a client's name on one line at its normal size. A long name drops its middle
+    names, then shortens the last name to an initial ("Maximiliano B."), never wraps or shrinks. */
+function nameForms(full: string): string[] {
+  const parts = full.trim().split(/\s+/).filter(Boolean);
+  const out = [parts.join(" ")];
+  if (parts.length > 2) out.push(`${parts[0]} ${parts[parts.length - 1]}`);
+  if (parts.length > 1) out.push(`${parts[0]} ${parts[parts.length - 1]!.charAt(0)}.`, parts[0]!);
+  return out;
+}
+
+function OneLineName({ name }: { name: string }) {
+  const forms = nameForms(name);
+  const [step, setStep] = useState(0);
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const key = forms.join("|");
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const link = el?.parentElement;
+    const row = link?.parentElement;
+    if (!el || !link || !row) return;
+    const fit = () => {
+      if (!el.isConnected || !row.clientWidth) return;
+      const cs = getComputedStyle(row);
+      const gap = parseFloat(cs.columnGap) || 0;
+      let others = 0;
+      for (const kid of Array.from(row.children)) if (kid !== link) others += (kid as HTMLElement).getBoundingClientRect().width + gap;
+      const room = row.getBoundingClientRect().width - others - 1;
+      const twin = el.cloneNode(false) as HTMLSpanElement;
+      twin.style.cssText = "position:absolute;visibility:hidden;left:-9999px;top:0;display:inline-block;white-space:nowrap;width:auto;max-width:none;overflow:visible";
+      link.appendChild(twin);
+      let pick = forms.length - 1;
+      for (let i = 0; i < forms.length; i += 1) {
+        twin.textContent = forms[i]!;
+        if (twin.getBoundingClientRect().width <= room + 0.5) {
+          pick = i;
+          break;
+        }
+      }
+      twin.remove();
+      setStep(pick);
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(row);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return (
+    <span ref={ref} className="block overflow-hidden whitespace-nowrap" title={step > 0 ? name : undefined}>
+      {forms[Math.min(step, forms.length - 1)]}
+    </span>
+  );
 }

@@ -1667,8 +1667,10 @@ button.bz-sample-chip:hover { background: color-mix(in srgb, var(--color-abono, 
 /* 1.4.62 (Oscar): job-card action icons each get their own tone: a tinted chip + fine ring, never solid.
    Fixed hues spaced around the wheel so no two ever match in any theme:
    Fijar = rose, Mensaje = cyan, WA = green, Llamar = indigo, Posponer = amber, Mapa = red. */
-:root { --tone-pin: #b0306a; --tone-msg: #0b7285; --tone-wa: #1b7a3a; --tone-call: #3f6a8f; --tone-post: #a35400; --tone-map: #c0392b; }
-html.theme-dark, html.theme-amoled { --tone-pin: #ff8fc0; --tone-msg: #6fdcf0; --tone-wa: #7ee08f; --tone-call: #9cbcd9; --tone-post: #ffb35c; --tone-map: #ff8b7b; }
+/* 1.4.64 (Oscar): Mensaje is a warm muted mustard/ochre-gold (softer gold at night); Posponer moves
+   from amber to violet so no two action icons look alike. Quitar (X) is a quiet neutral chip. */
+:root { --tone-pin: #b0306a; --tone-msg: #8a6a08; --tone-wa: #1b7a3a; --tone-call: #3f6a8f; --tone-post: #6b4fb0; --tone-map: #c0392b; --tone-x: #5f625e; }
+html.theme-dark, html.theme-amoled { --tone-pin: #ff8fc0; --tone-msg: #dcc173; --tone-wa: #7ee08f; --tone-call: #9cbcd9; --tone-post: #b9a4f2; --tone-map: #ff8b7b; --tone-x: #b4b8b2; }
 .bz-tone {
   --bz-t: var(--color-fg);
   background: color-mix(in oklab, var(--bz-t) 14%, var(--color-surface)) !important;
@@ -1690,6 +1692,7 @@ html.theme-dark .bz-tone.bz-tone-on, html.theme-amoled .bz-tone.bz-tone-on { bac
 .bz-tone-call { --bz-t: var(--tone-call); }
 .bz-tone-post { --bz-t: var(--tone-post); }
 .bz-tone-map { --bz-t: var(--tone-map); }
+.bz-tone-x { --bz-t: var(--tone-x); }
 
 /* 1.4.62 (Oscar): client/job cards breathe a little more in Grande, Media and Lista. */
 .bz-vg-full { gap: 0.875rem; }
