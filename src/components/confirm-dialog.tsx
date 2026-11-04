@@ -1,4 +1,5 @@
 import { useEffect, useId, type ReactNode } from "react";
+import { TriangleAlert } from "lucide-react";
 import { useBackClose } from "@/lib/back-close";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,8 @@ export function ConfirmDialog({
   stack,
   confirmTone,
   front,
+  icon,
+  iconTone,
 }: {
   open: boolean;
   title: string;
@@ -43,6 +46,9 @@ export function ConfirmDialog({
   stack?: boolean;
   confirmTone?: "paid" | "owe" | "abono";
   front?: boolean;
+  /** 1.4.68: small tone chip above the title (tint + fine ring, never solid). Danger dialogs get a warning chip by default. */
+  icon?: ReactNode;
+  iconTone?: "primary" | "pin" | "late" | "post";
 }) {
   const { t } = useI18n();
   const titleId = useId();
@@ -50,6 +56,8 @@ export function ConfirmDialog({
   const no = cancelLabel ?? t("common.cancel");
   const dismiss = onDismiss ?? onCancel;
   useBackClose(open, dismiss);
+  const chip = icon ?? (danger ? <TriangleAlert /> : null);
+  const chipTone = iconTone ?? (icon ? "primary" : "late");
 
   useEffect(() => {
     if (!open) return;
@@ -74,14 +82,19 @@ export function ConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="bz-frame bz-dialog relative my-auto w-full min-w-0 max-w-md rounded-xl bg-surface p-5 shadow-card"
+        className="bz-dialog relative my-auto w-full min-w-0 max-w-md bg-surface"
       >
-        <h2 id={titleId} className="flex items-start gap-2 font-display text-xl font-semibold">
+        {chip ? (
+          <span className={cn("bz-dialog-chip", `bz-dialog-chip-${chipTone}`)} aria-hidden="true">
+            {chip}
+          </span>
+        ) : null}
+        <h2 id={titleId} className="bz-dialog-title font-display">
           <span className="min-w-0 flex-1">{title}</span>
           {hint}
         </h2>
-        {description ? <div className="bz-dialog-text mt-2 text-muted">{emphasizeTree(description)}</div> : null}
-        <div className="mt-5 grid gap-2">
+        {description ? <div className="bz-dialog-text text-muted">{emphasizeTree(description)}</div> : null}
+        <div className="bz-dialog-actions">
           {stack ? (
             <>
               <Button type="button" onClick={onConfirm} disabled={pending} className="btn-hecho-paid">
@@ -97,7 +110,7 @@ export function ConfirmDialog({
                   {altLabel}
                 </Button>
               ) : null}
-              <Button type="button" variant="secondary" onClick={onCancel} disabled={pending}>
+              <Button type="button" variant="secondary" className="bz-dialog-quiet" onClick={onCancel} disabled={pending}>
                 {no}
               </Button>
             </>
@@ -113,8 +126,8 @@ export function ConfirmDialog({
                   {extraLabel}
                 </Button>
               ) : null}
-              <div className="grid grid-cols-2 gap-2">
-                <Button type="button" variant="secondary" onClick={onCancel} disabled={pending}>
+              <div className={cn("bz-dialog-pair", (yes.length > 16 || no.length > 16) && "bz-dialog-pair-col")}>
+                <Button type="button" variant="secondary" className="bz-dialog-quiet" onClick={onCancel} disabled={pending}>
                   {no}
                 </Button>
                 <Button

@@ -506,6 +506,8 @@ export function JobCard({
       />
       <ConfirmDialog
         open={askPin}
+        icon={<Pin />}
+        iconTone="pin"
         title={job.pinned ? tx("¿Quitar de Fijados?", "Unpin this yard?") : tx("¿Fijar este patio?", "Pin this yard?")}
         description={
           job.pinned
@@ -651,10 +653,11 @@ export function JobCard({
             {job.clientName}
           </Link>
           {job.clientCue ? <CueChip text={job.clientCue} className="max-w-24 shrink" /> : null}
+          {/* 1.4.68 (Oscar): WA, Mensaje, Llamar - Mensaje sits next to the phone */}
+          {job.clientPhone ? <WhatsAppButton phone={job.clientPhone} name={job.clientName} tight /> : null}
           {job.clientPhone ? (
             <MessageComposer phone={job.clientPhone} name={job.clientName} compact tight />
           ) : null}
-          {job.clientPhone ? <WhatsAppButton phone={job.clientPhone} name={job.clientName} tight /> : null}
           {queued ? <span className="shrink-0 text-xs font-semibold text-hold">{tx("Aquí", "Here")}</span> : null}
           {postponed ? (
             <Button size="sm" variant="outline" className="h-8 shrink-0 px-2 text-xs" onClick={() => setAskReturn(true)} aria-label={tx("Deshacer pospuesto", "Undo postpone")}>
@@ -724,10 +727,11 @@ export function JobCard({
               </Link>
               <span className="shrink-0 font-display text-sm font-semibold leading-none tabular-nums text-fg/70">{money(job.amount)}</span>
             </div>
+            {/* 1.4.68 (Oscar): WA, Mensaje, Llamar - Mensaje sits next to the phone */}
+            {job.clientPhone ? <WhatsAppButton phone={job.clientPhone} name={job.clientName} tight /> : null}
             {job.clientPhone ? (
               <MessageComposer phone={job.clientPhone} name={job.clientName} compact tight />
             ) : null}
-            {job.clientPhone ? <WhatsAppButton phone={job.clientPhone} name={job.clientName} tight /> : null}
             {job.clientPhone ? (
               <ConfirmLink
                 href={telHref(job.clientPhone)}
@@ -776,8 +780,8 @@ export function JobCard({
           <div className="mt-2 flex min-w-0 items-center gap-1.5" data-contact-chips>
             {job.clientPhone ? (
               <>
-                <MessageComposer phone={job.clientPhone} name={job.clientName} compact />
                 <WhatsAppButton phone={job.clientPhone} name={job.clientName} />
+                <MessageComposer phone={job.clientPhone} name={job.clientName} compact />
                 <ConfirmLink
                   href={telHref(job.clientPhone)}
                   kind="call"
@@ -952,10 +956,32 @@ function FitLine({ forms, className, underName, lastResort }: { forms: string[];
     const el = ref.current;
     if (!el) return;
     const nameEl = underName ? (el.previousElementSibling?.querySelector("[data-card-name]") as HTMLElement | null) : null;
+    // 1.4.68 fix (Oscar: the subline trembled): measure every option from the BASE font, never from the
+    // size picked last time (the twin used to inherit it, so 0.8125rem and the normal size kept flipping),
+    // read the name's real text width rather than its box, and re-fit only when a measured width really
+    // changes (hysteresis), so a pick can never feed the next measurement.
+    let last = "";
     const fit = () => {
       if (!el.isConnected || !el.clientWidth) return;
       const room = el.getBoundingClientRect().width - 1;
-      const cap = nameEl && nameEl.isConnected ? nameEl.getBoundingClientRect().width - 10 : Infinity;
+      let nameW = Infinity;
+      if (nameEl && nameEl.isConnected) {
+        const nt = document.createElement("span");
+        nt.style.cssText = "position:absolute;visibility:hidden;left:-9999px;top:0;white-space:nowrap";
+        nt.style.font = getComputedStyle(nameEl).font;
+        nt.textContent = nameEl.textContent ?? "";
+        nameEl.appendChild(nt);
+        nameW = nt.getBoundingClientRect().width;
+        nt.remove();
+      }
+      const sig = `${Math.round(room)}|${Number.isFinite(nameW) ? Math.round(nameW) : "x"}`;
+      if (sig === last) return;
+      last = sig;
+      const cap = Number.isFinite(nameW) ? nameW - 10 : Infinity;
+      const inline = el.style.fontSize;
+      el.style.fontSize = "";
+      const basePx = getComputedStyle(el).fontSize;
+      el.style.fontSize = inline;
       const twin = document.createElement("span");
       twin.style.cssText = "position:absolute;visibility:hidden;left:-9999px;top:0;white-space:nowrap";
       el.appendChild(twin);
@@ -966,7 +992,7 @@ function FitLine({ forms, className, underName, lastResort }: { forms: string[];
       let best: { i: number; rem: number | null } | null = null;
       let narrowest: { o: { i: number; rem: number | null }; w: number } | null = null;
       for (const o of options) {
-        twin.style.fontSize = o.rem ? `${o.rem}rem` : "";
+        twin.style.fontSize = o.rem ? `${o.rem}rem` : basePx;
         twin.textContent = all[o.i]!;
         const w = twin.getBoundingClientRect().width;
         if (w > room) continue;
@@ -977,7 +1003,8 @@ function FitLine({ forms, className, underName, lastResort }: { forms: string[];
         }
       }
       twin.remove();
-      setPick(best ?? (underName && narrowest ? narrowest.o : { i: forms.length - 1, rem: null }));
+      const next = best ?? (underName && narrowest ? narrowest.o : { i: forms.length - 1, rem: null });
+      setPick((prev) => (prev.i === next.i && prev.rem === next.rem ? prev : next));
     };
     fit();
     const ro = new ResizeObserver(fit);

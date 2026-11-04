@@ -1272,7 +1272,7 @@ function PhoneViewButton({
         aria-expanded={open}
         aria-label={tx("Vista: pantallas y ventana flotante", "View: screens and floating window")}
         className={cn(
-          "grid size-9 place-items-center rounded-full border border-border bg-surface/90 text-muted shadow-card ring-1 ring-border",
+          "bz-roundfab",
           (split || floatOn) && "bg-sun text-primary",
         )}
       >

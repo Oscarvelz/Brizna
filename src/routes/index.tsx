@@ -403,9 +403,11 @@ function Home() {
         open={askSkip}
         title={tx("¿Quitar la confirmación hoy?", "Skip confirming today?")}
         description={tx(
-          "Hoy, Hecho marca cada cliente sin preguntarte. Mañana vuelve a pedirla.",
-          "Today, Done marks each client without asking every time. It asks again tomorrow.",
+          "En Hoy, si marcas esta casilla y haces click en Hecho, no te pedirá confirmación adicional. Mañana vuelve a funcionar normal.",
+          "On Today, if you check this box and tap Done, it won't ask for extra confirmation. Tomorrow it works normally again.",
         )}
+        icon={<CheckCheck />}
+        iconTone="primary"
         confirmLabel={tx("Activar", "Turn on")}
         cancelLabel={tx("Cancelar", "Cancel")}
         onConfirm={() => {

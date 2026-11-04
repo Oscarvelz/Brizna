@@ -19,16 +19,18 @@ export function ScrollTop({ lift = false, aboveFab = false }: { lift?: boolean; 
       aria-label={tx("Subir", "Go up")}
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       className={cn(
-        "bz-scrolltop fixed right-2 z-30 grid place-items-center rounded-full bg-surface/90 text-muted shadow-card ring-1 ring-border",
+        // 1.4.68 (Oscar): same round button as the View button on the left (.bz-roundfab: size, ring, icon,
+        // surface), mirrored from the right edge on the same row; on Hoy/Clientes it stays centered over the +.
+        "bz-roundfab bz-scrolltop fixed z-30",
         aboveFab && "is-above",
         aboveFab
-          ? "size-9 right-[1.625rem] bottom-[calc(9.75rem+var(--bz-chin))]"
+          ? "right-[1.625rem] bottom-[calc(9.75rem+var(--bz-chin))]"
           : lift
-            ? "size-10 right-2 bottom-36"
-            : "size-10 right-2 bottom-24",
+            ? "right-3 bottom-[calc(9.125rem+var(--bz-chin))]"
+            : "right-3 bottom-[calc(5.875rem+var(--bz-chin))]",
       )}
     >
-      <ChevronUp className={aboveFab ? "size-[18px]" : "size-5"} />
+      <ChevronUp />
     </button>
   );
 }

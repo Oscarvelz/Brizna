@@ -148,8 +148,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Done closes a yard by one of three paths: paid (green), unpaid (red), or partial (yellow).",
         ],
         how: [
-          "Toca Hecho en el patio y elige el camino.\nBrizna pide confirmar. Con Sin confirmación extra por hoy, al tocar Hecho cada cliente de hoy se marca al instante, sin preguntarte cada vez: queda cobrado si paga el mismo día, o pendiente (sumado a su cuenta) si se le acumula. No anota propina ni abono; para eso desmarca la casilla. Vale solo hoy y en este equipo: mañana vuelve a pedirla.\nPuedes anotar el método (efectivo, tarjeta…) y una propina.\nEl patio pasa a Hechos hoy y la cuenta del cliente se actualiza al momento.",
-          "Tap Done on the yard and pick the path.\nBrizna asks you to confirm. With No extra confirmation for today, tapping Done marks each of today's clients right away, without asking every time: paid if they pay the same day, or unpaid (added to their balance) if it adds up. It records no tip or partial payment; for that, untick the box. It lasts only today, on this device: it asks again tomorrow.\nYou can note the method (cash, card…) and a tip.\nThe yard moves to Done today and the client's account updates at once.",
+          "Toca Hecho en el patio y elige el camino.\nBrizna pide confirmar. Si marcas Sin confirmación extra por hoy y haces click en Hecho, no te pedirá confirmación adicional: cada cliente de hoy se marca al instante y queda cobrado si paga el mismo día, o pendiente (sumado a su cuenta) si se le acumula. No anota propina ni abono; para eso desmarca la casilla. Vale solo hoy y en este equipo; al día siguiente Hecho vuelve a pedir confirmación.\nPuedes anotar el método (efectivo, tarjeta…) y una propina.\nEl patio pasa a Hechos hoy y la cuenta del cliente se actualiza al momento.",
+          "Tap Done on the yard and pick the path.\nBrizna asks you to confirm. If you check No extra confirmation for today and tap Done, it won't ask for extra confirmation: each of today's clients is marked right away and paid if they pay the same day, or unpaid (added to their balance) if it adds up. It records no tip or partial payment; for that, untick the box. It lasts only today, on this device; the next day Done asks for confirmation again.\nYou can note the method (cash, card…) and a tip.\nThe yard moves to Done today and the client's account updates at once.",
         ],
         calc: [
           "Cobrado: anota un pago por el precio de ese corte. No toca la deuda vieja.\nPendiente: suma el precio a la deuda. Si el cliente tenía adelanto, se usa primero.\nAbonado: suma el precio a la deuda y resta lo que te dieron. Si te dan más que toda la deuda, lo que sobra queda como adelanto.",
@@ -1798,8 +1798,8 @@ export const HINT_ONLY: HintOnly[] = [
     id: "sin-confirmacion",
     into: "hecho",
     what: [
-      "Hoy, Hecho marca cada cliente sin preguntarte. Mañana vuelve a pedirla.",
-      "Today, Done marks each client without asking every time. It asks again tomorrow.",
+      "En Hoy, si marcas esta casilla y haces click en Hecho, no te pedirá confirmación adicional. Mañana vuelve a funcionar normal.",
+      "On Today, if you check this box and tap Done, it won't ask for extra confirmation. Tomorrow it works normally again.",
     ],
   },
   {

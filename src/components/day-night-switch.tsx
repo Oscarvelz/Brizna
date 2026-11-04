@@ -4,7 +4,6 @@ import { Moon, Sun } from "lucide-react";
 import { useTx } from "@/lib/i18n";
 import { updateSettings } from "@/lib/server/lawn";
 import { applyAppearance, isNightHour, readAppearance, type AppearanceMode } from "@/lib/theme";
-import { cn } from "@/lib/utils";
 
 function showingNight(mode: AppearanceMode) {
   if (mode === "night") return true;
@@ -33,36 +32,19 @@ export function DayNightSwitch() {
     );
   }
 
+  // 1.4.68 (Oscar): one round button. It shows the mode on screen (sun by day, moon at night) and a tap
+  // flips it; the icons cross-fade with a small turn in place (220 ms, no overshoot; instant under reduced motion).
   return (
-    <div
-      className="inline-flex h-6 shrink-0 items-center rounded-full bg-sun p-0.5"
-      role="group"
-      aria-label={tx("Día o noche", "Day or night")}
+    <button
+      type="button"
+      data-night={night ? "" : undefined}
+      aria-label={night ? tx("Cambiar a día", "Switch to day") : tx("Cambiar a noche", "Switch to night")}
+      title={night ? tx("Cambiar a día", "Switch to day") : tx("Cambiar a noche", "Switch to night")}
+      onClick={() => choose(night ? "day" : "night")}
+      className="bz-daynight"
     >
-      <button
-        type="button"
-        aria-pressed={!night}
-        aria-label={tx("Modo día", "Day mode")}
-        onClick={() => choose("day")}
-        className={cn(
-          "relative grid size-5 place-items-center rounded-full before:absolute before:-inset-1",
-          !night ? "bz-pick bz-pick-icon" : "text-muted",
-        )}
-      >
-        <Sun className="size-3" strokeWidth={2} />
-      </button>
-      <button
-        type="button"
-        aria-pressed={night}
-        aria-label={tx("Modo noche", "Night mode")}
-        onClick={() => choose("night")}
-        className={cn(
-          "relative grid size-5 place-items-center rounded-full before:absolute before:-inset-1",
-          night ? "bz-pick bz-pick-icon" : "text-muted",
-        )}
-      >
-        <Moon className="size-3" strokeWidth={2} />
-      </button>
-    </div>
+      <Sun className="bz-daynight-sun" strokeWidth={2} aria-hidden="true" />
+      <Moon className="bz-daynight-moon" strokeWidth={2} aria-hidden="true" />
+    </button>
   );
 }

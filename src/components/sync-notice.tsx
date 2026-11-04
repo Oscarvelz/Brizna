@@ -36,16 +36,16 @@ export function SyncNotice() {
   return createPortal(
     <div className="fixed inset-0 z-[90] grid place-items-end overflow-y-auto p-3 sm:place-items-center sm:p-4">
       <button type="button" aria-label={tx("Cerrar", "Close")} className="absolute inset-0 bz-scrim" onClick={snoozeSyncNotice} />
-      <div role="alertdialog" aria-modal="true" aria-labelledby={titleId} className="bz-frame bz-dialog relative my-auto w-full min-w-0 max-w-md rounded-xl bg-surface p-5 shadow-card">
-        <h2 id={titleId} className="font-display text-xl font-semibold">
+      <div role="alertdialog" aria-modal="true" aria-labelledby={titleId} className="bz-dialog relative my-auto w-full min-w-0 max-w-md bg-surface">
+        <h2 id={titleId} className="bz-dialog-title font-display">
           {conflict ? tx("Cambios en dos lugares", "Changes in two places") : tx("Hay una Brizna más nueva", "A newer Brizna is out")}
         </h2>
-        <p className="bz-dialog-text mt-2 text-muted">
+        <p className="bz-dialog-text text-muted">
           {conflict
             ? tx("Este equipo y la nube cambiaron. Guardé los dos en Copia de seguridad.", "This device and the cloud both changed. Both are saved in Backup.")
             : tx("Tu otro equipo usa una versión más nueva. Actualiza para recibir sus cambios.", "Your other device runs a newer version. Update to get its changes.")}
         </p>
-        <div className="mt-5 grid gap-2">
+        <div className="bz-dialog-actions">
           {conflict ? (
             <>
               <Button type="button" disabled={busy} className="whitespace-nowrap" onClick={() => pick("device")}>
@@ -56,7 +56,7 @@ export function SyncNotice() {
               </Button>
             </>
           ) : (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="bz-dialog-pair">
               <Button type="button" variant="secondary" disabled={busy} className="whitespace-nowrap" onClick={snoozeSyncNotice}>
                 {tx("Ahora no", "Not now")}
               </Button>

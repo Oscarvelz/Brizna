@@ -1742,6 +1742,106 @@ html.theme-amoled :is(.bz-dialog, [role="dialog"][aria-modal="true"], [role="ale
     0 18px 40px -18px rgb(0 0 0 / 0.8) !important;
 }
 
+/* 1.4.68 (Oscar: "un look más caro y cuidado"): confirmation dialogs. Same theme colors, refined craft:
+   8-pt rhythm (24px padding, 8px title→text, 24px text→buttons, 8px between buttons), display-serif title,
+   calm muted body (1.6 line-height, pretty wrap, never cut), equal one-line buttons (primary solid, secondary
+   quiet), optional small tone chip (tint + fine ring), layered soft shadow over the 1.4.66 hairline + top light,
+   and a short fade + 6px rise + 0.98→1 scale (no overshoot; off under reduced motion). Solid, never glass. */
+.bz-dialog { border-radius: var(--radius-xl); padding: 1.5rem 1.25rem 1.25rem; }
+.bz-dialog.bz-dialog {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, #6b5a43 17%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 1px 2px rgb(48 36 20 / 0.06),
+    0 6px 14px -6px rgb(48 36 20 / 0.10),
+    0 26px 52px -22px rgb(48 36 20 / 0.34) !important;
+}
+html.theme-dark .bz-dialog.bz-dialog, html.theme-amoled .bz-dialog.bz-dialog {
+  box-shadow:
+    inset 0 0 0 1px rgb(255 238 212 / 0.13),
+    inset 0 1px 0 rgb(255 240 218 / 0.06),
+    0 2px 6px rgb(0 0 0 / 0.35),
+    0 30px 64px -26px rgb(0 0 0 / 0.88) !important;
+}
+:is(.bz-dialog, [role="alertdialog"]) { animation: bz-dlg-in 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both; transform-origin: 50% 60%; }
+@keyframes bz-dlg-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { :is(.bz-dialog, [role="alertdialog"]) { animation: bz-scrim-in 0.12s linear both; } }
+.bz-dialog-chip {
+  --chip-t: var(--color-primary);
+  display: grid; place-items: center; width: 2.5rem; height: 2.5rem; margin-bottom: 1rem; border-radius: 0.875rem;
+  color: var(--chip-t);
+  background: color-mix(in oklab, var(--chip-t) 12%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--chip-t) 32%, transparent);
+}
+.bz-dialog-chip svg { width: 1.25rem; height: 1.25rem; stroke-width: 2; }
+.bz-dialog-chip-pin { --chip-t: var(--tone-pin); }
+.bz-dialog-chip-late { --chip-t: var(--color-late); }
+.bz-dialog-chip-post { --chip-t: var(--tone-post); }
+html.theme-dark .bz-dialog-chip, html.theme-amoled .bz-dialog-chip {
+  background: color-mix(in oklab, var(--chip-t) 16%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--chip-t) 44%, transparent);
+}
+.bz-dialog-title { display: flex; align-items: flex-start; gap: 0.5rem; margin: 0;
+  font-size: 1.25rem; font-weight: 600; line-height: 1.25; letter-spacing: -0.012em; text-wrap: balance; }
+.bz-dialog-text.bz-dialog-text { margin-top: 0.5rem; font-size: 0.9375rem; line-height: 1.6; text-wrap: pretty; overflow-wrap: break-word; }
+.bz-dialog-actions { display: grid; gap: 0.5rem; margin-top: 1.5rem; }
+.bz-dialog-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.bz-dialog-pair.bz-dialog-pair-col { grid-template-columns: 1fr; }
+.bz-dialog-pair.bz-dialog-pair-col > .bz-dialog-quiet { order: 2; }
+.bz-dialog-actions button { height: 3rem; min-width: 0; border-radius: var(--radius-md); font-size: 0.9375rem; letter-spacing: -0.005em; white-space: nowrap; }
+.bz-dialog-actions button.bg-primary, .bz-dialog-actions button.bg-late {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 1px 2px rgb(0 0 0 / 0.10), 0 6px 14px -8px color-mix(in srgb, var(--color-primary) 55%, transparent);
+}
+.bz-dialog-actions button.bg-late { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 1px 2px rgb(0 0 0 / 0.10), 0 6px 14px -8px color-mix(in srgb, var(--color-late) 55%, transparent); }
+html.theme-dark .bz-dialog-actions button:is(.bg-primary, .bg-late), html.theme-amoled .bz-dialog-actions button:is(.bg-primary, .bg-late) {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 1px 3px rgb(0 0 0 / 0.4);
+}
+.bz-dialog-actions button.bg-surface-2 {
+  background: color-mix(in srgb, var(--color-surface-2) 72%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 9%, transparent);
+  color: color-mix(in srgb, var(--color-fg) 88%, var(--color-surface));
+}
+.bz-dialog-actions button.bg-surface-2:hover { background: var(--color-surface-2); }
+html.theme-dark .bz-dialog-actions button.bg-surface-2, html.theme-amoled .bz-dialog-actions button.bg-surface-2 {
+  background: color-mix(in srgb, var(--color-surface-2) 80%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px rgb(255 238 212 / 0.10);
+}
+@media (min-width: 640px) {
+  .bz-dialog { padding: 1.75rem; }
+  .bz-dialog-title { font-size: 1.375rem; }
+  .bz-dialog-text.bz-dialog-text { font-size: 1rem; }
+  .bz-dialog-actions { margin-top: 1.75rem; }
+}
+
+/* 1.4.68 (Oscar): day/night is one round button beside Clima: soil tint + fine soil ring (never solid),
+   same height rhythm as the header text; 44px tap area. Sun ↔ moon cross-fade with a small turn. */
+.bz-daynight { --dn-t: var(--color-soil); position: relative; display: grid; place-items: center; width: 1.75rem; height: 1.75rem;
+  flex-shrink: 0; border-radius: 9999px; color: var(--dn-t);
+  background: color-mix(in oklab, var(--dn-t) 11%, var(--color-surface));
+  box-shadow: inset 0 0 0 1.25px color-mix(in oklab, var(--dn-t) 45%, transparent);
+  transition: transform .15s ease; }
+.bz-daynight::before { content: ""; position: absolute; inset: -0.5rem; border-radius: 9999px; }
+.bz-daynight:hover { background: color-mix(in oklab, var(--dn-t) 17%, var(--color-surface)); }
+.bz-daynight:active { transform: scale(0.94); }
+.bz-daynight:focus-visible { outline: 2px solid var(--color-ring, var(--dn-t)); outline-offset: 2px; }
+html.theme-dark .bz-daynight, html.theme-amoled .bz-daynight {
+  background: color-mix(in oklab, var(--dn-t) 15%, var(--color-surface));
+  box-shadow: inset 0 0 0 1.25px color-mix(in oklab, var(--dn-t) 55%, transparent); }
+.bz-daynight > svg { grid-area: 1 / 1; width: 0.95rem; height: 0.95rem;
+  transition: opacity .22s cubic-bezier(.2,.7,.2,1), transform .22s cubic-bezier(.2,.7,.2,1); }
+.bz-daynight-moon { opacity: 0; transform: rotate(-70deg) scale(.6); }
+.bz-daynight[data-night] .bz-daynight-sun { opacity: 0; transform: rotate(70deg) scale(.6); }
+.bz-daynight[data-night] .bz-daynight-moon { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .bz-daynight, .bz-daynight > svg { transition: none; } }
+
+/* 1.4.68 (Oscar): the floating round buttons (View on the left, Subir on the right) are one twin:
+   36px circle, 1px border + 1px ring, 18px icon at stroke 2, translucent surface, muted icon, card shadow. */
+.bz-roundfab { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 9999px;
+  border: 1px solid var(--color-border); background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+  color: var(--color-muted); box-shadow: var(--shadow-card), 0 0 0 1px var(--color-border); }
+.bz-roundfab.bg-sun { background: var(--color-sun); color: var(--color-primary); }
+.bz-roundfab > svg { width: 18px; height: 18px; stroke-width: 2; }
+
 /* 1.4.67 (Oscar): Inventario de clientes tiles get a fine hairline in their own tone, a little deeper
    than the fill (never grey, never thick). Night: a touch stronger so it reads over the dark fill. */
 .bz-inv-tile { --inv-tone: var(--color-primary); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--inv-tone) 30%, transparent); }

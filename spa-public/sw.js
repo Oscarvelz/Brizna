@@ -1,5 +1,5 @@
 // Brizna service worker: the app opens with no internet. Bump VERSION on every release.
-const VERSION = "brizna-1.4.67";
+const VERSION = "brizna-1.4.68";
 const CORE = ["./", "./index.html", "./icon-192.png", "./icon-512.png", "./icon-180.png", "./precache.json"];
 
 self.addEventListener("install", (event) => {
