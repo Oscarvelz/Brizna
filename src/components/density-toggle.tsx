@@ -147,7 +147,7 @@ export function DensityToggle() {
             )}
           >
             <Icon className="size-5 shrink-0" />
-            <span className="max-w-full truncate">{label}</span>
+            <span className="max-w-full whitespace-nowrap">{label}</span>
           </button>
         );
       })}

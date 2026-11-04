@@ -281,8 +281,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         sum: ["Tu entrada y salida, para saber cuánto ganas por hora.", "Your clock-in and clock-out, to know what you earn per hour."],
         what: ["Si no cambias la hora, queda el horario de Ajustes.", "If you do not change the time, the hours from Settings are used."],
         how: [
-          "El horario de siempre es 8:00 a 5:30; se cambia en Ajustes, Horas de trabajo.\nEn Hoy puedes marcar entrada o salida: elige ahora o el horario de siempre.\nAl final del día, Sí, trabajé esas horas confirma el día.\nParar el día pone la salida a la hora en que paraste.",
-          "The usual hours are 8:00 to 5:30; change them in Settings, Work hours.\nOn Today you can clock in or out: choose now or the usual hours.\nAt day's end, Yes, I worked those hours confirms the day.\nStop the day sets clock-out to the time you stopped.",
+          "El horario de siempre es 8:00 a 5:30; se cambia en Ajustes, Horas de trabajo.\nEn Hoy puedes marcar entrada o salida: elige ahora o el horario de siempre.\nAl final del día, Sí, las trabajé confirma el día.\nParar el día pone la salida a la hora en que paraste.",
+          "The usual hours are 8:00 to 5:30; change them in Settings, Work hours.\nOn Today you can clock in or out: choose now or the usual hours.\nAt day's end, Yes, I worked them confirms the day.\nStop the day sets clock-out to the time you stopped.",
         ],
         calc: [
           "$ por hora usa solo días confirmados. Un día sin confirmar de antes de ayer se confirma solo con el horario de Ajustes. Un turno de más de 18 horas no cuenta.",

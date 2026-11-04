@@ -368,7 +368,7 @@ function AgendaPage() {
         </button>
       ) : null}
 
-      <div className="mb-3 flex items-center gap-0.5 rounded-full" data-spot="agenda">
+      <div className="bz-ag-filters mb-3 flex items-center gap-0.5 rounded-full" data-spot="agenda">
       <div id="agenda-controles" className="grid min-w-0 flex-1 grid-cols-[repeat(5,auto)] justify-between gap-0.5">
         {FILTERS.filter((item) => item.value !== "cancelled").map((item) => {
           const on = !onlyMoved && status === item.value;
@@ -381,7 +381,7 @@ function AgendaPage() {
                 setFilter(item.value);
                 scrollCases();
               }}
-              className={cn("h-10 min-w-0 truncate rounded-full px-1.5 text-[11px] font-semibold sm:text-xs", on ? item.on : "text-muted")}
+              className={cn("h-10 min-w-0 whitespace-nowrap rounded-full px-1.5 text-[11px] font-semibold sm:text-xs", on ? item.on : "text-muted")}
             >
               {filterLabel(item.value)}
             </button>
@@ -394,7 +394,7 @@ function AgendaPage() {
             scrollCases();
           }}
           className={cn(
-            "h-10 min-w-0 truncate rounded-full px-1.5 text-[11px] font-semibold sm:text-xs",
+            "h-10 min-w-0 whitespace-nowrap rounded-full px-1.5 text-[11px] font-semibold sm:text-xs",
             onlyMoved ? "bg-soil-bg text-soil" : "text-muted",
           )}
         >
@@ -408,7 +408,7 @@ function AgendaPage() {
             scrollCases();
           }}
           className={cn(
-            "h-10 min-w-0 truncate rounded-full px-1.5 text-[11px] font-semibold sm:text-xs",
+            "h-10 min-w-0 whitespace-nowrap rounded-full px-1.5 text-[11px] font-semibold sm:text-xs",
             !onlyMoved && status === "cancelled" ? FILTERS.find((item) => item.value === "cancelled")?.on : "text-muted",
           )}
         >
@@ -418,8 +418,8 @@ function AgendaPage() {
       <Hint compact topic="agenda" />
       </div>
 
-      <section id="ag-libres" className="mb-3 rounded-xl bg-surface shadow-card">
-        <div className="flex min-h-11 items-center gap-0.5 px-1.5">
+      <section id="ag-libres" className="bz-ag-libres mb-3 rounded-xl bg-surface shadow-card">
+        <div className="bz-ag-libres-head flex min-h-11 items-center gap-0.5 px-1.5">
           <button
             type="button"
             aria-expanded={pinnedOff || offOpen}
@@ -436,7 +436,7 @@ function AgendaPage() {
             className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 text-left"
           >
             <ChevronDown className={cn("size-4 shrink-0 text-muted transition-transform", !(pinnedOff || offOpen) && "-rotate-90")} />
-            <span className="min-w-0 truncate text-sm font-semibold">{tx("Días libres de esta semana", "Days off this week")}</span>
+            <span className="min-w-0 pr-1.5 text-sm font-semibold leading-tight text-pretty max-[420px]:text-[0.8125rem] min-[380px]:whitespace-nowrap">{tx("Días libres de esta semana", "Days off this week")}</span>
           </button>
           <button
             type="button"
@@ -457,13 +457,13 @@ function AgendaPage() {
             <Pin className={cn("size-3.5", pinnedOff && "fill-current")} />
           </button>
           <div className="flex shrink-0 items-center">
-            <button type="button" aria-label={tx("Semana anterior", "Previous week")} className="grid size-8 place-items-center text-muted" onClick={() => setWeekCursor(addDaysISO(weekCursor, -7))}>
+            <button type="button" aria-label={tx("Semana anterior", "Previous week")} className="grid h-9 w-7 place-items-center text-muted" onClick={() => setWeekCursor(addDaysISO(weekCursor, -7))}>
               <ChevronLeft className="size-3.5" />
             </button>
             <button type="button" aria-label={tx("Esta semana", "This week")} title={tx("Volver a esta semana", "Back to this week")} className="grid size-7 place-items-center" onClick={() => setWeekCursor(today)}>
               <span className={cn("size-2 rounded-full", startOfWeekISO(weekCursor) === startOfWeekISO(today) ? "bg-primary" : "bg-muted")} />
             </button>
-            <button type="button" aria-label={tx("Semana siguiente", "Next week")} className="grid size-8 place-items-center text-muted" onClick={() => setWeekCursor(addDaysISO(weekCursor, 7))}>
+            <button type="button" aria-label={tx("Semana siguiente", "Next week")} className="grid h-9 w-7 place-items-center text-muted" onClick={() => setWeekCursor(addDaysISO(weekCursor, 7))}>
               <ChevronRight className="size-3.5" />
             </button>
           </div>
@@ -536,7 +536,7 @@ function AgendaPage() {
       {cal ? null : (
       <div className="mb-3">
         <DensityToggle />
-        <p className="mt-2 flex min-w-0 items-center gap-1 text-sm text-muted">
+        <p className="bz-tally mt-2">
           {tx(
             `${jobs.length} ${jobs.length === 1 ? "trabajo" : "trabajos"} · ${money(total)}${filter === "done" ? " realizados" : ""}`,
             `${jobs.length} ${jobs.length === 1 ? "job" : "jobs"} · ${money(total)}${filter === "done" ? " done" : ""}`,

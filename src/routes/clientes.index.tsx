@@ -321,7 +321,7 @@ function ClientesPage() {
             placeholder={
               inArchive
                 ? tx("Buscar en archivos", "Search the archive")
-                : tx("Buscar nombre, teléfono, dirección o pista", "Search name, phone, address, or cue")
+                : tx("Nombre, teléfono, dirección o pista", "Name, phone, address, or cue")
             }
             className="pl-10"
           />
@@ -502,7 +502,7 @@ function ClientesPage() {
       ) : null}
 
       <div className="mb-3 grid gap-2">
-        <p className="flex min-w-0 items-center gap-1 text-sm text-muted">
+        <p className="bz-tally">
           {clients.length} {clients.length === 1 ? tx("cliente", "client") : tx("clientes", "clients")}
           {filter === "regular" || filter === "active"
             ? ` · ${money(totalPrice)} ${tx("por ronda de cortes", "per round of cuts")}`
@@ -568,7 +568,7 @@ function ClientesPage() {
       <ConfirmDialog
         open={askBulk === "delete"}
         title={tx(
-          `¿Eliminar ${picked.length} ${picked.length === 1 ? "cliente" : "clientes"} para siempre?`,
+          `¿Eliminar ${picked.length} ${picked.length === 1 ? "cliente" : "clientes"}?`,
           `Delete ${picked.length} ${picked.length === 1 ? "client" : "clients"} forever?`,
         )}
         description={tx(

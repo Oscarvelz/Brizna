@@ -448,7 +448,7 @@ function CobrosPage() {
                           </p>
                         </div>
                         {!dense && !quad ? (
-                          <p className="truncate text-xs text-muted">
+                          <p className="text-xs leading-snug text-muted [text-wrap:pretty]">
                             {c.lastCutDate ? tx(`Corte ${formatDay(c.lastCutDate, "d MMM")}`, `Cut ${formatDay(c.lastCutDate, "d MMM")}`) : tx("Sin corte hecho", "No cut done")}
                             {c.payDueDay ? ` · ${payDueLabel(c.payDueDay)}` : ""}
                             {late ? tx(" · atrasado", " · late") : ""}

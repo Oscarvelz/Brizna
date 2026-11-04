@@ -47,6 +47,7 @@ import {
   readStoredBusinessName,
   storeBusinessName,
 } from "@/lib/theme";
+import { usePaneWidthClasses } from "@/lib/pane-width";
 import { cn } from "@/lib/utils";
 import { useScrollBars } from "@/lib/use-scroll-bars";
 import {
@@ -480,7 +481,7 @@ export function AppShell({
                 <SampleChip className="ml-1" />
               </div>
             )}
-            <div className="mt-0.5 flex min-h-11 min-w-0 items-center gap-2">
+            <div className="bz-hd-row mt-0.5 flex min-h-11 min-w-0 items-center gap-2">
               <h1 className={cn("flex min-w-0 items-center gap-2 font-display font-semibold tracking-tight", titleTight ? "shrink-0 text-lg md:text-2xl" : "flex-1 text-xl sm:text-2xl", !embedded && "md:text-[1.75rem]")}>
                 <span className={titleFull ? "leading-tight" : "truncate"}>{title}</span>
                 {titleExtra}
@@ -628,7 +629,7 @@ export function AppShell({
                   if (activePane !== index) setActivePane(index);
                 }}
               >
-                <div className="bz-pane-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-bg">
+                <PaneScroll>
                   <PaneView
                     id={`split-${index}`}
                     path={path}
@@ -637,7 +638,7 @@ export function AppShell({
                       assignPane(index, tab);
                     }}
                   />
-                </div>
+                </PaneScroll>
                 {phoneSplit ? (
                   <PaneBar
                     path={path}
@@ -772,8 +773,9 @@ function TabletViewMenu({
   ];
   return (
     <div ref={box} className="relative mt-1" data-no-swipe>
-      {open ? (
-        <div role="menu" aria-label={tx("Vista", "View")} className="bz-view-menu">
+      {/* 1.4.69: kept mounted (cheap) so it opens and closes with a GPU-only transition that a new tap can reverse mid-way. */}
+      {(
+        <div role="menu" aria-label={tx("Vista", "View")} className={cn("bz-view-menu", open && "is-open")} inert={!open} aria-hidden={!open}>
           <p className="bz-view-kicker">{tx("Vista", "View")}</p>
           <div className="grid grid-cols-3 gap-1.5">
             {tiles.map((tile) => (
@@ -812,7 +814,7 @@ function TabletViewMenu({
             )}
           </p>
         </div>
-      ) : null}
+      )}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -824,6 +826,17 @@ function TabletViewMenu({
       >
         {split ? (layout.flow === "stack" ? <Rows2 className="size-5" /> : <Columns2 className="size-5" />) : floatOn ? <PictureInPicture2 className="size-5" /> : <LayoutGrid className="size-5" />}
       </button>
+    </div>
+  );
+}
+
+/** A split window's scroller; tells the page inside how wide the window is (pane-width.ts). */
+function PaneScroll({ children }: { children: ReactNode }) {
+  const [el, setEl] = useState<HTMLDivElement | null>(null);
+  usePaneWidthClasses(el);
+  return (
+    <div ref={setEl} className="bz-pane-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-bg">
+      {children}
     </div>
   );
 }
@@ -1249,8 +1262,8 @@ function PhoneViewButton({
   );
   return (
     <div ref={box} className="fixed bottom-[calc(5.875rem+var(--bz-chin))] left-3 z-40 print:hidden" data-no-swipe>
-      {open ? (
-        <div role="menu" aria-label={tx("Vista", "View")} className="absolute bottom-[calc(100%+8px)] left-0 grid w-64 gap-2.5 rounded-[20px] border border-border bg-surface p-3 shadow-[0_20px_50px_rgb(0_0_0/0.3)]">
+      {(
+        <div role="menu" aria-label={tx("Vista", "View")} className={cn("bz-phone-view-menu absolute bottom-[calc(100%+8px)] left-0 grid w-64 gap-2.5 rounded-[20px] border border-border bg-surface p-3 shadow-[0_20px_50px_rgb(0_0_0/0.3)]", open && "is-open")} inert={!open} aria-hidden={!open}>
           <p className="text-[0.68rem] font-bold tracking-[0.08em] text-muted uppercase">{tx("Vista", "View")}</p>
           <div className="grid grid-cols-2 gap-1.5">
             <button type="button" role="menuitemradio" aria-checked={!split} onClick={() => { onSplit(false); setOpen(false); }} className={tile(!split)}>
@@ -1264,7 +1277,7 @@ function PhoneViewButton({
           </div>
           <FloatRow on={floatOn} min={floatMin} onFloat={() => { onFloat(); setOpen(false); }} onClose={() => { onFloatClose(); setOpen(false); }} />
         </div>
-      ) : null}
+      )}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

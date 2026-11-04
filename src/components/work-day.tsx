@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Redo2, Undo2 } from "lucide-react";
+import { Check, LogIn, LogOut, Redo2, Undo2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Hint } from "@/components/hint";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { clock12, nowHHMM } from "@/lib/dates";
 import { useI18n } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { getSettings, getWorkSummary, punchWork } from "@/lib/server/lawn";
 
 function hoursLabel(minutes: number) {
@@ -104,90 +105,115 @@ export function WorkDayCard() {
   const endAsk = nowHHMM() >= day.clockOut && !day.confirmed;
 
   return (
-    <section className="mb-4 rounded-xl bg-surface p-3 shadow-card">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-1 font-display text-base font-semibold">
-          {t("hours.title")}
+    <section className="bz-wd mb-4 rounded-xl bg-surface p-3 shadow-card">
+      {/* 1.4.69 (Oscar): status is a chip on the title row; Entrada/Salida are real controls that show their time;
+          undo/redo close the Entrada/Salida row, stacked beside the controls they undo (no row of their own). */}
+      <div className="bz-wd-head flex items-center gap-2">
+        <h2 className="flex shrink-0 items-center gap-1 font-display text-base font-semibold">
+          <span className="whitespace-nowrap">{t("hours.title")}</span>
           <Hint topic="horas" />
         </h2>
-        <div className="flex gap-1">
-          <button
-            type="button"
-            aria-label={t("common.cancel") === "Cancel" ? "Undo" : "Deshacer"}
-            disabled={(past.length === 0 && !day.confirmed) || punch.isPending}
-            onClick={() => {
-              if (!day) return;
-              if (past.length === 0) {
-                const snap: Snap = { scope: "today", inn: day.clockIn, out: day.clockOut, confirmed: true };
-                setFuture((items) => [...items, snap]);
-                void applySnap({ scope: "today", inn: day.clockIn, out: day.clockOut, confirmed: false });
-                return;
-              }
-              const prev = past[past.length - 1];
-              if (!prev) return;
-              const current: Snap =
-                prev.scope === "yesterday"
-                  ? { scope: "yesterday", inn: (yesterdayNow.current ?? prev).inn, out: (yesterdayNow.current ?? prev).out, confirmed: true }
-                  : todaySnap();
-              setPast((items) => items.slice(0, -1));
-              setFuture((items) => [...items, current]);
-              if (prev.scope === "yesterday") yesterdayNow.current = prev;
-              void applySnap(prev);
-            }}
-            className="grid size-9 place-items-center rounded-sm bg-sun text-fg disabled:opacity-40"
-          >
-            <Undo2 className="size-4" />
-          </button>
-          <button
-            type="button"
-            aria-label={t("common.confirm") === "Confirm" ? "Redo" : "Rehacer"}
-            disabled={future.length === 0 || punch.isPending}
-            onClick={() => {
-              const next = future[future.length - 1];
-              if (!next || !day) return;
-              const held = yesterdayNow.current;
-              const current: Snap =
-                next.scope === "yesterday"
-                  ? {
-                      scope: "yesterday",
-                      inn: (held ?? next).inn,
-                      out: (held ?? next).out,
-                      confirmed: held ? held.confirmed : !next.confirmed,
-                    }
-                  : todaySnap();
-              setFuture((items) => items.slice(0, -1));
-              setPast((items) => [...items, current]);
-              if (next.scope === "yesterday") yesterdayNow.current = next;
-              void applySnap(next);
-            }}
-            className="grid size-9 place-items-center rounded-sm bg-sun text-fg disabled:opacity-40"
-          >
-            <Redo2 className="size-4" />
-          </button>
-        </div>
+        {day.confirmed ? (
+          <span className="bz-statchip is-done" title={t("hours.confirmed")}>
+            <Check aria-hidden />
+            {hoursLabel(day.hoursToday)}
+          </span>
+        ) : (
+          <span className="bz-statchip is-wait">
+            <i aria-hidden />
+            {t("hours.unconfirmed")}
+          </span>
+        )}
       </div>
-      <p className="mt-1 text-sm text-muted">
-        {t("hours.in")} {clock12(day.clockIn)} · {t("hours.out")} {clock12(day.clockOut)}
-        {day.stoppedReason ? ` · ${day.stoppedReason}` : ""}
-        {day.stoppedAt ? ` · ${day.stoppedAt.slice(11, 16)}` : ""}
-      </p>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <Button type="button" variant="outline" size="sm" disabled={punch.isPending} onClick={() => setAsk("in")}>
-          {t("hours.in")}
-        </Button>
-        <Button type="button" variant="outline" size="sm" disabled={punch.isPending} onClick={() => setAsk("out")}>
-          {t("hours.out")}
-        </Button>
+      <div className="bz-wd-row mt-3">
+        {(["in", "out"] as const).map((kind) => {
+          const Ico = kind === "in" ? LogIn : LogOut;
+          return (
+            <button
+              key={kind}
+              type="button"
+              className={cn("bz-wd-punch", kind === "out" && "is-out")}
+              disabled={punch.isPending}
+              onClick={() => setAsk(kind)}
+            >
+              <Ico aria-hidden />
+              <span className="bz-wd-punch-t">
+                <span className="bz-wd-punch-k">{t(kind === "in" ? "hours.in" : "hours.out")}</span>
+                <span className="bz-wd-punch-v">{clock12(kind === "in" ? day.clockIn : day.clockOut)}</span>
+              </span>
+            </button>
+          );
+        })}
+          <div className="bz-wd-tools">
+            <button
+              type="button"
+              aria-label={t("common.cancel") === "Cancel" ? "Undo" : "Deshacer"}
+              disabled={(past.length === 0 && !day.confirmed) || punch.isPending}
+              onClick={() => {
+                if (!day) return;
+                if (past.length === 0) {
+                  const snap: Snap = { scope: "today", inn: day.clockIn, out: day.clockOut, confirmed: true };
+                  setFuture((items) => [...items, snap]);
+                  void applySnap({ scope: "today", inn: day.clockIn, out: day.clockOut, confirmed: false });
+                  return;
+                }
+                const prev = past[past.length - 1];
+                if (!prev) return;
+                const current: Snap =
+                  prev.scope === "yesterday"
+                    ? { scope: "yesterday", inn: (yesterdayNow.current ?? prev).inn, out: (yesterdayNow.current ?? prev).out, confirmed: true }
+                    : todaySnap();
+                setPast((items) => items.slice(0, -1));
+                setFuture((items) => [...items, current]);
+                if (prev.scope === "yesterday") yesterdayNow.current = prev;
+                void applySnap(prev);
+              }}
+              className="bz-wd-tool"
+            >
+              <Undo2 className="size-4" />
+            </button>
+            <button
+              type="button"
+              aria-label={t("common.confirm") === "Confirm" ? "Redo" : "Rehacer"}
+              disabled={future.length === 0 || punch.isPending}
+              onClick={() => {
+                const next = future[future.length - 1];
+                if (!next || !day) return;
+                const held = yesterdayNow.current;
+                const current: Snap =
+                  next.scope === "yesterday"
+                    ? {
+                        scope: "yesterday",
+                        inn: (held ?? next).inn,
+                        out: (held ?? next).out,
+                        confirmed: held ? held.confirmed : !next.confirmed,
+                      }
+                    : todaySnap();
+                setFuture((items) => items.slice(0, -1));
+                setPast((items) => [...items, current]);
+                if (next.scope === "yesterday") yesterdayNow.current = next;
+                void applySnap(next);
+              }}
+              className="bz-wd-tool"
+            >
+              <Redo2 className="size-4" />
+            </button>
+          </div>
       </div>
+      {day.stoppedReason || day.stoppedAt ? (
+        <p className="mt-2 text-sm text-muted">
+          {[day.stoppedReason, day.stoppedAt ? day.stoppedAt.slice(11, 16) : ""].filter(Boolean).join(" · ")}
+        </p>
+      ) : null}
       {day.pendingYesterday && settings.data?.askYesterday !== false ? (
-        <div className="mt-2 rounded-lg bg-sun px-3 py-2.5">
-          <p className="whitespace-nowrap text-sm font-semibold leading-snug">
+        <div className="bz-wd-ask mt-3">
+          <p className="bz-wd-ask-q">
             {t("hours.yesterday")
               .replace("{in}", clock12(day.pendingYesterday.clockIn))
               .replace("{out}", clock12(day.pendingYesterday.clockOut))}
           </p>
           <p className="mt-1 text-sm text-muted">{t("hours.yesterdayHelp")}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="bz-wd-ask-pair">
             <Button
               type="button"
               size="sm"
@@ -200,6 +226,7 @@ export function WorkDayCard() {
               type="button"
               size="sm"
               variant="outline"
+              className="bz-wd-quiet"
               onClick={() => {
                 setInn(day.pendingYesterday?.clockIn ?? "08:00");
                 setOut(day.pendingYesterday?.clockOut ?? "17:30");
@@ -230,9 +257,11 @@ export function WorkDayCard() {
         </div>
       ) : null}
       {endAsk ? (
-        <div className="mt-2 rounded-md bg-due-bg px-3 py-2">
-          <p className="text-sm">{t("hours.ask").replace("{in}", clock12(day.clockIn)).replace("{out}", clock12(day.clockOut))}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
+        <div className="bz-wd-ask mt-3">
+          <p className="bz-wd-ask-q">
+            {t("hours.ask").replace("{in}", clock12(day.clockIn)).replace("{out}", clock12(day.clockOut))}
+          </p>
+          <div className="bz-wd-ask-pair">
             <Button type="button" size="sm" disabled={punch.isPending} onClick={() => setAskDay(true)}>
               {t("hours.confirm")}
             </Button>
@@ -240,6 +269,7 @@ export function WorkDayCard() {
               type="button"
               size="sm"
               variant="outline"
+              className="bz-wd-quiet"
               onClick={() => {
                 setInn(day.clockIn);
                 setOut(day.clockOut);
@@ -275,13 +305,7 @@ export function WorkDayCard() {
             </div>
           ) : null}
         </div>
-      ) : day.confirmed ? (
-        <p className="mt-2 text-sm text-done">
-          {t("hours.confirmed")} · {hoursLabel(day.hoursToday)}
-        </p>
-      ) : (
-        <p className="mt-2 text-sm text-muted">{day.confirmed ? hoursLabel(day.hoursToday) : t("hours.unconfirmed")}</p>
-      )}
+      ) : null}
       <ConfirmDialog
         open={ask != null}
         title={

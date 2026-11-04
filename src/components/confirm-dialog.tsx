@@ -84,12 +84,13 @@ export function ConfirmDialog({
         aria-labelledby={titleId}
         className="bz-dialog relative my-auto w-full min-w-0 max-w-md bg-surface"
       >
-        {chip ? (
-          <span className={cn("bz-dialog-chip", `bz-dialog-chip-${chipTone}`)} aria-hidden="true">
-            {chip}
-          </span>
-        ) : null}
-        <h2 id={titleId} className="bz-dialog-title font-display">
+        {/* 1.4.69 (Oscar): the icon chip shares the title's line (left of it), never a row of its own. */}
+        <h2 id={titleId} className={cn("bz-dialog-title font-display", chip && "has-chip")}>
+          {chip ? (
+            <span className={cn("bz-dialog-chip", `bz-dialog-chip-${chipTone}`)} aria-hidden="true">
+              {chip}
+            </span>
+          ) : null}
           <span className="min-w-0 flex-1">{title}</span>
           {hint}
         </h2>

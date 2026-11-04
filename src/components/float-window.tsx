@@ -1,7 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
 import { BarChart3, CalendarDays, CircleDollarSign, Droplet, GripHorizontal, Home, Maximize2, Minus, Users, X } from "lucide-react";
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { PaneView, usePane } from "@/lib/pane-context";
+import { usePaneWidthClasses } from "@/lib/pane-width";
 import { useI18n, useTx } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { readFloat, readTabletEnabled, tabletTabLabel, writeFloat, type FloatState, type TabletTab } from "@/lib/tablet-mode";
@@ -14,9 +15,12 @@ const TABS = [
   { to: "/estadisticas", icon: BarChart3, label: "nav.stats" },
 ] as const satisfies readonly { to: TabletTab; icon: typeof Home; label: string }[];
 
-const MIN_W = 240;
-const MIN_H = 260;
+const MIN_W = 320;
+const MIN_H = 280;
 const BUBBLE = 56;
+type Edge = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
+type Kind = "move" | "bubble" | Edge;
+const EDGES: Edge[] = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 
 /** Live floating-window state shared by the shell buttons and the window itself. */
 export function useFloatState(): [FloatState, (next: FloatState) => void] {
@@ -33,11 +37,18 @@ export function useFloatState(): [FloatState, (next: FloatState) => void] {
   return [state, writeFloat];
 }
 
-function fit(s: FloatState): FloatState {
+function limits() {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const w = Math.min(Math.max(MIN_W, s.w), vw - 8);
-  const h = Math.min(Math.max(MIN_H, s.h), vh - 8);
+  const minW = Math.min(MIN_W, vw - 8);
+  const minH = Math.min(MIN_H, vh - 8);
+  return { vw, vh, minW, minH, maxW: vw - 8, maxH: vh - 8 };
+}
+
+function fit(s: FloatState): FloatState {
+  const { vw, vh, minW, minH, maxW, maxH } = limits();
+  const w = Math.min(Math.max(minW, s.w), maxW);
+  const h = Math.min(Math.max(minH, s.h), maxH);
   return {
     ...s,
     w,
@@ -49,15 +60,39 @@ function fit(s: FloatState): FloatState {
   };
 }
 
+/** Resize from any edge or corner: the opposite edge stays put; size is clamped to min/max and the screen. */
+function resized(a: FloatState, edge: Edge, dx: number, dy: number): FloatState {
+  const { vw, vh, minW, minH, maxW, maxH } = limits();
+  let { x, y, w, h } = a;
+  if (edge.includes("e")) w = Math.min(Math.max(minW, a.w + dx), maxW, vw - 4 - a.x);
+  if (edge.includes("s")) h = Math.min(Math.max(minH, a.h + dy), maxH, vh - 4 - a.y);
+  if (edge.includes("w")) {
+    const right = a.x + a.w;
+    w = Math.min(Math.max(minW, a.w - dx), maxW, right - 4);
+    x = right - w;
+  }
+  if (edge.startsWith("n")) {
+    const bottom = a.y + a.h;
+    h = Math.min(Math.max(minH, a.h - dy), maxH, bottom - 4);
+    y = bottom - h;
+  }
+  return { ...a, x, y, w, h };
+}
+
 export function FloatHost() {
   const pane = usePane();
   const [state, save] = useFloatState();
-  const [live, setLive] = useState<FloatState | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const win = useRef<HTMLDivElement | null>(null);
+  const bubble = useRef<HTMLButtonElement | null>(null);
+  const frame = useRef(0);
+  const [body, setBody] = useState<HTMLDivElement | null>(null);
+  usePaneWidthClasses(body);
   const [tabletOn, setTabletOn] = useState(true);
   const navigate = useNavigate();
   const { t } = useI18n();
   const tx = useTx();
-  const gesture = useRef<{ kind: "move" | "br" | "bl" | "bubble"; px: number; py: number; start: FloatState; moved: boolean } | null>(null);
+  const gesture = useRef<{ kind: Kind; px: number; py: number; start: FloatState; next: FloatState; moved: boolean } | null>(null);
 
   useEffect(() => {
     const sync = () => setTabletOn(readTabletEnabled());
@@ -75,15 +110,41 @@ export function FloatHost() {
   }, []);
 
   if (pane || !state.open || !tabletOn) return null;
-  const s = live ?? state;
+  const s = state;
   const label = tabletTabLabel(s.path);
   const Icon = TABS.find((tab) => tab.to === s.path)?.icon ?? Home;
 
-  function begin(kind: "move" | "br" | "bl" | "bubble", event: ReactPointerEvent<HTMLElement>) {
+  // Drag and resize write straight to the window's style once per frame (no React render per move),
+  // then the final size/place is saved once on release (persisted in localStorage).
+  function paint(next: FloatState, kind: Kind) {
+    if (frame.current) return;
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0;
+      if (kind === "bubble") {
+        const el = bubble.current;
+        if (el) el.style.transform = `translate3d(${next.bx - s.bx}px, ${next.by - s.by}px, 0)`;
+        return;
+      }
+      const el = win.current;
+      if (!el) return;
+      if (kind === "move") {
+        el.style.transform = `translate3d(${next.x - s.x}px, ${next.y - s.y}px, 0)`;
+        return;
+      }
+      el.style.left = `${next.x}px`;
+      el.style.top = `${next.y}px`;
+      el.style.width = `${next.w}px`;
+      el.style.height = `${next.h}px`;
+    });
+  }
+
+  function begin(kind: Kind, event: ReactPointerEvent<HTMLElement>) {
     if (event.button !== 0 && event.pointerType === "mouse") return;
     event.preventDefault();
+    event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
-    gesture.current = { kind, px: event.clientX, py: event.clientY, start: state, moved: false };
+    gesture.current = { kind, px: event.clientX, py: event.clientY, start: state, next: state, moved: false };
+    if (kind !== "bubble") setDragging(true);
   }
 
   function move(event: ReactPointerEvent<HTMLElement>) {
@@ -93,21 +154,23 @@ export function FloatHost() {
     const dy = event.clientY - g.py;
     if (Math.abs(dx) + Math.abs(dy) > 6) g.moved = true;
     const a = g.start;
-    let next: FloatState = a;
-    if (g.kind === "move") next = { ...a, x: a.x + dx, y: a.y + dy };
-    else if (g.kind === "br") next = { ...a, w: a.w + dx, h: a.h + dy };
-    else if (g.kind === "bl") {
-      const w = Math.max(MIN_W, a.w - dx);
-      next = { ...a, x: a.x + (a.w - w), w, h: a.h + dy };
-    } else next = { ...a, bx: a.bx + dx, by: a.by + dy };
-    setLive(fit(next));
+    let next: FloatState;
+    if (g.kind === "move") next = fit({ ...a, x: a.x + dx, y: a.y + dy });
+    else if (g.kind === "bubble") next = fit({ ...a, bx: a.bx + dx, by: a.by + dy });
+    else next = resized(a, g.kind, dx, dy);
+    g.next = next;
+    paint(next, g.kind);
   }
 
   function end() {
     const g = gesture.current;
     gesture.current = null;
     if (!g) return;
-    let next = live ?? state;
+    if (frame.current) {
+      cancelAnimationFrame(frame.current);
+      frame.current = 0;
+    }
+    let next = g.next;
     if (g.kind === "bubble") {
       if (!g.moved) next = { ...state, min: false };
       else {
@@ -116,26 +179,26 @@ export function FloatHost() {
         next = { ...next, bx: next.bx + BUBBLE / 2 < vw / 2 ? 6 : vw - BUBBLE - 6 };
       }
     }
-    setLive(null);
+    // Clear the in-flight styles; React paints the saved values in the same frame.
+    for (const el of [win.current, bubble.current]) if (el) el.style.transform = "";
+    setDragging(false);
     save(fit(next));
   }
 
-  const dragging = live !== null;
+  const narrow = s.w < 380;
 
   return (
     <>
       <div
+        ref={win}
         role="dialog"
         aria-label={tx(`Ventana flotante: ${label[0]}`, `Floating window: ${label[1]}`)}
-        className={cn(
-          "fixed z-[60] flex flex-col overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--color-primary)_45%,var(--color-border))] bg-bg shadow-[0_18px_50px_-12px_rgba(0,0,0,0.45)] print:hidden",
-          s.min && "invisible pointer-events-none",
-        )}
+        className={cn("bz-float print:hidden", s.min && "invisible pointer-events-none", dragging && "is-dragging", narrow && "is-narrow")}
         style={{ left: s.x, top: s.y, width: s.w, height: s.h, opacity: s.alpha }}
         data-no-swipe
       >
         <div
-          className="flex h-10 shrink-0 cursor-grab touch-none select-none items-center gap-1 border-b border-border/70 bg-surface pl-2 pr-1 active:cursor-grabbing"
+          className="bz-float-bar"
           onPointerDown={(e) => {
             if ((e.target as HTMLElement).closest("button")) return;
             begin("move", e);
@@ -144,12 +207,12 @@ export function FloatHost() {
           onPointerUp={end}
           onPointerCancel={end}
         >
-          <GripHorizontal className="size-4 shrink-0 text-muted" />
-          <Icon className="size-4 shrink-0 text-primary" />
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold">{tx(label[0], label[1])}</span>
+          <GripHorizontal className="bz-float-grip" aria-hidden />
+          <Icon className="size-4 shrink-0 text-primary" aria-hidden />
+          <span className="bz-float-title">{tx(label[0], label[1])}</span>
           <button
             type="button"
-            className="grid size-8 place-items-center rounded-full text-muted hover:bg-bg"
+            className="bz-float-btn"
             aria-label={tx("Transparencia", "Transparency")}
             title={tx("Transparencia", "Transparency")}
             onClick={() => save({ ...state, alpha: state.alpha > 0.9 ? 0.8 : state.alpha > 0.7 ? 0.6 : 1 })}
@@ -158,7 +221,7 @@ export function FloatHost() {
           </button>
           <button
             type="button"
-            className="grid size-8 place-items-center rounded-full text-muted hover:bg-bg"
+            className="bz-float-btn"
             aria-label={tx("Plegar en burbuja", "Fold into a bubble")}
             title={tx("Plegar", "Fold")}
             onClick={() => save(fit({ ...state, min: true, bx: Math.min(state.x + state.w - BUBBLE, window.innerWidth - BUBBLE - 6), by: state.y }))}
@@ -167,7 +230,7 @@ export function FloatHost() {
           </button>
           <button
             type="button"
-            className="grid size-8 place-items-center rounded-full text-muted hover:bg-bg"
+            className="bz-float-btn"
             aria-label={tx("Abrir en pantalla completa", "Open full screen")}
             title={tx("Pantalla completa", "Full screen")}
             onClick={() => {
@@ -179,7 +242,7 @@ export function FloatHost() {
           </button>
           <button
             type="button"
-            className="grid size-8 place-items-center rounded-full text-muted hover:bg-bg"
+            className="bz-float-btn"
             aria-label={tx("Cerrar ventana flotante", "Close floating window")}
             title={tx("Cerrar", "Close")}
             onClick={() => save({ ...state, open: false, min: false })}
@@ -187,12 +250,12 @@ export function FloatHost() {
             <X className="size-4" />
           </button>
         </div>
-        <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <PaneView id="float" path={state.path} onPath={(tab) => tab !== readFloat().path && save({ ...readFloat(), path: tab })} />
+        <div ref={setBody} className="bz-float-body">
+          <FloatPane path={state.path} />
           {dragging ? <div className="absolute inset-0" /> : null}
         </div>
-        <div className="flex h-11 shrink-0 items-center justify-center border-t border-border/70 bg-surface px-7">
-          <div className="grid h-8 w-full max-w-[15rem] grid-cols-5 rounded-full bg-surface-2 p-0.5">
+        <div className="bz-float-tabs">
+          <div className="bz-float-tabset">
             {TABS.map((tab) => {
               const on = tab.to === s.path;
               const TabIcon = tab.icon;
@@ -203,7 +266,7 @@ export function FloatHost() {
                   aria-label={t(tab.label)}
                   aria-pressed={on}
                   onClick={() => save({ ...state, path: tab.to })}
-                  className={cn("grid place-items-center rounded-full", on ? "bg-surface text-primary shadow-sm" : "text-muted")}
+                  className={cn("bz-float-tab", on && "is-on")}
                 >
                   <TabIcon className="size-4" strokeWidth={on ? 2.4 : 1.8} />
                 </button>
@@ -211,31 +274,30 @@ export function FloatHost() {
             })}
           </div>
         </div>
-        {(["bl", "br"] as const).map((corner) => (
+        {EDGES.map((edge) => (
           <div
-            key={corner}
+            key={edge}
             role="separator"
             aria-label={tx("Cambiar tamaño", "Resize")}
-            className={cn(
-              "absolute bottom-0 z-10 size-7 touch-none",
-              corner === "br" ? "right-0 cursor-nwse-resize" : "left-0 cursor-nesw-resize",
-            )}
-            onPointerDown={(e) => begin(corner, e)}
+            className={cn("bz-float-h", `is-${edge}`)}
+            onPointerDown={(e) => begin(edge, e)}
             onPointerMove={move}
             onPointerUp={end}
             onPointerCancel={end}
+            onDoubleClick={() => {
+              // Double tap an edge: fill that direction (or back to the saved size).
+              const { vw, vh } = limits();
+              if (edge === "e" || edge === "w") save(fit({ ...state, x: 4, w: state.w >= vw - 12 ? Math.round(vw * 0.5) : vw - 8 }));
+              else if (edge === "n" || edge === "s") save(fit({ ...state, y: 4, h: state.h >= vh - 12 ? Math.round(vh * 0.55) : vh - 8 }));
+            }}
           >
-            <span
-              className={cn(
-                "absolute bottom-1.5 size-3 border-b-2 border-[color-mix(in_srgb,var(--color-primary)_70%,transparent)]",
-                corner === "br" ? "right-1.5 rounded-br-md border-r-2" : "left-1.5 rounded-bl-md border-l-2",
-              )}
-            />
+            <span aria-hidden />
           </div>
         ))}
       </div>
       {s.min ? (
         <button
+          ref={bubble}
           type="button"
           aria-label={tx(`Abrir ventana flotante: ${label[0]}`, `Open floating window: ${label[1]}`)}
           className="fixed z-[60] grid touch-none place-items-center rounded-full bg-primary text-primary-fg shadow-[0_10px_30px_-8px_rgba(0,0,0,0.5)] ring-4 ring-[color-mix(in_srgb,var(--color-sun)_55%,transparent)] print:hidden"
@@ -255,3 +317,12 @@ export function FloatHost() {
     </>
   );
 }
+
+/** The window's page. Memoized: moving or resizing the window never re-renders the page inside it. */
+const FloatPane = memo(function FloatPane({ path }: { path: TabletTab }) {
+  const onPath = useCallback((tab: TabletTab) => {
+    const now = readFloat();
+    if (tab !== now.path) writeFloat({ ...now, path: tab });
+  }, []);
+  return <PaneView id="float" path={path} onPath={onPath} />;
+});

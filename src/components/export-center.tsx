@@ -170,7 +170,7 @@ function Toggle({ on, onChange, label, note }: { on: boolean; onChange: (v: bool
         <span className="block text-xs text-muted">{note}</span>
       </span>
       <span className={cn("relative h-7 w-12 shrink-0 rounded-full transition-colors", on ? "bg-primary" : "bg-border")}>
-        <span className={cn("absolute top-1 size-5 rounded-full bg-surface shadow transition-[left]", on ? "left-6" : "left-1")} />
+        <span className={cn("absolute top-1 size-5 rounded-full bg-surface shadow transition-transform duration-200 ease-out", on ? "left-1 translate-x-5" : "left-1")} />
       </span>
     </button>
   );

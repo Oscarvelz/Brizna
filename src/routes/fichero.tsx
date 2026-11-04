@@ -384,7 +384,7 @@ function FicheroPage() {
       <ConfirmDialog
         front
         open={trashAsk != null}
-        title={tx("¿Mandar esta nota a la papelera?", "Move this note to the trash?")}
+        title={tx("¿Mandar a la papelera?", "Move this note to the trash?")}
         description={tx(
           `${trashAsk?.title || "La nota"} sale del fichero. Se borra del todo cuando pase el tiempo que elegiste.`,
           `${trashAsk?.title || "The note"} leaves the cabinet. It is deleted for good after the time you chose.`,

@@ -792,7 +792,7 @@ function WaiveButton({ clientId, balance }: { clientId: number; balance: number 
       </Button>
       <ConfirmDialog
         open={open}
-        title={tx(`¿Perdonar el saldo de ${money(balance)}?`, `Forgive the balance of ${money(balance)}?`)}
+        title={tx(`¿Perdonar ${money(balance)} de saldo?`, `Forgive the balance of ${money(balance)}?`)}
         description={tx(
           "No se cuenta como cobrado. El dinero deja de estar por cobrar y la cuenta vuelve a cero.",
           "It does not count as collected. The money leaves To collect and the account goes back to zero.",

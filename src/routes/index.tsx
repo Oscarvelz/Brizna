@@ -24,7 +24,7 @@ import { WorkDayCard } from "@/components/work-day";
 import { MessageComposer } from "@/components/message-composer";
 import { addDaysISO, todayISO } from "@/lib/dates";
 import { viewGrid } from "@/lib/density";
-import { formatLongDay, money, weekdayOptions } from "@/lib/format";
+import { formatDay, formatLongDay, money, weekdayOptions } from "@/lib/format";
 import { useI18n, reasonLabel, useTx } from "@/lib/i18n";
 import { isHechoConfirmSkipped, setHechoConfirmSkipped, subscribeHechoConfirm } from "@/lib/hecho-confirm";
 import { fireJobReminders } from "@/lib/reminders";
@@ -142,6 +142,13 @@ function Home() {
   return (
     <AppShell
       title={t("nav.today")}
+      titleExtra={
+        // 1.4.69 (no lonely rows): the date sits on the title line instead of a row of its own.
+        <span className="bz-title-date" aria-label={formatLongDay(today)}>
+          <span className="is-long">{formatLongDay(today)}</span>
+          <span className="is-short">{formatDay(today, "EEE d MMM")}</span>
+        </span>
+      }
       action={
         <span className="inline-flex items-center gap-3">
           <WeatherChip />
@@ -161,7 +168,6 @@ function Home() {
       <HoyLayout
         head={
           <>
-      <p className="mb-3 text-muted first-letter:uppercase">{formatLongDay(today)}</p>
       {pins.data && pins.data.length > 0 ? (
         <section className="mb-4 rounded-xl border-l-4 border-primary bg-surface px-3 py-2 shadow-card">
           <p className="text-xs font-semibold tracking-wide text-muted uppercase">{tx("Notas fijadas", "Pinned notes")}</p>
@@ -304,29 +310,22 @@ function Home() {
           <>
       {data && (data.overdue.length > 0 || pendingToday > 0) ? (
         <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg" data-spot="pasar-pendientes">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={data.overdue.length === 0}
-            onClick={() => setAskAcc("overdue")}
-          >
+          {/* 1.4.69: tone controls with an icon (were plain boxes that read as loose text at night). */}
+          <button type="button" className="bz-actbtn is-late" disabled={data.overdue.length === 0} onClick={() => setAskAcc("overdue")}>
+            <AlertTriangle aria-hidden />
             {tx("Pasar atrasados", "Move late ones")}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={pendingToday === 0}
-            onClick={() => setAskAcc("today")}
-          >
+          </button>
+          <button type="button" className="bz-actbtn is-due" disabled={pendingToday === 0} onClick={() => setAskAcc("today")}>
+            <CalendarClock aria-hidden />
             {tx("Pasar los de hoy", "Move today's jobs")}
-          </Button>
+          </button>
         </div>
       ) : null}
       <WorkDayCard />
-      <Button variant="outline" className="mb-4 w-full" data-spot="parar-dia" onClick={() => setAskRain(true)}>
-        <CloudRain />
+      <button type="button" className="bz-actbtn is-hold mb-4 w-full" data-spot="parar-dia" onClick={() => setAskRain(true)}>
+        <CloudRain aria-hidden />
         {t("stop.button")}
-      </Button>
+      </button>
           </>
         }
         extra={rainReady && rainReady.people.length > 0 ? (
@@ -401,7 +400,7 @@ function Home() {
       <SettleDay jobs={data?.today ?? []} open={askAll} onClose={() => setAskAll(false)} />
       <ConfirmDialog
         open={askSkip}
-        title={tx("¿Quitar la confirmación hoy?", "Skip confirming today?")}
+        title={tx("¿Sin confirmación hoy?", "Skip confirming today?")}
         description={tx(
           "En Hoy, si marcas esta casilla y haces click en Hecho, no te pedirá confirmación adicional. Mañana vuelve a funcionar normal.",
           "On Today, if you check this box and tap Done, it won't ask for extra confirmation. Tomorrow it works normally again.",
@@ -566,14 +565,19 @@ function DayBoard({
 
       {pinned.length > 0 ? (
         <section id="en-la-mira" className="bz-pinned rounded-xl p-2">
-          <p className="mb-1 px-1 text-xs font-semibold tracking-wide text-muted uppercase">
-            {tx(`Fijados · ${pinned.length}`, `Pinned · ${pinned.length}`)}
-          </p>
-          <p className="mb-2 px-1 text-xs text-muted">
-            {tx(
-              "Atrasados y alto riesgo se quedan aquí solos, hasta que los resuelvas.",
-              "Late and high risk stay here on their own until you resolve them.",
-            )}
+          {/* 1.4.69: kicker and its note share one line (wrap as one paragraph on a phone), no extra row. */}
+          <p className="bz-pinned-head">
+            <span className="bz-pinned-kicker">
+              <Pin aria-hidden />
+              {tx("Fijados", "Pinned")}
+              <b>{pinned.length}</b>
+            </span>{" "}
+            <span className="bz-pinned-note">
+              {tx(
+                "Atrasados y alto riesgo se quedan aquí solos, hasta que los resuelvas.",
+                "Late and high risk stay here on their own until you resolve them.",
+              )}
+            </span>
           </p>
           <div className={tight}>
             {pinned.map((job) => (
@@ -721,7 +725,7 @@ function DayFold({
       data-spot={spot}
       data-spot-alt={spotAlt}
       className={cn(
-        "overflow-hidden rounded-xl bg-surface shadow-card",
+        "bz-dayfold overflow-hidden rounded-xl bg-surface shadow-card",
         tone === "late" && "ring-1 ring-late/40",
         tone === "today" && "ring-1 ring-today/40",
       )}

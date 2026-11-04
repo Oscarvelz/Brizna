@@ -2,7 +2,7 @@ import { Masonry } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScrollTop } from "@/components/scroll-top";
 import { createFileRoute } from "@tanstack/react-router";
-import { Bell, Check, ChevronDown, CalendarRange, Clock, FlaskConical, Download, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
+import { Bell, Check, ChevronDown, ChevronsUpDown, CalendarRange, Clock, FlaskConical, Download, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell, SignOutControl, TitleSearch } from "@/components/app-shell";
@@ -361,6 +361,24 @@ function AjustesPage() {
       title={tx("Ajustes", "Settings")}
       titleExtra={<SettingsOrderButton />}
       action={
+        <span className="ml-auto flex min-w-0 items-center gap-1">
+          {/* 1.4.69: "Desplegar todo" lives on the title line (was a lonely row above the cards). */}
+          {findOn ? null : (
+            <button
+              type="button"
+              aria-pressed={expandAll}
+              onClick={() => {
+                const open = !expandAll;
+                setExpandAll(open);
+                setFoldsOpen("aj-", open);
+              }}
+              className={cn("bz-chiptoggle", expandAll && "is-on")}
+            >
+              <ChevronsUpDown aria-hidden />
+              {tx("Desplegar todo", "Expand all")}
+            </button>
+          )}
+          {findOn ? null : <Hint topic="ajustes" />}
         <TitleSearch
           open={findOn}
           onToggle={() => setFindOn((value) => !value)}
@@ -370,27 +388,11 @@ function AjustesPage() {
           label={tx("Buscar en Ajustes", "Search settings")}
           spot="busca"
         />
+        </span>
       }
     >
       <ScrollTop />
       <Masonry className="flex flex-col" three={1150}>
-        <div className="mb-3 flex items-center gap-1.5 px-2" data-masonry-full>
-          <label className="flex min-h-11 shrink-0 items-center gap-1.5 text-xs font-semibold text-muted">
-            <input
-              type="checkbox"
-              className="m-0 size-4 shrink-0 accent-primary"
-              checked={expandAll}
-              aria-label={tx("Desplegar todo", "Expand all")}
-              onChange={(e) => {
-                const open = e.target.checked;
-                setExpandAll(open);
-                setFoldsOpen("aj-", open);
-              }}
-            />
-            {tx("Desplegar todo", "Expand all")}
-          </label>
-          <Hint topic="ajustes" />
-        </div>
         <SettingFold
           id="aj-nombre"
           order="order-1"

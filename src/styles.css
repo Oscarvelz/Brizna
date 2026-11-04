@@ -2,6 +2,30 @@
 @source "../src";
 @import "tw-animate-css";
 
+/* 1.4.69: breakpoints also respect a narrow pane (split screen / floating window, lib/pane-width.ts):
+   inside a pane narrower than the breakpoint, the page gets the layout that fits the pane. */
+@custom-variant sm {
+  @media (width >= 40rem) {
+    &:not(:where(.bz-lt-sm, .bz-lt-sm *)) {
+      @slot;
+    }
+  }
+}
+@custom-variant md {
+  @media (width >= 48rem) {
+    &:not(:where(.bz-lt-md, .bz-lt-md *)) {
+      @slot;
+    }
+  }
+}
+@custom-variant lg {
+  @media (width >= 64rem) {
+    &:not(:where(.bz-lt-lg, .bz-lt-lg *)) {
+      @slot;
+    }
+  }
+}
+
 @theme {
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
@@ -1885,3 +1909,214 @@ html.theme-dark .bz-pinned, html.theme-amoled .bz-pinned {
   background: color-mix(in srgb, var(--color-surface) 93%, #ffeed4);
   box-shadow: inset 0 0 0 1px rgb(255 238 212 / 0.13), inset 0 1px 0 rgb(255 238 212 / 0.05);
 }
+
+/* ───────── 1.4.69 ───────── */
+/* Address lines wrap (never "…"): street on line 1, "City, ST zip" together on line 2 when it does not fit. */
+.bz-addr-text { line-height: 1.25rem; text-wrap: pretty; overflow-wrap: anywhere; }
+/* Dialog icon chip inline with the title (1.4.69): 30px chip, centered on the first title line. */
+.bz-dialog-title.has-chip { align-items: flex-start; gap: 0.625rem; }
+.bz-dialog-title .bz-dialog-chip { width: 1.875rem; height: 1.875rem; margin: calc((1.25rem * 1.25 - 1.875rem) / 2) 0 0; border-radius: 0.625rem; flex: none; }
+.bz-dialog-title .bz-dialog-chip svg { width: 1rem; height: 1rem; }
+@media (min-width: 640px) { .bz-dialog-title .bz-dialog-chip { margin-top: calc((1.375rem * 1.25 - 1.875rem) / 2); } }
+
+/* AMOLED warm elevation ladder (1.4.69, Oscar: black must be integrated; calm middle contrast).
+   L0 page #000 · L1 panel #0c0b09 (a day, Fijados, a list that holds cards) · L2 card #15130f · L3 inset/row #1c1914.
+   Each level has a warm 1px hairline; text and tone colours are unchanged. */
+html.theme-amoled {
+  --bz-l1: #0c0b09;
+  --bz-l2: #15130f;
+  --bz-l3: #1c1914;
+  --bz-hair-1: rgb(255 240 220 / 0.07);
+  --bz-hair-2: rgb(255 240 220 / 0.085);
+  --bz-hair-3: rgb(255 240 220 / 0.10);
+  --color-surface: var(--bz-l2);
+  --color-surface-2: #211e18;
+  --color-sun: var(--bz-l3);
+  --color-border: #2f2a23;
+  --color-late-bg: color-mix(in oklab, #ff6b6b 17%, #15130f);
+  --color-done-bg: color-mix(in oklab, #4ade80 17%, #15130f);
+  --color-pending-bg: color-mix(in oklab, #fbbf24 17%, #15130f);
+  --color-money-bg: color-mix(in oklab, #38d4f0 17%, #15130f);
+  --color-today-bg: color-mix(in oklab, #4ade80 17%, #15130f);
+  --color-due-bg: color-mix(in oklab, #facc15 17%, #15130f);
+  --color-soil-bg: color-mix(in oklab, #e0b080 17%, #15130f);
+  --color-hold-bg: color-mix(in oklab, #fb923c 17%, #15130f);
+  --shadow-card: inset 0 1px 0 rgb(255 240 220 / 0.03), 0 0 0 1px var(--bz-hair-2), 0 10px 24px -16px rgb(0 0 0 / 0.9);
+  --shadow-card-hover: inset 0 1px 0 rgb(255 240 220 / 0.04), 0 0 0 1px rgb(255 240 220 / 0.15), 0 10px 24px -16px rgb(0 0 0 / 0.9);
+}
+/* L1 panels: containers that hold cards sit one step under them. */
+html.theme-amoled :is(.bz-dayfold, .bz-cp, .bz-pinned) {
+  background-color: var(--bz-l1);
+}
+html.theme-amoled .bz-pinned { box-shadow: inset 0 0 0 1px var(--bz-hair-1), inset 0 1px 0 rgb(255 240 220 / 0.03); }
+html.theme-amoled .bz-dayfold > .border-t { border-color: var(--bz-hair-1); }
+/* L3 insets: a filled box or control inside a card (rows, prompts, inputs, quiet buttons). */
+html.theme-amoled .bg-surface :is(.bg-sun, .bg-bg):not(article) ,
+html.theme-amoled .rounded-xl.bg-sun,
+html.theme-amoled .bz-dayfold .bg-sun {
+  background-color: var(--bz-l3);
+}
+html.theme-amoled .rounded-xl.bg-sun::after { border-color: var(--bz-hair-3); }
+html.theme-amoled .bg-surface .bg-surface:not(article):not(.bz-stat):not(.bz-fold):not([role="dialog"]) {
+  background-color: var(--bz-l3);
+}
+html.theme-amoled :is(.bz-dayfold, .bz-cp, .bz-pinned) .bg-sun:not(.rounded-full) {
+  box-shadow: inset 0 0 0 1px var(--bz-hair-3);
+}
+
+/* Status chip (1.4.69): a small tone pill that lives on a title row instead of a loose line under the card.
+   .is-wait amber dot, .is-done check; works in every theme from tokens. */
+.bz-statchip {
+  --sc: var(--color-pending);
+  display: inline-flex; align-items: center; gap: 0.375rem; flex: none;
+  height: 1.5rem; padding: 0 0.5rem 0 0.4375rem; border-radius: 999px;
+  font-size: 0.75rem; font-weight: 650; line-height: 1; white-space: nowrap; letter-spacing: 0.005em;
+  color: color-mix(in oklab, var(--sc) 82%, var(--color-fg));
+  background: color-mix(in oklab, var(--sc) 11%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--sc) 30%, transparent);
+}
+.bz-statchip > i { width: 0.4375rem; height: 0.4375rem; border-radius: 999px; background: var(--sc); box-shadow: 0 0 0 2.5px color-mix(in oklab, var(--sc) 22%, transparent); }
+.bz-statchip > svg { width: 0.8125rem; height: 0.8125rem; stroke-width: 2.6; }
+.bz-statchip.is-done { --sc: var(--color-done); }
+.bz-statchip.is-late { --sc: var(--color-late); }
+.bz-statchip.is-money { --sc: var(--color-money); }
+.bz-statchip.is-quiet { --sc: var(--color-muted); }
+html:is(.theme-dark, .theme-amoled) .bz-statchip { color: color-mix(in oklab, var(--sc) 88%, #fff); background: color-mix(in oklab, var(--sc) 14%, var(--color-surface)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--sc) 36%, transparent); }
+
+/* Horas de trabajo: quiet framed tools, punch controls with icon + time, tinted ask box. */
+.bz-wd-tool {
+  position: relative; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 0.625rem;
+  color: var(--color-muted); background: color-mix(in srgb, var(--color-surface-2) 55%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 11%, transparent);
+  transition: background-color .15s ease, color .15s ease;
+}
+.bz-wd-tool:hover:not(:disabled) { color: var(--color-fg); background: var(--color-surface-2); }
+.bz-wd-tool:disabled { opacity: 0.42; }
+.bz-wd-tool::after { content: ""; position: absolute; inset: -0.25rem -0.125rem; }
+.bz-wd-tool svg { width: 1rem; height: 1rem; }
+html:is(.theme-dark, .theme-amoled) .bz-wd-tool { color: color-mix(in srgb, var(--color-fg) 78%, transparent); background: color-mix(in srgb, var(--color-fg) 6%, var(--color-surface)); box-shadow: inset 0 0 0 1px rgb(255 240 220 / 0.13); }
+html:is(.theme-dark, .theme-amoled) .bz-wd-tool:disabled { opacity: 0.5; }
+.bz-wd-punch {
+  --pt: var(--color-primary);
+  display: flex; align-items: center; gap: 0.625rem; min-width: 0; min-height: 3.125rem; padding: 0.375rem 0.75rem;
+  border-radius: 0.75rem; text-align: left;
+  background: color-mix(in oklab, var(--pt) 7%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pt) 24%, transparent);
+  transition: background-color .15s ease, box-shadow .15s ease, transform .1s ease-out;
+}
+.bz-wd-punch.is-out { --pt: var(--color-money); }
+.bz-wd-punch:hover:not(:disabled) { background: color-mix(in oklab, var(--pt) 12%, var(--color-surface)); }
+.bz-wd-punch:active:not(:disabled) { transform: translateY(1px); }
+.bz-wd-punch:disabled { opacity: 0.6; }
+.bz-wd-punch > svg { flex: none; width: 1.0625rem; height: 1.0625rem; color: var(--pt); stroke-width: 2.1; }
+.bz-wd-punch-t { display: grid; min-width: 0; gap: 0.125rem; }
+.bz-wd-punch-k { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1; color: color-mix(in oklab, var(--pt) 60%, var(--color-muted)); white-space: nowrap; }
+.bz-wd-punch-v { font-size: 0.9375rem; font-weight: 700; line-height: 1.15; color: var(--color-fg); white-space: nowrap; font-variant-numeric: tabular-nums; }
+html:is(.theme-dark, .theme-amoled) .bz-wd-punch { background: color-mix(in oklab, var(--pt) 10%, var(--color-surface)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pt) 32%, transparent); }
+.bz-wd-ask {
+  --at: var(--color-pending);
+  position: relative; padding: 0.75rem 0.75rem 0.75rem 0.875rem; border-radius: 0.875rem;
+  background: color-mix(in oklab, var(--at) 8%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--at) 24%, transparent);
+}
+.bz-wd-ask::before { content: ""; position: absolute; left: 0; top: 0.75rem; bottom: 0.75rem; width: 3px; border-radius: 0 3px 3px 0; background: var(--at); opacity: 0.85; }
+html:is(.theme-dark, .theme-amoled) .bz-wd-ask { background: color-mix(in oklab, var(--at) 9%, var(--color-surface)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--at) 26%, transparent); }
+.bz-wd-ask-q { font-size: 0.875rem; font-weight: 600; line-height: 1.35; text-wrap: pretty; }
+@container (min-width: 350px) { .bz-wd-ask-q { white-space: nowrap; } }
+/* 1.4.69: undo/redo close the Entrada/Salida row (stacked, beside the controls they undo); the ask line shrinks a step before it would touch its frame. */
+.bz-wd-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.5rem; align-items: stretch; }
+.bz-wd-tools { display: grid; grid-template-rows: 1fr 1fr; gap: 0.25rem; }
+.bz-wd-tools > .bz-wd-tool { width: 2.25rem; height: auto; min-height: 0; border-radius: 0.5rem; }
+.bz-wd-tools > .bz-wd-tool::after { inset: -0.125rem -0.25rem; }
+.bz-wd-tools > .bz-wd-tool svg { width: 0.9375rem; height: 0.9375rem; }
+@container (max-width: 400px) { .bz-wd-ask-q { font-size: 0.8125rem; } }
+@container (max-width: 340px) {
+  .bz-wd-head { gap: 0.375rem; }
+  .bz-wd-head h2 { font-size: 0.9375rem; }
+  .bz-wd-head .bz-statchip { gap: 0.3125rem; padding-inline: 0.375rem 0.4375rem; font-size: 0.6875rem; }
+}
+@container (max-width: 300px) { .bz-wd-head { flex-wrap: wrap; row-gap: 0.375rem; } }
+@container (max-width: 330px) { .bz-wd-ask-q { white-space: normal; } }
+.bz-wd-ask-q > svg { flex: none; width: 0.875rem; height: 0.875rem; margin-top: 0.125rem; color: var(--at); stroke-width: 2.4; }
+.bz-wd-ask .text-muted { text-wrap: pretty; }
+.bz-wd-ask-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem; }
+.bz-wd-ask-pair > button { width: 100%; min-height: 2.5rem; white-space: nowrap; }
+.bz-wd-quiet.bz-wd-quiet {
+  background: color-mix(in oklab, var(--color-at, var(--color-pending)) 5%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-pending) 34%, var(--color-border));
+}
+html:is(.theme-dark, .theme-amoled) .bz-wd-quiet.bz-wd-quiet { background: color-mix(in oklab, var(--color-fg) 5%, var(--color-surface)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-pending) 38%, transparent); }
+.bz-wd { container-type: inline-size; }
+@container (max-width: 340px) {
+  .bz-wd-punch { gap: 0.5rem; padding-inline: 0.625rem; }
+  .bz-wd-punch > svg { display: none; }
+}
+
+/* Tone action buttons (1.4.69): icon in its tone, tinted surface + tone hairline; same family as the punch controls. */
+.bz-actbtn {
+  --pt: var(--color-primary);
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.75rem; padding: 0 0.75rem;
+  border-radius: 0.75rem; font-size: 0.875rem; font-weight: 650; white-space: nowrap; color: var(--color-fg);
+  background: color-mix(in oklab, var(--pt) 6%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pt) 24%, transparent), 0 1px 2px rgb(30 42 34 / 0.05);
+  transition: background-color .15s ease, transform .1s ease-out;
+}
+.bz-actbtn > svg { flex: none; width: 1rem; height: 1rem; color: var(--pt); stroke-width: 2.1; }
+.bz-actbtn:hover:not(:disabled) { background: color-mix(in oklab, var(--pt) 11%, var(--color-surface)); }
+.bz-actbtn:active:not(:disabled) { transform: translateY(1px); }
+.bz-actbtn:disabled { opacity: 0.5; }
+.bz-actbtn.is-late { --pt: var(--color-late); }
+.bz-actbtn.is-due { --pt: var(--color-due); }
+.bz-actbtn.is-hold { --pt: var(--color-hold); }
+html:is(.theme-dark, .theme-amoled) .bz-actbtn { background: color-mix(in oklab, var(--pt) 9%, var(--color-surface)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pt) 32%, transparent); }
+/* Fijados head: tone kicker chip + note on the same line. */
+.bz-pinned-head { margin: 0 0 0.5rem; padding: 0.125rem 0.25rem 0; font-size: 0.75rem; line-height: 1.55; color: var(--color-muted); text-wrap: pretty; }
+.bz-pinned-kicker {
+  display: inline-flex; align-items: center; gap: 0.3125rem; height: 1.375rem; margin-right: 0.25rem; padding: 0 0.25rem 0 0.4375rem;
+  border-radius: 999px; vertical-align: 1px; white-space: nowrap;
+  font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: color-mix(in oklab, var(--tone-pin, #c2417a) 78%, var(--color-fg));
+  background: color-mix(in oklab, var(--tone-pin, #c2417a) 10%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tone-pin, #c2417a) 28%, transparent);
+}
+.bz-pinned-kicker > svg { width: 0.75rem; height: 0.75rem; stroke-width: 2.4; }
+.bz-pinned-kicker > b { display: grid; place-items: center; min-width: 1rem; height: 1rem; padding: 0 0.25rem; border-radius: 999px; font-size: 0.6875rem; letter-spacing: 0; color: var(--color-surface); background: color-mix(in oklab, var(--tone-pin, #c2417a) 80%, var(--color-fg)); }
+html:is(.theme-dark, .theme-amoled) .bz-pinned-kicker { color: var(--tone-pin); background: color-mix(in oklab, var(--tone-pin) 13%, var(--color-surface)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tone-pin) 34%, transparent); }
+html:is(.theme-dark, .theme-amoled) .bz-pinned-kicker > b { color: #120a0e; background: var(--tone-pin); }
+/* Hoy: the date on the title line (quiet sans, one line; long form, short form when tight, gone when no room — never clipped). */
+h1:has(> .bz-title-date) { container-type: inline-size; }
+.bz-title-date { display: none; white-space: nowrap; font-family: var(--font-sans); font-size: 0.875rem; font-weight: 500; letter-spacing: 0; color: var(--color-muted); padding-top: 0.25rem; }
+.bz-title-date > span { display: none; }
+.bz-title-date > span::first-letter { text-transform: uppercase; }
+@container (min-width: 150px) { .bz-title-date, .bz-title-date > .is-short { display: inline-block; } }
+@container (min-width: 270px) { .bz-title-date > .is-short { display: none; } .bz-title-date > .is-long { display: inline-block; } }
+@media (min-width: 768px) { .bz-title-date { font-size: 1rem; padding-top: 0.375rem; } }
+/* Toggle chip for a title line (Ajustes "Desplegar todo"): framed, icon, pressed = soil pick tint. */
+.bz-chiptoggle {
+  display: inline-flex; align-items: center; gap: 0.375rem; height: 2rem; padding: 0 0.625rem 0 0.5rem; flex: none;
+  border-radius: 999px; font-size: 0.75rem; font-weight: 650; white-space: nowrap; color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 12%, transparent);
+  transition: background-color .15s ease, color .15s ease;
+}
+.bz-chiptoggle > svg { width: 0.875rem; height: 0.875rem; stroke-width: 2.2; }
+.bz-chiptoggle:hover { color: var(--color-fg); }
+.bz-chiptoggle.is-on { color: var(--color-soil); background: color-mix(in srgb, var(--color-soil) 12%, var(--color-surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-soil) 45%, transparent); }
+html:is(.theme-dark, .theme-amoled) .bz-chiptoggle { box-shadow: inset 0 0 0 1px rgb(255 240 220 / 0.14); }
+html:is(.theme-dark, .theme-amoled) .bz-chiptoggle.is-on { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-soil) 55%, transparent); }
+
+/* 1.4.69: list tallies ("14 clientes · $910 por ronda", "33 trabajos · $1,915") sit in a quiet framed pill instead of a loose line. */
+.bz-tally {
+  display: inline-flex; align-items: center; gap: 0.25rem; width: fit-content; max-width: 100%; min-height: 1.875rem;
+  padding: 0.25rem 0.375rem 0.25rem 0.75rem; border-radius: 999px; font-size: 0.8125rem; font-weight: 600; line-height: 1.3;
+  color: var(--color-muted); text-wrap: pretty;
+  background: color-mix(in srgb, var(--color-surface-2) 60%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 9%, transparent);
+  animation: bz-tally-in .2s ease-out both;
+}
+html:is(.theme-dark, .theme-amoled) .bz-tally { background: color-mix(in srgb, var(--color-fg) 5%, var(--color-surface)); box-shadow: inset 0 0 0 1px rgb(255 240 220 / 0.11); }
+html.theme-amoled .bz-tally { background: var(--bz-l1); }
+/* the (?) keeps its tap area but doesn't make the pill taller */
+.bz-tally > [data-topic] { margin-block: -0.625rem; }
+@keyframes bz-tally-in { from { opacity: 0; transform: translateY(2px); } }
+@media (prefers-reduced-motion: reduce) { .bz-tally { animation: none; } }
