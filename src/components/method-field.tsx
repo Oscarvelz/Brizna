@@ -5,6 +5,7 @@ import { useTx } from "@/lib/i18n";
 import { readStoredLocale } from "@/lib/theme";
 import { PAY_METHODS } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { chipsetStyle } from "@/lib/chipset";
 
 const EN_METHOD: Record<string, string> = {
   Efectivo: "Cash",
@@ -36,7 +37,7 @@ export function MethodField({
 
   return (
     <>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="bz-chipset" style={chipsetStyle(PAY_METHODS.map((item) => (item.id === "otro" && custom ? value.slice(5) : tx(item.label, EN_METHOD[item.label] ?? item.label))))}>
         {PAY_METHODS.map((item) => {
           const on = item.id === "otro" ? value === "otro" || custom : value === item.id;
           const label = item.id === "otro" && custom ? value.slice(5) : tx(item.label, EN_METHOD[item.label] ?? item.label);
@@ -52,10 +53,7 @@ export function MethodField({
                 }
                 onChange(value === item.id ? "" : item.id);
               }}
-              className={cn(
-                "h-9 rounded-full px-3 text-xs font-semibold",
-                on ? "bz-pick" : "bg-sun text-muted",
-              )}
+              className={cn("bz-chip", item.id === "otro" && custom && "bz-chip-free", on ? "bz-pick" : "bg-sun text-muted")}
             >
               {label}
             </button>

@@ -1,3 +1,4 @@
+import { hasAddress } from "@/components/address-line";
 import { MapPin, Phone } from "lucide-react";
 import { ConfirmLink } from "@/components/confirm-link";
 import { MessageComposer, WhatsAppButton } from "@/components/message-composer";
@@ -23,7 +24,7 @@ export function ContactIcons({
 }) {
   const tx = useTx();
   const dial = phone?.trim() ?? "";
-  const street = address?.trim() ?? "";
+  const street = hasAddress(address) ? address.trim() : "";
   if (!dial && !street) return null;
   const box = cn("bz-tone grid shrink-0 place-items-center rounded-sm", tight ? "size-8" : "size-10");
   const icon = tight ? "size-3.5" : "size-4";

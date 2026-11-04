@@ -7,6 +7,7 @@ import { reasonLabel, useI18n, useTx } from "@/lib/i18n";
 import { listPostponed } from "@/lib/server/lawn";
 import { POSTPONE_REASONS } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { chipsetStyle } from "@/lib/chipset";
 
 export function ReasonChips({
   value,
@@ -32,7 +33,7 @@ export function ReasonChips({
 
   return (
     <>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="bz-chipset" style={chipsetStyle(reasons.map((item) => (item === "Otro" && custom ? value : reasonLabel(locale, item))))}>
         {reasons.map((item) => {
           const on = item === "Otro" ? value === "Otro" || custom : value === item;
           const shown = item === "Otro" && custom ? value : reasonLabel(locale, item);
@@ -48,10 +49,7 @@ export function ReasonChips({
                 }
                 onChange(value === item ? "" : item);
               }}
-              className={cn(
-                "h-9 max-w-full truncate rounded-full px-3 text-xs font-semibold",
-                on ? "bz-pick" : "bg-sun text-muted",
-              )}
+              className={cn("bz-chip", item === "Otro" && custom && "bz-chip-free", on ? "bz-pick" : "bg-sun text-muted")}
             >
               {shown}
             </button>

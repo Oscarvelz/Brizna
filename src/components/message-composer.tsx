@@ -10,6 +10,7 @@ import { useTx, useI18n } from "@/lib/i18n";
 import { getPad, getSettings, polishYardText, translateYardSms, updateSettings } from "@/lib/server/lawn";
 import { DEFAULT_MESSAGE_PRESETS } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { chipsetStyle } from "@/lib/chipset";
 
 type SpeechRec = {
   lang: string;
@@ -557,13 +558,13 @@ function PresetRow({ onPick }: { onPick: (text: string) => void }) {
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="bz-chipset" style={chipsetStyle(presets)}>
           {presets.map((line) => (
             <button
               key={line}
               type="button"
               onClick={() => onPick(line)}
-              className="h-9 max-w-full truncate rounded-full bg-sun px-3 text-xs font-semibold"
+              className="bz-chip bz-chip-free bg-sun"
             >
               {line}
             </button>

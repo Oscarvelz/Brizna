@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Check, Clock, GripVertical, Phone, Pin, RotateCcw } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { AddressLine } from "@/components/address-line";
+import { AddressLine, hasAddress } from "@/components/address-line";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ConfirmLink } from "@/components/confirm-link";
 import { ContactIcons } from "@/components/contact-icons";
@@ -799,7 +799,7 @@ export function JobCard({
         </div>
       </div>
 
-      {job.clientAddress && !media && (
+      {hasAddress(job.clientAddress) && !media && (
         <AddressLine address={job.clientAddress} name={job.clientName} compact className="mt-3" />
       )}
 

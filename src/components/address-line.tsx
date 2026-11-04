@@ -4,6 +4,11 @@ import { mapsHref } from "@/lib/format";
 import { useTx } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
+/** 1.4.66 (Oscar): a client without a real address shows no address line at all (blank, spaces or bare commas count as none). */
+export function hasAddress(address: string | null | undefined): address is string {
+  return /[\p{L}\p{N}]/u.test(address ?? "");
+}
+
 export function AddressLine({
   address,
   className,
@@ -15,8 +20,8 @@ export function AddressLine({
   compact?: boolean;
   name?: string;
 }) {
-  if (!address.trim()) return null;
   const tx = useTx();
+  if (!hasAddress(address)) return null;
   return (
     <ConfirmLink
       href={mapsHref(address)}
