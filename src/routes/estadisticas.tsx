@@ -1,3 +1,4 @@
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { BarChart3, Compass } from "lucide-react";
@@ -17,6 +18,16 @@ import { useTx } from "@/lib/i18n";
 import { DayNightSwitch } from "@/components/day-night-switch";
 import { WeatherChip } from "@/components/weather-chip";
 import { getDashboard } from "@/lib/server/lawn";
+
+const FOLD_UNTIL_KEY = "bz-cif-folded-until";
+const FOLD_MINUTES = 5;
+function foldedUntil(): number {
+  try {
+    return Number(localStorage.getItem(FOLD_UNTIL_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
 
 export const Route = createFileRoute("/estadisticas")({ component: EstadisticasPage });
 
@@ -61,7 +72,24 @@ function EstadisticasPage() {
   };
   const [findOn, setFindOn] = useState(false);
   const [needle, setNeedle] = useState("");
-  const [expandAll, setExpandAll] = useState(() => foldsOpen("cif-"));
+  // 1.4.61 (Oscar): Desplegar is checked by default, always. Unchecking asks first, folds everything,
+  // and re-checks itself after FOLD_MINUTES.
+  const [expandAll, setExpandAll] = useState(() => foldedUntil() <= Date.now());
+  const [askFold, setAskFold] = useState(false);
+  useEffect(() => {
+    const until = foldedUntil();
+    const reopen = () => {
+      try { localStorage.removeItem(FOLD_UNTIL_KEY); } catch { /* private mode */ }
+      setExpandAll(true);
+      setFoldsOpen("cif-", true);
+    };
+    if (until <= Date.now()) {
+      if (!foldsOpen("cif-")) reopen();
+      return;
+    }
+    const timer = window.setTimeout(reopen, until - Date.now());
+    return () => window.clearTimeout(timer);
+  }, [expandAll]);
   const query = findOn ? needle : "";
   const dash = useQuery({ queryKey: ["dashboard"], queryFn: () => getDashboard() });
   const data = dash.data;
@@ -117,14 +145,35 @@ function EstadisticasPage() {
             checked={expandAll}
             aria-label={tx("Desplegar todo", "Expand all")}
             onChange={(e) => {
-              const open = e.target.checked;
-              setExpandAll(open);
-              setFoldsOpen("cif-", open);
+              if (!e.target.checked) {
+                setAskFold(true);
+                return;
+              }
+              try { localStorage.removeItem(FOLD_UNTIL_KEY); } catch { /* private mode */ }
+              setExpandAll(true);
+              setFoldsOpen("cif-", true);
             }}
           />
           {tx("Desplegar", "Expand")}
         </label>
       </div>
+      <ConfirmDialog
+        open={askFold}
+        title={tx("¿Plegar todo?", "Fold everything?")}
+        description={tx(
+          `Cada bloque queda plegado y solo ves los títulos. En ${FOLD_MINUTES} minutos se vuelve a desplegar solo.`,
+          `Every block folds to its title. In ${FOLD_MINUTES} minutes it unfolds again on its own.`,
+        )}
+        confirmLabel={tx("Plegar", "Fold")}
+        cancelLabel={tx("Cancelar", "Cancel")}
+        onConfirm={() => {
+          setAskFold(false);
+          try { localStorage.setItem(FOLD_UNTIL_KEY, String(Date.now() + FOLD_MINUTES * 60_000)); } catch { /* private mode */ }
+          setExpandAll(false);
+          setFoldsOpen("cif-", false);
+        }}
+        onCancel={() => setAskFold(false)}
+      />
       <Suspense fallback={<div className="h-64 animate-pulse rounded-2xl bg-surface-2" />}>
       <CobrosCharts
         query={query}

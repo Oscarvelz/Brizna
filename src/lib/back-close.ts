@@ -49,3 +49,26 @@ export function useBackClose(open: boolean, onClose: () => void) {
     };
   }, [open]);
 }
+
+/**
+ * The same history step for things that are not React state (the "Ir allí" ring): back calls
+ * `onBack`; when the thing goes away on its own, call the returned function to take the step back.
+ */
+export function pushBackStep(onBack: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  install();
+  const id = ++seq;
+  const entry: Entry = { id, close: onBack };
+  stack.push(entry);
+  window.history.pushState({ ...((window.history.state ?? {}) as object), bzSheet: id }, "", window.location.href);
+  return () => {
+    const i = stack.indexOf(entry);
+    if (i < 0) return;
+    stack.splice(i, 1);
+    const st = (window.history.state ?? {}) as { bzSheet?: number };
+    if (st.bzSheet === id) {
+      skip += 1;
+      window.history.back();
+    }
+  };
+}

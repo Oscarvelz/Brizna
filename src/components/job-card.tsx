@@ -738,10 +738,15 @@ export function JobCard({
       )}
 
       {pending && !compact && (
-        <div className={cn("grid grid-cols-[1fr_auto_auto] gap-2", media ? "mt-2" : "mt-4")}>
-          <Button onClick={onHecho} disabled={complete.isPending} className="w-full" size={media ? "sm" : "md"}>
+        <div className={cn("grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]", media ? "mt-2 gap-2" : "mt-4 gap-1.5")}>
+          <Button onClick={onHecho} disabled={complete.isPending} className={cn("w-full", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
             <Check />
             {tx("Hecho", "Done")}
+          </Button>
+          {/* 1.4.61 (Oscar): Posponer is a real button in the action row, not a loose line under it */}
+          <Button variant="outline" onClick={() => setAskPost(true)} className={cn("w-full whitespace-nowrap", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
+            <Clock />
+            {tx("Posponer", "Postpone")}
           </Button>
           {job.clientPhone && (
             <ConfirmLink
@@ -767,13 +772,6 @@ export function JobCard({
             {tx("Quitar", "Remove")}
           </Button>
         </div>
-      )}
-
-      {pending && !compact && (
-        <Button variant="ghost" className="mt-1 h-9 w-full text-muted" size="sm" onClick={() => setAskPost(true)}>
-          <Clock />
-          {tx("Posponer", "Postpone")}
-        </Button>
       )}
 
       {postponed && !compact && (

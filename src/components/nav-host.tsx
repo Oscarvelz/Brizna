@@ -1,6 +1,7 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
-import { canGoBack, glow, historyKey, scrollMemory, takeFocus } from "@/lib/manual/nav";
+import { canGoBack, historyKey, scrollMemory, takeFocus } from "@/lib/manual/nav";
+import { clearRing, showRing } from "@/lib/manual/ring";
 
 const OPEN_LAYER =
   '.bz-hint, [role="dialog"], [role="alertdialog"], [role="menu"], [data-mention-open], [data-radix-popper-content-wrapper]';
@@ -122,6 +123,7 @@ export function NavHost() {
 
   useEffect(() => {
     prevPath.current = pathname;
+    clearRing(); // a screen change always ends the "Ir allí" ring
   }, [pathname]);
 
   /* ----------------------------------------------- "Ver en la app" focus */
@@ -165,9 +167,10 @@ export function NavHost() {
           el.parentElement ??
           el;
         (box as HTMLElement).scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "center" });
+        // 1.4.61 (Oscar): the ring stays on while you read; it no longer fades by itself.
         window.setTimeout(() => {
-          glow(box, "bz-glow", 3000);
-          if (!isBox) glow(el as Element, "bz-glow-dot", 3000);
+          if (cancelled) return;
+          showRing(box, isBox ? null : (el as Element), reduced() ? 150 : 900);
         }, reduced() ? 0 : 320);
       };
       timer = window.setTimeout(step, 80);

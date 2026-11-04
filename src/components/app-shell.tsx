@@ -552,15 +552,8 @@ export function AppShell({
               >
                 <Printer className="size-5" strokeWidth={1.9} />
               </button>
-              <Link
-                to="/ajustes"
-                className={cn("bz-rail-tool", pathname === "/ajustes" && "is-on")}
-                aria-label={t("nav.settings")}
-                title={t("nav.settings")}
-              >
-                <Settings className="size-5" strokeWidth={pathname === "/ajustes" ? 2.3 : 1.9} />
-              </Link>
-              {tabletOn && onBoard && wide ? (
+              {/* 1.4.61: Vista is on every screen of the rail (Ajustes too), always just before Ajustes. */}
+              {tabletOn && wide ? (
                 <TabletViewMenu
                   layout={board}
                   split={split}
@@ -571,9 +564,34 @@ export function AppShell({
                   onChange={(next) => {
                     setActivePane(0);
                     saveBoard(next);
+                    // Two screens live on the main tabs: from Ajustes or the pad, go to the first one.
+                    // Wait for the menu's own history step to be taken back first, or the two collide.
+                    const to = next.slots[0];
+                    if (!onBoard && next.count > 1 && to) {
+                      let done = false;
+                      const goTabs = () => {
+                        if (done) return;
+                        done = true;
+                        window.removeEventListener("popstate", goTabs);
+                        window.setTimeout(() => void navigate({ to }), 0);
+                      };
+                      if ((window.history.state as { bzSheet?: number } | null)?.bzSheet) {
+                        window.addEventListener("popstate", goTabs);
+                        window.setTimeout(goTabs, 450);
+                      } else goTabs();
+                    }
                   }}
                 />
               ) : null}
+              {/* Ajustes is always the last item of the rail; Vista sits just before it (1.4.61). */}
+              <Link
+                to="/ajustes"
+                className={cn("bz-rail-tool", pathname === "/ajustes" && "is-on")}
+                aria-label={t("nav.settings")}
+                title={t("nav.settings")}
+              >
+                <Settings className="size-5" strokeWidth={pathname === "/ajustes" ? 2.3 : 1.9} />
+              </Link>
             </div>
           </aside>
         )}

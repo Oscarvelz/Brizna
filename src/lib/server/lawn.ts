@@ -206,7 +206,8 @@ function payProfile(
 ): { highRisk: boolean; payTier: PayTier; daysSincePay: number | null; reliability: number } {
   const ref = lastPaid ?? lastCut;
   const days = ref ? daysBetween(ref, today) : null;
-  const lateByTime = days != null && days >= opts.riskDays;
+  // High risk by time counts after the waiting stretch (Ajustes: "Días para alto riesgo — Después de En espera").
+  const lateByTime = days != null && days >= opts.waitDays + opts.riskDays;
   const lateByMoney = opts.riskAmount > 0 && balance >= opts.riskAmount;
   const lateByCuts = opts.riskCuts > 0 && unpaidJobs >= opts.riskCuts;
   const highRisk = balance > 0 && (lateByTime || lateByMoney || lateByCuts);
@@ -990,7 +991,7 @@ async function highRiskClientIds(userId: string, today: string): Promise<Set<num
   for (const row of rows) {
     const balance = money(row.balance);
     const ref = row.last_paid ? asIsoDate(row.last_paid) : row.last_cut ? asIsoDate(row.last_cut) : null;
-    const lateByTime = ref != null && daysBetween(ref, today) >= risk.riskDays;
+    const lateByTime = ref != null && daysBetween(ref, today) >= risk.waitDays + risk.riskDays;
     const lateByMoney = balance >= risk.riskAmount;
     const lateByCuts = risk.riskCuts > 0 && intId(row.unpaid_jobs) >= risk.riskCuts;
     if (lateByTime || lateByMoney || lateByCuts) ids.add(intId(row.id));
@@ -3345,7 +3346,13 @@ export const getFinanceStats = createServerFn({ method: "GET" })
                and scheduled_date >= $2::date and scheduled_date <= $3::date) as once_amount`,
         [context.userId, from, to],
       );
+      const workRows = await sql.query<{ clock_in: string | null; clock_out: string | null }>(
+        `select clock_in, clock_out from work_days
+          where user_id = $1 and confirmed = true and work_date >= $2::date and work_date <= $3::date`,
+        [context.userId, from, to],
+      );
       yearSeries.push({
+        minutes: workRows.reduce((t, r) => t + minutesBetween(r.clock_in, r.clock_out), 0),
         key: from,
         label: String(y),
         collected: money(rows[0]?.collected),

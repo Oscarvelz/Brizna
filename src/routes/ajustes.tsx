@@ -657,7 +657,7 @@ function AjustesPage() {
               min={7}
               max={400}
               step={1}
-              onCommit={(n) => updateSettings({ data: { waitDays: n } }).then(() => qc.invalidateQueries({ queryKey: ["settings"] }))}
+              onCommit={(n) => updateSettings({ data: { waitDays: n } }).then(() => Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), invalidateLawn(qc)]))}
             />
             <NumberRow
               label={tx("Días para alto riesgo", "Days for high risk")}
@@ -666,7 +666,7 @@ function AjustesPage() {
               min={3}
               max={400}
               step={1}
-              onCommit={(n) => updateSettings({ data: { riskDays: n } }).then(() => qc.invalidateQueries({ queryKey: ["settings"] }))}
+              onCommit={(n) => updateSettings({ data: { riskDays: n } }).then(() => Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), invalidateLawn(qc)]))}
             />
             <NumberRow
               label={tx("Monto para alto riesgo", "Amount for high risk")}
@@ -676,7 +676,7 @@ function AjustesPage() {
               min={1}
               max={100000}
               step={25}
-              onCommit={(n) => updateSettings({ data: { riskAmount: n } }).then(() => qc.invalidateQueries({ queryKey: ["settings"] }))}
+              onCommit={(n) => updateSettings({ data: { riskAmount: n } }).then(() => Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), invalidateLawn(qc)]))}
             />
             <NumberRow
               label={tx("Cortes sin pagar", "Unpaid cuts")}
@@ -685,7 +685,7 @@ function AjustesPage() {
               min={1}
               max={30}
               step={1}
-              onCommit={(n) => updateSettings({ data: { riskCuts: n } }).then(() => qc.invalidateQueries({ queryKey: ["settings"] }))}
+              onCommit={(n) => updateSettings({ data: { riskCuts: n } }).then(() => Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), invalidateLawn(qc)]))}
             />
           </div>
           <p className="aj-note mt-3 text-sm">
@@ -964,9 +964,13 @@ function AjustesPage() {
           <UserManual onLocale={setLocale} forceOpen={Boolean(query)} />
         ) : null}
         {!query || smartHit(query, "salir cerrar sesion cuenta sign out huella fingerprint nube sincronizar sync cloud") ? (
-        <section className="order-14">
+        <div className="order-14" data-masonry-under="aj-ejemplo">
           <SyncStatusCard />
           <FingerprintControl />
+        </div>
+        ) : null}
+        {!query || smartHit(query, "salir cerrar sesion cuenta sign out huella fingerprint nube sincronizar sync cloud") ? (
+        <section className="order-14">
           <SignOutControl full />
           <p className="mt-2 text-center text-xs text-muted">
             {tx("La cuenta y los clientes quedan en la nube y en este equipo. Entras otra vez con el mismo correo.", "The account and the clients stay in the cloud and on this device. Sign in again with the same email.")}

@@ -251,6 +251,8 @@ export type MoneyPoint = {
   extraAmount: number;
   onceCuts: number;
   onceAmount: number;
+  /** Confirmed work minutes in that stretch (yearSeries only, 1.4.61). */
+  minutes?: number;
 };
 
 export type ClientFlowPoint = {

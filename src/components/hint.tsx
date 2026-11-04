@@ -4,7 +4,7 @@ import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type Rea
 import { createPortal } from "react-dom";
 import { NameLink } from "@/components/name-jump";
 import { useI18n, emphasize } from "@/lib/i18n";
-import { findTopic, pick } from "@/lib/manual/topics";
+import { findHint, pick } from "@/lib/manual/topics";
 import { rememberOrigin } from "@/lib/manual/nav";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +46,7 @@ export function Hint({
   const { t, locale } = useI18n();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const entry = findTopic(topic ?? manual);
+  const entry = findHint(topic ?? manual);
   const body: ReactNode = text ?? (entry ? pick(locale, alt && entry.whatAlt ? entry.whatAlt : entry.what) : "");
   const [open, setOpen] = useState(false);
   const [box, setBox] = useState<{ top: number; left: number; width: number; maxHeight: number; below: boolean; arrow: number } | null>(
@@ -155,7 +155,7 @@ export function Hint({
                       onClick={() => {
                         setOpen(false);
                         rememberOrigin(pathname);
-                        void navigate({ to: "/manual", search: { t: entry.id }, resetScroll: false });
+                        void navigate({ to: "/manual", search: { t: entry.topic.id }, resetScroll: false });
                       }}
                       className="bz-hint-more"
                     >

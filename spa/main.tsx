@@ -113,7 +113,7 @@ function Gate() {
     setOpen(!lockDue(user.id));
     const onVis = () => {
       if (document.visibilityState === "hidden") return;
-      if (lockDue(user.id)) { tried.current = ""; setFailed(false); setOpen(false); }
+      if (lockDue(user.id)) { tried.current = ""; setFailed(false); setOpen(false); window.dispatchEvent(new Event("bz-locked")); }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);

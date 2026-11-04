@@ -109,13 +109,39 @@
   margin-top: 0.45rem; padding-left: 0.7rem; border-left: 3px solid var(--color-primary);
   font-size: 1.02rem; font-weight: 650; line-height: 1.38; color: var(--color-fg);
 }
-.mn-parts { margin-top: 0.75rem; display: grid; gap: 0.6rem; }
-.mn-parts dt { display: flex; align-items: center; gap: 0.3rem; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-muted); }
-.mn-parts dd { margin-top: 0.15rem; font-size: 0.93rem; line-height: 1.5; font-weight: 500; color: var(--color-fg); }
+.mn-parts { margin-top: 0.8rem; display: grid; gap: 0.85rem; }
+.mn-part-title {
+  display: flex; align-items: center; gap: 0.35rem; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--color-muted); white-space: nowrap;
+}
+.mn-part-title svg { width: 0.9rem; height: 0.9rem; flex: none; color: var(--color-primary); }
+.mn-part-text, .mn-steps, .mn-list { margin-top: 0.3rem; font-size: 0.94rem; line-height: 1.52; font-weight: 500; color: var(--color-fg); }
+.mn-steps { display: grid; gap: 0.32rem; counter-reset: mn-step; padding: 0; list-style: none; }
+.mn-steps > li { position: relative; padding-left: 1.75rem; counter-increment: mn-step; }
+.mn-steps > li::before {
+  content: counter(mn-step); position: absolute; left: 0; top: 0.12rem; display: grid; place-items: center;
+  width: 1.25rem; height: 1.25rem; border-radius: 999px; font-size: 0.7rem; font-weight: 800; font-variant-numeric: tabular-nums;
+  color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+}
+.mn-list { display: grid; gap: 0.32rem; padding: 0; list-style: none; }
+.mn-list > li { position: relative; padding-left: 1rem; }
+.mn-list > li::before { content: ""; position: absolute; left: 0.15rem; top: 0.62rem; width: 0.38rem; height: 0.38rem; border-radius: 999px; background: color-mix(in srgb, var(--color-primary) 70%, transparent); }
+.mn-case-lead { font-weight: 700; }
+/* the example reads as a told story: a tinted band, not another framed box */
+.mn-part.is-example { margin-inline: -1rem; padding: 0.7rem 1rem 0.8rem; background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface)); }
+.mn-part.is-example .mn-part-text { font-weight: 550; }
+.mn-part.is-mistake .mn-part-title, .mn-part.is-mistake .mn-part-title svg { color: color-mix(in srgb, var(--color-due) 80%, var(--color-fg)); }
+html.theme-dark .mn-part.is-mistake .mn-part-title, html.theme-dark .mn-part.is-mistake .mn-part-title svg,
+html.theme-amoled .mn-part.is-mistake .mn-part-title, html.theme-amoled .mn-part.is-mistake .mn-part-title svg { color: var(--color-abono); }
 .mn-parts .name-ref { font-weight: 650; }
-.mn-tip dt { color: color-mix(in srgb, var(--color-due) 80%, var(--color-fg)); }
-.mn-tip dt svg { width: 0.85rem; height: 0.85rem; }
-html.theme-dark .mn-tip dt, html.theme-amoled .mn-tip dt { color: var(--color-abono); }
+.mn-related-row { margin-top: 0.4rem; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.mn-chip {
+  display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2.25rem; padding: 0 0.8rem; border-radius: 999px;
+  font-size: 0.82rem; font-weight: 650; white-space: nowrap; color: var(--color-fg);
+  background: var(--color-bg); border: 1px solid var(--color-border); transition: border-color 0.15s, color 0.15s;
+}
+.mn-chip:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.mn-chip-num { font-size: 0.72rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--color-primary); }
 .mn-go-row { margin-top: 0.85rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.7rem; }
 .mn-go {
   display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2.5rem; padding: 0 0.95rem; border-radius: 999px;
@@ -185,10 +211,25 @@ html.theme-dark .mn mark, html.theme-amoled .mn mark { background: color-mix(in 
 @keyframes bz-glow-dot { 0%, 100% { transform: none; } 20% { transform: scale(1.25); } 40% { transform: scale(0.95); } 60% { transform: scale(1.12); } }
 .bz-glow-dot > button { animation: bz-glow-dot 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both; color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 18%, transparent); }
 
+/* "Ir allí" ring (1.4.61): gentle entrance, then steady until you move on (no pulse loop). */
+@keyframes bz-ring-in {
+  0% { box-shadow: 0 0 0 0 transparent, 0 0 0 0 transparent; }
+  100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 72%, transparent), 0 0 22px 2px color-mix(in srgb, var(--color-primary) 26%, transparent); }
+}
+.bz-ring {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 72%, transparent), 0 0 22px 2px color-mix(in srgb, var(--color-primary) 26%, transparent);
+  animation: bz-ring-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  scroll-margin: 6rem 0;
+  transition: box-shadow 0.25s ease-out;
+}
+@keyframes bz-ring-dot-in { 0% { transform: scale(0.85); opacity: 0.4; } 100% { transform: none; opacity: 1; } }
+.bz-ring-dot > button { color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 18%, transparent); animation: bz-ring-dot-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both; }
+
 @media (prefers-reduced-motion: reduce) {
   .mn-glow, .bz-glow { animation: none; outline: 3px solid var(--color-primary); outline-offset: 2px; transition: outline-color 0.01ms; }
   .mn-glow::after { display: none; }
   .bz-glow-dot > button { animation: none; }
+  .bz-ring, .bz-ring-dot > button { animation: none; }
   .mn-back svg, .mn-go svg { transition: none; }
 }
 
@@ -222,7 +263,8 @@ html.theme-dark .mn mark, html.theme-amoled .mn mark { background: color-mix(in 
   .mn.is-print .mn-ch-num { color: #111 !important; }
   .mn.is-print .mn-entry { break-inside: avoid; margin: 0 0 14pt; padding-top: 10pt; border-top: 0.75pt solid #bbb; }
   .mn.is-print .mn-sum { border-left-color: #111; }
-  .mn.is-print .mn-parts dt { color: #555 !important; }
+  .mn.is-print .mn-part-title { color: #555 !important; }
+  .mn.is-print .mn-part.is-example { background: none; margin-inline: 0; padding: 0; }
   .mn.is-print .mn-alpha { break-before: page; }
   .mn.is-print .mn-alpha-cols { columns: 2; }
   .mn.is-print .mn-alpha-dots { border-bottom-color: #999; }

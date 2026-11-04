@@ -204,13 +204,26 @@ function ClientesPage() {
   const [sort, setSort] = useState<ClientSort>("name");
   const [filter, setFilter] = useState<ClientFilter>(search.filter ?? "active");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Inventario is pinned by default (1.4.61). It stays pinned unless unpinned after this change
+  // (new key, so an old "0" from before does not count).
   const [invPin, setInvPin] = useState(() => {
     try {
-      return localStorage.getItem("ols-inventory-pin") === "1";
+      return localStorage.getItem("ols-inventory-pin-v2") !== "0";
     } catch {
-      return false;
+      return true;
     }
   });
+  const [askUnpin, setAskUnpin] = useState(false);
+  const savePin = (next: boolean) => {
+    setInvPin(next);
+    if (next) setInvOpen(true);
+    try {
+      localStorage.setItem("ols-inventory-pin-v2", next ? "1" : "0");
+      localStorage.setItem("ols-inventory-pin", next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  };
   const [invOpen, setInvOpen] = useState(invPin);
   const [picked, setPicked] = useState<number[]>([]);
   const [askBulk, setAskBulk] = useState<"reactivate" | "delete" | null>(null);
@@ -352,14 +365,8 @@ function ClientesPage() {
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                const next = !invPin;
-                setInvPin(next);
-                if (next) setInvOpen(true);
-                try {
-                  localStorage.setItem("ols-inventory-pin", next ? "1" : "0");
-                } catch {
-                  /* ignore */
-                }
+                if (invPin) setAskUnpin(true);
+                else savePin(true);
               }}
             >
               <Pin className={cn("size-3.5", invPin && "fill-current")} />
@@ -407,6 +414,21 @@ function ClientesPage() {
           </Link>
         </div>
       </details>
+      <ConfirmDialog
+        open={askUnpin}
+        title={tx("¿Dejar de fijar el inventario?", "Unpin the inventory?")}
+        description={tx(
+          "Ya no quedará abierto al entrar. Puedes fijarlo otra vez cuando quieras.",
+          "It will no longer stay open when you come in. You can pin it again anytime.",
+        )}
+        confirmLabel={tx("Dejar de fijar", "Unpin")}
+        cancelLabel={tx("Mantener", "Keep it")}
+        onConfirm={() => {
+          setAskUnpin(false);
+          savePin(false);
+        }}
+        onCancel={() => setAskUnpin(false)}
+      />
 
       <div className="relative mb-4" data-no-swipe>
         <div className="flex h-11 w-full items-center gap-1 rounded-full bg-surface pr-1 pl-3 text-sm font-semibold shadow-card">

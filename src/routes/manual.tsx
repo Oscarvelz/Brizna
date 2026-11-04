@@ -1,13 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ScrollTop } from "@/components/scroll-top";
-import { ArrowLeft, ArrowRight, BookOpen, ChevronDown, Lightbulb, ListOrdered, Printer, SearchX } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, Calculator, ChevronDown, CircleHelp, Link2, ListOrdered, Printer, SearchX, Sparkles, Workflow } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AppShell, TitleSearch } from "@/components/app-shell";
 import { richText } from "@/components/hint";
 import { fold } from "@/lib/fuzzy";
 import { useI18n } from "@/lib/i18n";
 import { canGoBack, glow, justPopped, readOrigin, rememberScroll, requestFocus, screenName } from "@/lib/manual/nav";
-import { alphaIndex, findTopic, MANUAL_CHAPTERS, MANUAL_TOPICS, pick, topicText, type L, type Numbered } from "@/lib/manual/topics";
+import { alphaIndex, findTopic, MANUAL_CHAPTERS, MANUAL_TOPICS, pick, topicBody, topicText, type L, type Numbered } from "@/lib/manual/topics";
 import { cn } from "@/lib/utils";
 import "@/manual.css";
 
@@ -103,7 +103,10 @@ function manualHit(words: string[], text: string): boolean {
 function bringIn(el: HTMLElement) {
   const rect = el.getBoundingClientRect();
   // Going down the header slides away; going up it comes back and needs room.
-  const room = rect.top < 0 ? 92 : 14;
+  // Large screens keep the header in place (tablet.css), so the entry lands just under it.
+  const hdr = document.querySelector<HTMLElement>(".pod-header");
+  const stays = Boolean(hdr) && getComputedStyle(hdr as HTMLElement).transform === "none" && window.matchMedia("(min-width: 768px)").matches;
+  const room = stays ? Math.round((hdr as HTMLElement).getBoundingClientRect().height) + 14 : rect.top < 0 ? 92 : 14;
   const target = Math.max(0, window.scrollY + rect.top - room);
   if (reduced()) {
     window.scrollTo({ top: target, behavior: "auto" });
@@ -280,9 +283,12 @@ function ManualPage() {
   }, [findOn]);
 
   const label = {
-    what: tx("Qué es", "What it is"),
-    how: tx("Cómo se usa", "How to use it"),
-    tip: tx("Consejo", "Tip"),
+    how: tx("Cómo funciona", "How it works"),
+    calc: tx("Cómo se calcula", "How it's counted"),
+    example: tx("Ejemplo", "Example"),
+    cases: tx("Si pasa…", "What if…"),
+    mistake: tx("Error común", "Common mistake"),
+    related: tx("Relacionado", "Related"),
   };
 
   return (
@@ -340,7 +346,7 @@ function ManualPage() {
             ) : (
               <ul className="mn-hits">
                 {results.map((tp) => {
-                  const body = [tp.sum, tp.what, tp.how, tp.tip].filter(Boolean).map((p) => plain(say(p as L)));
+                  const body = [tp.sum, ...topicBody(tp)].map((p) => plain(say(p)));
                   const hitText = body.find((b) => words.some((w) => fold(b).includes(w))) ?? body[0]!;
                   return (
                     <li key={tp.id}>
@@ -485,35 +491,32 @@ function ManualPage() {
                       <span>{say(tp.title)}</span>
                     </h3>
                     <p className="mn-sum">{say(tp.sum)}</p>
-                    <dl className="mn-parts">
-                      <div>
-                        <dt>{label.what}</dt>
-                        <dd>
-                          {richText(say(tp.what))}
-                          {tp.whatAlt ? (
-                            <>
-                              {" "}
-                              {richText(say(tp.whatAlt))}
-                            </>
-                          ) : null}
-                        </dd>
-                      </div>
-                      {tp.how ? (
-                        <div>
-                          <dt>{label.how}</dt>
-                          <dd>{richText(say(tp.how))}</dd>
+                    <div className="mn-parts">
+                      <Part icon={<Workflow aria-hidden />} title={label.how} text={say(tp.how)} steps />
+                      {tp.calc ? <Part icon={<Calculator aria-hidden />} title={label.calc} text={say(tp.calc)} /> : null}
+                      <Part icon={<Sparkles aria-hidden />} title={label.example} text={say(tp.example)} tone="example" />
+                      {tp.cases ? <Part icon={<CircleHelp aria-hidden />} title={label.cases} text={say(tp.cases)} cases /> : null}
+                      {tp.mistake ? <Part icon={<AlertTriangle aria-hidden />} title={label.mistake} text={say(tp.mistake)} tone="mistake" /> : null}
+                      {tp.related?.length ? (
+                        <div className="mn-part mn-related print-hide">
+                          <p className="mn-part-title">
+                            <Link2 aria-hidden />
+                            {label.related}
+                          </p>
+                          <div className="mn-related-row">
+                            {tp.related.map((rid) => {
+                              const r = findTopic(rid);
+                              return r ? (
+                                <button key={rid} type="button" className="mn-chip" onClick={() => jump(r.id)}>
+                                  <span className="mn-chip-num">{r.num}</span>
+                                  {say(r.title)}
+                                </button>
+                              ) : null;
+                            })}
+                          </div>
                         </div>
                       ) : null}
-                      {tp.tip ? (
-                        <div className="mn-tip">
-                          <dt>
-                            <Lightbulb aria-hidden />
-                            {label.tip}
-                          </dt>
-                          <dd>{richText(say(tp.tip))}</dd>
-                        </div>
-                      ) : null}
-                    </dl>
+                    </div>
                     {tp.go ? (
                       <div className="mn-go-row">
                         <button
@@ -574,5 +577,60 @@ function ManualPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+/** One section of a manual entry. Lines ("\n") become numbered steps or a list of cases. */
+function Part({
+  icon,
+  title,
+  text,
+  steps,
+  cases,
+  tone,
+}: {
+  icon: ReactNode;
+  title: string;
+  text: string;
+  steps?: boolean;
+  cases?: boolean;
+  tone?: "example" | "mistake";
+}) {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const list = lines.length > 1;
+  const lead = (line: string) => {
+    if (!cases) return richText(line);
+    const at = line.indexOf(": ");
+    if (at < 4 || at > 90) return richText(line);
+    return (
+      <>
+        <strong className="mn-case-lead">{line.slice(0, at)}:</strong> {richText(line.slice(at + 2))}
+      </>
+    );
+  };
+  return (
+    <section className={cn("mn-part", tone && `is-${tone}`)}>
+      <p className="mn-part-title">
+        {icon}
+        {title}
+      </p>
+      {list ? (
+        steps ? (
+          <ol className="mn-steps">
+            {lines.map((l, i) => (
+              <li key={i}>{richText(l)}</li>
+            ))}
+          </ol>
+        ) : (
+          <ul className={cn("mn-list", cases && "is-cases")}>
+            {lines.map((l, i) => (
+              <li key={i}>{lead(l)}</li>
+            ))}
+          </ul>
+        )
+      ) : (
+        <p className="mn-part-text">{lead(lines[0] ?? "")}</p>
+      )}
+    </section>
   );
 }

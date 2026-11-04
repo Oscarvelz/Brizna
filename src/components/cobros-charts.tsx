@@ -18,7 +18,7 @@ import { Blade, CountUp, Lead, secStyle } from "@/components/cifras-visuals";
 import { useCifraRank, type CifraId } from "@/lib/cifras-order";
 import { lastDayOfMonthISO, weekdayFromISO } from "@/lib/dates";
 import { smartHit } from "@/lib/fuzzy";
-import { findTopic, pick } from "@/lib/manual/topics";
+import { findHint, pick } from "@/lib/manual/topics";
 import { money, weekdayOptions } from "@/lib/format";
 import { reasonLabel, useI18n, useTx } from "@/lib/i18n";
 import { getFinanceStats } from "@/lib/server/lawn";
@@ -180,15 +180,17 @@ export function CobrosCharts({
           <>
             <ul className="mb-3 grid gap-1.5">
               {[...years].reverse().map((y) => (
-                <li
-                  key={y.key}
-                  className="flex items-baseline justify-between gap-2 rounded-sm bg-work-bg px-2.5 py-2"
-                >
+                <li key={y.key} className="grid gap-0.5 rounded-sm bg-work-bg px-2.5 py-2">
+                  {/* 1.4.61 (Oscar): three rows per year: the year, cuts · collected, work hours */}
                   <span className="text-sm font-semibold text-work">{y.label}</span>
-                  <span className="text-sm tabular-nums">
+                  <span className="text-sm tabular-nums whitespace-nowrap">
                     <span className="font-semibold">{y.cuts}</span>
                     <span className="text-muted">{tx(" cortes · cobrado ", " cuts · collected ")}</span>
                     <span className="font-semibold">{money(y.collected)}</span>
+                  </span>
+                  <span className="text-sm tabular-nums whitespace-nowrap">
+                    <span className="text-muted">{tx("Horas de trabajo ", "Work hours ")}</span>
+                    <span className="font-semibold">{y.minutes ? hourText(y.minutes, tx) : "—"}</span>
                   </span>
                 </li>
               ))}
@@ -439,7 +441,7 @@ function ChartBlock({
 }) {
   const rank = useCifraRank(place);
   const { locale } = useI18n();
-  const entry = findTopic(topic);
+  const entry = findHint(topic);
   if (query.trim() && !smartHit(query, `${title} ${entry ? pick(locale, entry.what) : ""} ${empty}`)) return null;
   return (
     <Fold id={id} style={secStyle(rank)} className="cif-sec" title={title} hint={<Hint topic={topic} />}>

@@ -79,6 +79,14 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
           continue;
         }
         if (getComputedStyle(el).display === "none") continue;
+        // data-masonry-under="<id>": sits in the same column as that section, right below it (balances columns).
+        const under = el.dataset.masonryUnder;
+        const host = under ? box.querySelector<HTMLElement>(`#${CSS.escape(under)}`) : null;
+        const hostCol = host && host.parentElement === box ? Number.parseInt(host.style.gridColumn, 10) : NaN;
+        if (Number.isFinite(hostCol) && hostCol > 0) {
+          el.style.gridColumn = String(hostCol);
+          continue;
+        }
         const c = (k % cols) + 1;
         el.style.gridColumn = String(c);
         last = { el, c };
