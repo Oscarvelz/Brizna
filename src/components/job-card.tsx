@@ -55,6 +55,7 @@ export function JobCard({
   const [askUndo, setAskUndo] = useState(false);
   const [askPost, setAskPost] = useState(false);
   const [askReturn, setAskReturn] = useState(false);
+  const [askPin, setAskPin] = useState(false);
   const [postDate, setPostDate] = useState(addDaysISO(job.scheduledDate, 1));
   const [reason, setReason] = useState("");
   const [method, setMethod] = useState("");
@@ -243,6 +244,7 @@ export function JobCard({
     mutationFn: () => toggleJobPin({ data: { id: job.id } }),
     onSuccess: async (res) => {
       toast(res.pinned ? tx("Fijado en Hoy", "Pinned on Today") : tx("Ya no está fijado", "No longer pinned"));
+      setAskPin(false);
       await invalidateLawn(qc);
     },
   });
@@ -265,7 +267,8 @@ export function JobCard({
       toast(tx("Este patio sigue en Hoy hasta que lo hagas, o hasta que deje de estar atrasado o en alto riesgo.", "This yard stays on Today until you finish it, or until it is no longer late or high risk."));
       return;
     }
-    pin.mutate();
+    // 1.4.63 (Oscar): pinning or unpinning asks first and says where the yard goes
+    setAskPin(true);
   }
 
   function onHecho() {
@@ -486,6 +489,32 @@ export function JobCard({
         onConfirm={() => unpostpone.mutate()}
         onCancel={() => setAskReturn(false)}
       />
+      <ConfirmDialog
+        open={askPin}
+        title={job.pinned ? tx("¿Quitar de Fijados?", "Unpin this yard?") : tx("¿Fijar este patio?", "Pin this yard?")}
+        description={
+          job.pinned
+            ? job.scheduledDate === today
+              ? tx(`${job.clientName} sale de Fijados y vuelve a su lugar en Hoy.`, `${job.clientName} leaves Pinned and goes back to its place in Today.`)
+              : tx(
+                  `${job.clientName} sale de Fijados y vuelve al ${formatDay(job.scheduledDate, "EEEE d 'de' MMMM")}.`,
+                  `${job.clientName} leaves Pinned and goes back to ${formatDay(job.scheduledDate, "EEEE, MMMM d")}.`,
+                )
+            : job.scheduledDate > addDaysISO(today, 7)
+              ? tx(
+                  `${job.clientName} pasará a Fijados, arriba en Hoy, cuando falte una semana.`,
+                  `${job.clientName} moves to Pinned, at the top of Today, once it is a week away.`,
+                )
+              : tx(
+                  `${job.clientName} pasará a Fijados, arriba en Hoy, hasta que lo hagas.`,
+                  `${job.clientName} moves to Pinned, at the top of Today, until you finish it.`,
+                )
+        }
+        confirmLabel={job.pinned ? tx("Quitar", "Unpin") : tx("Fijar", "Pin")}
+        pending={pin.isPending}
+        onConfirm={() => pin.mutate()}
+        onCancel={() => setAskPin(false)}
+      />
       <OffDayDialog
         iso={rarePost?.iso ?? null}
         kind={rarePost?.kind ?? null}
@@ -512,7 +541,7 @@ export function JobCard({
           className={cn(
             "flex min-w-0 flex-col gap-1 rounded-2xl bg-surface shadow-card ring-1 ring-primary/25",
             meshFrame(cols),
-            late && "bg-late-bg",
+            late && "bg-late-bg bz-late-card",
           )}
         >
           <div className="flex min-w-0 items-start gap-1">
@@ -566,7 +595,7 @@ export function JobCard({
         <article
           className={cn(
             "flex min-w-0 items-center gap-1.5 rounded-md bg-surface px-2 py-1 shadow-card",
-            late && "bg-late-bg",
+            late && "bg-late-bg bz-late-card",
           )}
         >
           {dragHandle && pending ? (
@@ -583,7 +612,7 @@ export function JobCard({
               job.pinned && "bz-tone-on",
             )}
           >
-            <Pin className="size-3.5" />
+            <Pin className="size-3" />
           </button>
           <Link
             to="/clientes/$id"
@@ -624,7 +653,7 @@ export function JobCard({
       className={cn(
         "min-w-0 max-w-full overflow-hidden rounded-xl bg-surface shadow-card",
         media ? "p-2.5" : "p-4",
-        late && "bg-late-bg ring-2 ring-late",
+        late && "bg-late-bg bz-late-card",
         !late && live.computedStatus === "pending" && "ring-1 ring-pending/25",
         !late && live.computedStatus === "done" && "ring-1 ring-done/20",
         !late && isOnce && "border-l-4 border-pending bg-pending-bg",
@@ -635,7 +664,7 @@ export function JobCard({
       <div className="flex items-start justify-between gap-2">
         {dragHandle && pending && !media ? (
           <span
-            className="mt-1 grid size-8 shrink-0 touch-none place-items-center rounded-sm text-muted"
+            className="bz-grip-lg grid size-8 shrink-0 touch-none place-items-center rounded-sm text-muted"
             data-drag-handle
             aria-hidden
           >
@@ -670,7 +699,7 @@ export function JobCard({
                 job.pinned && "bz-tone-on",
               )}
             >
-              <Pin className="size-4" />
+              <Pin className="size-3.5" />
             </button>
             {job.clientPhone ? (
               <MessageComposer phone={job.clientPhone} name={job.clientName} compact tight />
@@ -700,7 +729,7 @@ export function JobCard({
                 job.pinned && "bz-tone-on",
               )}
             >
-              <Pin className="size-4" />
+              <Pin className="size-3.5" />
             </button>
             {job.clientPhone ? (
               <MessageComposer phone={job.clientPhone} name={job.clientName} compact />
@@ -711,10 +740,12 @@ export function JobCard({
           </>
           )}
           {!media ? (
-            <p className="mt-1 text-sm text-muted">
-              {jobKindLabel(job.kind, job.title)}
-              {` · ${formatDay(job.scheduledDate, "EEE d MMM")}`}
-              {timeLabel ? ` · ${timeLabel}` : ""}
+            <p className="mt-1.5 flex min-w-0 items-baseline justify-between gap-3 text-sm text-muted">
+              <span className="min-w-0 font-medium text-fg/75">
+                {jobKindLabel(job.kind, job.title)}
+                {timeLabel ? ` · ${timeLabel}` : ""}
+              </span>
+              <span className="shrink-0 whitespace-nowrap tabular-nums">{capFirst(formatDay(job.scheduledDate, "EEE d MMM"))}</span>
             </p>
           ) : (
             <p className={cn("mt-1 truncate text-xs leading-none text-muted", dragHandle && pending && "pl-10")}>
@@ -819,4 +850,8 @@ export async function invalidateLawn(qc: ReturnType<typeof useQueryClient>) {
     qc.invalidateQueries({ queryKey: ["client-changes"] }),
     qc.invalidateQueries({ queryKey: ["week-off"] }),
   ]);
+}
+
+function capFirst(text: string): string {
+  return text ? text.charAt(0).toLocaleUpperCase() + text.slice(1) : text;
 }

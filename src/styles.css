@@ -1667,8 +1667,8 @@ button.bz-sample-chip:hover { background: color-mix(in srgb, var(--color-abono, 
 /* 1.4.62 (Oscar): job-card action icons each get their own tone: a tinted chip + fine ring, never solid.
    Fixed hues spaced around the wheel so no two ever match in any theme:
    Fijar = rose, Mensaje = cyan, WA = green, Llamar = indigo, Posponer = amber, Mapa = red. */
-:root { --tone-pin: #b0306a; --tone-msg: #0b7285; --tone-wa: #1b7a3a; --tone-call: #4a4fc4; --tone-post: #a35400; --tone-map: #c0392b; }
-html.theme-dark, html.theme-amoled { --tone-pin: #ff8fc0; --tone-msg: #6fdcf0; --tone-wa: #7ee08f; --tone-call: #aeb0ff; --tone-post: #ffb35c; --tone-map: #ff8b7b; }
+:root { --tone-pin: #b0306a; --tone-msg: #0b7285; --tone-wa: #1b7a3a; --tone-call: #3f6a8f; --tone-post: #a35400; --tone-map: #c0392b; }
+html.theme-dark, html.theme-amoled { --tone-pin: #ff8fc0; --tone-msg: #6fdcf0; --tone-wa: #7ee08f; --tone-call: #9cbcd9; --tone-post: #ffb35c; --tone-map: #ff8b7b; }
 .bz-tone {
   --bz-t: var(--color-fg);
   background: color-mix(in oklab, var(--bz-t) 14%, var(--color-surface)) !important;
@@ -1699,3 +1699,15 @@ html.theme-dark .bz-tone.bz-tone-on, html.theme-amoled .bz-tone.bz-tone-on { bac
 /* 1.4.62: the round + button steps aside while the view-mode row passes under it (density-toggle.tsx). */
 .alive-fab { transition: opacity .18s ease, transform .18s ease; }
 html[data-fab-tuck] .alive-fab { opacity: 0; transform: scale(.6); pointer-events: none; }
+
+/* 1.4.63 (Oscar): late yards get their own solid tone border (inset, keeps card size) */
+.bz-late-card { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-late) 72%, transparent), var(--shadow-card) !important; }
+html.theme-dark .bz-late-card, html.theme-amoled .bz-late-card { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-late) 62%, transparent), var(--shadow-card) !important; }
+/* Grande grip: vertical center on the name's first line (text-lg, leading-snug) */
+.bz-grip-lg { margin-top: calc((1.125rem * 1.375 - 2rem) / 2); }
+/* Hoy day title: one soft leaf sheen + a thin grass line that grows once and stays */
+.bz-today-title { position: relative; background-image: linear-gradient(100deg, var(--color-today) 42%, color-mix(in oklab, var(--color-today) 45%, #d9f5c4) 50%, var(--color-today) 58%); background-size: 260% 100%; background-position: 0% 0; -webkit-background-clip: text; background-clip: text; color: transparent; animation: bz-today-sheen 1.1s cubic-bezier(0.22, 0.61, 0.36, 1) 0.12s both; }
+.bz-today-title::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; border-radius: 2px; background: color-mix(in oklab, var(--color-today) 45%, transparent); transform-origin: left center; animation: bz-today-line 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) 0.35s both; }
+@keyframes bz-today-sheen { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+@keyframes bz-today-line { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bz-today-title, .bz-today-title::after { animation: none; } }

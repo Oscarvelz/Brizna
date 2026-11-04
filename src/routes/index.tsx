@@ -399,12 +399,13 @@ function Home() {
       <SettleDay jobs={data?.today ?? []} open={askAll} onClose={() => setAskAll(false)} />
       <ConfirmDialog
         open={askSkip}
-        title={tx("¿Cerrar con un toque hoy?", "Close in one tap today?")}
+        title={tx("¿Quitar la confirmación hoy?", "Skip confirming today?")}
         description={tx(
-          "Un toque en Hecho lo cierra: cobrado si paga el mismo día, si no, a su cuenta.",
-          "One tap on Done closes it: paid if they pay same day, otherwise on their balance.",
+          "Hoy, Hecho marca cada cliente sin preguntarte. Mañana vuelve a pedirla.",
+          "Today, Done marks each client without asking every time. It asks again tomorrow.",
         )}
         confirmLabel={tx("Activar", "Turn on")}
+        cancelLabel={tx("Cancelar", "Cancel")}
         onConfirm={() => {
           setAskSkip(false);
           setHechoConfirmSkipped(true, today);
@@ -715,10 +716,11 @@ function DayFold({
       <div className="flex min-h-12 items-center gap-2 px-3">
         <button type="button" onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-2 text-left">
           <span
+            key={tone === "today" ? `t-${open}` : undefined}
             className={cn(
               "font-display text-base font-semibold",
               tone === "late" && "text-late",
-              tone === "today" && "text-today",
+              tone === "today" && "text-today bz-today-title",
             )}
           >
             {title}

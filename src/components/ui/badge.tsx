@@ -32,14 +32,17 @@ export function StatusBadge({ status }: { status: ComputedStatus }) {
   };
   const item = map[status];
   const Icon = item.icon;
+  // 1.4.63 (Oscar): Tarde reads a bit larger than the other states
+  const big = status === "late";
   return (
     <span
       className={cn(
-        "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-semibold tracking-tight",
+        "inline-flex items-center gap-1 rounded-full font-semibold tracking-tight",
+        big ? "h-8 px-3 text-sm" : "h-7 px-2.5 text-xs",
         item.className,
       )}
     >
-      <Icon className="size-3.5" strokeWidth={2.4} />
+      <Icon className={big ? "size-4" : "size-3.5"} strokeWidth={2.4} />
       {item.label}
     </span>
   );

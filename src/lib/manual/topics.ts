@@ -148,8 +148,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Done closes a yard by one of three paths: paid (green), unpaid (red), or partial (yellow).",
         ],
         how: [
-          "Toca Hecho en el patio y elige el camino.\nBrizna pide confirmar. Con Sin confirmación extra por hoy, un solo toque lo cierra como cobrado (si paga el mismo día) o pendiente (si se le acumula); esa casilla vale solo hoy y en este equipo.\nPuedes anotar el método (efectivo, tarjeta…) y una propina.\nEl patio pasa a Hechos hoy y la cuenta del cliente se actualiza al momento.",
-          "Tap Done on the yard and pick the path.\nBrizna asks you to confirm. With No extra confirmation for today, one tap closes it as paid (same-day payer) or unpaid (it adds up); that box lasts only today, on this device.\nYou can note the method (cash, card…) and a tip.\nThe yard moves to Done today and the client's account updates at once.",
+          "Toca Hecho en el patio y elige el camino.\nBrizna pide confirmar. Con Sin confirmación extra por hoy, al tocar Hecho cada cliente de hoy se marca al instante, sin preguntarte cada vez: queda cobrado si paga el mismo día, o pendiente (sumado a su cuenta) si se le acumula. No anota propina ni abono; para eso desmarca la casilla. Vale solo hoy y en este equipo: mañana vuelve a pedirla.\nPuedes anotar el método (efectivo, tarjeta…) y una propina.\nEl patio pasa a Hechos hoy y la cuenta del cliente se actualiza al momento.",
+          "Tap Done on the yard and pick the path.\nBrizna asks you to confirm. With No extra confirmation for today, tapping Done marks each of today's clients right away, without asking every time: paid if they pay the same day, or unpaid (added to their balance) if it adds up. It records no tip or partial payment; for that, untick the box. It lasts only today, on this device: it asks again tomorrow.\nYou can note the method (cash, card…) and a tip.\nThe yard moves to Done today and the client's account updates at once.",
         ],
         calc: [
           "Cobrado: anota un pago por el precio de ese corte. No toca la deuda vieja.\nPendiente: suma el precio a la deuda. Si el cliente tenía adelanto, se usa primero.\nAbonado: suma el precio a la deuda y resta lo que te dieron. Si te dan más que toda la deuda, lo que sobra queda como adelanto.",
@@ -1798,8 +1798,8 @@ export const HINT_ONLY: HintOnly[] = [
     id: "sin-confirmacion",
     into: "hecho",
     what: [
-      "Solo vale para hoy. Mañana vuelve a pedir confirmación, para no marcar un patio por error.",
-      "Only for today. Tomorrow it asks for confirmation again, so you do not mark a yard by mistake.",
+      "Hoy, Hecho marca cada cliente sin preguntarte. Mañana vuelve a pedirla.",
+      "Today, Done marks each client without asking every time. It asks again tomorrow.",
     ],
   },
   {
