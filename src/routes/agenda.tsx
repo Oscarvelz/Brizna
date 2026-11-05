@@ -2,7 +2,7 @@ import { WideSplit } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { markJump } from "@/lib/jump-back";
-import { ChevronDown, ChevronLeft, ChevronRight, Palmtree, Pin, Search } from "lucide-react";
+import { AlertTriangle, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, Palmtree, Pin, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -16,7 +16,6 @@ import { Hint } from "@/components/hint";
 import { invalidateLawn, JobCard } from "@/components/job-card";
 import { ReasonChips } from "@/components/reason-chips";
 import { ReorderableJobs } from "@/components/reorder-jobs";
-import { Button } from "@/components/ui/button";
 import { Input, NativeSelect } from "@/components/ui/input";
 import {
   addDaysISO,
@@ -524,13 +523,16 @@ function AgendaPage() {
             {tx("Trabajo acumulado", "Accumulated work")}
             <Hint topic="trabajo-acumulado" />
           </p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" disabled={overdueCount === 0} onClick={() => setAskAcc("overdue")}>
+          <div className="bz-acc-acts mt-2 grid grid-cols-2 gap-2">
+            {/* 1.4.72: same tone controls as Hoy (icon + tone hairline; calm disabled state). */}
+            <button type="button" className="bz-actbtn is-late" disabled={overdueCount === 0} onClick={() => setAskAcc("overdue")}>
+              <AlertTriangle aria-hidden />
               {tx("Pasar atrasados", "Move late ones")}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setAskAcc("today")}>
+            </button>
+            <button type="button" className="bz-actbtn is-due" onClick={() => setAskAcc("today")}>
+              <CalendarClock aria-hidden />
               {tx("Pasar los de hoy", "Move today's jobs")}
-            </Button>
+            </button>
           </div>
         </section>
       ) : null}
@@ -606,14 +608,19 @@ function AgendaPage() {
                   return (
                     <section key={date}>
                       {week !== prevWeek ? (
-                        <div className="mb-2 rounded-md bg-soil-bg px-3 py-2 text-sm text-soil">
-                          <p className="font-semibold">{tx(`Semana del ${formatDay(week, "d 'de' MMMM")}`, `Week of ${formatDay(week, "MMMM d")}`)}</p>
-                          <p>
-                            {tx(
-                              `${weekCount} ${weekCount === 1 ? "patio" : "patios"} en esta semana. La siguiente empieza el ${formatDay(addDaysISO(week, 7), "d MMM")}.`,
-                              `${weekCount} ${weekCount === 1 ? "yard" : "yards"} this week. The next one starts on ${formatDay(addDaysISO(week, 7), "d MMM")}.`,
-                            )}
-                          </p>
+                        <div className="bz-wk mb-2" role="group" aria-label={tx(`Semana del ${formatDay(week, "d 'de' MMMM")}`, `Week of ${formatDay(week, "MMMM d")}`)}>
+                          {/* 1.4.72: each week its own bubble: day-range badge + title + yards pill on one line. */}
+                          <span className="bz-wk-badge" aria-hidden>
+                            <b>{formatDay(week, "d")}–{formatDay(addDaysISO(week, 6), "d")}</b>
+                            <small>
+                              {formatDay(week, "MMM").replace(".", "")}
+                              {formatDay(week, "M") !== formatDay(addDaysISO(week, 6), "M") ? `–${formatDay(addDaysISO(week, 6), "MMM").replace(".", "")}` : ""}
+                            </small>
+                          </span>
+                          <p className="bz-wk-title">{tx(`Semana del ${formatDay(week, "d 'de' MMMM")}`, `Week of ${formatDay(week, "MMMM d")}`)}</p>
+                          <span className="bz-wk-count">
+                            {tx(`${weekCount} ${weekCount === 1 ? "patio" : "patios"}`, `${weekCount} ${weekCount === 1 ? "yard" : "yards"}`)}
+                          </span>
                         </div>
                       ) : null}
                       <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
