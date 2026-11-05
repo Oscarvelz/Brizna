@@ -253,7 +253,7 @@ function ClientDetailPage() {
             <UpcomingCuts jobs={(data?.jobs ?? []).filter((j) => j.status === "pending")} />
           </section>
 
-          <section className="mt-8">
+          <section id="historial" data-spot="historial" className="mt-8">
             <HistoryBlock
               clientId={client.id}
               since={client.startDate || client.createdAt}
@@ -399,7 +399,7 @@ function ClientDetailPage() {
             </div>
           </section>
 
-          <section className="bz-debt mt-4 min-w-0 max-w-full overflow-hidden rounded-xl border-l-4 border-money bg-money-bg p-4 shadow-card">
+          <section data-spot="ficha-deuda" className="bz-debt mt-4 min-w-0 max-w-full overflow-hidden rounded-xl border-l-4 border-money bg-money-bg p-4 shadow-card">
             {/* 1.4.75 (Oscar: "necesita un toque más premium y ajuste fino"): one header line, figures with Perdonar,
                 chip rows that fill evenly, one segmented pay control, then Trabajo extra | Pausa on one line. */}
             <div className="flex min-w-0 items-center justify-between gap-2">

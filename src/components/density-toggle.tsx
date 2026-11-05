@@ -133,7 +133,7 @@ export function DensityToggle() {
       {OPTIONS.map((opt) => {
         const Icon = opt.icon;
         const on = density === opt.value;
-        const label = opt.value === "quad" && on ? `${t(opt.key)} ×${cols}` : t(opt.key);
+        const label = opt.value === "quad" && on && cols !== 2 ? `${t(opt.key)} ×${cols}` : t(opt.key);
         return (
           <button
             key={opt.value}

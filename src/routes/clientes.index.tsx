@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Archive, Check, ChevronDown, Filter, MapPin, Phone, Pin, Plus, Search, Trash2, UserCheck, UserMinus } from "lucide-react";
+import { AlertCircle, Archive, CalendarDays, Check, ChevronDown, ChevronRight, Filter, HandCoins, MapPin, Phone, Pin, PiggyBank, Plus, Scissors, Search, ShieldAlert, Sparkles, Trash2, UserCheck, UserMinus, Wallet, Ban, Hourglass } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -11,7 +12,10 @@ import { CueChip } from "@/components/cue-chip";
 import { DensityScope, DensityToggle, useDensity, useQuadCols } from "@/components/density-toggle";
 import { Hint } from "@/components/hint";
 import { ScrollTop } from "@/components/scroll-top";
-import { invalidateLawn } from "@/components/job-card";
+import { FitLine, OneLineName, invalidateLawn } from "@/components/job-card";
+import { requestFocus } from "@/lib/manual/nav";
+import { todayISO } from "@/lib/dates";
+import type { QuadCols } from "@/lib/density";
 import { SwipeRow } from "@/components/swipe-row";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -735,7 +739,8 @@ function ClientListCard({
           data-spot="lista-clientes ficha-deuda precio movimientos cambios-hechos"
           className={cn(
             "min-w-0 max-w-full overflow-hidden rounded-xl bg-surface shadow-card",
-            quad ? meshFrame(cols) : dense ? "px-2 py-1.5" : media ? "p-2.5" : "p-4",
+            quad ? meshFrame(cols) : dense ? "px-2 py-1.5" : media ? "bz-ccard is-media px-3.5 pt-3 pb-3" : "bz-ccard is-grande px-4 pt-3.5 pb-4",
+            quad && "bz-ccard is-quad",
             client.overdueDate && "border-l-4 border-late bg-late-bg",
             !client.overdueDate && client.balance > 0 && "border-l-4 border-money",
             !client.overdueDate &&
@@ -763,6 +768,7 @@ function ClientListCard({
                 {selected ? <Check className="size-5" /> : null}
               </button>
             ) : null}
+            {dense ? (
             <div className="min-w-0 flex-1">
               <div className="flex items-start gap-1">
                 <Link to="/clientes/$id" params={{ id: String(client.id) }} className="min-w-0 flex-1 block">
@@ -917,6 +923,9 @@ function ClientListCard({
                 </Link>
               )}
             </div>
+            ) : (
+              <ClientCardBody client={client} mode={quad ? "quad" : media ? "media" : "grande"} cols={cols} />
+            )}
           </div>
         </article>
       </SwipeRow>
@@ -956,5 +965,236 @@ function ClientListCard({
         onCancel={() => setAskDel(false)}
       />
     </>
+  );
+}
+
+
+/* ------------------------------------------------------------------ 1.4.76 card body (Grande, Media, Malla) */
+
+function daysSince(iso: string): number {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  const [ty, tm, td] = todayISO().split("-").map(Number);
+  return Math.max(0, Math.round((Date.UTC(ty!, tm! - 1, td!) - Date.UTC(y!, m! - 1, d!)) / 86_400_000));
+}
+
+function owesOther(client: ClientRow) {
+  return client.balance > 0 && Math.round(client.balance * 100) !== Math.round(client.pricePerCut * 100);
+}
+
+/** The one state that belongs beside the actions: late first, then money owed, archive, then the next cut. */
+function StateChip({ client, size = "md" }: { client: ClientRow; size?: "md" | "sm" | "xs" | "dot" }) {
+  const tx = useTx();
+  const cls = cn("bz-state", size !== "md" && `is-${size}`);
+  if (client.overdueDate) {
+    const n = daysSince(client.overdueDate);
+    const days = n === 1 ? tx("1 día", "1 day") : tx(`${n} días`, `${n} days`);
+    return (
+      <span className={cn(cls, "is-late")} title={tx(`Atrasado desde ${formatDay(client.overdueDate, "d MMM")}`, `Late since ${formatDay(client.overdueDate, "d MMM")}`)}>
+        <AlertCircle aria-hidden />
+        {size === "dot" ? <span className="sr-only">{tx("Atrasado", "Late")} {days}</span> : size === "xs" ? days : (
+          <>
+            {tx("Atrasado", "Late")}
+            {n > 0 ? <span className="bz-state-sub"> · {days}</span> : null}
+          </>
+        )}
+      </span>
+    );
+  }
+  if (owesOther(client)) {
+    return (
+      <span className={cn(cls, "is-money")} title={tx(`Debe ${money(client.balance)}`, `Owes ${money(client.balance)}`)}>
+        <HandCoins aria-hidden />
+        {size === "dot" ? <span className="sr-only">{tx("Debe", "Owes")} {money(client.balance)}</span> : size === "xs" ? money(client.balance) : (
+          <>
+            {tx("Debe", "Owes")} <b>{money(client.balance)}</b>
+          </>
+        )}
+      </span>
+    );
+  }
+  if (!client.isActive) {
+    return (
+      <span className={cn(cls, "is-soil")} title={tx("Archivo", "Archive")}>
+        <Archive aria-hidden />
+        {size === "dot" ? <span className="sr-only">{tx("Archivo", "Archive")}</span> : tx("Archivo", "Archive")}
+      </span>
+    );
+  }
+  if (client.nextCutDate) {
+    return (
+      <span className={cn(cls, "is-next")} title={tx("Próximo corte", "Next cut")}>
+        <CalendarDays aria-hidden />
+        {formatDay(client.nextCutDate, "d MMM")}
+      </span>
+    );
+  }
+  return null;
+}
+
+/** A small state button: tone ring, slight lift, chevron, spring press and a tone bloom where you touch. */
+function ActChip({
+  tone,
+  icon,
+  children,
+  onGo,
+}: {
+  tone: "money" | "done" | "pending" | "hold" | "late" | "fg";
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  onGo: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={cn("bz-actchip", `is-${tone}`)}
+      onPointerDown={(e) => {
+        const el = e.currentTarget;
+        const r = el.getBoundingClientRect();
+        el.style.setProperty("--bx", `${e.clientX - r.left}px`);
+        el.style.setProperty("--by", `${e.clientY - r.top}px`);
+        el.classList.remove("is-bloom");
+        void el.offsetWidth;
+        el.classList.add("is-bloom");
+      }}
+      onAnimationEnd={(e) => e.currentTarget.classList.remove("is-bloom")}
+      onClick={onGo}
+    >
+      <span className="bz-actchip-ic" aria-hidden>
+        {icon}
+      </span>
+      <span className="min-w-0">{children}</span>
+      <ChevronRight className="bz-actchip-chev" aria-hidden />
+    </button>
+  );
+}
+
+function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "grande" | "media" | "quad"; cols: QuadCols }) {
+  const tx = useTx();
+  const navigate = useNavigate();
+  const freq =
+    client.kind === "one_time"
+      ? [tx("Trabajo de una vez", "One-time job")]
+      : [
+          `${frequencyLabel(client.cutsPerMonth, { frequencyDays: client.frequencyDays, weekday2: client.weekday2 })} · ${weekdayLabel(client.weekday)}`,
+          frequencyLabel(client.cutsPerMonth, { frequencyDays: client.frequencyDays, weekday2: client.weekday2 }),
+        ];
+  const openFile = (topic?: string, setup?: () => void) => {
+    const path = `/clientes/${client.id}`;
+    setup?.();
+    if (topic) requestFocus({ topic, path });
+    void navigate({ to: "/clientes/$id", params: { id: String(client.id) } });
+  };
+  const toDebt = () => openFile("ficha-deuda");
+  const toHistory = () =>
+    openFile("historial", () => {
+      try {
+        localStorage.setItem(`ols-hist-${client.id}`, "1");
+      } catch {
+        /* ignore */
+      }
+    });
+
+  if (mode === "quad") {
+    const x4 = cols === 4;
+    const x3 = cols === 3;
+    return (
+      <div className="min-w-0 flex-1">
+        <Link to="/clientes/$id" params={{ id: String(client.id) }} className="block min-w-0">
+          <div className={cn("flex min-w-0 items-baseline gap-1.5", x3 || x4 ? "" : "justify-between")}>
+            <MeshName name={client.name} cols={cols} className="min-w-0 flex-1" />
+            {!x3 && !x4 ? <span className="bz-cprice is-quad2 shrink-0">{money(client.pricePerCut)}</span> : null}
+          </div>
+          {!x3 && !x4 ? <FitLine forms={freq} className="bz-csub is-quad mt-0.5" /> : null}
+          {x3 || x4 ? (
+            <div className="mt-1 flex min-w-0 items-center justify-between gap-1">
+              <span className={cn("bz-cprice", x4 ? "is-quad4" : "is-quad3")}>{money(client.pricePerCut)}</span>
+              {client.overdueDate || owesOther(client) || !client.isActive ? (
+                <StateChip client={client} size={x4 ? "dot" : "xs"} />
+              ) : client.nextCutDate && !x4 ? (
+                <span className="bz-cmeta">{formatDay(client.nextCutDate, "d MMM")}</span>
+              ) : null}
+            </div>
+          ) : null}
+        </Link>
+        {!x4 ? (
+          <div className="mt-1.5 flex min-w-0 items-center justify-between gap-1">
+            <ContactIcons phone={client.phone} address={client.address} name={client.name} tight variant="some" className="flex-nowrap" />
+            {!x3 ? <StateChip client={client} size="xs" /> : null}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  const grande = mode === "grande";
+  const chips: React.ReactNode[] = [];
+  if (grande) {
+    if (client.balance > 0 && !(owesOther(client) && !client.overdueDate))
+      chips.push(
+        <ActChip key="due" tone="money" icon={<HandCoins />} onGo={toDebt}>
+          {tx("Por cobrar", "To collect")} {money(client.balance)}
+        </ActChip>,
+      );
+    if (client.credit > 0)
+      chips.push(
+        <ActChip key="credit" tone="done" icon={<PiggyBank />} onGo={toDebt}>
+          {tx("Adelanto", "Advance")} {money(client.credit)}
+        </ActChip>,
+      );
+    if (client.tripleCut)
+      chips.push(
+        <ActChip key="triple" tone="pending" icon={<Scissors />} onGo={toHistory}>
+          {tx(`${client.cutsThisMonth} cortes este mes`, `${client.cutsThisMonth} cuts this month`)}
+        </ActChip>,
+      );
+    if (client.hasExtra)
+      chips.push(
+        <ActChip key="extra" tone="money" icon={<Sparkles />} onGo={toHistory}>
+          Extra
+        </ActChip>,
+      );
+    if (client.payTier === "espera")
+      chips.push(
+        <ActChip key="espera" tone="hold" icon={<Hourglass />} onGo={() => void navigate({ to: "/cobros", search: { view: "espera" } as never })}>
+          {tx("En espera", "Waiting")}
+        </ActChip>,
+      );
+    if (client.highRisk)
+      chips.push(
+        <ActChip key="risk" tone="hold" icon={<ShieldAlert />} onGo={toDebt}>
+          {tx("Alto riesgo", "High risk")}
+        </ActChip>,
+      );
+    if (client.blacklisted)
+      chips.push(
+        <ActChip key="black" tone="fg" icon={<Ban />} onGo={() => openFile()}>
+          {tx("Lista negra", "Blacklist")}
+        </ActChip>,
+      );
+    if (client.paySameDay)
+      chips.push(
+        <ActChip key="today" tone="done" icon={<Wallet />} onGo={toDebt}>
+          {tx("Paga hoy", "Pays today")}
+        </ActChip>,
+      );
+  }
+  return (
+    <div className="min-w-0 flex-1">
+      <Link to="/clientes/$id" params={{ id: String(client.id) }} className="block min-w-0">
+        <div className="bz-ctop flex min-w-0 items-start gap-3">
+          <span className={cn("bz-cname block min-w-0 flex-1 font-semibold", grande ? "font-display is-grande" : "is-media")}>
+            <OneLineName name={client.name} minRem={grande ? 1.25 : 1.0625} maxRem={grande ? 1.6 : 1.3125} />
+          </span>
+          <span className={cn("bz-cprice shrink-0", grande ? "is-grande" : "is-media")}>{money(client.pricePerCut)}</span>
+        </div>
+        <FitLine forms={freq} underName sizes={grande ? [0.8125, 0.75] : [0.75, 0.71875]} className={cn("bz-csub", grande ? "is-grande" : "is-media")} />
+      </Link>
+      {grande && client.cue ? <CueChip text={client.cue} full className="mt-1.5" /> : null}
+      <div className={cn("flex min-w-0 items-center justify-between gap-2", grande ? "mt-3" : "mt-2.5")}>
+        <ContactIcons phone={client.phone} address={client.address} name={client.name} tight={!grande} className="flex-nowrap" />
+        <StateChip client={client} size={grande ? "md" : "sm"} />
+      </div>
+      {chips.length > 0 ? <div className="bz-chiprow mt-3">{chips}</div> : null}
+    </div>
   );
 }

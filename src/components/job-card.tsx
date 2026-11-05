@@ -891,7 +891,7 @@ function nameForms(full: string): string[] {
 
 /** 1.4.67 (Oscar): the name grows to use the room it has (between `minRem` and `maxRem`), still one
     line. A long name first drops its middle names (as before) and never goes below `minRem`. */
-function OneLineName({ name, minRem, maxRem }: { name: string; minRem?: number; maxRem?: number }) {
+export function OneLineName({ name, minRem, maxRem }: { name: string; minRem?: number; maxRem?: number }) {
   const forms = nameForms(name);
   const [step, setStep] = useState(0);
   const ref = useRef<HTMLSpanElement | null>(null);
@@ -952,7 +952,7 @@ function OneLineName({ name, minRem, maxRem }: { name: string; minRem?: number; 
     fit, the date drops its weekday. 1.4.67 (Oscar): the name above stays the widest line, so the subline
     takes the first option narrower than the name: full, no weekday, then a slightly smaller font (never
     under 0.8rem). If none is narrower (a very short name), it takes the narrowest that fits. */
-function FitLine({ forms, className, underName, lastResort }: { forms: string[]; className?: string; underName?: boolean; lastResort?: string }) {
+export function FitLine({ forms, className, underName, lastResort, sizes }: { forms: string[]; className?: string; underName?: boolean; lastResort?: string; /** 1.4.76: try these smaller sizes for each form before dropping to the next form. */ sizes?: number[] }) {
   const [pick, setPick] = useState<{ i: number; rem: number | null }>({ i: 0, rem: null });
   const ref = useRef<HTMLParagraphElement | null>(null);
   const all = lastResort && lastResort !== forms[forms.length - 1] ? [...forms, lastResort] : forms;
@@ -990,8 +990,10 @@ function FitLine({ forms, className, underName, lastResort }: { forms: string[];
       const twin = document.createElement("span");
       twin.style.cssText = "position:absolute;visibility:hidden;left:-9999px;top:0;white-space:nowrap";
       el.appendChild(twin);
-      const options: { i: number; rem: number | null }[] = forms.map((_, i) => ({ i, rem: null }));
-      if (underName) for (const rem of [0.8125, 0.8]) for (let i = 0; i < forms.length; i += 1) options.push({ i, rem });
+      const options: { i: number; rem: number | null }[] = sizes
+        ? forms.flatMap((_, i) => [{ i, rem: null }, ...sizes.map((rem) => ({ i, rem }))])
+        : forms.map((_, i) => ({ i, rem: null }));
+      if (underName && !sizes) for (const rem of [0.8125, 0.8]) for (let i = 0; i < forms.length; i += 1) options.push({ i, rem });
       // still wider than the name: the time goes (Oscar: weekday first, then time), at the normal size if it fits
       if (underName && all.length > forms.length) for (const rem of [null, 0.8125, 0.8]) options.push({ i: forms.length, rem });
       let best: { i: number; rem: number | null } | null = null;
@@ -1020,7 +1022,7 @@ function FitLine({ forms, className, underName, lastResort }: { forms: string[];
     if (nameEl) ro.observe(nameEl);
     return () => { ro.disconnect(); if (raf) cancelAnimationFrame(raf); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, underName]);
+  }, [key, underName, sizes?.join(",")]);
   return (
     <p ref={ref} className={cn("relative whitespace-nowrap", className)} style={pick.rem ? { fontSize: `${pick.rem}rem` } : undefined} data-card-subline>
       {all[Math.min(pick.i, all.length - 1)]}
