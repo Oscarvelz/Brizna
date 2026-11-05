@@ -574,7 +574,7 @@ export function JobCard({
           className={cn(
             "bz-jq bz-cq flex h-full min-w-0 flex-col rounded-2xl bg-surface shadow-card ring-1 ring-primary/25",
             `is-c${cols}`,
-            late && "bg-late-bg bz-late-card",
+            late && "bg-late-bg bz-late-card bz-late-glow",
           )}
         >
           <div className="flex min-w-0 items-start gap-1">
@@ -621,7 +621,7 @@ export function JobCard({
         <article
           className={cn(
             "flex min-w-0 items-center gap-1.5 rounded-md bg-surface px-2 py-1 shadow-card",
-            late && "bg-late-bg bz-late-card",
+            late && "bg-late-bg bz-late-card bz-late-glow",
           )}
         >
           {dragHandle && pending ? (
@@ -681,6 +681,7 @@ export function JobCard({
         "min-w-0 max-w-full overflow-hidden rounded-xl bg-surface shadow-card",
         media ? "p-2.5" : "p-4",
         late && "bg-late-bg bz-late-card",
+        late && media && "bz-late-glow",
         !late && live.computedStatus === "pending" && "ring-1 ring-pending/25",
         !late && live.computedStatus === "done" && "ring-1 ring-done/20",
         !late && isOnce && "border-l-4 border-pending bg-pending-bg",
