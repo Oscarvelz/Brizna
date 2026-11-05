@@ -1,3 +1,4 @@
+import type React from "react";
 import { Calculator, GripHorizontal } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
@@ -372,6 +373,27 @@ export function CalcButton({ pressed, onClick }: { pressed: boolean; onClick: ()
   );
 }
 
+/** Grid shape for n presets + Calculadora (2+ slots, always beside at least one preset, never alone). */
+function mcalcStyle(n: number) {
+  let c = 4;
+  let span = 4;
+  for (const k of [4, 3, 5, 6]) {
+    const rest = n % k;
+    if (n > 0 && rest > 0 && rest + 2 <= k) {
+      c = k;
+      span = k - rest;
+      break;
+    }
+  }
+  const wide = n > 0 && n <= 7;
+  return {
+    ["--mc-c2" as string]: c,
+    ["--mc-s2" as string]: span,
+    ["--mc-c1" as string]: wide ? n + 2 : c,
+    ["--mc-s1" as string]: wide ? 2 : span,
+  } as React.CSSProperties;
+}
+
 export function MoneyCalc({
   value,
   onChange,
@@ -417,37 +439,41 @@ export function MoneyCalc({
 
   return (
     <div>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {presets.map((n) => (
+      {/* 1.4.75: presets and Calculadora fill their rows evenly (Calculadora takes the free slots of the
+          last row, never a row of its own); one row when the box is wide. */}
+      <div className="bz-mcalc mt-3" style={mcalcStyle(presets.length)}>
+        <div className="bz-mcalc-grid">
+          {presets.map((n) => (
+            <button
+              key={n}
+              type="button"
+              aria-pressed={Number(value) === n}
+              onClick={() => {
+                const apply = () => {
+                  onChange(String(n));
+                  setExpr(String(n));
+                };
+                if (guardPreset) guardPreset(n, apply);
+                else apply();
+              }}
+              className={cn("bz-mchip", Number(value) === n && "is-on")}
+            >
+              ${n}
+            </button>
+          ))}
           <button
-            key={n}
             type="button"
+            aria-expanded={open}
             onClick={() => {
-              const apply = () => {
-                onChange(String(n));
-                setExpr(String(n));
-              };
-              if (guardPreset) guardPreset(n, apply);
-              else apply();
+              setExpr(value);
+              setOpen((v) => !v);
             }}
-            className={cn(
-              "h-10 min-w-12 rounded-sm bg-surface px-2 text-sm font-semibold shadow-card",
-              Number(value) === n && "ring-2 ring-primary",
-            )}
+            className={cn("bz-mchip is-calc", open && "is-on")}
           >
-            ${n}
+            <Calculator aria-hidden />
+            {tx("Calculadora", "Calculator")}
           </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => {
-            setExpr(value);
-            setOpen((v) => !v);
-          }}
-          className="h-10 rounded-sm bg-surface px-3 text-sm font-semibold shadow-card"
-        >
-          {tx("Calculadora", "Calculator")}
-        </button>
+        </div>
       </div>
       {open ? (
         <div

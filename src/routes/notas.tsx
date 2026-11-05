@@ -589,7 +589,7 @@ function PadBody({
             setSaved(false);
             if (page) stash(bodyRef.current, next);
           }}
-          className="mb-2"
+          className="bz-inset mb-2 font-semibold"
           aria-label={t("notes.titleLabel")}
         />
         {draftOn || page ? (
@@ -600,7 +600,7 @@ function PadBody({
             find={noteFindOn ? noteFind : ""}
             clients={data.clients}
             cornerUndo
-            placeholder={tx("Escribe… @ y el nombre del cliente lo deja en su ficha.", "Write… @ and the client name saves it on their file.")}
+            placeholder={tx("Escribe. Con @ y el nombre del cliente queda en su ficha.", "Write. With @ and the client name it goes on their file.")}
             onDraft={(text) => {
               if (draftOn) {
                 draftBody.current = text;
@@ -661,7 +661,7 @@ function PadBody({
               {t("notes.delete")}
             </Button>
           ) : null}
-          <p className="text-xs text-muted">{saved ? t("notes.saved") : tx("Sin guardar", "Not saved")}</p>
+          <span className={cn("bz-pad-status ml-0", !saved && "is-wait")} role="status">{saved ? t("notes.saved") : tx("Sin guardar", "Not saved")}</span>
         </div>
         </>
         )}

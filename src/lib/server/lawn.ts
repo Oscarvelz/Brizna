@@ -1213,8 +1213,9 @@ export const getClient = createServerFn({ method: "GET" })
       note: string | null;
       method: string | null;
       paid_at: unknown;
+      tip: unknown;
     }>(
-      `select id, client_id, amount, kind, note, method, paid_at
+      `select id, client_id, amount, kind, note, method, paid_at, tip
          from payments
         where user_id = $1 and client_id = $2
         order by paid_at desc, id desc
@@ -1241,6 +1242,7 @@ export const getClient = createServerFn({ method: "GET" })
       note: p.note,
       method: p.method,
       paidAt: asIsoStamp(p.paid_at),
+      tip: money(p.tip),
     }));
     const photoRows: ClientPhoto[] = photos.map((p) => ({
       id: intId(p.id),

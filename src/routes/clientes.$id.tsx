@@ -2,8 +2,9 @@ import { WideSplit } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { MessageComposer, WhatsAppButton } from "@/components/message-composer";
-import { ChevronDown, Download, Pencil, Phone } from "lucide-react";
+import { Search, Archive, CalendarCheck, CalendarClock, CalendarDays, ChevronDown, Clock, Download, HandHeart, NotebookPen, Pencil, Phone, Plus, ReceiptText, Scissors, StickyNote, Wallet, History } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type React from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { AddressLine } from "@/components/address-line";
@@ -232,8 +233,8 @@ function ClientDetailPage() {
                 ? tx(" · Sin pagos todavía", " · No payments yet")
                 : client.daysSincePay != null
                 ? tx(
-                    ` · ${client.daysSincePay} días desde el último pago o corte`,
-                    ` · ${client.daysSincePay} days since the last payment or cut`,
+                    ` · ${client.daysSincePay} ${client.daysSincePay === 1 ? "día" : "días"} desde el último pago o corte`,
+                    ` · ${client.daysSincePay} ${client.daysSincePay === 1 ? "day" : "days"} since the last payment or cut`,
                   )
                 : ""}
             </p>
@@ -287,98 +288,104 @@ function ClientDetailPage() {
               </>
             }
           >
-          <section className="min-w-0 max-w-full overflow-hidden rounded-xl bg-surface p-4 shadow-card">
-            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <p className="break-words text-sm text-muted">
+          <section className="bz-cl-card min-w-0 max-w-full overflow-hidden rounded-xl bg-surface p-4 shadow-card">
+            {/* 1.4.75 (Oscar: "ajusta finamente, con mejor contraste y organización"): header = frequency chip + since
+                meta on the left, price on the right; the rest of the facts share one strip of tone chips. */}
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <span className="bz-fact is-freq">
+                  <CalendarDays aria-hidden />
                   {client.kind === "one_time"
                     ? tx("Trabajo de una vez", "One-time job")
                     : `${frequencyLabel(client.cutsPerMonth, {
                         frequencyDays: client.frequencyDays,
                         weekday2: client.weekday2,
-                      })} · ${weekdayLabel(client.weekday)}${
+                      })}\u00a0· ${weekdayLabel(client.weekday)}${
                         client.weekday2 != null && client.cutsPerMonth === 5
                           ? ` ${tx("y", "and")} ${weekdayLabel(client.weekday2)}`
                           : ""
                       }`}
-                </p>
-                <p className="mt-1 break-words font-display text-2xl font-semibold tabular-nums sm:text-3xl lg:text-4xl">
-                  {money(client.pricePerCut)}
-                  <span className="ml-1 text-base font-medium text-muted">
-                    {client.kind === "regular" ? tx("/ corte", "/ cut") : ""}
-                  </span>
-                </p>
-                {timeLabel && (
-                  <p className="mt-1 text-sm font-semibold text-pending">
-                    {tx(`Llegada ${timeLabel}`, `Arrival ${timeLabel}`)}
-                  </p>
-                )}
-                {client.startDate && client.kind === "regular" && (
-                  <p className="text-sm text-muted">
+                </span>
+                {client.startDate && client.kind === "regular" ? (
+                  <p className="bz-cl-meta">
                     {tx(`Desde ${formatDay(client.startDate, "d MMM yyyy")}`, `Since ${formatDay(client.startDate, "d MMM yyyy")}`)}
                   </p>
-                )}
-                {client.lastCutDate && (
-                  <p className="text-sm text-muted">
-                    {tx(
-                      `Último corte ${formatDay(client.lastCutDate, "d MMM")}`,
-                      `Last cut ${formatDay(client.lastCutDate, "d MMM")}`,
-                    )}
-                  </p>
-                )}
-                {!client.paySameDay && client.payDueDay ? (
-                  <p className="text-sm text-muted">{payDueLabel(client.payDueDay)}</p>
-                ) : null}
-                {client.tripleCut ? (
-                  <p className="mt-1 text-sm font-semibold text-pending">
-                    {tx(`${client.cutsThisMonth} cortes este mes`, `${client.cutsThisMonth} cuts this month`)}
-                  </p>
                 ) : null}
               </div>
-              <div className="flex max-w-full flex-wrap items-center gap-1 sm:max-w-[11rem] sm:flex-col sm:items-end">
-                {client.paySameDay ? (
-                  <button
-                    type="button"
-                    onClick={() => setPayAsk(true)}
-                    className="max-w-full rounded-full bg-money-bg px-2.5 py-1 text-left text-xs font-semibold leading-snug text-money"
-                  >
-                    {tx("Paga el mismo día", "Pays the same day")}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setPayAsk(true)}
-                    className="max-w-full rounded-full bg-pending-bg px-2.5 py-1 text-left text-xs font-semibold leading-snug text-pending"
-                  >
-                    {tx("Se acumula", "It adds up")}
-                  </button>
-                )}
-                {!client.isActive && (
-                  <span className="rounded-full bg-soil-bg px-2.5 py-1 text-xs font-semibold text-soil">
-                    {tx("En archivos", "In archive")}
-                  </span>
-                )}
-              </div>
+              <p className="bz-cl-price shrink-0 text-right font-display font-semibold tabular-nums">
+                {money(client.pricePerCut)}
+                {client.kind === "regular" ? <span className="bz-cl-per">{tx("/ corte", "/ cut")}</span> : null}
+              </p>
+            </div>
+            <div className="bz-facts mt-3">
+              {timeLabel ? (
+                <span className="bz-fact is-arrive" title={tx(`Llegada ${timeLabel}`, `Arrival ${timeLabel}`)}>
+                  <Clock aria-hidden />
+                  <span className="bz-long">{tx(`Llegada ${timeLabel}`, `Arrival ${timeLabel}`)}</span>
+                  <span className="bz-short">{timeLabel}</span>
+                </span>
+              ) : null}
+              {client.lastCutDate ? (
+                <span className="bz-fact">
+                  <CalendarCheck aria-hidden />
+                  {tx(`Último corte ${formatDay(client.lastCutDate, "d MMM")}`, `Last cut ${formatDay(client.lastCutDate, "d MMM")}`)}
+                </span>
+              ) : null}
+              {client.tripleCut ? (
+                <span className="bz-fact is-arrive">
+                  <Scissors aria-hidden />
+                  <span className="bz-long">{tx(`${client.cutsThisMonth} cortes este mes`, `${client.cutsThisMonth} cuts this month`)}</span>
+                  <span className="bz-short">{tx(`${client.cutsThisMonth} cortes`, `${client.cutsThisMonth} cuts`)}</span>
+                </span>
+              ) : null}
+              {!client.paySameDay && client.payDueDay ? (
+                <span className="bz-fact">
+                  <CalendarClock aria-hidden />
+                  {payDueLabel(client.payDueDay)}
+                </span>
+              ) : null}
+              <button type="button" onClick={() => setPayAsk(true)} className={cn("bz-fact", client.paySameDay ? "is-money" : "is-arrive")}>
+                <Wallet aria-hidden />
+                {client.paySameDay ? tx("Paga el mismo día", "Pays the same day") : tx("Se acumula", "It adds up")}
+              </button>
+              {!client.isActive ? (
+                <span className="bz-fact is-soil">
+                  <Archive aria-hidden />
+                  {tx("En archivos", "In archive")}
+                </span>
+              ) : null}
             </div>
 
-            <div className="mt-4 grid min-w-0 gap-2">
+            <div className="bz-cl-rows mt-3 grid min-w-0 gap-2">
               {client.phone && (
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <div className="bz-cl-contact flex min-w-0 items-center gap-2">
                   <ConfirmLink
                     href={telHref(client.phone)}
                     kind="call"
                     name={client.name}
-                    className="flex min-h-12 min-w-0 flex-1 basis-40 items-center gap-2 rounded-md bg-sun px-3 text-sm font-medium break-all"
+                    label={tx(`Llamar a ${client.name}: ${client.phone}`, `Call ${client.name}: ${client.phone}`)}
+                    className="bz-inset bz-cl-phone flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-md bg-sun pr-3 pl-1.5 text-sm font-semibold tabular-nums"
                   >
-                    <Phone className="size-4" />
-                    {client.phone}
+                    <span className="bz-tone bz-tone-call grid size-8 shrink-0 place-items-center rounded-sm">
+                      <Phone className="size-4" />
+                    </span>
+                    <span className="min-w-0 whitespace-nowrap">{client.phone}</span>
                   </ConfirmLink>
                   <MessageComposer phone={client.phone} name={client.name} compact />
                   <WhatsAppButton phone={client.phone} name={client.name} />
                 </div>
               )}
               {client.address && <AddressLine address={client.address} name={client.name} />}
-              {client.cue ? <CueChip text={client.cue} className="w-fit" /> : null}
+              {client.cue && !client.notes ? <CueChip full text={client.cue} className="w-fit" /> : null}
+              {client.notes ? (
+                <div className="bz-inset bz-cl-note flex min-w-0 items-start gap-2.5 rounded-md bg-sun px-3 py-2.5">
+                  <StickyNote className="mt-0.5 size-4 shrink-0 text-soil" aria-hidden />
+                  <p className="min-w-0 text-sm leading-relaxed">
+                    {client.cue ? <CueChip full text={client.cue} className="mr-1.5 align-[1px]" /> : null}
+                    {client.notes}
+                  </p>
+                </div>
+              ) : null}
               {client.highRisk ? (
                 <p className="text-sm font-semibold text-late">
                   {emphasize(tx("Alto riesgo: la deuda lleva tiempo sin pagarse.", "High risk: the debt has gone unpaid for a while."))}
@@ -389,57 +396,64 @@ function ClientDetailPage() {
                   {tx("En lista negra. No se agenda solo.", "On the blacklist. It is not scheduled on its own.")}
                 </p>
               ) : null}
-              {client.notes && <p className="text-sm text-muted">{client.notes}</p>}
             </div>
           </section>
 
-          <section className="mt-4 min-w-0 max-w-full overflow-hidden rounded-xl border-l-4 border-money bg-money-bg p-4 shadow-card">
-            <p className="flex items-center gap-1 text-xs font-medium tracking-wide text-muted uppercase">
-              {tx("Deuda", "Debt")}
-              <Hint topic="ficha-deuda" />
-            </p>
-            <div className="mt-2 grid min-w-0 grid-cols-2 gap-3">
-              <div className="min-w-0">
-                <p className="text-xs text-muted">{tx("Monto acumulado", "Amount owed")}</p>
-                <p className="break-words font-display text-2xl font-semibold tabular-nums text-money sm:text-3xl">
-                  {money(client.balance)}
-                </p>
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted">{tx("Adelanto", "Advance")}</p>
-                <p className="break-words font-display text-2xl font-semibold tabular-nums text-done sm:text-3xl">
-                  {money(client.credit)}
-                </p>
-              </div>
+          <section className="bz-debt mt-4 min-w-0 max-w-full overflow-hidden rounded-xl border-l-4 border-money bg-money-bg p-4 shadow-card">
+            {/* 1.4.75 (Oscar: "necesita un toque más premium y ajuste fino"): one header line, figures with Perdonar,
+                chip rows that fill evenly, one segmented pay control, then Trabajo extra | Pausa on one line. */}
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <p className="flex items-center gap-1 text-xs font-semibold tracking-wide text-muted uppercase">
+                {tx("Deuda", "Debt")}
+                <Hint topic="ficha-deuda" />
+              </p>
+              <span className="bz-fact is-money is-sm" title={tx("Cobrado en total", "Collected in total")}>
+                <ReceiptText aria-hidden />
+                {tx("Cobrado", "Collected")}
+                <span className="bz-xl">{tx(" en total", " in total")}</span> <b>{money(client.collectedTotal)}</b>
+              </span>
             </div>
-            <p className="mt-1 text-sm text-muted">
-              {tx(`Cobrado en total: ${money(client.collectedTotal)}`, `Collected in total: ${money(client.collectedTotal)}`)}
-            </p>
+            <div className="bz-debt-figs mt-2">
+              <div className="min-w-0">
+                <p className="bz-debt-lbl text-xs font-medium text-muted">{tx("Monto acumulado", "Amount owed")}</p>
+                <p className="bz-debt-num text-money">{money(client.balance)}</p>
+              </div>
+              <div className="min-w-0">
+                <p className="bz-debt-lbl text-xs font-medium text-muted">{tx("Adelanto", "Advance")}</p>
+                <p className="bz-debt-num text-done">{money(client.credit)}</p>
+              </div>
+              <WaiveButton clientId={client.id} balance={client.balance} />
+            </div>
             <MoneyCalc value={draftAmount} onChange={setDraftAmount} presets={presets} />
-            <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 min-[380px]:grid-cols-3">
-              <Button
-                variant="money"
+            <div className="bz-seg mt-3" role="group" aria-label={tx("Registrar un pago", "Record a payment")}>
+              <button
+                type="button"
+                className="bz-seg-btn is-main"
                 disabled={client.balance <= 0 && !draftAmount}
                 onClick={() => setPaying("full")}
               >
                 {tx("Pagado", "Paid")}
-              </Button>
-              <Button variant="outline" disabled={client.balance <= 0} onClick={() => setPaying("abono")}>
+              </button>
+              <button type="button" className="bz-seg-btn" disabled={client.balance <= 0} onClick={() => setPaying("abono")}>
                 {tx("Abono", "Partial")}
-              </Button>
-              <Button variant="outline" onClick={() => setPaying("prepaid")}>
+              </button>
+              <button type="button" className="bz-seg-btn" onClick={() => setPaying("prepaid")}>
                 {tx("Adelanto", "Advance")}
-              </Button>
+              </button>
             </div>
-            <div className="mt-2">
-              <WaiveButton clientId={client.id} balance={client.balance} />
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="bz-debt-row mt-3">
+              <button
+                type="button"
+                aria-expanded={showExtra}
+                className={cn("bz-actbtn is-extra", showExtra && "is-on")}
+                onClick={() => setShowExtra((v) => !v)}
+              >
+                <Plus aria-hidden />
+                <span className="bz-long">{tx("Trabajo extra", "Extra job")}</span>
+                <span className="bz-short">{tx("Extra", "Extra")}</span>
+              </button>
               <ServicePause id={client.id} name={client.name} paused={client.servicePaused} labeled />
             </div>
-            <Button variant="outline" className="mt-3" onClick={() => setShowExtra((v) => !v)}>
-              {tx("Trabajo extra", "Extra job")}
-            </Button>
             {showExtra ? <ExtraForm clientId={client.id} onDone={() => setShowExtra(false)} /> : null}
             {client.servicePaused ? (
               <p className="mt-2 text-sm font-semibold text-hold">
@@ -467,37 +481,17 @@ function ClientDetailPage() {
             />
           )}
 
-          {(data?.payments ?? []).length > 0 && (
-            <section className="mt-4 rounded-xl bg-surface p-4 shadow-card">
-              <h2 className="font-display text-lg font-semibold">{tx("Movimientos", "Activity")}</h2>
-              <ul className="mt-2 grid gap-1">
-                {(data?.payments ?? []).map((p) => (
-                  <li key={p.id} className="flex min-h-11 items-center justify-between gap-2 text-sm">
-                    <span className="min-w-0 truncate">
-                      <span className="font-semibold">{payKindLabel(p, tx)}</span>
-                      <span className="text-muted"> · {formatDay(stampDay(p.paidAt), "d MMM")}</span>
-                      {methodLabel(p.method) ? <span className="text-muted"> · {methodLabel(p.method)}</span> : null}
-                    </span>
-                    <span className={cn(p.kind === "waived" ? "text-muted" : p.kind === "opening" ? "font-semibold tabular-nums text-due" : "font-semibold tabular-nums")}>
-                      {p.kind === "waived" ? "—" : money(p.amount)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+          {(data?.payments ?? []).length > 0 ? <MovesBlock clientId={client.id} payments={data?.payments ?? []} /> : null}
 
           <ChangeHistory clientId={client.id} />
 
-          <section className="mt-4">
-            <h2 className="mb-2 font-display text-lg font-semibold">{tx("Notas del cliente", "Client notes")}</h2>
-            <ClientNotes key={client.id} clientId={client.id} clientName={client.name} initial={client.richNotes} />
-          </section>
+          <ClientNotes key={client.id} clientId={client.id} clientName={client.name} initial={client.richNotes} />
 
           <div className="mt-4">
-            <Button variant="outline" onClick={() => setEditing(true)}>
-              {tx("Editar", "Edit")}
-            </Button>
+            <button type="button" className="bz-actbtn is-edit" onClick={() => setEditing(true)}>
+              <Pencil aria-hidden />
+              {tx("Editar ficha", "Edit file")}
+            </button>
           </div>
 
           </WideSplit>
@@ -592,23 +586,23 @@ function ChangeHistory({ clientId }: { clientId: number }) {
     },
   });
   return (
-    <section className="mt-4 rounded-xl bg-surface p-4 shadow-card">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex min-h-11 w-full items-center justify-between gap-2 text-left"
-      >
-        <span className="font-display text-lg font-semibold">{tx("Cambios hechos", "Changes made")}</span>
-        <span className="text-sm font-medium text-muted">{open ? tx("Cerrar", "Close") : tx("Ver", "View")}</span>
-      </button>
+    <section id="cambios-hechos" data-spot="cambios-hechos" className="bz-fold mt-4 rounded-xl bg-surface p-4 shadow-card">
+      <FoldHead
+        open={open}
+        onToggle={() => setOpen((v) => !v)}
+        title={tx("Cambios hechos", "Changes made")}
+        icon={<History aria-hidden />}
+        chip={open && q.data ? String(q.data.length) : null}
+        topic="cambios-hechos"
+      />
       {open ? (
-        <ul className="mt-2 grid gap-1">
+        <ul className="bz-fold-list">
           {(q.data ?? []).length === 0 ? (
             <li className="text-sm text-muted">{tx("Todavía no hay cambios registrados.", "There are no recorded changes yet.")}</li>
           ) : (
             (q.data ?? []).map((c) => (
               <li key={c.id} className="flex min-h-11 items-center justify-between gap-2 text-sm">
-                <span className="min-w-0 truncate">
+                <span className="min-w-0 text-pretty break-words">
                   <span className="font-semibold">{c.summary}</span>
                   <span className="text-muted"> · {formatDay(stampDay(c.createdAt), "d MMM")}</span>
                 </span>
@@ -639,8 +633,116 @@ function ChangeHistory({ clientId }: { clientId: number }) {
 function payKindLabel(p: PaymentRow, tx: (es: string, en: string) => string) {
   if (p.kind === "opening") return tx("Deuda anterior", "Earlier debt");
   if (p.kind === "prepaid") return tx("Adelanto", "Advance");
+  if (p.kind === "waived") return tx("Perdonado", "Forgiven");
+  if (p.amount <= 0 && (p.tip ?? 0) > 0) return tx("Propina", "Tip");
   if ((p.note ?? "").toLowerCase().includes("abono")) return tx("Abono", "Partial");
   return tx("Pagado", "Paid");
+}
+
+/** One-line fold header shared by Historial, Movimientos and Cambios hechos: chevron, title, chip, (?). */
+function FoldHead({
+  open,
+  onToggle,
+  title,
+  icon,
+  chip,
+  topic,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  title: string;
+  icon?: React.ReactNode;
+  chip?: React.ReactNode;
+  topic: string;
+}) {
+  return (
+    <div className="bz-fold-head">
+      <button type="button" aria-expanded={open} onClick={onToggle} className="bz-fold-btn">
+        <ChevronDown className={cn("bz-fold-chev", !open && "-rotate-90")} aria-hidden />
+        {icon ? <span className="bz-fold-ic">{icon}</span> : null}
+        <h2 className="bz-fold-title font-display">{title}</h2>
+        {chip != null && chip !== "" ? <span className="bz-fold-chip">{chip}</span> : null}
+      </button>
+      <Hint topic={topic} />
+    </div>
+  );
+}
+
+function useFoldMemory(key: string) {
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(key) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    try {
+      localStorage.setItem(key, next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  };
+  return [open, toggle] as const;
+}
+
+/** Movimientos (1.4.75): every money movement on this client, closed by default and remembered per client. */
+function MovesBlock({ clientId, payments }: { clientId: number; payments: PaymentRow[] }) {
+  const tx = useTx();
+  const [open, toggle] = useFoldMemory(`ols-mov-${clientId}`);
+  const cashIn = payments
+    .filter((p) => p.kind === "paid" || p.kind === "prepaid")
+    .reduce((sum, p) => Math.round((sum + p.amount) * 100) / 100, 0);
+  return (
+    <section id="movimientos" data-spot="movimientos" className="bz-fold mt-4 rounded-xl bg-surface p-4 shadow-card">
+      <FoldHead
+        open={open}
+        onToggle={toggle}
+        title={tx("Movimientos", "Activity")}
+        icon={<Wallet aria-hidden />}
+        chip={
+          <>
+            {payments.length} · {money(cashIn)}
+          </>
+        }
+        topic="movimientos"
+      />
+      {open ? (
+        <ul className="bz-fold-list">
+          {payments.map((p) => {
+            const tipOnly = p.amount <= 0 && (p.tip ?? 0) > 0;
+            const tip = p.tip ?? 0;
+            return (
+              <li key={p.id} className="bz-mov">
+                <span className="min-w-0">
+                  <span className="font-semibold">{payKindLabel(p, tx)}</span>
+                  <span className="text-muted"> · {formatDay(stampDay(p.paidAt), "d MMM")}</span>
+                  {methodLabel(p.method) ? <span className="text-muted"> · {methodLabel(p.method)}</span> : null}
+                </span>
+                <span className="flex shrink-0 items-baseline gap-1.5 tabular-nums">
+                  {!tipOnly && tip > 0 ? (
+                    <span className="text-xs font-semibold text-done">{tx(`+${money(tip)} propina`, `+${money(tip)} tip`)}</span>
+                  ) : null}
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      p.kind === "waived" && "text-muted line-through decoration-1",
+                      p.kind === "opening" && "text-due",
+                      tipOnly && "text-done",
+                    )}
+                  >
+                    {tipOnly ? money(tip) : money(p.amount)}
+                  </span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </section>
+  );
 }
 
 function ClientNotes({
@@ -721,25 +823,41 @@ function ClientNotes({
   );
 
   return (
-    <div>
-      <p className="mb-2 text-sm text-muted">{t("notes.placeholder")}</p>
-      <Input
-        value={find}
-        onChange={(e) => setFind(e.target.value)}
-        placeholder={t("notes.search")}
-        aria-label={t("notes.search")}
-        className="mb-2"
-      />
+    <section className="bz-pad mt-4" data-spot="notas-cliente">
+      <div className="bz-pad-head">
+        <span className="bz-pad-ic" aria-hidden>
+          <NotebookPen />
+        </span>
+        <h2 className="min-w-0 font-display text-lg font-semibold">{tx("Notas del cliente", "Client notes")}</h2>
+        <Hint topic="notas-cliente" />
+        <span
+          className={cn("bz-pad-status", !saved && "is-wait")}
+          role="status"
+          title={saved ? undefined : tx("Se guarda al salir del texto", "Saves when you leave the text")}
+        >
+          {saved ? t("notes.saved") : tx("Sin guardar", "Not saved")}
+        </span>
+      </div>
+      <label className="bz-pad-find">
+        <Search aria-hidden />
+        <input
+          value={find}
+          onChange={(e) => setFind(e.target.value)}
+          placeholder={t("notes.search")}
+          aria-label={t("notes.search")}
+          type="search"
+        />
+      </label>
       {query && !ownHit && pages.length === 0 ? <p className="mb-2 text-sm text-muted">{t("notes.empty")}</p> : null}
       {pages.length > 0 ? (
         <ul className="mb-3 grid gap-2">
           {pages.map((page) => (
-            <li key={page.id} className="rounded-md bg-surface px-3 py-2 shadow-card">
+            <li key={page.id} className="bz-pad-link rounded-md px-3 py-2">
               <Link to="/notas" search={{ page: page.id, back: `cliente:${clientId}` }} className="font-semibold text-primary">
                 {page.pinned ? "• " : ""}
                 {page.title || t("notes.title")}
               </Link>
-              <p className="mt-1 line-clamp-3 text-sm text-muted">{notePlain(page.body)}</p>
+              <p className="bz-fade-3 mt-1 text-sm text-muted">{notePlain(page.body)}</p>
               <p className="mt-1 text-xs text-subtle">{t("notes.linked")}</p>
             </li>
           ))}
@@ -768,8 +886,7 @@ function ClientNotes({
         find={ownHit ? find : ""}
         clients={clients}
       />
-      <p className="mt-1 text-xs text-muted">{saved ? t("notes.saved") : tx("Se guarda al salir del texto", "Saves when you leave the text")}</p>
-    </div>
+    </section>
   );
 }
 
@@ -787,9 +904,16 @@ function WaiveButton({ clientId, balance }: { clientId: number; balance: number 
   });
   return (
     <>
-      <Button variant="outline" className="w-full" disabled={balance <= 0 || mut.isPending} onClick={() => setOpen(true)}>
-        {tx("Perdonar", "Forgive")}
-      </Button>
+      <button
+        type="button"
+        className="bz-actbtn is-forgive bz-waive"
+        disabled={balance <= 0 || mut.isPending}
+        aria-label={tx("Perdonar la deuda", "Forgive the debt")}
+        onClick={() => setOpen(true)}
+      >
+        <HandHeart aria-hidden />
+        <span className="bz-waive-label">{tx("Perdonar", "Forgive")}</span>
+      </button>
       <ConfirmDialog
         open={open}
         title={tx(`¿Perdonar ${money(balance)} de saldo?`, `Forgive the balance of ${money(balance)}?`)}
@@ -858,7 +982,7 @@ function ExtraForm({ clientId, onDone }: { clientId: number; onDone: () => void 
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={tx("Poda, limpieza, fertilizante…", "Trim, cleanup, fertilizer…")}
+          placeholder={tx("Poda, limpieza, fertilizante", "Trim, cleanup, fertilizer")}
           required
         />
         <TaskPresets
@@ -895,7 +1019,7 @@ function ExtraForm({ clientId, onDone }: { clientId: number; onDone: () => void 
         <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
       <Button type="submit" disabled={mut.isPending}>
-        {mut.isPending ? tx("Guardando…", "Saving…") : tx("Añadir extra", "Add extra")}
+        {mut.isPending ? tx("Guardando", "Saving") : tx("Añadir extra", "Add extra")}
       </Button>
       <ConfirmDialog
         open={ask}
@@ -1024,13 +1148,7 @@ function HistoryBlock({
   jobs: JobRow[];
 }) {
   const tx = useTx();
-  const [open, setOpen] = useState(() => {
-    try {
-      return localStorage.getItem(`ols-hist-${clientId}`) === "1";
-    } catch {
-      return false;
-    }
-  });
+  const [open, toggle] = useFoldMemory(`ols-hist-${clientId}`);
   const done = jobs.filter((job) => job.status === "done").length;
   const years = yearsAsClient(since);
   const yearLabel =
@@ -1041,23 +1159,7 @@ function HistoryBlock({
         : tx(`${years} años como cliente`, `${years} years as a client`);
   return (
     <>
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => {
-          const next = !open;
-          setOpen(next);
-          try {
-            localStorage.setItem(`ols-hist-${clientId}`, next ? "1" : "0");
-          } catch {
-            /* ignore */
-          }
-        }}
-        className="flex min-h-11 w-full items-center gap-2 text-left"
-      >
-        <ChevronDown className={cn("size-4 shrink-0 text-muted transition-transform", !open && "-rotate-90")} />
-        <h2 className="font-display text-lg font-semibold">{tx("Historial", "History")}</h2>
-      </button>
+      <FoldHead open={open} onToggle={toggle} title={tx("Historial", "History")} icon={<Scissors aria-hidden />} topic="historial" />
       <p className="mt-1 text-sm tabular-nums text-muted">
         {tx(
           `${done} ${done === 1 ? "patio hecho" : "patios hechos"} · Pagado ${money(paid)} · ${yearLabel}`,

@@ -44,15 +44,21 @@ export function AddressLine({
       className={cn(
         // 1.4.69 (Oscar): never "…". A long address wraps to a second line; icons stay on the first line.
         "bz-addr flex w-full items-start gap-2 rounded-md text-sm font-medium text-muted transition-colors hover:bg-sun hover:text-fg",
-        compact ? "min-h-10 px-1 py-2" : "min-h-12 bg-sun px-3 py-3 text-fg",
+        compact ? "min-h-10 px-1 py-2" : "bz-inset min-h-11 items-center bg-sun py-1.5 pr-1.5 pl-3 text-fg",
         className,
       )}
     >
-      <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
+      <MapPin className={cn("size-4 shrink-0 text-primary", compact && "mt-0.5")} />
       <span className="bz-addr-text min-w-0 flex-1">{addressParts(address)}</span>
-      <span className="-my-1 grid size-7 shrink-0 place-items-center rounded-full text-primary" aria-label={tx("Abrir el mapa", "Open the map")}>
-        <Map className="size-4" />
-      </span>
+      {compact ? (
+        <span className="-my-1 grid size-7 shrink-0 place-items-center rounded-full text-primary" aria-label={tx("Abrir el mapa", "Open the map")}>
+          <Map className="size-4" />
+        </span>
+      ) : (
+        <span className="bz-tone bz-tone-map grid size-8 shrink-0 place-items-center rounded-sm" aria-label={tx("Abrir el mapa", "Open the map")}>
+          <Map className="size-4" />
+        </span>
+      )}
     </ConfirmLink>
   );
 }

@@ -139,7 +139,7 @@ export function RichNotes({
   onChange,
   onDraft,
   draftKey,
-  placeholder = "Escribe aquí…",
+  placeholder = "Escribe aquí",
   className,
   find = "",
   clients,
@@ -454,8 +454,8 @@ export function RichNotes({
   ];
 
   return (
-    <div className="relative z-30">
-      <div className="mb-1 flex flex-wrap gap-1">
+    <div className="bz-rt relative z-30">
+      <div className="bz-rt-bar mb-1.5 flex flex-wrap gap-1">
         {tools.map((tool) => (
           <button
             key={tool.command}
@@ -465,7 +465,7 @@ export function RichNotes({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => format(tool.command)}
             className={cn(
-              "grid size-10 place-items-center rounded-sm bg-surface text-fg shadow-card",
+              "bz-rt-tool grid size-10 place-items-center rounded-sm bg-surface text-fg shadow-card",
               marks[tool.command] && "format-on",
             )}
           >
@@ -479,7 +479,7 @@ export function RichNotes({
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => format("formatBlock", "h2")}
           className={cn(
-            "h-10 rounded-sm bg-surface px-2.5 text-sm font-semibold shadow-card",
+            "bz-rt-tool h-10 rounded-sm bg-surface px-2.5 text-sm font-semibold shadow-card",
             marks.h2 && "format-on",
           )}
         >
@@ -493,7 +493,7 @@ export function RichNotes({
             title={tx("Color del texto", "Text color")}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setColorsOpen((open) => !open)}
-            className="grid size-10 place-items-center rounded-sm bg-surface text-fg shadow-card"
+            className={cn("bz-rt-tool grid size-10 place-items-center rounded-sm bg-surface text-fg shadow-card", colorsOpen && "format-on")}
           >
             <Palette className="size-4" />
           </button>
@@ -508,7 +508,7 @@ export function RichNotes({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => format("foreColor", color.value)}
                   className={cn(
-                    "grid size-10 place-items-center rounded-sm bg-surface shadow-card",
+                    "bz-rt-tool grid size-10 place-items-center rounded-sm bg-surface shadow-card",
                     ink === color.value && "ring-2 ring-primary ring-offset-2 ring-offset-bg",
                   )}
                 >
@@ -520,7 +520,7 @@ export function RichNotes({
       </div>
       <div ref={anchorRef} className="relative z-30">
         {empty ? (
-          <p className="pointer-events-none absolute top-2 left-3 text-sm text-subtle">{placeholder}</p>
+          <p className="bz-rt-ph pointer-events-none absolute top-2 left-3 z-10 text-sm text-subtle">{placeholder}</p>
         ) : null}
         <div
           ref={ref}
@@ -544,7 +544,7 @@ export function RichNotes({
           onKeyUp={look}
           onMouseUp={look}
           className={cn(
-            "note-body min-h-36 w-full rounded-md bg-surface px-3 py-2 text-sm leading-relaxed shadow-card focus:outline-none",
+            "note-body bz-rt-page min-h-36 w-full rounded-md bg-surface px-3 py-2 text-sm leading-relaxed shadow-card focus:outline-none",
             cornerUndo && !empty && "pr-10",
             cornerUndo && (hist.undo || hist.redo) && "pb-10",
             className,

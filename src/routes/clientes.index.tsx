@@ -732,7 +732,7 @@ function ClientListCard({
         }
       >
         <article
-          data-spot="lista-clientes ficha-deuda precio"
+          data-spot="lista-clientes ficha-deuda precio movimientos cambios-hechos"
           className={cn(
             "min-w-0 max-w-full overflow-hidden rounded-xl bg-surface shadow-card",
             quad ? meshFrame(cols) : dense ? "px-2 py-1.5" : media ? "p-2.5" : "p-4",

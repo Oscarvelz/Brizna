@@ -653,6 +653,62 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         go: { to: "/cobros", search: { view: "espera" }, where: ["Cobros, En espera", "Payments, Waiting"] },
         terms: [["Pausa", "Pause"], ["Continuar", "Play"]],
       },
+      {
+        id: "movimientos",
+        title: ["Movimientos del cliente", "Client activity"],
+        sum: ["La lista del dinero de un cliente, fila por fila.", "A client's money, row by row."],
+        what: [
+          "Cada movimiento de dinero de este cliente: pagos, abonos, adelantos, propinas, lo perdonado y la deuda anterior.",
+          "Every money movement for this client: payments, partials, advances, tips, what was forgiven, and earlier debt.",
+        ],
+        how: [
+          "Toca Movimientos para abrirlo o cerrarlo; cada cliente recuerda cómo lo dejaste.\nCada fila dice qué fue, la fecha, el método si lo anotaste (Efectivo, Zelle) y el monto.\nLa cajita del título cuenta las filas y suma el dinero que entró.\nLas filas nacen de Pagado, Abono, Adelanto y Perdonar en la ficha, y de Hecho en Hoy.",
+          "Tap Activity to open or close it; each client remembers how you left it.\nEach row says what it was, the date, the method if you noted one (Cash, Zelle), and the amount.\nThe little box by the title counts the rows and adds up the money that came in.\nRows come from Paid, Partial, Advance, and Forgive on the file, and from Done on Today.",
+        ],
+        calc: [
+          "La suma de la cajita junta Pagado, Abono y Adelanto. La propina se guarda aparte: su fila la muestra en verde y no entra en esa suma ni toca la deuda. Perdonado sale tachado porque no es dinero cobrado. Deuda anterior es lo que ya debía cuando lo diste de alta.",
+          "The box's total adds Paid, Partial, and Advance. A tip is kept apart: its row shows it in green and it does not enter that total or touch the debt. Forgiven is struck through because it is not money collected. Earlier debt is what they already owed when you added them.",
+        ],
+        example: [
+          "María paga $45 en efectivo el 3 nov al marcar Hecho, y el 28 oct te dejó solo $5 de propina. Movimientos muestra Pagado · 3 nov · Efectivo $45 y Propina · 28 oct · Efectivo $5. La cajita dice 2 · $45: la propina no suma porque no es un cobro.",
+          "María pays $45 cash on Nov 3 when you mark Done, and on Oct 28 she left only a $5 tip. Activity shows Paid · Nov 3 · Cash $45 and Tip · Oct 28 · Cash $5. The box says 2 · $45: the tip does not add because it is not a payment.",
+        ],
+        cases: [
+          "Ves una fila de $0 de una versión anterior: era una propina sola, sin pago; ahora dice Propina y muestra su monto.\nUn corte se paga con el adelanto: no sale fila nueva, porque ese dinero ya entró el día del Adelanto.\nPagan más que la deuda: salen dos filas del mismo día, el pago a la deuda y el Adelanto con lo que sobra.\nRegistraste un pago por error: Deshacer lo quita de la lista y la deuda vuelve a como estaba.\nDeshaces un Hecho que se cobró: su fila de Pagado o de Abono desaparece.",
+          "You see a $0 row from an earlier version: it was a tip on its own, with no payment; it now says Tip and shows its amount.\nA cut is paid from the advance: no new row appears, because that money came in on the Advance day.\nThey pay more than the debt: two rows on the same day, the payment to the debt and the Advance with the rest.\nYou recorded a payment by mistake: Undo takes it off the list and the debt goes back to how it was.\nYou undo a Done that was collected: its Paid or Partial row disappears.",
+        ],
+        related: ["ficha-deuda", "propina", "perdonado", "hecho", "deuda-anterior"],
+        go: { to: "/clientes", where: ["La ficha del cliente, Movimientos", "The client file, Activity"] },
+        terms: [["Movimientos", "Activity"], ["Abono", "Partial"], ["Propina", "Tip"], ["Perdonado", "Forgiven"], ["Deuda anterior", "Earlier debt"]],
+      },
+      {
+        id: "cambios-hechos",
+        title: ["Cambios hechos en la ficha", "Changes made to the file"],
+        sum: ["Un registro de cada versión de la ficha, para volver atrás.", "A record of each version of the file, to go back."],
+        what: [
+          "Lo que cambiaste en la ficha, con su fecha. Restaurar deja la ficha como quedó con ese cambio.",
+          "What you changed on the file, with its date. Restore sets the file back to how that change left it.",
+        ],
+        how: [
+          "Toca Cambios hechos para ver la lista; la cajita dice cuántos hay.\nCada fila resume el cambio: Datos del cliente actualizados, Paga el mismo día, La deuda se acumula o Cambio restaurado.\nToca Restaurar en una fila y confirma.\nLa vuelta atrás también se anota, así puedes deshacerla con otra fila.",
+          "Tap Changes made to see the list; the little box says how many there are.\nEach row sums up the change: Client data updated, Pays the same day, Debt adds up, or Change restored.\nTap Restore on a row and confirm.\nGoing back is recorded too, so another row can undo it.",
+        ],
+        calc: [
+          "Al guardar la ficha o al cambiar cómo paga, Brizna guarda los datos como quedaron: nombre, teléfono, dirección, precio, frecuencia, día, inicio y forma de pago. Restaurar copia esos datos encima de los de ahora y vuelve a armar sus cortes pendientes. Los cortes hechos, los pagos y Movimientos no cambian.",
+          "When you save the file or change how they pay, Brizna keeps the data as it was left: name, phone, address, price, frequency, day, start, and how they pay. Restore copies that data over today's and rebuilds their pending cuts. Finished cuts, payments, and Activity do not change.",
+        ],
+        example: [
+          "El 2 nov subes a los Rivera de $40 a $50 y pasas su día a jueves. El 4 nov te arrepientes: en Cambios hechos tocas Restaurar en la fila del 28 oct. Vuelven a $40 los martes, y una fila nueva, Cambio restaurado, guarda la vuelta.",
+          "On Nov 2 you raise the Riveras from $40 to $50 and move them to Thursday. On Nov 4 you change your mind: in Changes made you tap Restore on the Oct 28 row. They are back at $40 on Tuesdays, and a new row, Change restored, records it.",
+        ],
+        cases: [
+          "La lista está vacía: todavía no guardaste cambios en esta ficha.\nRestauras un precio viejo: los cortes pendientes toman ese precio; los hechos conservan el suyo.\nRestauras por error: toca Restaurar en la fila de antes para volver.",
+          "The list is empty: you have not saved changes on this file yet.\nYou restore an old price: pending cuts take that price; finished ones keep theirs.\nYou restore by mistake: tap Restore on the row before to go back.",
+        ],
+        related: ["precio", "cobro-cliente", "copia"],
+        go: { to: "/clientes", where: ["La ficha del cliente, Cambios hechos", "The client file, Changes made"] },
+        terms: [["Cambios hechos", "Changes made"], ["Restaurar", "Restore"]],
+      },
     ],
   },
 
@@ -1857,6 +1913,11 @@ export const HINT_ONLY: HintOnly[] = [
     id: "altas-bajas",
     into: "archivo",
     what: ["Altas: patios que añadiste ese mes. Bajas: clientes que diste de baja ese mes.", "New: yards you added that month. Departures: clients you took off that month."],
+  },
+  {
+    id: "historial",
+    into: "precio",
+    what: ["Los cortes ya hechos de este cliente, del más nuevo al más viejo. Toca un precio para corregirlo.", "This client's finished cuts, newest first. Tap a price to fix it."],
   },
   {
     id: "una-vez",
