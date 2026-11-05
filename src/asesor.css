@@ -253,3 +253,16 @@ html.theme-dark .as-check-dot, html.theme-amoled .as-check-dot { color: #06120a;
   .as-bed, .as-bubble, .as-group-open, .as-check, .as-check-more, .as-gloss > div, .as-empty-sprout, .as-skel span, .as-leaf { animation: none !important; }
   .as-toggle-thumb, .as-bars-track i, .as-week-load, .as-season-bar i, .as-share i, .as-check-meter i { transition: none !important; }
 }
+
+/* 1.4.83 (Oscar): tilted "!" sticker on overdue advice cards, top-right, inside the card. Same look and
+   sway as .bz-bang on late client cards. */
+.as-bang {
+  position: absolute; top: 0.75rem; right: 1.25rem; pointer-events: none;
+  font-family: var(--font-display); font-weight: 900; font-size: 3.25rem; line-height: 1; color: var(--color-late);
+  -webkit-text-stroke: 4px var(--color-late-bg); paint-order: stroke fill;
+  filter: drop-shadow(0 1px 1.5px color-mix(in srgb, var(--color-late) 35%, transparent));
+  transform-origin: 50% 85%; transform: rotate(13deg); animation: bz-bang-sway 3s ease-in-out infinite;
+}
+.as-bang > span { display: block; }
+html.theme-dark .as-bang, html.theme-amoled .as-bang { color: #ff7a72; -webkit-text-stroke-color: color-mix(in oklab, #ff6b6b 20%, #141415); filter: drop-shadow(0 0 6px rgb(255 107 107 / 0.35)); }
+@media (prefers-reduced-motion: reduce) { .as-bang { animation: none; } }

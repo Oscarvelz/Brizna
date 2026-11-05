@@ -593,6 +593,8 @@ function ActionCard({ a, i, r }: { a: AdvisorAction; i: number; r: AdvisorReadin
           <span className="as-act-money">{w.sign}<CountUp value={a.impact} format={usd} /></span>
           <small>{w.unit}</small>
         </div>
+        {/* 1.4.83 (Oscar): the overdue card wears the same tilted "!" sticker as late client cards, in its empty top-right corner. */}
+        {ACT_TONE[a.kind] === "is-late" ? <span className="as-bang" aria-hidden><span>!</span></span> : null}
       </div>
       <p className="as-act-title">{w.title}</p>
       <p className="as-act-line">{w.line}</p>

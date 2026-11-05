@@ -431,6 +431,8 @@ export function AppShell({
             const dx = touch.clientX - start.x;
             const dy = touch.clientY - start.y;
             if (Math.abs(dx) < 72 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+            // 1.4.83 (Oscar): on Estudio, a swipe flips Estudio <-> Asesor forever; leaving needs a tap on the dock.
+            if (pathname === "/estadisticas") { window.dispatchEvent(new CustomEvent("bz-study-swipe")); return; }
             const index = tabs.indexOf(pathname as (typeof tabs)[number]);
             if (index < 0) return;
             const next = dx < 0 ? (index + 1) % tabs.length : (index - 1 + tabs.length) % tabs.length;

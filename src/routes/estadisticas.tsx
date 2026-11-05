@@ -70,6 +70,12 @@ function EstadisticasPage() {
     try { localStorage.setItem(VIEW_KEY, v); } catch { /* private mode */ }
     window.scrollTo({ top: 0 });
   };
+  useEffect(() => {
+    const flip = () => setView(readView() === "asesor" ? "estudio" : "asesor");
+    window.addEventListener("bz-study-swipe", flip);
+    return () => window.removeEventListener("bz-study-swipe", flip);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [findOn, setFindOn] = useState(false);
   const [needle, setNeedle] = useState("");
   // 1.4.61 (Oscar): Desplegar is checked by default, always. Unchecking asks first, folds everything,

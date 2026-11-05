@@ -101,3 +101,30 @@ html[data-sky="niebla"] #root::before, html[data-sky="nieve"] #root::before { di
   .wx > * { animation: none !important; }
 }
 @media print { .wx { display: none; } }
+
+/* 1.4.83 (Oscar): fireflies at night. Tiny warm points (2.5px) with a soft glow, drifting slowly on long
+   loops and blinking gently out of step. Behind everything (inside .wx), never over content, no layout. */
+.wx-flies { position: absolute; inset: 0; display: none; }
+html.theme-dark .wx-flies, html.theme-amoled .wx-flies { display: block; }
+.wx-flies > i {
+  position: absolute; width: 2.5px; height: 2.5px; border-radius: 50%;
+  background: #f3f7b4; opacity: 0;
+  box-shadow: 0 0 4px 1px rgb(226 240 120 / 0.55), 0 0 12px 3px rgb(200 230 90 / 0.18);
+  animation-name: wx-fly-drift, wx-fly-blink; animation-timing-function: ease-in-out, ease-in-out;
+  animation-iteration-count: infinite, infinite; animation-direction: alternate, normal;
+  will-change: transform, opacity;
+}
+.wx-flies > i:nth-child(3n) { width: 2px; height: 2px; }
+.wx-flies > i:nth-child(4n+1) { animation-name: wx-fly-drift2, wx-fly-blink; }
+@keyframes wx-fly-drift {
+  0% { transform: translate(0, 0); } 25% { transform: translate(18px, -22px); }
+  50% { transform: translate(-10px, -40px); } 75% { transform: translate(-26px, -14px); } 100% { transform: translate(8px, 10px); }
+}
+@keyframes wx-fly-drift2 {
+  0% { transform: translate(0, 0); } 33% { transform: translate(-20px, 16px); }
+  66% { transform: translate(14px, 30px); } 100% { transform: translate(28px, -12px); }
+}
+@keyframes wx-fly-blink { 0%, 100% { opacity: 0; } 30% { opacity: 0.12; } 50% { opacity: 0.7; } 70% { opacity: 0.25; } }
+/* Phones get 12; tablets the full 18. */
+@media (max-width: 767px) { .wx-flies > i:nth-child(n+13) { display: none; } }
+@media (prefers-reduced-motion: reduce) { .wx-flies > i { animation: none; opacity: 0.35; } }
