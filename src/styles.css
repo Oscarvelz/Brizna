@@ -2165,7 +2165,7 @@ html.theme-amoled { --tone-post: #bcbcc1; }
 /* ───────── 1.4.72 ───────── */
 /* AMOLED espresso (Oscar: the café soil wash #292019 read brown). Darker, near charcoal, faint warm tint;
    beats night.css's html.theme-amoled:not(#z) mix. A faint soil hairline keeps the shape on #000. */
-html.theme-amoled:not(#z):not(#y) { --color-soil-bg: #150f0b; }
+html.theme-amoled:not(#z):not(#y) { --color-soil-bg: #130e0c; }
 html.theme-amoled :where(.rounded-xl, .rounded-lg, .rounded-md, .rounded-2xl).bg-soil-bg:not(.border-l-4) {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-soil) 14%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.025);
 }
