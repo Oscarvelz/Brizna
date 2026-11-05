@@ -2845,3 +2845,12 @@ html.theme-dark:not(#z) .bz-vista.is-on {
 
 /* Inventario tiles: firmer tone edge so they lift off their panel (grafito keeps its 1.4.84 tiles). */
 html.theme-dark:not([data-palette="grafito"]):not(#z) .bz-inv-tile { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--inv-tone) 56%, transparent), 0 2px 6px -3px rgb(0 0 0 / 0.55); }
+
+/* 1.4.87 (Oscar): at night, Hoy stat tiles, Pasar buttons, Cobros stat cards and Cobros folds are a touch
+   see-through (90%) so the fireflies behind peek faintly. A mask, not opacity, so entrance fades still run;
+   no-clip keeps the lift shadows and halos whole. Everything else stays solid. */
+html:is(.theme-dark, .theme-amoled) :is(.bz-stat, .bz-actbtn:not(:disabled), .bz-fold.cob-espera, .bz-fold.cob-perdon, .bz-fold.cob-hecho) {
+  -webkit-mask-image: linear-gradient(rgb(0 0 0 / 0.9), rgb(0 0 0 / 0.9));
+  mask-image: linear-gradient(rgb(0 0 0 / 0.9), rgb(0 0 0 / 0.9));
+  -webkit-mask-clip: no-clip; mask-clip: no-clip;
+}
