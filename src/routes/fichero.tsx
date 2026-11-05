@@ -87,6 +87,8 @@ function FicheroPage() {
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
+  // 1.4.79: the trash dialog names the note's client (title size, late tone) when the note belongs to one.
+  const trashWho = trashAsk ? trashAsk.clientIds.map((id) => q.data?.clients.find((c) => c.id === id)?.name).filter(Boolean).join(", ") : "";
 
   useEffect(() => {
     if (!q.data) return;
@@ -384,7 +386,18 @@ function FicheroPage() {
       <ConfirmDialog
         front
         open={trashAsk != null}
-        title={tx("¿Mandar a la papelera?", "Move this note to the trash?")}
+        title={
+          trashWho ? (
+            <>
+              {tx("¿Mandar a la papelera la nota de ", "Move the note for ")}
+              <span className="bz-dialog-who"><span className="bz-dialog-name is-late">{trashWho}</span>{tx("?", " to the trash?")}</span>
+            </>
+          ) : (
+            tx("¿Mandar a la papelera?", "Move this note to the trash?")
+          )
+        }
+        icon={<Trash2 />}
+        iconTone="late"
         description={tx(
           `${trashAsk?.title || "La nota"} sale del fichero. Se borra del todo cuando pase el tiempo que elegiste.`,
           `${trashAsk?.title || "The note"} leaves the cabinet. It is deleted for good after the time you chose.`,

@@ -422,7 +422,7 @@ function ClientDetailPage() {
                 <p className="bz-debt-lbl text-xs font-medium text-muted">{tx("Adelanto", "Advance")}</p>
                 <p className="bz-debt-num text-done">{money(client.credit)}</p>
               </div>
-              <WaiveButton clientId={client.id} balance={client.balance} />
+              <WaiveButton clientId={client.id} balance={client.balance} name={client.name} />
             </div>
             <MoneyCalc value={draftAmount} onChange={setDraftAmount} presets={presets} />
             <div className="bz-seg mt-3" role="group" aria-label={tx("Registrar un pago", "Record a payment")}>
@@ -525,7 +525,7 @@ function ClientDetailPage() {
           />
           <ConfirmDialog
             open={askOff}
-            title={tx(`¿Pasar a archivos a ${client.name}?`, `Move ${client.name} to the archive?`)}
+            title={<>{tx("¿Pasar a archivos a ", "Move ")}<span className="bz-dialog-who"><span className="bz-dialog-name">{client.name}</span>{tx("?", " to the archive?")}</span></>}
             description={tx(
               "Sale de la agenda. Queda guardado en Archivos con todos sus datos.",
               "They leave the schedule. They stay saved in Archive with all their data.",
@@ -537,7 +537,7 @@ function ClientDetailPage() {
           />
           <ConfirmDialog
             open={askOn}
-            title={tx(`¿Reactivar a ${client.name}?`, `Reactivate ${client.name}?`)}
+            title={<>{tx("¿Reactivar a ", "Reactivate ")}<span className="bz-dialog-who"><span className="bz-dialog-name">{client.name}</span>?</span></>}
             description={tx(
               "Vuelve a la agenda con su horario y su cuenta.",
               "They return to the schedule with their times and their account.",
@@ -549,7 +549,7 @@ function ClientDetailPage() {
           />
           <ConfirmDialog
             open={askDelete}
-            title={tx(`¿Eliminar a ${client.name}?`, `Delete ${client.name}?`)}
+            title={<>{tx("¿Eliminar a ", "Delete ")}<span className="bz-dialog-who"><span className="bz-dialog-name is-late">{client.name}</span>?</span></>}
             description={tx(
               "Se borra el cliente y todo su historial. Esta acción no se puede deshacer.",
               "The client and their whole history are deleted. This cannot be undone.",
@@ -890,7 +890,7 @@ function ClientNotes({
   );
 }
 
-function WaiveButton({ clientId, balance }: { clientId: number; balance: number }) {
+function WaiveButton({ clientId, balance, name }: { clientId: number; balance: number; name?: string }) {
   const tx = useTx();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -916,7 +916,23 @@ function WaiveButton({ clientId, balance }: { clientId: number; balance: number 
       </button>
       <ConfirmDialog
         open={open}
-        title={tx(`¿Perdonar ${money(balance)} de saldo?`, `Forgive the balance of ${money(balance)}?`)}
+        title={
+          name ? (
+            <>
+              {tx("¿Perdonar a ", "Forgive ")}
+              <span className="bz-dialog-who"><span className="bz-dialog-name is-heather">{name}</span>?</span>
+            </>
+          ) : (
+            tx(`¿Perdonar ${money(balance)} de saldo?`, `Forgive the balance of ${money(balance)}?`)
+          )
+        }
+        aside={
+          name ? (
+            <>
+              {tx("Debe", "Owes")} <b>{money(balance)}</b>
+            </>
+          ) : undefined
+        }
         description={tx(
           "No se cuenta como cobrado. El dinero deja de estar por cobrar y la cuenta vuelve a cero.",
           "It does not count as collected. The money leaves To collect and the account goes back to zero.",

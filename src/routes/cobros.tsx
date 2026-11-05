@@ -36,7 +36,7 @@ import { emphasize, useTx } from "@/lib/i18n";
 import { listBalances, recordPayment, recordPaymentsBulk } from "@/lib/server/lawn";
 import type { ClientRow, JobRow, PaymentRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { BadgeCheck, Check, HandCoins, HandHeart, ShieldAlert, Hourglass, CircleAlert, Wallet } from "lucide-react";
+import { BadgeCheck, Check, Coins, HandCoins, HandHeart, ShieldAlert, Hourglass, CircleAlert, Wallet } from "lucide-react";
 import { DayNightSwitch } from "@/components/day-night-switch";
 import { WeatherChip } from "@/components/weather-chip";
 
@@ -1048,8 +1048,17 @@ function Waive({ client, icon }: { client: ClientRow; icon?: boolean }) {
         open={open}
         icon={<HandHeart />}
         iconTone="late"
-        title={tx(`¿Perdonar ${money(client.balance)}?`, `Forgive ${money(client.balance)}?`)}
-        subtitle={client.name}
+        title={
+          <>
+            {tx("¿Perdonar a ", "Forgive ")}
+            <span className="bz-dialog-who"><span className="bz-dialog-name is-heather">{client.name}</span>?</span>
+          </>
+        }
+        aside={
+          <>
+            {tx("Debe", "Owes")} <b>{money(client.balance)}</b>
+          </>
+        }
         description={tx("Esto sí sale de Por cobrar. No es una espera: es dinero que decides no cobrar.", "This does leave To collect. It is not a wait: it is money you decide not to collect.")}
         confirmLabel={tx("Perdonar saldo", "Forgive balance")}
         danger
@@ -1143,7 +1152,7 @@ function OwingCard({
     );
   const tone = late ? "border-late" : c.highRisk || c.payTier === "espera" ? "border-hold" : "border-due";
   const balance = (
-    <p className={cn("bz-owe shrink-0 font-display font-semibold tabular-nums text-due", quad ? (cols === 4 ? "text-[11px]" : "text-xs") : "text-lg")}>{money(c.balance)}</p>
+    <p className={cn("bz-owe shrink-0 font-display font-semibold tabular-nums text-due", quad ? (cols === 4 ? "text-[12.5px]" : "text-[13.5px]") : "text-lg")}>{money(c.balance)}</p>
   );
   const pickLabel = tx(`Elegir ${c.name}`, `Select ${c.name}`);
 
@@ -1177,18 +1186,58 @@ function OwingCard({
     );
   }
 
-  const grande = mode === "grande";
+  if (mode === "media") {
+    // 1.4.79 (Oscar: Media looked like Grande): half the height. Row 1 = pick · name · state · balance;
+    // row 2 = cut date at the left, icon-only actions at the right.
+    const lateChip = late ? (
+      <span className="bz-state is-late is-xs" title={tx("Atrasado", "Late")}>
+        <CircleAlert aria-hidden />
+        {days > 0 ? tx(`${days} ${days === 1 ? "día" : "días"}`, `${days} ${days === 1 ? "day" : "days"}`) : tx("Atrasado", "Late")}
+      </span>
+    ) : c.highRisk ? (
+      <span className="bz-state is-hold is-xs">
+        <ShieldAlert aria-hidden />
+        {tx("Riesgo", "Risk")}
+      </span>
+    ) : null;
+    return (
+      <li className={cn("bz-ocard bz-ccard is-media min-w-0 overflow-hidden rounded-xl border-l-4 bg-surface shadow-card px-3 py-2", tone, on && "is-picked")}>
+        <div className="flex min-w-0 items-center gap-2">
+          <PickBox on={on} onToggle={onToggle} label={pickLabel} />
+          <Link to="/clientes/$id" params={{ id: String(c.id) }} className="min-w-0 flex-1">
+            <MeshNameUniform name={c.name} cols={2} size="media" />
+          </Link>
+          {lateChip}
+          {balance}
+        </div>
+        <div className="bz-ocard-mrow">
+          <FitLine forms={[cut, c.lastCutDate ? formatDay(c.lastCutDate, "d MMM") : cut]} className="bz-csub is-media min-w-0 flex-1" />
+          <div className="bz-ocard-icons">
+            <button type="button" className="bz-cact is-paid is-icon is-sm" onClick={() => onPay("full")} aria-label={tx(`Pagado: ${c.name}`, `Paid: ${c.name}`)} title={tx("Pagado", "Paid")}>
+              <HandCoins aria-hidden />
+            </button>
+            <button type="button" className="bz-cact is-abono is-icon is-sm" onClick={() => onPay("abono")} aria-label={tx(`Abono: ${c.name}`, `Partial: ${c.name}`)} title={tx("Abono", "Partial")}>
+              <Coins aria-hidden />
+            </button>
+            <Waive client={c} icon />
+            <ServicePause id={c.id} name={c.name} paused={c.servicePaused} noHint />
+          </div>
+        </div>
+      </li>
+    );
+  }
+
   return (
-    <li className={cn("bz-ocard bz-ccard min-w-0 overflow-hidden rounded-xl border-l-4 bg-surface shadow-card", grande ? "is-grande px-3.5 pt-3 pb-3.5" : "is-media px-3 pt-2.5 pb-3", tone, on && "is-picked")}>
+    <li className={cn("bz-ocard bz-ccard min-w-0 overflow-hidden rounded-xl border-l-4 bg-surface shadow-card", "is-grande px-3.5 pt-3 pb-3.5", tone, on && "is-picked")}>
       <div className="flex min-w-0 items-start gap-2.5">
         <PickBox on={on} onToggle={onToggle} label={pickLabel} className="mt-0.5" />
         <Link to="/clientes/$id" params={{ id: String(c.id) }} className="min-w-0 flex-1">
-          <MeshNameUniform name={c.name} cols={2} size={grande ? "grande" : "media"} />
+          <MeshNameUniform name={c.name} cols={2} size="grande" />
         </Link>
         {balance}
       </div>
       <div className="bz-ocard-sub mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-        <FitLine forms={forms} className={cn("bz-csub min-w-0 flex-[1_1_8rem]", grande ? "is-grande" : "is-media")} />
+        <FitLine forms={forms} className="bz-csub is-grande min-w-0 flex-[1_1_8rem]" />
         {chips.length ? <span className="ml-auto flex flex-wrap justify-end gap-1">{chips}</span> : null}
       </div>
       <div className="bz-ocard-acts mt-2.5">
@@ -1199,7 +1248,7 @@ function OwingCard({
         <button type="button" className="bz-cact is-abono" onClick={() => onPay("abono")}>
           {tx("Abono", "Partial")}
         </button>
-        <Waive client={c} icon={!grande} />
+        <Waive client={c} />
         <ServicePause id={c.id} name={c.name} paused={c.servicePaused} />
       </div>
     </li>

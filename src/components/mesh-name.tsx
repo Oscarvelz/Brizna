@@ -34,13 +34,31 @@ function rescueOf(full: string): string[] {
   return parts.length > 1 ? [`${parts[0]} ${parts[parts.length - 1]!.charAt(0)}.`, parts[0]!] : [];
 }
 
+/** 1.4.79: one shared name scale per view; each MeshNameUniform reports what it needs, the view takes the smallest. */
+const viewNeeds = new WeakMap<Element, Map<Element, number>>();
+function viewScale(view: Element, el: Element, need: number | null) {
+  let m = viewNeeds.get(view);
+  if (!m) viewNeeds.set(view, (m = new Map()));
+  if (need == null || need >= 1) m.delete(el);
+  else m.set(el, need);
+  for (const k of [...m.keys()]) if (!k.isConnected) m.delete(k);
+  const min = m.size ? Math.min(...m.values()) : 1;
+  const v = view as HTMLElement;
+  const cur = v.style.getPropertyValue("--bz-mn-s");
+  const next = min < 1 ? String(min) : "";
+  if (cur !== next) {
+    if (next) v.style.setProperty("--bz-mn-s", next);
+    else v.style.removeProperty("--bz-mn-s");
+  }
+}
+
 /**
  * 1.4.77 (Oscar): Clientes Malla x2/x3 — every name in the grid at the SAME size (CSS: .bz-mname-u, sized by the
  * card width). A name that does not fit on one line puts its last name on line 2; the only break point is
  * before the last name. If even that cannot fit (one very long word), middle names drop first, and only then
  * does this one card's name shrink.
  */
-export function MeshNameUniform({ name, cols, className, size }: { name: string; cols: 2 | 3 | 4; className?: string; /** 1.4.78: list sizes (Grande/Media) use the same rule at a fixed size. */ size?: "grande" | "media" }) {
+export function MeshNameUniform({ name, cols, className, size }: { name: string; cols: 2 | 3 | 4; className?: string; /** 1.4.78: list sizes (Grande/Media) use the same rule at a fixed size. */ size?: "grande" | "media" | "jgrande" | "jmedia" | "cmedia" }) {
   const full = name.trim().replace(/\s+/g, " ");
   const parts = full.split(" ");
   const forms: [string, string][] = parts.length > 1 ? [[parts.slice(0, -1).join(" "), parts[parts.length - 1]!]] : [[full, ""]];
@@ -69,12 +87,15 @@ export function MeshNameUniform({ name, cols, className, size }: { name: string;
         }
         return Math.max(...[...twin.children].map((c) => (c as HTMLElement).getBoundingClientRect().width));
       };
+      const view = el.closest("main") ?? el.parentElement ?? document.body;
+      const s = parseFloat(getComputedStyle(view).getPropertyValue("--bz-mn-s")) || 1;
       let i = 0;
-      while (i < forms.length - 1 && widest(i) > room + 0.5) i += 1;
-      const w = widest(i);
-      const base = parseFloat(getComputedStyle(twin).fontSize) || 14;
+      while (i < forms.length - 1 && widest(i) / s > room + 0.5) i += 1;
+      const w = widest(i) / s;
       twin.remove();
-      el.style.fontSize = w > room + 0.5 ? `${Math.max(9, Math.floor(((base * (room - 1)) / w) * 4) / 4)}px` : "";
+      // 1.4.79 standing rule (Oscar): never shrink one card. A word that cannot fit even on its own line scales
+      // EVERY name in the view by the same factor (CSS var on <main>), so all cards keep one identical size.
+      viewScale(view, el, w > room + 0.5 ? Math.max(0.6, Math.floor(((room - 1) / w) * 100) / 100) : 1);
       setStep((p) => (p === i ? p : i));
     };
     check();
@@ -85,6 +106,7 @@ export function MeshNameUniform({ name, cols, className, size }: { name: string;
     return () => {
       alive = false;
       ro?.disconnect();
+      viewScale(el.closest("main") ?? el.parentElement ?? document.body, el, null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [full, cols]);

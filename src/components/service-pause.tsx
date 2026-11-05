@@ -14,11 +14,14 @@ export function ServicePause({
   name,
   paused,
   labeled = false,
+  noHint = false,
 }: {
   id: number;
   name: string;
   paused: boolean;
   labeled?: boolean;
+  /** 1.4.79: Cobros Media icon row has no room for the ?; the manual still explains Pausa. */
+  noHint?: boolean;
 }) {
   const tx = useTx();
   const qc = useQueryClient();
@@ -58,7 +61,7 @@ export function ServicePause({
         {paused ? <Play className="size-4 fill-current" /> : <Pause className="size-4" />}
         {labeled ? (paused ? tx("Continuar", "Play") : tx("Pausa", "Pause")) : null}
       </button>
-      <Hint compact topic="pausa" alt={paused} />
+      {noHint ? null : <Hint compact topic="pausa" alt={paused} />}
       <ConfirmDialog
         open={open}
         title={

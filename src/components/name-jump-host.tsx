@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { closeNameJump, subscribeNameJump, type NameDest } from "@/components/name-jump";
+import { closeAllSheets } from "@/lib/back-close";
 import { useI18n } from "@/lib/i18n";
 
 export function NameJumpHost() {
@@ -19,9 +20,12 @@ export function NameJumpHost() {
       confirmLabel={locale === "en" ? "Yes, open" : "Sí, abrir"}
       onConfirm={() => {
         const target = jump;
-        closeNameJump();
-        if (!target) return;
-        void navigate({ to: target.to, search: target.search, hash: target.hash });
+        if (!target) return closeNameJump();
+        // 1.4.79: close this question AND the dialog it came from, then go (history stays clean).
+        closeAllSheets(() => {
+          closeNameJump();
+          void navigate({ to: target.to, search: target.search, hash: target.hash });
+        });
       }}
       onCancel={closeNameJump}
     />

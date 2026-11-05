@@ -1,3 +1,4 @@
+import { closeAllSheets } from "@/lib/back-close";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowRight, CircleHelp, Lightbulb } from "lucide-react";
 import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
@@ -155,7 +156,7 @@ export function Hint({
                       onClick={() => {
                         setOpen(false);
                         rememberOrigin(pathname);
-                        void navigate({ to: "/manual", search: { t: entry.topic.id }, resetScroll: false });
+                        closeAllSheets(() => void navigate({ to: "/manual", search: { t: entry.topic.id }, resetScroll: false }));
                       }}
                       className="bz-hint-more"
                     >

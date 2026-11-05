@@ -83,3 +83,26 @@ export function pushBackStep(onBack: () => void): () => void {
     }
   };
 }
+
+/**
+ * 1.4.79 (Oscar: a link inside a dialog opened Por cobrar behind it and left the dialog on top). Closes every open
+ * sheet/dialog at once, takes all their history steps back in one move, then runs `after` (the navigation) once the
+ * history has settled, so the new screen is never under an old dialog and back still works as expected.
+ */
+export function closeAllSheets(after?: () => void) {
+  if (typeof window === "undefined") return after?.();
+  const open = stack.splice(0, stack.length);
+  if (!open.length) return after?.();
+  let steps = 0;
+  const st = (window.history.state ?? {}) as { bzSheet?: number };
+  if (st.bzSheet != null && open.some((e) => e.id === st.bzSheet)) steps = open.filter((e) => e.id <= st.bzSheet!).length;
+  for (const e of open.reverse()) e.close();
+  if (!steps) return after?.();
+  skip += 1;
+  const done = () => {
+    window.removeEventListener("popstate", done);
+    window.setTimeout(() => after?.(), 30);
+  };
+  window.addEventListener("popstate", done);
+  window.history.go(-steps);
+}

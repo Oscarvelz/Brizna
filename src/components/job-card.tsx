@@ -18,8 +18,7 @@ import { ReasonChips } from "@/components/reason-chips";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MeshName } from "@/components/mesh-name";
-import { meshFrame } from "@/lib/density";
+import { MeshNameUniform } from "@/components/mesh-name";
 import { addDaysISO, stampDay, todayISO } from "@/lib/dates";
 import { formatDay, formatTime, jobKindLabel, money, telHref } from "@/lib/format";
 import { isHechoConfirmSkipped, subscribeHechoConfirm } from "@/lib/hecho-confirm";
@@ -308,7 +307,8 @@ export function JobCard({
       <ConfirmDialog
         open={askDone}
         stack
-        title={tx(`¿Cómo cerrar ${job.clientName}?`, `How do you want to close ${job.clientName}'s cut?`)}
+        title={<>{tx("¿Cómo cerrar a ", "Close ")}<span className="bz-dialog-who"><span className="bz-dialog-name">{job.clientName}</span>{tx("?", "'s cut?")}</span></>}
+        aside={<>{tx("Corte", "Cut")} <b>{money(job.amount)}</b></>}
         description={
           <div className="grid gap-2">
             <p>
@@ -362,7 +362,8 @@ export function JobCard({
       />
       <ConfirmDialog
         open={askAbono}
-        title={tx(`¿Abono de ${job.clientName}?`, `Partial payment for ${job.clientName}?`)}
+        title={<>{tx("¿Abono de ", "Partial payment for ")}<span className="bz-dialog-who"><span className="bz-dialog-name">{job.clientName}</span>?</span></>}
+        aside={<>{tx("Corte", "Cut")} <b>{money(job.amount)}</b></>}
         description={
           <div className="grid gap-2">
             <p>
@@ -449,7 +450,7 @@ export function JobCard({
       />
       <ConfirmDialog
         open={askUndo}
-        title={tx(`¿Volver ${job.clientName} a pendiente?`, `Move ${job.clientName} back to pending?`)}
+        title={<>{tx("¿Volver a pendiente a ", "Move back to pending: ")}<span className="bz-dialog-who"><span className="bz-dialog-name">{job.clientName}</span>{tx("?", "")}</span></>}
         description={tx(
           "Sirve para corregir un toque por error. El saldo, el adelanto o el cobro de este trabajo también se deshace.",
           "Use this to fix an accidental tap. The balance, prepayment, or payment for this job is also undone.",
@@ -552,12 +553,27 @@ export function JobCard({
   );
 
   if (quad) {
+    // 1.4.79 (Oscar): one name size for every tile (last name to line 2 at that size, never a per-card shrink);
+    // the date and the price share a row ("2 nov ······ $40", price bigger); phone/map sit beside Hecho at the foot.
+    const hecho = pending ? (
+      <Button
+        size="sm"
+        className={cn("bz-jq-done relative min-w-0 flex-1 gap-0.5 px-1", cols === 2 ? "h-9 text-xs" : "h-8 text-[11px]", cols === 4 && "after:absolute after:-inset-y-1 after:inset-x-0 after:content-[''] [&_svg]:size-3")}
+        data-spot="hecho propina"
+        aria-label={cols === 4 ? tx(`Hecho: ${job.clientName}`, `Done: ${job.clientName}`) : undefined}
+        onClick={onHecho}
+        disabled={complete.isPending}
+      >
+        {cols === 4 ? <Check strokeWidth={3} /> : null}
+        {tx("Hecho", "Done")}
+      </Button>
+    ) : null;
     return (
       <>
         <article
           className={cn(
-            "flex min-w-0 flex-col gap-1 rounded-2xl bg-surface shadow-card ring-1 ring-primary/25",
-            meshFrame(cols),
+            "bz-jq bz-cq flex h-full min-w-0 flex-col rounded-2xl bg-surface shadow-card ring-1 ring-primary/25",
+            `is-c${cols}`,
             late && "bg-late-bg bz-late-card",
           )}
         >
@@ -568,52 +584,31 @@ export function JobCard({
               </span>
             ) : null}
             <Link to="/clientes/$id" params={{ id: String(job.clientId) }} className="min-w-0 flex-1">
-              <MeshName name={job.clientName} cols={cols} />
+              <MeshNameUniform name={job.clientName} cols={cols} />
             </Link>
           </div>
-          {cols < 4 ? (
-            <p className="truncate text-[11px] text-muted">{job.scheduledDate ? formatDay(job.scheduledDate, "d MMM") : ""}</p>
-          ) : (
-            <p className="flex min-w-0 items-center gap-1 whitespace-nowrap text-[11px] leading-tight text-muted">
-              {live.status === "done" ? (
-                <Check className="size-3.5 shrink-0 text-done" strokeWidth={3} aria-label={tx("Hecho", "Done")} />
-              ) : null}
-              <span className="min-w-0 overflow-hidden">{job.scheduledDate ? formatDay(job.scheduledDate, "d MMM") : ""}</span>
+          <div className="bz-jq-foot mt-auto">
+            <p className="bz-jq-row">
+              <span className="bz-jq-date">
+                {live.status === "done" ? <Check className="size-3.5 shrink-0 text-done" strokeWidth={3} aria-label={tx("Hecho", "Done")} /> : null}
+                {job.scheduledDate ? formatDay(job.scheduledDate, "d MMM") : ""}
+              </span>
+              <span className="bz-jq-price">{money(job.amount)}</span>
             </p>
-          )}
-          <p className={cn("truncate font-semibold tabular-nums", cols === 4 ? "text-[11px]" : "text-xs")}>{money(job.amount)}</p>
-          {cols === 2 ? (
-            <ContactIcons phone={job.clientPhone} address={job.clientAddress} name={job.clientName} tight variant="some" />
-          ) : null}
-          {cols === 2 && postponed ? (
-            <Button size="sm" variant="outline" className="h-8 w-full px-1 text-xs" onClick={() => setAskReturn(true)}>
-              {tx("Deshacer pospuesto", "Undo postpone")}
-            </Button>
-          ) : null}
-          {cols === 2 && pending ? (
-            <Button size="sm" className="mt-auto h-8 w-full px-1 text-xs" data-spot="hecho propina" onClick={onHecho} disabled={complete.isPending}>
-              {tx("Hecho", "Done")}
-            </Button>
-          ) : null}
-          {cols === 3 && pending ? (
-            <Button size="sm" className="mt-auto h-7 w-full px-1 text-[11px]" data-spot="hecho propina" onClick={onHecho} disabled={complete.isPending}>
-              {tx("Hecho", "Done")}
-            </Button>
-          ) : null}
-          {/* 1.4.67 (Oscar): x4 tiles get a small Hecho too (same flow); a done tile shows the green check instead */}
-          {cols === 4 && pending ? (
-            <Button
-              size="sm"
-              className="relative mt-auto h-7 w-full gap-0.5 px-1 text-[11px] after:absolute after:-inset-y-1 after:inset-x-0 after:content-[''] [&_svg]:size-3"
-              data-spot="hecho propina"
-              aria-label={tx(`Hecho: ${job.clientName}`, `Done: ${job.clientName}`)}
-              onClick={onHecho}
-              disabled={complete.isPending}
-            >
-              <Check strokeWidth={3} />
-              {tx("Hecho", "Done")}
-            </Button>
-          ) : null}
+            {cols === 2 && postponed ? (
+              <Button size="sm" variant="outline" className="mt-1.5 h-8 w-full px-1 text-xs" onClick={() => setAskReturn(true)}>
+                {tx("Deshacer pospuesto", "Undo postpone")}
+              </Button>
+            ) : null}
+            {cols === 2 ? (
+              <div className="bz-jq-acts">
+                <ContactIcons phone={job.clientPhone} address={job.clientAddress} name={job.clientName} tight variant="some" className="flex-nowrap" />
+                {hecho}
+              </div>
+            ) : hecho ? (
+              <div className="bz-jq-acts">{hecho}</div>
+            ) : null}
+          </div>
         </article>
         {dialogs}
       </>
@@ -723,7 +718,7 @@ export function JobCard({
                 params={{ id: String(job.clientId) }}
                 className="min-w-0 font-display text-[1.0625rem] font-semibold leading-none hover:underline"
               >
-                <OneLineName name={job.clientName} minRem={1.0625} maxRem={1.3} />
+                <MeshNameUniform name={job.clientName} cols={2} size="jmedia" />
               </Link>
               <span className="shrink-0 font-display text-sm font-semibold leading-none tabular-nums text-fg/70">{money(job.amount)}</span>
             </div>
@@ -760,7 +755,7 @@ export function JobCard({
                 params={{ id: String(job.clientId) }}
                 className="min-w-0 font-display text-[1.3rem] font-semibold leading-snug hover:underline"
               >
-                <OneLineName name={job.clientName} minRem={1.3} maxRem={1.75} />
+                <MeshNameUniform name={job.clientName} cols={2} size="jgrande" />
               </Link>
               <span className="shrink-0 font-display text-base font-semibold tabular-nums text-fg/70">{money(job.amount)}</span>
             </div>

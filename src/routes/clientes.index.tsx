@@ -13,7 +13,7 @@ import { CueChip } from "@/components/cue-chip";
 import { DensityScope, DensityToggle, useDensity, useQuadCols } from "@/components/density-toggle";
 import { Hint } from "@/components/hint";
 import { ScrollTop } from "@/components/scroll-top";
-import { FitLine, OneLineName, invalidateLawn } from "@/components/job-card";
+import { FitLine, invalidateLawn } from "@/components/job-card";
 import { requestFocus } from "@/lib/manual/nav";
 import { todayISO } from "@/lib/dates";
 import type { QuadCols } from "@/lib/density";
@@ -742,14 +742,13 @@ function ClientListCard({
             {selecting ? (
               <button
                 type="button"
+                role="checkbox"
+                aria-checked={selected}
                 aria-label={selected ? tx("Quitar de la selección", "Remove from selection") : tx("Seleccionar", "Select")}
                 onClick={onToggle}
-                className={cn(
-                  "mt-0.5 grid size-11 shrink-0 place-items-center rounded-sm",
-                  selected ? "bz-pick bz-pick-icon" : "bg-sun text-muted",
-                )}
+                className={cn("bz-cpick", selected && "is-on")}
               >
-                {selected ? <Check className="size-5" /> : null}
+                <span className="bz-cpick-box">{selected ? <Check aria-hidden /> : null}</span>
               </button>
             ) : null}
             {dense ? (
@@ -916,7 +915,7 @@ function ClientListCard({
 
       <ConfirmDialog
         open={askOff}
-        title={tx(`¿Pasar a archivos a ${client.name}?`, `Move ${client.name} to the archive?`)}
+        title={<>{tx("¿Pasar a archivos a ", "Move ")}<span className="bz-dialog-who"><span className="bz-dialog-name">{client.name}</span>{tx("?", " to the archive?")}</span></>}
         description={tx(
           "Sale de la agenda. Queda guardado en Archivos con todos sus datos hasta que lo reactives o lo borres.",
           "They leave the schedule. They stay saved in Archive with all their data until you bring them back or delete them.",
@@ -928,7 +927,7 @@ function ClientListCard({
       />
       <ConfirmDialog
         open={askOn}
-        title={tx(`¿Reactivar a ${client.name}?`, `Reactivate ${client.name}?`)}
+        title={<>{tx("¿Reactivar a ", "Reactivate ")}<span className="bz-dialog-who"><span className="bz-dialog-name">{client.name}</span>?</span></>}
         description={tx("Vuelve a la agenda con su horario y su cuenta.", "They return to the schedule with their times and their account.")}
         confirmLabel={tx("Sí, reactivar", "Yes, reactivate")}
         pending={reactivate.isPending}
@@ -937,7 +936,7 @@ function ClientListCard({
       />
       <ConfirmDialog
         open={askDel}
-        title={tx(`¿Eliminar a ${client.name}?`, `Delete ${client.name}?`)}
+        title={<>{tx("¿Eliminar a ", "Delete ")}<span className="bz-dialog-who"><span className="bz-dialog-name is-late">{client.name}</span>?</span></>}
         description={tx(
           "Se borra el cliente y todo su historial. Esta acción no se puede deshacer.",
           "The client and their whole history are deleted. This cannot be undone.",
@@ -1173,7 +1172,7 @@ function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "gran
       <Link to="/clientes/$id" params={{ id: String(client.id) }} className="block min-w-0">
         <div className="bz-ctop flex min-w-0 items-start gap-3">
           <span className={cn("bz-cname block min-w-0 flex-1 font-semibold", grande ? "font-display is-grande" : "is-media")}>
-            <OneLineName name={client.name} minRem={grande ? 1.25 : 1.0625} maxRem={grande ? 1.6 : 1.3125} />
+            <MeshNameUniform name={client.name} cols={2} size={grande ? "grande" : "cmedia"} />
           </span>
           <span className={cn("bz-cprice shrink-0", grande ? "is-grande" : "is-media")}>{money(client.pricePerCut)}</span>
         </div>
