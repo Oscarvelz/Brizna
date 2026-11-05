@@ -1,4 +1,4 @@
-import { Map, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { ConfirmLink } from "@/components/confirm-link";
 import { mapsHref } from "@/lib/format";
 import { useTx } from "@/lib/i18n";
@@ -50,15 +50,8 @@ export function AddressLine({
     >
       <MapPin className={cn("size-4 shrink-0 text-primary", compact && "mt-0.5")} />
       <span className="bz-addr-text min-w-0 flex-1">{addressParts(address)}</span>
-      {compact ? (
-        <span className="-my-1 grid size-7 shrink-0 place-items-center rounded-full text-primary" aria-label={tx("Abrir el mapa", "Open the map")}>
-          <Map className="size-4" />
-        </span>
-      ) : (
-        <span className="bz-tone bz-tone-map grid size-8 shrink-0 place-items-center rounded-sm" aria-label={tx("Abrir el mapa", "Open the map")}>
-          <Map className="size-4" />
-        </span>
-      )}
+      {/* 1.4.82 (Oscar): the pin on the left already says "map"; no second map icon, so the address gets the full width and fits one line when it can. */}
+      <span className="sr-only">{tx("Abrir el mapa", "Open the map")}</span>
     </ConfirmLink>
   );
 }
