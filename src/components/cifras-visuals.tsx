@@ -34,7 +34,7 @@ export function useArrived() {
 }
 
 /** A number that counts up from zero when it appears (and glides when it changes). */
-export function CountUp({ value, format, duration = 900, className }: { value: number; format: (n: number) => string; duration?: number; className?: string }) {
+export function CountUp({ value, format, duration = 650, className }: { value: number; format: (n: number) => string; duration?: number; className?: string }) {
   const reduced = useReducedMotion();
   const [shown, setShown] = useState(reduced ? value : 0);
   const from = useRef(0);

@@ -2,11 +2,13 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { BarChart3, Compass } from "lucide-react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazyNow, loadAsesor, loadCharts, loadInsights, whenIdle } from "@/lib/study-warm";
 // Charts load only when Estudio opens, so the app starts lighter.
-const CobrosCharts = lazy(() => import("@/components/cobros-charts").then((m) => ({ default: m.CobrosCharts })));
-const AsesorPanel = lazy(() => import("@/components/asesor").then((m) => ({ default: m.AsesorPanel })));
-const CifrasInsightsSections = lazy(() => import("@/components/cifras-insights").then((m) => ({ default: m.CifrasInsightsSections })));
+// 1.4.84: the shell warms these chunks once the app is idle (study-warm), so they are usually ready here.
+const CobrosCharts = lazyNow(loadCharts, (m) => m.CobrosCharts);
+const AsesorPanel = lazyNow(loadAsesor, (m) => m.AsesorPanel);
+const CifrasInsightsSections = lazyNow(loadInsights, (m) => m.CifrasInsightsSections);
 import { CifrasOrderButton } from "@/components/cifras-order-button";
 import { EffortWeek } from "@/components/effort-week";
 import { foldsOpen, setFoldsOpen } from "@/components/fold";
@@ -14,7 +16,7 @@ import { AppShell, TitleSearch } from "@/components/app-shell";
 import { ScrollTop } from "@/components/scroll-top";
 import { todayISO } from "@/lib/dates";
 import { useCifraRank } from "@/lib/cifras-order";
-import { useTx } from "@/lib/i18n";
+import { useI18n, useTx } from "@/lib/i18n";
 import { DayNightSwitch } from "@/components/day-night-switch";
 import { WeatherChip } from "@/components/weather-chip";
 import { getDashboard } from "@/lib/server/lawn";
@@ -62,10 +64,30 @@ function StudyToggle({ view, onChange }: { view: StudyView; onChange: (v: StudyV
 
 function EstadisticasPage() {
   const tx = useTx();
+  const { locale } = useI18n();
   const esfuerzoRank = useCifraRank("esfuerzo");
   const today = todayISO();
   const [view, setViewState] = useState<StudyView>(readView);
+  // 1.4.84: a view stays mounted once shown (hidden when the other is on), so switching back paints at
+  // once and its entrance replays; the other view is also mounted ahead, hidden, once the page is idle.
+  const [mounted, setMounted] = useState<Record<StudyView, boolean>>(() => ({ estudio: view === "estudio", asesor: view === "asesor" }));
+  // Estudio is heavier, so it waits longer; hidden (display none) it costs no layout or paint until shown.
+  const other: StudyView = view === "asesor" ? "estudio" : "asesor";
+  const otherReady = mounted[other];
+  useEffect(() => {
+    if (otherReady) return;
+    let live = true;
+    const t = window.setTimeout(
+      () => whenIdle(() => live && setMounted((m) => ({ ...m, [other]: true })), 2500),
+      other === "asesor" ? 1200 : 2500,
+    );
+    return () => {
+      live = false;
+      window.clearTimeout(t);
+    };
+  }, [other, otherReady]);
   const setView = (v: StudyView) => {
+    setMounted((m) => (m[v] ? m : { ...m, [v]: true }));
     setViewState(v);
     try { localStorage.setItem(VIEW_KEY, v); } catch { /* private mode */ }
     window.scrollTo({ top: 0 });
@@ -101,41 +123,39 @@ function EstadisticasPage() {
   const data = dash.data;
   // Hoy's schedule pass (getDashboard) can add this month's upcoming cuts: recount "Este mes" after it.
   const qc = useQueryClient();
+  // 1.4.84: the panels open on their cached reading (refetchOnMount off) and refresh here once the
+  // entrance has played, so the database reads never hold up the first cards.
   useEffect(() => {
-    if (dash.dataUpdatedAt) {
+    let live = true;
+    const t = window.setTimeout(() => whenIdle(() => {
+      if (!live) return;
+      for (const key of ["advisor", "finance", "cifras-insights"]) void qc.invalidateQueries({ queryKey: [key] });
+    }), 700);
+    return () => {
+      live = false;
+      window.clearTimeout(t);
+    };
+  }, [qc]);
+  // 1.4.84: only a NEW pass counts (not the cached one present on arrival: the panels' own mount refetch
+  // covers that), and the recount waits for idle so it never competes with the cards' first paint.
+  const seenDash = useRef(dash.dataUpdatedAt);
+  useEffect(() => {
+    if (!dash.dataUpdatedAt || dash.dataUpdatedAt === seenDash.current) return;
+    seenDash.current = dash.dataUpdatedAt;
+    whenIdle(() => {
       void qc.invalidateQueries({ queryKey: ["cifras-insights"] });
       void qc.invalidateQueries({ queryKey: ["advisor"] });
-    }
+    });
   }, [dash.dataUpdatedAt, qc]);
 
-  return (
-    <AppShell
-      title={tx("Estudio", "Stats")}
-      titleExtra={view === "estudio" ? <CifrasOrderButton /> : undefined}
-      action={
-        <span className="inline-flex items-center gap-3">
-          <WeatherChip />
-          {view === "asesor" ? null : <TitleSearch
-          open={findOn}
-          onToggle={() => setFindOn((value) => !value)}
-          value={needle}
-          onChange={setNeedle}
-          placeholder={tx("Buscar cifra", "Search")}
-          label={tx("Buscar en Estudio", "Search Stats")}
-        />}
-          <span className="mr-2 grid w-10 shrink-0 place-items-center">
-            <DayNightSwitch />
-          </span>
-        </span>
-      }
-    >
-      <ScrollTop />
-      <StudyToggle view={view} onChange={setView} />
-      {view === "asesor" ? (
-        <Suspense fallback={<div className="as-skel" aria-busy><span /><span /></div>}>
-          <AsesorPanel />
-        </Suspense>
-      ) : (
+  // 1.4.84: each view's body is memoized, so flipping Estudio/Asesor re-renders neither (the hidden one
+  // stays untouched; the shown one only becomes visible).
+  const asesorBody = useMemo(() => (
+          <Suspense fallback={<div className="as-skel" aria-busy><span /><span /></div>}>
+            <AsesorPanel />
+          </Suspense>
+  ), []);
+  const estudioBody = useMemo(() => (
       <>
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="min-w-0 text-sm text-muted">
@@ -200,7 +220,42 @@ function EstadisticasPage() {
       />
       </Suspense>
       </>
-      )}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [locale, expandAll, askFold, query, data, dash.isLoading, today, esfuerzoRank]);
+
+  return (
+    <AppShell
+      title={tx("Estudio", "Stats")}
+      titleExtra={view === "estudio" ? <CifrasOrderButton /> : undefined}
+      action={
+        <span className="inline-flex items-center gap-3">
+          <WeatherChip />
+          {view === "asesor" ? null : <TitleSearch
+          open={findOn}
+          onToggle={() => setFindOn((value) => !value)}
+          value={needle}
+          onChange={setNeedle}
+          placeholder={tx("Buscar cifra", "Search")}
+          label={tx("Buscar en Estudio", "Search Stats")}
+        />}
+          <span className="mr-2 grid w-10 shrink-0 place-items-center">
+            <DayNightSwitch />
+          </span>
+        </span>
+      }
+    >
+      <ScrollTop />
+      <StudyToggle view={view} onChange={setView} />
+      {mounted.asesor ? (
+        <div hidden={view !== "asesor"}>
+          {asesorBody}
+        </div>
+      ) : null}
+      {mounted.estudio ? (
+      <div hidden={view !== "estudio"}>
+      {estudioBody}
+      </div>
+      ) : null}
     </AppShell>
   );
 }

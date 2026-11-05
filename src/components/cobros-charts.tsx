@@ -1,7 +1,8 @@
 import { masonryCols, useMasonry, usePageWidth } from "@/components/wide-layout";
 import { useQuery } from "@tanstack/react-query";
+import { STUDY_GC } from "@/lib/study-warm";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useRef, type ReactElement, type ReactNode } from "react";
 import {
   Bar,
   BarChart,
@@ -46,25 +47,24 @@ export function CobrosCharts({
 }) {
   const { t, locale } = useI18n();
   const tx = useTx();
-  const [ready, setReady] = useState(false);
   // Large screens: the sections flow into steady columns (phones keep one column).
   const box = useRef<HTMLDivElement | null>(null);
   useMasonry(box, embedded ? 0 : masonryCols(usePageWidth()));
   const navigate = useNavigate();
-  useEffect(() => setReady(true), []);
-  const q = useQuery({ queryKey: ["finance"], queryFn: () => getFinanceStats() });
+  // 1.4.84: no first-pass skeleton (an SSR-era guard): with the reading cached, the charts paint at once.
+  const q = useQuery({ queryKey: ["finance"], queryFn: () => getFinanceStats(), gcTime: STUDY_GC, refetchOnMount: false });
   const data = q.data;
   const rankHoras = useCifraRank("horas");
   const rankSemana = useCifraRank("semana");
   const rankAnio = useCifraRank("anio");
   const rankPospuesto = useCifraRank("pospuesto");
 
-  if (!ready || q.isLoading || q.isError || !data) {
+  if (q.isLoading || q.isError || !data) {
     return (
       <div ref={box} className={cn("grid gap-4", !embedded && "mb-6")}>
         {effort}
         {extra}
-        {!ready || q.isLoading ? (
+        {q.isLoading ? (
           <div className="h-48 animate-pulse rounded-xl bg-surface-2" style={{ order: rankSemana }} />
         ) : null}
       </div>

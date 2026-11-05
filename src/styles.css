@@ -1899,7 +1899,7 @@ html.theme-dark .bz-late-pulse::before, html.theme-amoled .bz-late-pulse::before
   100% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-late) 0%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .bz-late-pulse::before { animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-late) 18%, transparent); }
+  .bz-late-pulse::before, html.theme-dark .bz-late-pulse::before, html.theme-amoled .bz-late-pulse::before { animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-late) 18%, transparent); }
 }
 
 /* 1.4.67 (Oscar): Fijados group on Hoy: a fine parchment a shade deeper than the page with a warm-neutral
@@ -2758,3 +2758,26 @@ html.theme-dark .bz-late-glow, html.theme-amoled .bz-late-glow { animation-name:
 @media (prefers-reduced-motion: reduce) {
   .bz-late-glow { animation: none; outline: 2px solid color-mix(in srgb, var(--color-late) 18%, transparent); }
 }
+
+/* 1.4.84 (Oscar): in Grafito the inventory tiles all read gold/tan (today = pending = primary gold), with no
+   colours of their own. Each tile gets its own jewel tone over graphite, like the other palettes. */
+html.theme-dark[data-palette="grafito"] .bz-inv-tile { background: color-mix(in oklab, var(--inv-tone) 16%, #232325) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--inv-tone) 55%, transparent); }
+html.theme-dark[data-palette="grafito"] .bz-inv-tile > p:first-child { color: var(--inv-tone) !important; }
+html.theme-dark[data-palette="grafito"] .bz-inv-tile.is-today { --inv-tone: #a4d888; }
+html.theme-dark[data-palette="grafito"] .bz-inv-tile.is-pending { --inv-tone: #b9a4f0; }
+html.theme-dark[data-palette="grafito"] .bz-inv-tile.is-sun { --inv-tone: #82cfe0; }
+html.theme-dark[data-palette="grafito"] .bz-inv-tile.is-soil { --inv-tone: #e8a07a; }
+
+/* 1.4.84 (Oscar): a little more air between the previous week's cards and the next week bubble, so each
+   week reads as its own block at a glance. Not on the first week. */
+section:not(:first-child) > .bz-wk { margin-top: 0.75rem; }
+
+/* 1.4.84 grafito sweep (Oscar: "botones que no tienen contraste ni colores propios"). Grafito only; gold
+   stays its identity (Cortes hoy, primary). Tones now sit over graphite (#232325) instead of near-black,
+   so they read as their own colour rather than brown/grey: Hoy "Por cobrar" orange, Cobros "Cobrado"
+   green (was a faint 12% that read grey beside the gold Por cobrar) and the three Cobros folds. */
+html.theme-dark[data-palette="grafito"] { --color-cut-bg: color-mix(in oklab, #f28a3a 20%, #232325); }
+html.theme-dark[data-palette="grafito"] .bz-stat.bz-stat-done { --color-done-bg: color-mix(in oklab, #a4d888 18%, #232325); }
+html.theme-dark[data-palette="grafito"] .bz-fold.cob-espera { --fold-tone: #b4c47a; background: linear-gradient(165deg, color-mix(in oklab, #9fb455 26%, #232325) 0%, color-mix(in oklab, #9fb455 15%, #232325) 100%); }
+html.theme-dark[data-palette="grafito"] .bz-fold.cob-perdon { --fold-tone: #cfa6c0; background: linear-gradient(165deg, color-mix(in oklab, #b874a0 26%, #232325) 0%, color-mix(in oklab, #b874a0 15%, #232325) 100%); }
+html.theme-dark[data-palette="grafito"] .bz-fold.cob-hecho { --fold-tone: #e8a07a; background: linear-gradient(165deg, color-mix(in oklab, #e0875a 24%, #232325) 0%, color-mix(in oklab, #e0875a 14%, #232325) 100%); }

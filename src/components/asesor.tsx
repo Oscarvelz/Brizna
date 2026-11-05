@@ -1,5 +1,6 @@
 import { useMasonry, usePageWidth } from "@/components/wide-layout";
 import { useQuery } from "@tanstack/react-query";
+import { STUDY_GC } from "@/lib/study-warm";
 import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -122,7 +123,7 @@ function GrassDial({ score, tone, word }: { score: number; tone: "good" | "warn"
               <path
                 d={`M ${c - 3.2} ${c - rIn} Q ${c - 2} ${c - rIn - 13} ${c + 1.5} ${c - rIn - (on ? 21 : 12)} Q ${c + 2.4} ${c - rIn - 9} ${c + 3.2} ${c - rIn} Z`}
                 className={cn("as-blade", on && "is-on")}
-                style={{ animationDelay: `${120 + i * 22}ms` }}
+                style={{ animationDelay: `${40 + i * 10}ms` }}
               />
             </g>
           );
@@ -238,7 +239,7 @@ function Meadow() {
             key={i}
             d={`M ${x - 2.6} 26 Q ${x - 1} ${26 - h * 0.6} ${x + lean} ${26 - h} Q ${x + 1.2} ${26 - h * 0.5} ${x + 2.6} 26 Z`}
             className={cn("as-meadow-blade", i % 3 === 0 && "is-deep")}
-            style={{ animationDelay: `${300 + ((i * 41) % 23) * 28}ms` }}
+            style={{ animationDelay: `${80 + ((i * 41) % 23) * 10}ms` }}
           />
         );
       })}
@@ -435,7 +436,7 @@ function PlanViz() {
   return (
     <div className="as-plan" role="img" aria-label={tx("Un corte cada 2 semanas", "A cut every 2 weeks")}>
       {Array.from({ length: 8 }, (_, i) => (
-        <span key={i} className={cn("as-plan-wk", i % 2 === 0 && "is-cut")} style={{ animationDelay: `${150 + i * 70}ms` }}>
+        <span key={i} className={cn("as-plan-wk", i % 2 === 0 && "is-cut")} style={{ animationDelay: `${50 + i * 30}ms` }}>
           {i % 2 === 0 ? <Sprout aria-hidden /> : null}
         </span>
       ))}
@@ -843,7 +844,7 @@ function Glossary() {
 
 export function AsesorPanel() {
   const tx = useTx();
-  const q = useQuery({ queryKey: ["advisor"], queryFn: () => getAdvisor() });
+  const q = useQuery({ queryKey: ["advisor"], queryFn: () => getAdvisor(), gcTime: STUDY_GC, refetchOnMount: false });
   if (q.isLoading) {
     return (
       <div className="as-skel" aria-busy>

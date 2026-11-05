@@ -5,8 +5,8 @@
 @keyframes cif-pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
 @keyframes cif-shimmer { 0% { opacity: 0.55; } 50% { opacity: 1; } 100% { opacity: 0.55; } }
 
-.cif-rise { animation: cif-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.cif-rows > li { animation: cif-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cif-rise { animation: cif-rise 0.25s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cif-rows > li { animation: cif-rise 0.24s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 .cif-skeleton { display: grid; gap: 0.75rem; }
 .cif-skeleton span { display: block; height: 7rem; border-radius: var(--radius-xl); background: var(--color-surface-2); animation: cif-shimmer 1.4s ease-in-out infinite; }
@@ -112,7 +112,7 @@
   height: 1.55rem; border-radius: 5px; font-size: 0.66rem; font-weight: 700; font-variant-numeric: tabular-nums;
   color: var(--color-fg);
   background: color-mix(in srgb, var(--color-done) var(--lvl, 0%), color-mix(in srgb, var(--color-surface-2) 85%, var(--color-bg)));
-  animation: cif-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: cif-pop 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
   transition: transform 0.12s, box-shadow 0.15s;
 }
 .cif-heat-cell.is-strong { color: var(--color-primary-fg); }
@@ -125,7 +125,7 @@ html.theme-dark .cif-heat-cell.is-strong, html.theme-amoled .cif-heat-cell.is-st
 .cif-week-col { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
 .cif-week-val { font-size: 0.64rem; font-weight: 700; color: var(--color-muted); font-variant-numeric: tabular-nums; min-height: 0.9rem; white-space: nowrap; }
 .cif-week-bar { position: relative; width: 100%; max-width: 2.4rem; height: 4.2rem; border-radius: 0.5rem; background: color-mix(in srgb, var(--color-border) 40%, transparent); overflow: hidden; }
-.cif-week-bar span { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 0.5rem; background: color-mix(in srgb, var(--color-done) 55%, var(--color-surface)); transform-origin: bottom; animation: cif-grow 0.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cif-week-bar span { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 0.5rem; background: color-mix(in srgb, var(--color-done) 55%, var(--color-surface)); transform-origin: bottom; animation: cif-grow 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .cif-week-bar span.is-best { background: linear-gradient(180deg, color-mix(in srgb, var(--color-done) 75%, #fff), var(--color-done)); }
 .cif-week-day { font-size: 0.72rem; font-weight: 700; }
 .cif-week-n { font-size: 0.64rem; color: var(--color-muted); font-variant-numeric: tabular-nums; }
@@ -184,7 +184,7 @@ html.theme-dark .cif-heat-cell.is-strong, html.theme-amoled .cif-heat-cell.is-st
 @keyframes cif-sway { 0%, 100% { transform: rotate(-14deg); } 50% { transform: rotate(-4deg); } }
 
 /* Sections arrive one after another, by their place in the order. */
-.cif-sec { animation: cif-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i, 0) * 45ms); background-color: var(--color-surface); }
+.cif-sec { animation: cif-rise 0.24s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(min(var(--i, 0), 6) * 30ms); background-color: var(--color-surface); }
 /* A grass blade before every section title. */
 .cif-sec > .bz-fold-head > .bz-fold-title::before {
   content: ""; flex-shrink: 0; width: 0.6rem; height: 1rem; margin-right: 0.5rem;
@@ -290,7 +290,7 @@ html.theme-dark .cif-heat-cell.is-strong, html.theme-amoled .cif-heat-cell.is-st
 .cif-wbars { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0.3rem; margin-top: 0.45rem; }
 .cif-wbar { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; min-width: 0; }
 .cif-wbar-val { font-size: 0.6rem; font-weight: 700; color: var(--color-muted); font-variant-numeric: tabular-nums; white-space: nowrap; min-height: 0.8rem; }
-.cif-wbar-pair { display: flex; align-items: flex-end; justify-content: center; gap: 2px; width: 100%; height: 6.5rem; border-bottom: 2px solid color-mix(in srgb, var(--color-soil) 55%, var(--color-border)); transform-origin: bottom; animation: cif-grow 0.85s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cif-wbar-pair { display: flex; align-items: flex-end; justify-content: center; gap: 2px; width: 100%; height: 6.5rem; border-bottom: 2px solid color-mix(in srgb, var(--color-soil) 55%, var(--color-border)); transform-origin: bottom; animation: cif-grow 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .cif-wbar-paid, .cif-wbar-work { display: flex; flex-direction: column; width: 44%; max-width: 1.05rem; border-radius: 5px 5px 1px 1px; overflow: hidden; }
 .cif-wbar-paid { background: linear-gradient(180deg, color-mix(in srgb, var(--color-done) 72%, var(--color-surface)), var(--color-done)); }
 .cif-wbar-paid.is-best { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-abono) 80%, transparent); }
@@ -315,3 +315,10 @@ html.theme-dark .cif-mower-motor, html.theme-amoled .cif-mower-motor, html.theme
 }
 /* Titles with a peek figure already get an 8px flex gap: keep the blade at the same distance as in the other titles. */
 .cif-sec > .bz-fold-head > .bz-fold-title:has(> .bz-fold-peek)::before { margin-right: 0; }
+
+/* 1.4.84 (Oscar: Estudio cards must appear much faster): on phones the browser skips style, layout and
+   paint for sections still below the screen until they scroll near, so the first ones paint at once.
+   Large screens keep full rendering (masonry measures every section). */
+@media (max-width: 879px) {
+  .cif-sec { content-visibility: auto; contain-intrinsic-block-size: auto 22rem; }
+}

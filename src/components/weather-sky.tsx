@@ -24,6 +24,7 @@ export function WeatherSky() {
     return () => { dead = true; window.clearInterval(t); window.removeEventListener(PLACE_EVENT, load); document.removeEventListener("visibilitychange", vis); };
   }, []);
   return (
+    <>
     <div className="wx" aria-hidden>
       <div className="wx-cloud wx-c1" />
       <div className="wx-cloud wx-c2" />
@@ -32,8 +33,9 @@ export function WeatherSky() {
       <div className="wx-fog" />
       <div className="wx-snow" />
       <div className="wx-flash" />
-      <Fireflies />
     </div>
+      <Fireflies />
+    </>
   );
 }
 
@@ -47,7 +49,7 @@ const FLIES = [
 ];
 function Fireflies() {
   return (
-    <div className="wx-flies">
+    <div className="wx-flies" aria-hidden>
       {FLIES.map(([x, y, d, t], i) => (
         <i key={i} style={{ left: `${x}%`, top: `${y}%`, animationDelay: `-${d}s, -${(d * 0.7).toFixed(1)}s`, animationDuration: `${t}s, ${(3.2 + (i % 4) * 0.6).toFixed(1)}s` }} />
       ))}

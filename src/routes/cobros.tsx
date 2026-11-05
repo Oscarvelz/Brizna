@@ -1119,7 +1119,7 @@ function OwingCard({
   const chips: React.ReactNode[] = [];
   if (late)
     chips.push(
-      <span key="late" className="bz-state is-late is-xs">
+      <span key="late" className="bz-state is-late is-xs bz-late-pulse">
         <CircleAlert aria-hidden />
         {quad && cols > 2 ? (days > 0 ? tx(`${days} d`, `${days} d`) : tx("Atrasado", "Late")) : days > 0 ? tx(`Atrasado · ${days} ${days === 1 ? "día" : "días"}`, `Late · ${days} ${days === 1 ? "day" : "days"}`) : tx("Atrasado", "Late")}
       </span>,
@@ -1190,7 +1190,7 @@ function OwingCard({
     // 1.4.79 (Oscar: Media looked like Grande): half the height. Row 1 = pick · name · state · balance;
     // row 2 = cut date at the left, icon-only actions at the right.
     const lateChip = late ? (
-      <span className="bz-state is-late is-xs" title={tx("Atrasado", "Late")}>
+      <span className="bz-state is-late is-xs bz-late-pulse" title={tx("Atrasado", "Late")}>
         <CircleAlert aria-hidden />
         {days > 0 ? tx(`${days} ${days === 1 ? "día" : "días"}`, `${days} ${days === 1 ? "day" : "days"}`) : tx("Atrasado", "Late")}
       </span>

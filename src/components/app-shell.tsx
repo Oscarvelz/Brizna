@@ -39,6 +39,7 @@ import { signOut, authEnabled } from "@/lib/auth/client";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { DEFAULT_BUSINESS_NAME, PRODUCT_NAME } from "@/lib/format";
 import { getSettings, saveBackupNow, updateSettings } from "@/lib/server/lawn";
+import { warmStudy } from "@/lib/study-warm";
 import { useI18n, useTx } from "@/lib/i18n";
 import {
   applyLocale,
@@ -190,6 +191,8 @@ export function AppShell({
   const tabs = ["/", "/agenda", "/clientes", "/cobros", "/estadisticas"] as const;
   const settingsQ = useQuery({ queryKey: ["settings"], queryFn: () => getSettings() });
   const shellQc = useQueryClient();
+  // 1.4.84: Estudio/Asesor code and readings load ahead once the app is idle, so their cards open at once.
+  useEffect(() => warmStudy(shellQc), [shellQc]);
   const { t, locale, setLocale } = useI18n();
   const tx = useTx();
   const businessName = settingsQ.data?.businessName || readStoredBusinessName(DEFAULT_BUSINESS_NAME);

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { STUDY_GC } from "@/lib/study-warm";
 import { Link } from "@tanstack/react-router";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, ChevronRight, Minus } from "lucide-react";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
@@ -40,7 +41,7 @@ function monthName(key: string, long = true) {
 }
 
 function useInsights(enabled = true) {
-  return useQuery({ queryKey: ["cifras-insights"], queryFn: () => getCifrasInsights(), enabled });
+  return useQuery({ queryKey: ["cifras-insights"], queryFn: () => getCifrasInsights(), enabled, gcTime: STUDY_GC, refetchOnMount: false });
 }
 
 /* ------------------------------------------------------------------ Este mes */
