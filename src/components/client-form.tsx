@@ -1021,18 +1021,18 @@ function PresetLine({
   gear?: boolean;
   children: ReactNode;
 }) {
-  const chips = <div className="flex flex-wrap gap-1">{children}</div>;
-  if (!gear) return chips;
+  if (!gear) return <div className="bz-presets flex flex-wrap gap-1">{children}</div>;
+  // 1.4.80 (Oscar: no empty space): the pencil sits inline at the end of the last chip row, not in its own column.
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_2rem] items-start gap-1">
-      {chips}
+    <div className="bz-presets flex flex-wrap items-center gap-1">
+      {children}
       <button
         type="button"
         aria-label={label}
         aria-pressed={editing}
         onClick={onToggle}
         className={cn(
-          "grid size-8 place-items-center rounded-full",
+          "bz-preset-pen ml-auto grid size-8 shrink-0 place-items-center rounded-full",
           editing ? "bz-pick bz-pick-icon" : "text-muted hover:bg-sun hover:text-fg",
         )}
       >
@@ -1324,7 +1324,7 @@ export function ArrivalField({
             type="button"
             onClick={() => onChange(t)}
             className={cn(
-              "h-8 rounded-full px-2 text-[11px] font-semibold",
+              "bz-preset is-time h-8 rounded-full px-2 text-[11px] font-semibold",
               value === t ? "bz-pick" : "bg-sun text-muted",
             )}
           >
@@ -1384,7 +1384,7 @@ export function TaskPresets({
   const [draft, setDraft] = useState(presets.join("\n"));
   return (
     <div className="mt-2">
-      <p className="mb-1 text-sm font-semibold">{tx("Opciones frecuentes", "Frequent options")}</p>
+      <p className="bz-preset-title mb-1 text-sm font-semibold">{tx("Opciones frecuentes", "Frequent options")}</p>
       <PresetLine
         editing={editing}
         label={editing ? tx("Cerrar edición", "Close editing") : tx("Editar opciones", "Edit options")}
@@ -1398,7 +1398,7 @@ export function TaskPresets({
             key={item}
             type="button"
             onClick={() => onPick(item)}
-            className="h-8 rounded-full bg-soil-bg px-2 text-[11px] font-semibold text-soil"
+            className="bz-preset h-8 rounded-full bg-soil-bg px-2 text-[11px] font-semibold text-soil"
           >
             {item}
           </button>

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Check, Clock, GripVertical, Phone, Pin, RotateCcw } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AddressLine, hasAddress } from "@/components/address-line";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MeshNameUniform } from "@/components/mesh-name";
 import { addDaysISO, stampDay, todayISO } from "@/lib/dates";
-import { formatDay, formatTime, jobKindLabel, money, telHref } from "@/lib/format";
+import { FREQ_SEP, formatDay, formatTime, jobKindLabel, money, telHref } from "@/lib/format";
 import { isHechoConfirmSkipped, subscribeHechoConfirm } from "@/lib/hecho-confirm";
 import { useI18n, useTx } from "@/lib/i18n";
 import { applyOutboxJob, enqueue, isOfflineError, useOutbox } from "@/lib/offline-queue";
@@ -712,15 +712,17 @@ export function JobCard({
               </span>
             ) : null}
             {/* 1.4.64 (Oscar): price sits right after the name; contact chips grouped; pin last, top-right */}
-            <div className="flex min-w-0 flex-1 items-baseline gap-3">
+            {/* 1.4.80 (Oscar): the name shrink-wraps to its text (even on 2 lines), the price follows it ~10px later and
+                sits on the same centre line as the WA / Mensaje / Llamar / Pin chips. */}
+            <div className="flex min-w-0 flex-1 items-center gap-2.5" data-name-room>
               <Link
                 to="/clientes/$id"
                 params={{ id: String(job.clientId) }}
                 className="min-w-0 font-display text-[1.0625rem] font-semibold leading-none hover:underline"
               >
-                <MeshNameUniform name={job.clientName} cols={2} size="jmedia" />
+                <MeshNameUniform name={job.clientName} cols={2} size="jmedia" fit />
               </Link>
-              <span className="shrink-0 font-display text-sm font-semibold leading-none tabular-nums text-fg/70">{money(job.amount)}</span>
+              <span data-price className="shrink-0 font-display text-sm font-semibold leading-none tabular-nums text-fg/70">{money(job.amount)}</span>
             </div>
             {/* 1.4.68 (Oscar): WA, Mensaje, Llamar - Mensaje sits next to the phone */}
             {job.clientPhone ? <WhatsAppButton phone={job.clientPhone} name={job.clientName} tight /> : null}
@@ -749,15 +751,17 @@ export function JobCard({
           <>
           {/* 1.4.64 (Oscar): name + price on one line, pin in the top-right corner */}
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex min-w-0 flex-1 items-baseline gap-4">
+            {/* 1.4.80 (Oscar): shrink-wrapped name, price right after it and centred on the name block; price 19px
+                (was 16px) so it balances the 22px name while staying the grey secondary token. */}
+            <div className="flex min-w-0 flex-1 items-center gap-3" data-name-room>
               <Link
                 to="/clientes/$id"
                 params={{ id: String(job.clientId) }}
                 className="min-w-0 font-display text-[1.3rem] font-semibold leading-snug hover:underline"
               >
-                <MeshNameUniform name={job.clientName} cols={2} size="jgrande" />
+                <MeshNameUniform name={job.clientName} cols={2} size="jgrande" fit />
               </Link>
-              <span className="shrink-0 font-display text-base font-semibold tabular-nums text-fg/70">{money(job.amount)}</span>
+              <span data-price className="shrink-0 font-display text-[1.1875rem] font-semibold leading-none tabular-nums text-fg/70">{money(job.amount)}</span>
             </div>
             {pinButton("size-8", "size-3.5")}
           </div>
@@ -947,6 +951,17 @@ export function OneLineName({ name, minRem, maxRem }: { name: string; minRem?: n
     fit, the date drops its weekday. 1.4.67 (Oscar): the name above stays the widest line, so the subline
     takes the first option narrower than the name: full, no weekday, then a slightly smaller font (never
     under 0.8rem). If none is narrower (a very short name), it takes the narrowest that fits. */
+/** 1.4.80: the frequency–day dash renders muted (.bz-sep); the text itself (and its measured width) is unchanged. */
+function sepParts(text: string): ReactNode {
+  if (!text.includes(FREQ_SEP)) return text;
+  return text.split(FREQ_SEP).map((part, i) => (
+    <Fragment key={i}>
+      {i > 0 ? <span className="bz-sep">{FREQ_SEP}</span> : null}
+      {part}
+    </Fragment>
+  ));
+}
+
 export function FitLine({ forms, className, underName, lastResort, sizes }: { forms: string[]; className?: string; underName?: boolean; lastResort?: string; /** 1.4.76: try these smaller sizes for each form before dropping to the next form. */ sizes?: number[] }) {
   const [pick, setPick] = useState<{ i: number; rem: number | null }>({ i: 0, rem: null });
   const ref = useRef<HTMLParagraphElement | null>(null);
@@ -1020,7 +1035,7 @@ export function FitLine({ forms, className, underName, lastResort, sizes }: { fo
   }, [key, underName, sizes?.join(",")]);
   return (
     <p ref={ref} className={cn("relative whitespace-nowrap", className)} style={pick.rem ? { fontSize: `${pick.rem}rem` } : undefined} data-card-subline>
-      {all[Math.min(pick.i, all.length - 1)]}
+      {sepParts(all[Math.min(pick.i, all.length - 1)]!)}
     </p>
   );
 }

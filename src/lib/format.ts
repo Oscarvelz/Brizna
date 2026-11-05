@@ -155,6 +155,9 @@ export function weekdayLabel(value: number): string {
   return weekdayOptions().find((d) => d.value === value)?.label ?? (english() ? "Monday" : "Lunes");
 }
 
+/** 1.4.80 (Oscar): "Cada semana – Sábado" — a refined en dash with thin spaces between frequency and day (was " · "). */
+export const FREQ_SEP = "\u202F–\u2009"; // narrow no-break space before the dash, thin space after
+
 export function frequencyLabel(
   freq: number,
   extra?: { frequencyDays?: number | null; weekday2?: number | null },

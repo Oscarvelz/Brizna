@@ -20,7 +20,7 @@ import type { QuadCols } from "@/lib/density";
 import { SwipeRow } from "@/components/swipe-row";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatDay, frequencyLabel, mapsHref, money, telHref, weekdayLabel } from "@/lib/format";
+import { FREQ_SEP, formatDay, frequencyLabel, mapsHref, money, telHref, weekdayLabel } from "@/lib/format";
 import { MeshName, MeshNameUniform } from "@/components/mesh-name";
 import { meshFrame, viewGrid } from "@/lib/density";
 import { useTx } from "@/lib/i18n";
@@ -650,9 +650,13 @@ function ClientListCard({
     },
   });
 
+  // 1.4.80 (Oscar): in Malla the late state is a bare tilted "!" sticker at the card's bottom-right corner, breaking
+  // slightly out of the bubble (a sibling of the article, so the card's overflow:hidden cannot clip it).
+  const bang = quad && client.overdueDate ? <LateBang client={client} cols={cols} /> : null;
   return (
     <>
       <SwipeRow
+        className={bang ? "has-bang" : undefined}
         leftActions={
           <>
             {client.phone ? (
@@ -774,10 +778,16 @@ function ClientListCard({
                         <p className={cn("truncate text-muted", quad || dense ? "text-[11px]" : media ? "text-xs" : "text-sm")}>
                           {client.kind === "one_time"
                             ? tx("Trabajo de una vez", "One-time job")
-                            : `${frequencyLabel(client.cutsPerMonth, {
-                                frequencyDays: client.frequencyDays,
-                                weekday2: client.weekday2,
-                              })} · ${weekdayLabel(client.weekday)}`}
+                            : (
+                              <>
+                                {frequencyLabel(client.cutsPerMonth, {
+                                  frequencyDays: client.frequencyDays,
+                                  weekday2: client.weekday2,
+                                })}
+                                <span className="bz-sep">{FREQ_SEP}</span>
+                                {weekdayLabel(client.weekday)}
+                              </>
+                            )}
                         </p>
                       ) : null}
                     </div>
@@ -911,6 +921,7 @@ function ClientListCard({
             )}
           </div>
         </article>
+        {bang}
       </SwipeRow>
 
       <ConfirmDialog
@@ -962,6 +973,18 @@ function daysSince(iso: string): number {
 
 function owesOther(client: ClientRow) {
   return client.balance > 0 && Math.round(client.balance * 100) !== Math.round(client.pricePerCut * 100);
+}
+
+function LateBang({ client, cols }: { client: ClientRow; cols: QuadCols }) {
+  const tx = useTx();
+  const n = client.overdueDate ? daysSince(client.overdueDate) : 0;
+  const days = n === 1 ? tx("1 día", "1 day") : tx(`${n} días`, `${n} days`);
+  const label = `${tx("Atrasado", "Late")} ${days}${client.highRisk ? ` · ${tx("Alto riesgo", "High risk")}` : ""}`;
+  return (
+    <span className={cn("bz-bang", `is-c${cols}`)} role="img" aria-label={label} title={label}>
+      <span aria-hidden>!</span>
+    </span>
+  );
 }
 
 /** The one state that belongs beside the actions: late first, then money owed, archive, then the next cut. */
@@ -1058,7 +1081,7 @@ function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "gran
     client.kind === "one_time"
       ? [tx("Trabajo de una vez", "One-time job")]
       : [
-          `${frequencyLabel(client.cutsPerMonth, { frequencyDays: client.frequencyDays, weekday2: client.weekday2 })} · ${weekdayLabel(client.weekday)}`,
+          `${frequencyLabel(client.cutsPerMonth, { frequencyDays: client.frequencyDays, weekday2: client.weekday2 })}${FREQ_SEP}${weekdayLabel(client.weekday)}`,
           frequencyLabel(client.cutsPerMonth, { frequencyDays: client.frequencyDays, weekday2: client.weekday2 }),
         ];
   const openFile = (topic?: string, setup?: () => void) => {
@@ -1097,7 +1120,7 @@ function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "gran
           {x3 || x4 ? (
             <Link to="/clientes/$id" params={{ id: String(client.id) }} className="mt-1 flex min-w-0 items-center justify-between gap-1">
               <span className={cn("bz-cprice", x4 ? "is-quad4" : "is-quad3")}>{money(client.pricePerCut)}</span>
-              {client.overdueDate || owesOther(client) || !client.isActive ? (
+              {client.overdueDate ? null : owesOther(client) || !client.isActive ? (
                 <StateChip client={client} size={x4 ? "dot" : "xs"} />
               ) : client.nextCutDate && !x4 ? (
                 <span className="bz-cmeta">{formatDay(client.nextCutDate, "d MMM")}</span>
@@ -1107,7 +1130,7 @@ function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "gran
           {!x4 ? (
             <div className="mt-1.5 flex min-w-0 items-center justify-between gap-1">
               <ContactIcons phone={client.phone} address={client.address} name={client.name} tight variant="some" className="flex-nowrap" />
-              {!x3 ? <StateChip client={client} size="xs" /> : null}
+              {!x3 && !client.overdueDate ? <StateChip client={client} size="xs" /> : null}
             </div>
           ) : null}
         </div>
@@ -1176,7 +1199,7 @@ function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "gran
           </span>
           <span className={cn("bz-cprice shrink-0", grande ? "is-grande" : "is-media")}>{money(client.pricePerCut)}</span>
         </div>
-        <FitLine forms={freq} underName sizes={grande ? [0.8125, 0.75] : [0.75, 0.71875]} className={cn("bz-csub", grande ? "is-grande" : "is-media")} />
+        <FitLine forms={freq} underName sizes={grande ? [0.8125, 0.75] : [0.71875, 0.6875]} className={cn("bz-csub", grande ? "is-grande" : "is-media")} />
       </Link>
       {grande && client.cue ? <CueChip text={client.cue} full className="mt-1.5" /> : null}
       <div className={cn("flex min-w-0 items-center justify-between gap-2", grande ? "mt-3" : "mt-2.5")}>

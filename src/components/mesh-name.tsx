@@ -58,22 +58,38 @@ function viewScale(view: Element, el: Element, need: number | null) {
  * before the last name. If even that cannot fit (one very long word), middle names drop first, and only then
  * does this one card's name shrink.
  */
-export function MeshNameUniform({ name, cols, className, size }: { name: string; cols: 2 | 3 | 4; className?: string; /** 1.4.78: list sizes (Grande/Media) use the same rule at a fixed size. */ size?: "grande" | "media" | "jgrande" | "jmedia" | "cmedia" }) {
+export function MeshNameUniform({ name, cols, className, size, fit }: { name: string; cols: 2 | 3 | 4; className?: string; /** 1.4.78: list sizes (Grande/Media) use the same rule at a fixed size. */ size?: "grande" | "media" | "jgrande" | "jmedia" | "cmedia";
+  /** 1.4.80 (Oscar): the name shrink-wraps to its own text (widest line) so what follows it (the price) sits right after
+   *  the name, even when the last name goes to line 2. The room is measured on the closest [data-name-room] row
+   *  (its width minus its other children and gaps) instead of on the name box itself. */
+  fit?: boolean }) {
   const full = name.trim().replace(/\s+/g, " ");
   const parts = full.split(" ");
   const forms: [string, string][] = parts.length > 1 ? [[parts.slice(0, -1).join(" "), parts[parts.length - 1]!]] : [[full, ""]];
   if (parts.length > 2) forms.push([parts[0]!, parts[parts.length - 1]!]);
   const [step, setStep] = useState(0);
+  const [two, setTwo] = useState(false);
   const box = useRef<HTMLSpanElement | null>(null);
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
+    const host = fit ? (el.closest("[data-name-room]") as HTMLElement | null) : null;
+    const roomOf = () => {
+      if (!host) return el.clientWidth;
+      const kids = [...host.children] as HTMLElement[];
+      const gap = parseFloat(getComputedStyle(host).columnGap) || 0;
+      const others = kids.filter((k) => !k.contains(el)).reduce((t, k) => t + k.getBoundingClientRect().width, 0);
+      const cs = getComputedStyle(host);
+      const inner = host.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+      return Math.floor(inner - others - gap * Math.max(0, kids.length - 1));
+    };
     const check = () => {
-      const room = el.clientWidth;
-      if (!room) return;
+      const room = roomOf();
+      if (!room || room < 0) return;
       el.style.fontSize = "";
       const twin = el.cloneNode(false) as HTMLSpanElement;
       twin.style.cssText = `position:absolute;visibility:hidden;left:-9999px;top:0;width:${room}px`;
+      twin.classList.remove("is-2l", "is-fit"); // its spans must measure inline, whatever state the name is in
       el.parentElement?.appendChild(twin);
       const widest = (k: number) => {
         twin.innerHTML = "";
@@ -92,15 +108,30 @@ export function MeshNameUniform({ name, cols, className, size }: { name: string;
       let i = 0;
       while (i < forms.length - 1 && widest(i) / s > room + 0.5) i += 1;
       const w = widest(i) / s;
+      let oneLine = 0;
+      if (fit) {
+        twin.innerHTML = "";
+        const sp = document.createElement("span");
+        sp.textContent = forms[i]!.filter(Boolean).join(" ");
+        sp.style.whiteSpace = "nowrap";
+        twin.appendChild(sp);
+        oneLine = sp.getBoundingClientRect().width;
+      }
       twin.remove();
       // 1.4.79 standing rule (Oscar): never shrink one card. A word that cannot fit even on its own line scales
       // EVERY name in the view by the same factor (CSS var on <main>), so all cards keep one identical size.
       viewScale(view, el, w > room + 0.5 ? Math.max(0.6, Math.floor(((room - 1) / w) * 100) / 100) : 1);
       setStep((p) => (p === i ? p : i));
+      if (fit) {
+        const t = !!forms[i]![1] && oneLine > room + 0.5;
+        setTwo((p) => (p === t ? p : t));
+      }
     };
     check();
     const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(check);
+    // the name box too: a web font that arrives late changes its width (and so whether it needs 2 lines)
     ro?.observe(el);
+    if (host) ro?.observe(host);
     let alive = true;
     document.fonts?.ready.then(() => alive && check()).catch(() => undefined);
     return () => {
@@ -109,10 +140,10 @@ export function MeshNameUniform({ name, cols, className, size }: { name: string;
       viewScale(el.closest("main") ?? el.parentElement ?? document.body, el, null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [full, cols]);
+  }, [full, cols, fit]);
   const [a, b] = forms[step] ?? forms[0]!;
   return (
-    <span ref={box} title={full} className={cn("bz-mname-u", size ? `is-${size}` : cols === 4 ? "is-c4" : cols === 3 ? "is-c3" : "is-c2", className)}>
+    <span ref={box} title={full} className={cn("bz-mname-u", size ? `is-${size}` : cols === 4 ? "is-c4" : cols === 3 ? "is-c3" : "is-c2", fit && "is-fit", fit && two && "is-2l", className)}>
       <span>{a}</span>
       {b ? " " : null}
       {b ? <span>{b}</span> : null}

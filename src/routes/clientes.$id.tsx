@@ -2,7 +2,7 @@ import { WideSplit } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { MessageComposer, WhatsAppButton } from "@/components/message-composer";
-import { Search, Archive, CalendarCheck, CalendarClock, CalendarDays, ChevronDown, Clock, Download, HandHeart, NotebookPen, Pencil, Phone, Plus, ReceiptText, Scissors, StickyNote, Wallet, History } from "lucide-react";
+import { Search, Archive, CalendarCheck, CalendarClock, CalendarDays, ChevronDown, Clock, Download, HandHeart, NotebookPen, Pencil, Phone, Plus, ReceiptText, Scissors, ShieldAlert, Sparkles, StickyNote, Wallet, History } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import { createPortal } from "react-dom";
@@ -33,7 +33,7 @@ import { Input, Label, NativeSelect, Textarea } from "@/components/ui/input";
 import { stampDay, todayISO } from "@/lib/dates";
 import { meshFrame, viewGrid } from "@/lib/density";
 import { DEFAULT_ARRIVAL_PRESETS, DEFAULT_TASK_PRESETS } from "@/lib/types";
-import { DEFAULT_CUT_TITLE, formatDay, formatTime, frequencyLabel, jobKindLabel, money, payDueLabel, telHref, weekdayLabel } from "@/lib/format";
+import { DEFAULT_CUT_TITLE, FREQ_SEP, formatDay, formatTime, frequencyLabel, jobKindLabel, money, payDueLabel, telHref, weekdayLabel } from "@/lib/format";
 import { downloadHref } from "@/lib/save-file";
 import { emphasize, useI18n, useTx } from "@/lib/i18n";
 import { noteMatches, notePlain } from "@/lib/note-search";
@@ -86,6 +86,8 @@ function ClientDetailPage() {
   const [editing, setEditing] = useState(false);
   const [showExtra, setShowExtra] = useState(false);
   const [paying, setPaying] = useState<PayMode | null>(null);
+  // 1.4.80 (Oscar: tapping Abono/Adelanto left the pill stuck on Pagado): the segmented control keeps its own selection.
+  const [seg, setSeg] = useState<PayMode>("full");
   const [askDelete, setAskDelete] = useState(false);
   const [askOff, setAskOff] = useState(false);
   const [askOn, setAskOn] = useState(false);
@@ -297,14 +299,20 @@ function ClientDetailPage() {
                   <CalendarDays aria-hidden />
                   {client.kind === "one_time"
                     ? tx("Trabajo de una vez", "One-time job")
-                    : `${frequencyLabel(client.cutsPerMonth, {
-                        frequencyDays: client.frequencyDays,
-                        weekday2: client.weekday2,
-                      })}\u00a0· ${weekdayLabel(client.weekday)}${
-                        client.weekday2 != null && client.cutsPerMonth === 5
-                          ? ` ${tx("y", "and")} ${weekdayLabel(client.weekday2)}`
-                          : ""
-                      }`}
+                    : (
+                      <>
+                        {frequencyLabel(client.cutsPerMonth, {
+                          frequencyDays: client.frequencyDays,
+                          weekday2: client.weekday2,
+                        })}
+                        <span className="bz-sep">{FREQ_SEP}</span>
+                        {`${weekdayLabel(client.weekday)}${
+                          client.weekday2 != null && client.cutsPerMonth === 5
+                            ? ` ${tx("y", "and")} ${weekdayLabel(client.weekday2)}`
+                            : ""
+                        }`}
+                      </>
+                    )}
                 </span>
                 {client.startDate && client.kind === "regular" ? (
                   <p className="bz-cl-meta">
@@ -386,11 +394,7 @@ function ClientDetailPage() {
                   </p>
                 </div>
               ) : null}
-              {client.highRisk ? (
-                <p className="text-sm font-semibold text-late">
-                  {emphasize(tx("Alto riesgo: la deuda lleva tiempo sin pagarse.", "High risk: the debt has gone unpaid for a while."))}
-                </p>
-              ) : null}
+              {client.highRisk ? <RiskBanner days={client.daysSincePay} /> : null}
               {client.blacklisted ? (
                 <p className="text-sm font-semibold">
                   {tx("En lista negra. No se agenda solo.", "On the blacklist. It is not scheduled on its own.")}
@@ -425,22 +429,41 @@ function ClientDetailPage() {
               <WaiveButton clientId={client.id} balance={client.balance} name={client.name} />
             </div>
             <MoneyCalc value={draftAmount} onChange={setDraftAmount} presets={presets} />
-            <div className="bz-seg mt-3" role="group" aria-label={tx("Registrar un pago", "Record a payment")}>
-              <button
-                type="button"
-                className="bz-seg-btn is-main"
-                disabled={client.balance <= 0 && !draftAmount}
-                onClick={() => setPaying("full")}
-              >
-                {tx("Pagado", "Paid")}
-              </button>
-              <button type="button" className="bz-seg-btn" disabled={client.balance <= 0} onClick={() => setPaying("abono")}>
-                {tx("Abono", "Partial")}
-              </button>
-              <button type="button" className="bz-seg-btn" onClick={() => setPaying("prepaid")}>
-                {tx("Adelanto", "Advance")}
-              </button>
-            </div>
+            {(() => {
+              const opts: { k: PayMode; label: string; off: boolean }[] = [
+                { k: "full", label: tx("Pagado", "Paid"), off: client.balance <= 0 && !draftAmount },
+                { k: "abono", label: tx("Abono", "Partial"), off: client.balance <= 0 },
+                { k: "prepaid", label: tx("Adelanto", "Advance"), off: false },
+              ];
+              const live = opts.find((o) => o.k === seg && !o.off) ?? opts.find((o) => !o.off) ?? opts[2]!;
+              const idx = opts.indexOf(live);
+              return (
+                <div
+                  className="bz-seg mt-3"
+                  role="radiogroup"
+                  aria-label={tx("Registrar un pago", "Record a payment")}
+                  style={{ ["--i" as string]: idx } as React.CSSProperties}
+                >
+                  <span className="bz-seg-ind" aria-hidden />
+                  {opts.map((o) => (
+                    <button
+                      key={o.k}
+                      type="button"
+                      role="radio"
+                      aria-checked={o === live}
+                      className={cn("bz-seg-btn", o === live && "is-sel")}
+                      disabled={o.off}
+                      onClick={() => {
+                        setSeg(o.k);
+                        setPaying(o.k);
+                      }}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
             <div className="bz-debt-row mt-3">
               <button
                 type="button"
@@ -890,6 +913,28 @@ function ClientNotes({
   );
 }
 
+/** 1.4.80 (Oscar: "créale un espacio único a este pequeño texto"): the high-risk note as its own alert banner — red
+ *  wash + hairline, a shield chip that breathes slowly (static with reduced motion), "Alto riesgo" + how long unpaid. */
+function RiskBanner({ days }: { days: number | null }) {
+  const tx = useTx();
+  const line =
+    days != null && days > 0
+      ? tx(`Lleva ${days} ${days === 1 ? "día" : "días"} sin pagar.`, `${days} ${days === 1 ? "day" : "days"} without paying.`)
+      : tx("La deuda lleva tiempo sin pagarse.", "The debt has gone unpaid for a while.");
+  return (
+    <div className="bz-risk" role="note">
+      <span className="bz-risk-ic" aria-hidden>
+        <ShieldAlert />
+      </span>
+      <p className="bz-risk-txt">
+        <b>{emphasize(tx("Alto riesgo", "High risk"))}</b>
+        <span>{line}</span>
+      </p>
+      <Hint topic="espera" className="bz-risk-hint" />
+    </div>
+  );
+}
+
 function WaiveButton({ clientId, balance, name }: { clientId: number; balance: number; name?: string }) {
   const tx = useTx();
   const qc = useQueryClient();
@@ -982,7 +1027,7 @@ function ExtraForm({ clientId, onDone }: { clientId: number; onDone: () => void 
   const doneNow = date <= todayISO();
   return (
     <form
-      className="mt-3 grid gap-3 rounded-xl bg-sun p-4"
+      className="bz-xf mt-3 grid gap-3 rounded-xl p-4"
       onSubmit={(e) => {
         e.preventDefault();
         const kind = rare.kindOf(date);
@@ -993,6 +1038,13 @@ function ExtraForm({ clientId, onDone }: { clientId: number; onDone: () => void 
         setAsk(true);
       }}
     >
+      {/* 1.4.80 (Oscar: "la ventana de trabajo extra está abandonada"): sage-mint panel that sits well on the cyan
+          Deuda card, titled with its ?, price chips in full-width rows, framed chips, shorter note. */}
+      <p className="bz-xf-title">
+        <Sparkles aria-hidden />
+        {tx("Trabajo extra", "Extra job")}
+        <Hint topic="ficha-deuda" />
+      </p>
       <div>
         <Label>{tx("¿Qué hay que hacer?", "What needs to be done?")}</Label>
         <Input
@@ -1007,23 +1059,30 @@ function ExtraForm({ clientId, onDone }: { clientId: number; onDone: () => void 
           onSaved={() => void qc.invalidateQueries({ queryKey: ["settings"] })}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="bz-xf-pair grid gap-3">
         <div>
           <Label>{tx("Precio extra", "Extra price")}</Label>
-          <Input
-            type="number"
-            min={0}
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            required
-          />
-          <MoneyCalc value={amount} onChange={setAmount} />
+          <div className="bz-xf-money">
+            <span aria-hidden>$</span>
+            <Input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="0.01"
+              placeholder="0"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              required
+            />
+          </div>
         </div>
         <div>
           <Label>{tx("Día de inicio", "Start day")}</Label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
         </div>
+      </div>
+      <div className="-mt-3">
+        <MoneyCalc value={amount} onChange={setAmount} />
       </div>
       <ArrivalField
         value={time}
@@ -1032,9 +1091,9 @@ function ExtraForm({ clientId, onDone }: { clientId: number; onDone: () => void 
       />
       <div>
         <Label>{tx("Nota", "Note")}</Label>
-        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <Textarea rows={3} className="min-h-0" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
-      <Button type="submit" disabled={mut.isPending}>
+      <Button type="submit" className="bz-xf-add" disabled={mut.isPending}>
         {mut.isPending ? tx("Guardando", "Saving") : tx("Añadir extra", "Add extra")}
       </Button>
       <ConfirmDialog
