@@ -2781,3 +2781,67 @@ html.theme-dark[data-palette="grafito"] .bz-stat.bz-stat-done { --color-done-bg:
 html.theme-dark[data-palette="grafito"] .bz-fold.cob-espera { --fold-tone: #b4c47a; background: linear-gradient(165deg, color-mix(in oklab, #9fb455 26%, #232325) 0%, color-mix(in oklab, #9fb455 15%, #232325) 100%); }
 html.theme-dark[data-palette="grafito"] .bz-fold.cob-perdon { --fold-tone: #cfa6c0; background: linear-gradient(165deg, color-mix(in oklab, #b874a0 26%, #232325) 0%, color-mix(in oklab, #b874a0 15%, #232325) 100%); }
 html.theme-dark[data-palette="grafito"] .bz-fold.cob-hecho { --fold-tone: #e8a07a; background: linear-gradient(165deg, color-mix(in oklab, #e0875a 24%, #232325) 0%, color-mix(in oklab, #e0875a 14%, #232325) 100%); }
+
+/* 1.4.85 night contrast pass (Oscar: "un poquito más de contraste" so buttons and cards stand out,
+   colours deeper and richer). Coloured nights only: html.theme-dark = noche, medianoche, ciruela,
+   luciernaga (+ grafito for buttons/selection/lift only; its 1.4.84 charcoal tiles/folds untouched).
+   AMOLED (html.theme-amoled) is not touched. Solid sheets, no glass; charcoal, never black or brown.
+   Layers: page sky < recessed track (--nv-well) < card (--nv-glass) < inner box (--nv-inner) < button (--nv-raise). */
+html.theme-dark:not(#z) {
+  --nv-raise: color-mix(in oklab, color-mix(in srgb, var(--nv-mid), var(--color-primary) 21%), #ffffff 4%);
+  --nv-well: color-mix(in srgb, var(--nv-top), #000000 18%);
+  --nv-lift: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 2px 6px -2px rgb(0 0 0 / 0.6);
+  --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 0 0 1px rgb(255 255 255 / 0.09), 0 2px 4px -1px rgb(0 0 0 / 0.45), 0 14px 30px -12px rgb(0 0 0 / 0.78);
+  --shadow-card-hover: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 0 0 1px rgb(255 255 255 / 0.15), 0 3px 6px -1px rgb(0 0 0 / 0.5), 0 16px 34px -12px rgb(0 0 0 / 0.85);
+}
+/* Cards a step richer in their palette colour (grafito keeps its neutral charcoal). */
+html.theme-dark:not([data-palette="grafito"]):not(#z) {
+  --nv-glass: color-mix(in srgb, var(--nv-mid), var(--color-primary) 11%);
+  --nv-glass-2: color-mix(in srgb, var(--nv-mid), var(--color-primary) 19%);
+  --nv-inner: var(--nv-glass-2);
+}
+html.theme-dark[data-palette="grafito"]:not(#z) { --nv-raise: #2e2e31; --nv-inner: #262628; }
+
+/* Secondary tone buttons (Pasar atrasados / Pasar los de hoy / Parar por lluvia …): raised charcoal,
+   a light tone wash, a clear tone hairline and a soft drop so they read as buttons, not holes. */
+html.theme-dark:not(#z) .bz-actbtn:not(:disabled):not(.is-on) {
+  background: color-mix(in oklab, var(--pt) 11%, var(--nv-raise));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pt) 50%, transparent), var(--nv-lift);
+  transition: background-color .2s ease, box-shadow .2s ease, transform .15s ease;
+}
+html.theme-dark:not(#z) .bz-actbtn:disabled { background: color-mix(in oklab, var(--pt) 4%, var(--nv-inner)); }
+@media (hover: hover) and (pointer: fine) {
+  html.theme-dark:not(#z) .bz-actbtn:not(:disabled):not(.is-on):hover { background: color-mix(in oklab, var(--pt) 15%, var(--nv-raise)); }
+}
+
+/* Horas de trabajo: ask box sits on the palette tint (not the grey surface, which turned it brown),
+   "No, ajustar" / "No, editar" become real raised buttons, Entrada/Salida get a firmer edge. */
+html.theme-dark:not(#z) .bz-wd-ask {
+  background: color-mix(in oklab, var(--at) 7%, var(--nv-inner));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--at) 34%, transparent);
+}
+html.theme-dark:not(#z) .bz-wd-quiet.bz-wd-quiet {
+  background: color-mix(in oklab, var(--color-pending) 5%, var(--nv-raise));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-pending) 55%, transparent), var(--nv-lift);
+}
+html.theme-dark:not(#z) .bz-wd-punch {
+  background: color-mix(in oklab, var(--pt) 11%, var(--nv-inner));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pt) 44%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+html.theme-dark:not(#z) .bz-wd-tool { background: var(--nv-raise); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.13); }
+
+/* View-mode chips (Grande · Media · Lista · Malla): a recessed track, and the chosen one rises out of it
+   in the primary colour, so the selection reads at a glance. */
+html.theme-dark:not(#z) .bz-vistas {
+  background: var(--nv-well);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 24%, rgb(255 255 255 / 0.06)), inset 0 1px 3px rgb(0 0 0 / 0.5);
+}
+html.theme-dark:not(#z) .bz-vista { color: var(--color-muted); transition: background-color .22s ease, box-shadow .22s ease, color .22s ease; }
+html.theme-dark:not(#z) .bz-vista.is-on {
+  background: color-mix(in oklab, var(--color-primary) 22%, var(--nv-raise));
+  color: color-mix(in oklab, var(--color-primary) 58%, #ffffff);
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-primary) 68%, transparent), 0 2px 8px -2px rgb(0 0 0 / 0.65);
+}
+
+/* Inventario tiles: firmer tone edge so they lift off their panel (grafito keeps its 1.4.84 tiles). */
+html.theme-dark:not([data-palette="grafito"]):not(#z) .bz-inv-tile { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--inv-tone) 56%, transparent), 0 2px 6px -3px rgb(0 0 0 / 0.55); }

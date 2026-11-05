@@ -129,7 +129,7 @@ export function DensityToggle() {
   const cols = useQuadCols();
   const { t } = useI18n();
   return (
-    <div ref={box} data-spot="vistas" className={cn("flex w-full min-w-0 rounded-md bg-surface-2 p-0.5 ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-border))]")} role="group" aria-label={t("density.label")}>
+    <div ref={box} data-spot="vistas" className={cn("bz-vistas flex w-full min-w-0 rounded-md bg-surface-2 p-0.5 ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-border))]")} role="group" aria-label={t("density.label")}>
       {OPTIONS.map((opt) => {
         const Icon = opt.icon;
         const on = density === opt.value;
@@ -142,8 +142,8 @@ export function DensityToggle() {
             aria-pressed={on}
             onClick={() => pickDensity(scope, opt.value)}
             className={cn(
-              "flex h-14 min-w-0 flex-1 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-sm px-1 text-xs font-semibold text-muted",
-              on && "bg-surface text-primary ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_38%,var(--color-border))]",
+              "bz-vista flex h-14 min-w-0 flex-1 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-sm px-1 text-xs font-semibold text-muted",
+              on && "is-on bg-surface text-primary ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_38%,var(--color-border))]",
             )}
           >
             <Icon className="size-5 shrink-0" />
