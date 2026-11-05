@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useBackClose } from "@/lib/back-close";
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { AlertCircle, Archive, CalendarDays, Check, ChevronDown, ChevronRight, Filter, HandCoins, MapPin, Phone, Pin, PiggyBank, Plus, Scissors, Search, ShieldAlert, Sparkles, Trash2, UserCheck, UserMinus, Wallet, Ban, Hourglass } from "lucide-react";
+import { AlertCircle, Archive, CalendarDays, Check, ChevronDown, ChevronRight, Filter, HandCoins, MapPin, Phone, Pin, PiggyBank, Plus, Scissors, Search, ShieldAlert, Sparkles, Trash2, UserCheck, UserMinus, Wallet, Ban, Hourglass, Leaf, Repeat, Star, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import { toast } from "sonner";
@@ -355,7 +356,7 @@ function ClientesPage() {
         }}
       >
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold touch-manipulation [&::-webkit-details-marker]:hidden">
-          <span className="flex min-w-0 items-center gap-1">
+          <span className="bz-inv-title flex min-w-0 items-center gap-1">
             {tx("Inventario de clientes", "Client inventory")}
             <Hint topic="inventario" />
           </span>
@@ -365,7 +366,7 @@ function ClientesPage() {
               type="button"
               aria-pressed={invPin}
               aria-label={invPin ? tx("Dejar de fijar el inventario", "Unpin the inventory") : tx("Fijar el inventario", "Pin the inventory")}
-              className={cn("grid size-9 place-items-center rounded-full", invPin ? "bz-pick bz-pick-icon" : "text-muted")}
+              className={cn("bz-pin-fine grid size-9 place-items-center rounded-full", invPin ? "bz-pick bz-pick-icon" : "text-muted")}
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -443,40 +444,23 @@ function ClientesPage() {
             className="flex h-11 min-w-0 flex-1 items-center gap-2 text-left"
           >
             <Filter className="size-4 shrink-0 text-primary" />
-            <span className="min-w-0 flex-1 truncate">
+            <span className="min-w-0 flex-1">
               {tx(FILTERS.find((item) => item.value === filter)?.label ?? "Activos", FILTER_EN[filter].label)}
             </span>
+            {query.data && !q.trim() ? <span className="bz-fcount">{clients.length}</span> : null}
+            <ChevronDown className={cn("size-4 shrink-0 text-muted transition-transform", filtersOpen && "rotate-180")} />
           </button>
           <Hint topic="clientes-filtros" />
         </div>
         {filtersOpen ? (
-          <div className="mt-2 grid gap-1 rounded-2xl bg-surface p-2 pb-3 shadow-card">
-            {FILTERS.map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => {
-                  applyFilter(item.value);
-                  setFiltersOpen(false);
-                }}
-                className={cn(
-                  "rounded-xl px-3 py-2 text-left",
-                  filter === item.value ? "bz-pick" : "hover:bg-sun",
-                )}
-              >
-                <span className="block text-sm font-semibold">{tx(item.label, FILTER_EN[item.value].label)}</span>
-                {item.hint ? (
-                  <span className={cn("mt-0.5 block text-xs leading-snug", filter === item.value ? "text-primary-fg/80" : "text-muted")}>
-                    {tx(item.hint, FILTER_EN[item.value].hint ?? item.hint)}
-                  </span>
-                ) : (
-                  <span className={cn("mt-0.5 block text-xs", filter === item.value ? "text-primary-fg/80" : "text-muted")}>
-                    {tx("La lista de siempre.", "The usual list.")}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+          <FilterMenu
+            value={filter}
+            onPick={(next) => {
+              applyFilter(next);
+              setFiltersOpen(false);
+            }}
+            onClose={() => setFiltersOpen(false)}
+          />
         ) : null}
       </div>
 
@@ -1099,11 +1083,8 @@ function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "gran
     const x3 = cols === 3;
     // 1.4.77 (Oscar): x2/x3 names share one size (MeshNameUniform); the price is smaller and grey so the
     // name leads; price/state and the icons sit at the card's foot so a row lines up whatever the name's lines.
-    const name = x4 ? (
-      <MeshName name={client.name} cols={cols} className="min-w-0 flex-1" />
-    ) : (
-      <MeshNameUniform name={client.name} cols={x3 ? 3 : 2} className="min-w-0 flex-1" />
-    );
+    // 1.4.78 standing rule (Oscar): one name size per view, x4 included; never a per-card shrink.
+    const name = <MeshNameUniform name={client.name} cols={cols} className="min-w-0 flex-1" />;
     return (
       <div className="bz-cbody min-w-0 flex-1">
         <Link to="/clientes/$id" params={{ id: String(client.id) }} className="block min-w-0">
@@ -1204,6 +1185,82 @@ function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "gran
         <StateChip client={client} size={grande ? "md" : "sm"} />
       </div>
       {chips.length > 0 ? <div className="bz-chiprow mt-3">{chips}</div> : null}
+    </div>
+  );
+}
+
+const FILTER_LOOK: Record<ClientFilter, { icon: React.ReactNode; tone: string; es: string; en: string }> = {
+  active: { icon: <Leaf />, tone: "primary", es: "En la ruta", en: "On the route" },
+  regular: { icon: <Repeat />, tone: "money", es: "Cortes que se repiten", en: "Cuts that repeat" },
+  one_time: { icon: <Sparkles />, tone: "pending", es: "Trabajos sueltos", en: "One-off jobs" },
+  owing: { icon: <Wallet />, tone: "due", es: "Todavía deben dinero", en: "Still owe money" },
+  triple: { icon: <Star />, tone: "cut", es: "3 o más cortes, o un extra", en: "3+ cuts, or an extra" },
+  risk: { icon: <TriangleAlert />, tone: "late", es: "Deuda pasada del plazo", en: "Debt past the limit" },
+  blacklist: { icon: <Ban />, tone: "fg", es: "Vetados, fuera de la agenda", en: "Blocked, off the schedule" },
+  inactive: { icon: <Archive />, tone: "soil", es: "Dados de baja, guardados", en: "Taken off, kept saved" },
+};
+
+/**
+ * 1.4.78 (Oscar: the filter list was "totalmente abandonado"). Brizna's own popover under the filter pill:
+ * one compact row per filter (tone icon chip, label, one short line, count, inline check), fits the screen
+ * (scrolls inside), back closes it, the add button tucks away while it is open.
+ */
+function FilterMenu({ value, onPick, onClose }: { value: ClientFilter; onPick: (next: ClientFilter) => void; onClose: () => void }) {
+  const tx = useTx();
+  const box = useRef<HTMLDivElement>(null);
+  const [maxH, setMaxH] = useState<number | null>(null);
+  useBackClose(true, onClose);
+  const counts = useQueries({
+    queries: FILTERS.map((f) => ({
+      queryKey: ["clients", { q: "", sort: "name", filter: f.value, flow: undefined, since: undefined, until: undefined }],
+      queryFn: () => listClients({ data: { q: "", sort: "name", filter: f.value } }),
+      staleTime: 30_000,
+    })),
+  });
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top;
+    setMaxH(Math.max(220, window.innerHeight - top - 96));
+    document.documentElement.dataset.fabTuck = "1";
+    const onPointer = (event: PointerEvent) => {
+      const root = el.parentElement;
+      if (root && !root.contains(event.target as Node)) onClose();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      delete document.documentElement.dataset.fabTuck;
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div ref={box} role="listbox" aria-label={tx("Filtrar clientes", "Filter clients")} className="bz-fmenu" style={maxH ? { maxHeight: `${maxH}px` } : undefined}>
+      {FILTERS.map((item, i) => {
+        const look = FILTER_LOOK[item.value];
+        const on = value === item.value;
+        const n = counts[i]?.data?.length;
+        return (
+          <button key={item.value} type="button" role="option" aria-selected={on} onClick={() => onPick(item.value)} className={cn("bz-frow", on && "is-on")} style={{ ["--ft" as string]: `var(--color-${look.tone})` }}>
+            <span className="bz-frow-ic" aria-hidden>
+              {look.icon}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="bz-frow-t">{tx(item.label, FILTER_EN[item.value].label)}</span>
+              <span className="bz-frow-s">{tx(look.es, look.en)}</span>
+            </span>
+            {n != null ? <span className="bz-fcount">{n}</span> : null}
+            <span className="bz-frow-chk" aria-hidden>
+              {on ? <Check /> : null}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

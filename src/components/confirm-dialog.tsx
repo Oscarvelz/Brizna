@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 export function ConfirmDialog({
   open,
   title,
+  subtitle,
   description,
   confirmLabel,
   cancelLabel,
@@ -30,6 +31,8 @@ export function ConfirmDialog({
 }: {
   open: boolean;
   title: string;
+  /** 1.4.78: a second line under the title (e.g. the client's name), so the title never breaks awkwardly. */
+  subtitle?: ReactNode;
   description?: ReactNode;
   hint?: ReactNode;
   confirmLabel?: string;
@@ -91,7 +94,10 @@ export function ConfirmDialog({
               {chip}
             </span>
           ) : null}
-          <span className="min-w-0 flex-1">{title}</span>
+          <span className="bz-dialog-tblock min-w-0 flex-1">
+            <span className="block">{title}</span>
+            {subtitle ? <span className="bz-dialog-sub">{subtitle}</span> : null}
+          </span>
           {hint}
         </h2>
         {description ? <div className="bz-dialog-text text-muted">{emphasizeTree(description)}</div> : null}

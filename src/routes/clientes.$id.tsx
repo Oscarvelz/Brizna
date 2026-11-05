@@ -656,11 +656,11 @@ function FoldHead({
   topic: string;
 }) {
   return (
-    <div className="bz-fold-head">
-      <button type="button" aria-expanded={open} onClick={onToggle} className="bz-fold-btn">
-        <ChevronDown className={cn("bz-fold-chev", !open && "-rotate-90")} aria-hidden />
+    <div className="bz-fh-head">
+      <button type="button" aria-expanded={open} onClick={onToggle} className="bz-fh-btn">
+        <ChevronDown className={cn("bz-fh-chev", !open && "-rotate-90")} aria-hidden />
         {icon ? <span className="bz-fold-ic">{icon}</span> : null}
-        <h2 className="bz-fold-title font-display">{title}</h2>
+        <h2 className="bz-fh-title font-display">{title}</h2>
         {chip != null && chip !== "" ? <span className="bz-fold-chip">{chip}</span> : null}
       </button>
       <Hint topic={topic} />

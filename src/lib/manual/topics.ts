@@ -1707,8 +1707,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Choose what goes in, which dates, and which clients. It comes out as a PDF, a worksheet, or to the printer.",
         ],
         how: [
-          "Empieza con un atajo (también desde el icono de impresora de la barra izquierda en tableta).\nElige fechas: esta semana, este mes, mes pasado, este año, año pasado, todo o fechas a mano.\nMarca las secciones y los clientes.\nEn Privacidad: oculta teléfonos, deja solo iniciales o quita los montos.\nSaca PDF, Hoja (XLSX), Imprimir o Compartir.",
-          "Start with a shortcut (also from the printer icon in the left rail on a tablet).\nPick dates: this week, this month, last month, this year, last year, all, or your own dates.\nCheck the sections and clients.\nIn Privacy: hide phone numbers, show initials only, or drop the amounts.\nGet a PDF, Sheet (XLSX), Print, or Share.",
+          "Empieza con un atajo (también desde el icono de exportar, la cajita con flecha hacia arriba, arriba a la derecha o en la barra izquierda en tableta).\nElige fechas: esta semana, este mes, mes pasado, este año, año pasado, todo o fechas a mano.\nMarca las secciones y los clientes.\nEn Privacidad: oculta teléfonos, deja solo iniciales o quita los montos.\nSaca PDF, Hoja (XLSX), Imprimir o Compartir.",
+          "Start with a shortcut (also from the export icon, the little box with an up arrow, at the top right or in the left rail on a tablet).\nPick dates: this week, this month, last month, this year, last year, all, or your own dates.\nCheck the sections and clients.\nIn Privacy: hide phone numbers, show initials only, or drop the amounts.\nGet a PDF, Sheet (XLSX), Print, or Share.",
         ],
         calc: [
           "Todo: cada sección y cada cliente, todas las fechas.\nCobros y deudas: resumen, quién debe y pagos del mes.\nAgenda semanal: la ruta de la semana y los 7 días siguientes, con notas.\nResumen del mes: cifras, pagos, trabajos, horas, propinas, pospuestos y Asesor, sin teléfonos.\nClientes: directorio con precios, sin archivados.\nPara el contador: el año pasado, con pagos, propinas y trabajos, sin teléfonos.\nSi cambias una casilla, el atajo pasa a A medida.",
@@ -1845,6 +1845,14 @@ export const MANUAL_CHAPTERS: Chapter[] = [
  * "Más en el manual" opens the richer topic named in `into`, where its detail now lives.
  */
 export const HINT_ONLY: HintOnly[] = [
+  {
+    id: "cobrar-varios",
+    into: "por-cobrar",
+    what: [
+      "Marca la casilla de cada cliente que paga junto con otros y luego toca Cobrar elegidos (o Perdonar elegidos).",
+      "Check the box on each client who pays together with others, then tap Collect selected (or Forgive selected).",
+    ],
+  },
   {
     id: "desplegar-hoy",
     into: "hoy",

@@ -205,7 +205,7 @@ export function Fold({
           aria-label={pinned ? tx("Dejar de mantener abierto", "Stop keeping this open") : tx("Mantener abierto", "Keep open")}
           onClick={togglePin}
           className={cn(
-            "bz-fold-pin grid size-9 shrink-0 place-items-center rounded-full",
+            "bz-fold-pin bz-pin-fine grid size-9 shrink-0 place-items-center rounded-full",
             pinned ? "bz-pick bz-pick-icon" : "text-muted",
           )}
         >

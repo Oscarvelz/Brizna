@@ -10,6 +10,17 @@ let seq = 0;
 let skip = 0;
 let installed = false;
 
+/**
+ * 1.4.78 (Oscar: tapping "Mayor saldo" threw Cobros to the top, the next tap back down). The router patches
+ * window.history.pushState and treats every push as a navigation (scroll reset to the top). A sheet's history
+ * step is not a navigation, so it is pushed with the browser's own History.prototype.pushState, unseen by the router.
+ */
+function pushStep(state: object) {
+  const raw = typeof History !== "undefined" ? History.prototype.pushState : null;
+  if (raw) raw.call(window.history, state, "", window.location.href);
+  else window.history.pushState(state, "", window.location.href);
+}
+
 function install() {
   if (installed || typeof window === "undefined") return;
   installed = true;
@@ -36,7 +47,7 @@ export function useBackClose(open: boolean, onClose: () => void) {
     const id = ++seq;
     const entry: Entry = { id, close: () => closeRef.current() };
     stack.push(entry);
-    window.history.pushState({ ...((window.history.state ?? {}) as object), bzSheet: id }, "", window.location.href);
+    pushStep({ ...((window.history.state ?? {}) as object), bzSheet: id });
     return () => {
       const i = stack.indexOf(entry);
       if (i < 0) return; // closed by back: its step is already gone
@@ -60,7 +71,7 @@ export function pushBackStep(onBack: () => void): () => void {
   const id = ++seq;
   const entry: Entry = { id, close: onBack };
   stack.push(entry);
-  window.history.pushState({ ...((window.history.state ?? {}) as object), bzSheet: id }, "", window.location.href);
+  pushStep({ ...((window.history.state ?? {}) as object), bzSheet: id });
   return () => {
     const i = stack.indexOf(entry);
     if (i < 0) return;

@@ -40,7 +40,7 @@ function rescueOf(full: string): string[] {
  * before the last name. If even that cannot fit (one very long word), middle names drop first, and only then
  * does this one card's name shrink.
  */
-export function MeshNameUniform({ name, cols, className }: { name: string; cols: 2 | 3; className?: string }) {
+export function MeshNameUniform({ name, cols, className, size }: { name: string; cols: 2 | 3 | 4; className?: string; /** 1.4.78: list sizes (Grande/Media) use the same rule at a fixed size. */ size?: "grande" | "media" }) {
   const full = name.trim().replace(/\s+/g, " ");
   const parts = full.split(" ");
   const forms: [string, string][] = parts.length > 1 ? [[parts.slice(0, -1).join(" "), parts[parts.length - 1]!]] : [[full, ""]];
@@ -90,7 +90,7 @@ export function MeshNameUniform({ name, cols, className }: { name: string; cols:
   }, [full, cols]);
   const [a, b] = forms[step] ?? forms[0]!;
   return (
-    <span ref={box} title={full} className={cn("bz-mname-u", cols === 3 ? "is-c3" : "is-c2", className)}>
+    <span ref={box} title={full} className={cn("bz-mname-u", size ? `is-${size}` : cols === 4 ? "is-c4" : cols === 3 ? "is-c3" : "is-c2", className)}>
       <span>{a}</span>
       {b ? " " : null}
       {b ? <span>{b}</span> : null}

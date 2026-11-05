@@ -16,7 +16,7 @@ import {
   Rows2,
   Columns2,
   Settings,
-  Printer,
+  Share,
   Search,
   Users,
   X,
@@ -460,9 +460,9 @@ export function AppShell({
                   type="button"
                   onClick={() => exporter.launch(null)}
                   className="grid size-10 place-items-center rounded-sm text-muted hover:bg-surface-2 hover:text-fg"
-                  aria-label={tx("Exportar e imprimir", "Export and print")}
+                  aria-label={tx("Exportar", "Export")}
                 >
-                  <Printer className="size-5" strokeWidth={1.9} />
+                  <Share className="size-5" strokeWidth={1.9} />
                 </button>
                 <Link
                   to="/ajustes"
@@ -552,10 +552,10 @@ export function AppShell({
                 type="button"
                 onClick={() => exporter.launch(null)}
                 className="bz-rail-tool"
-                aria-label={tx("Exportar e imprimir", "Export and print")}
-                title={tx("Exportar e imprimir", "Export and print")}
+                aria-label={tx("Exportar", "Export")}
+                title={tx("Exportar", "Export")}
               >
-                <Printer className="size-5" strokeWidth={1.9} />
+                <Share className="size-5" strokeWidth={1.9} />
               </button>
               {/* 1.4.61: Vista is on every screen of the rail (Ajustes too), always just before Ajustes. */}
               {tabletOn && wide ? (

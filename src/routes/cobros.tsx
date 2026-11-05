@@ -20,6 +20,7 @@ import { NativeSelect } from "@/components/ui/input";
 import {
   endOfWeekISO,
   isPaymentLate,
+  payDueISO,
   lastDayOfMonthISO,
   monthParts,
   stampDay,
@@ -27,13 +28,15 @@ import {
   todayISO,
 } from "@/lib/dates";
 import { formatDay, formatTime, money, payDueLabel } from "@/lib/format";
-import { MeshName } from "@/components/mesh-name";
-import { meshFrame, viewGrid } from "@/lib/density";
+import { MeshNameUniform } from "@/components/mesh-name";
+import { FitLine } from "@/components/job-card";
+import { viewGrid } from "@/lib/density";
+import type { QuadCols } from "@/lib/density";
 import { emphasize, useTx } from "@/lib/i18n";
 import { listBalances, recordPayment, recordPaymentsBulk } from "@/lib/server/lawn";
 import type { ClientRow, JobRow, PaymentRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { BadgeCheck, Wallet } from "lucide-react";
+import { BadgeCheck, Check, HandCoins, HandHeart, ShieldAlert, Hourglass, CircleAlert, Wallet } from "lucide-react";
 import { DayNightSwitch } from "@/components/day-night-switch";
 import { WeatherChip } from "@/components/weather-chip";
 
@@ -261,7 +264,7 @@ function CobrosPage() {
           className="bz-fold-toned cob-espera bg-hold-bg [--fold-tone:var(--color-hold)]"
           title={
             <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-              <span className="min-w-0 truncate">{tx("En espera", "Waiting")}</span>
+              <span className="bz-fold-fit min-w-0">{tx("En espera", "Waiting")}</span>
               <span className="bz-fold-badge">
                 {data
                   ? String(data.clients.filter((c) => inEspera(c)).length)
@@ -283,7 +286,7 @@ function CobrosPage() {
           className="bz-fold-toned cob-perdon bg-late-bg [--fold-tone:var(--color-late)]"
           title={
             <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-              <span className="min-w-0 truncate">{tx("Perdonado este mes", "Forgiven this month")}</span>
+              <span className="bz-fold-fit min-w-0">{tx("Perdonado este mes", "Forgiven this month")}</span>
               <span className="bz-fold-badge">
                 {data ? money(data.totals.waivedMonth) : "—"}
               </span>
@@ -359,7 +362,10 @@ function CobrosPage() {
               {picked.length > 0 ? (
                 <p className="text-sm font-medium">{tx(`${picked.length} elegidos`, `${picked.length} selected`)}</p>
               ) : (
-                <p className="text-xs text-muted">{tx("Marca varios si pagan juntos", "Select several if they pay together")}</p>
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-muted">
+                  {tx("Varios a la vez", "Several at once")}
+                  <Hint compact topic="cobrar-varios" />
+                </span>
               )}
               </div>
             </div>
@@ -375,36 +381,29 @@ function CobrosPage() {
               {owing.map((c) => {
                 const late = isPaymentLate(c.payDueDay, today, c.balance);
                 const on = picked.includes(c.id);
+                if (!dense) {
+                  return (
+                    <OwingCard
+                      key={c.id}
+                      client={c}
+                      late={late}
+                      today={today}
+                      on={on}
+                      onToggle={() => toggle(c.id)}
+                      onPay={(mode) => setPaying({ client: c, mode })}
+                      mode={quad ? "quad" : media ? "media" : "grande"}
+                      cols={cols}
+                    />
+                  );
+                }
                 return (
                   <li
                     key={c.id}
                     className={cn(
-                      "min-w-0 max-w-full overflow-hidden rounded-xl border-l-4 bg-surface shadow-card",
-                      quad ? meshFrame(cols) : dense ? "px-2 py-1.5" : media ? "px-2.5 py-2" : "px-3 py-3",
+                      "min-w-0 max-w-full overflow-hidden rounded-xl border-l-4 bg-surface shadow-card px-2 py-1.5",
                       late ? "border-late" : c.highRisk || c.payTier === "espera" ? "border-hold" : "border-due",
                     )}
                   >
-                    {quad ? (
-                      <div className="flex h-full min-w-0 flex-col overflow-hidden">
-                        <Link to="/clientes/$id" params={{ id: String(c.id) }} className="min-w-0">
-                          <MeshName name={c.name} cols={cols} />
-                        </Link>
-                        <span className={cn("truncate font-semibold tabular-nums text-due", cols === 4 ? "text-[11px]" : "text-xs")}>{money(c.balance)}</span>
-                        {cols < 4 ? (
-                          <p className="truncate text-[11px] text-muted">
-                            {c.lastCutDate ? tx(`Corte ${formatDay(c.lastCutDate, "d MMM")}`, `Cut ${formatDay(c.lastCutDate, "d MMM")}`) : tx("Sin corte hecho", "No cut done")}
-                            {c.payDueDay ? ` · ${payDueLabel(c.payDueDay)}` : ""}
-                            {late ? tx(" · atrasado", " · late") : ""}
-                            {c.payTier === "espera" ? tx(" · en espera", " · waiting") : ""}
-                          </p>
-                        ) : null}
-                        {cols === 2 ? (
-                          <Button size="sm" className="mt-auto h-8 px-1 text-[11px]" onClick={() => setPaying({ client: c, mode: "full" })}>
-                            {tx("Pagado", "Paid")}
-                          </Button>
-                        ) : null}
-                      </div>
-                    ) : (
                     <>
                     <div className={cn("flex min-w-0 items-center gap-2", dense || media ? "" : "items-start")}>
                       <label className={cn("grid shrink-0 place-items-center", dense ? "size-8" : "size-11")}>
@@ -478,7 +477,6 @@ function CobrosPage() {
                       </div>
                     ) : null}
                     </>
-                    )}
                   </li>
                 );
               })}
@@ -603,7 +601,7 @@ function WorkNest({
       group="cobros"
       className="bz-fold-toned cob-hecho mb-2 bg-soil-bg [--fold-tone:var(--color-soil)]"
       title={
-        <span className="min-w-0 truncate">
+        <span className="bz-fold-fit min-w-0">
           {tx("Trabajo ya hecho", "Work already done")}
         </span>
       }
@@ -775,11 +773,11 @@ function AbonoFollow({
         return (
           <li
             key={c.id}
-            className={cn("min-w-0 overflow-hidden rounded-xl border-l-4 border-due bg-surface shadow-card", quad ? meshFrame(cols ?? 2) : dense ? "px-2 py-1.5" : media ? "px-2.5 py-2" : "px-3 py-3")}
+            className={cn("min-w-0 overflow-hidden rounded-xl border-l-4 border-due bg-surface shadow-card", quad ? "bz-ccard is-quad w-full p-2" : dense ? "px-2 py-1.5" : media ? "px-2.5 py-2" : "px-3 py-3")}
           >
             <Link to="/clientes/$id" params={{ id: String(c.id) }} className="flex items-center justify-between gap-2">
               <span className="min-w-0">
-                <span className="min-w-0">{quad ? <MeshName name={c.name} cols={cols ?? 2} /> : <span className={cn("block truncate font-semibold", dense ? "text-xs" : "text-base")}>{c.name}</span>}</span>
+                <span className="min-w-0">{quad ? <MeshNameUniform name={c.name} cols={cols ?? 2} /> : <span className={cn("block font-semibold", dense ? "text-xs" : "text-base")}>{c.name}</span>}</span>
                 {!dense && (!quad || (cols ?? 2) < 4) ? (
                   <span className="block truncate text-[11px] text-muted">
                     {tx(`Abonado ${money(paid)} • Debe ${money(c.balance)}`, `Partial ${money(paid)} • Owes ${money(c.balance)}`)}
@@ -838,12 +836,12 @@ function PayList({
       {rows.map((p) => (
         <li
           key={grouped ? p.clientId : p.id}
-          className={cn("min-w-0 overflow-hidden rounded-xl bg-surface shadow-card", quad ? meshFrame(cols ?? 2) : dense ? "px-2 py-1.5" : media ? "px-2.5 py-2" : "px-3 py-3")}
+          className={cn("min-w-0 overflow-hidden rounded-xl bg-surface shadow-card", quad ? "bz-ccard is-quad w-full p-2" : dense ? "px-2 py-1.5" : media ? "px-2.5 py-2" : "px-3 py-3")}
         >
           <div className={cn(quad ? "grid gap-1" : "flex items-start justify-between gap-2")}>
             <div className="min-w-0">
               <Link to="/clientes/$id" params={{ id: String(p.clientId) }} className="min-w-0">
-                {quad ? <MeshName name={p.clientName ?? tx("Cliente", "Client")} cols={cols ?? 2} /> : <span className={cn("block truncate font-semibold", dense ? "text-xs" : "text-base")}>{p.clientName ?? tx("Cliente", "Client")}</span>}
+                {quad ? <MeshNameUniform name={p.clientName ?? tx("Cliente", "Client")} cols={cols ?? 2} /> : <span className={cn("block font-semibold", dense ? "text-xs" : "text-base")}>{p.clientName ?? tx("Cliente", "Client")}</span>}
               </Link>
               {!dense && (!quad || (cols ?? 2) < 4) ? (
                 <p className="truncate text-[11px] text-muted">
@@ -897,11 +895,11 @@ function WaitList({
           className={cn(
             "min-w-0 overflow-hidden rounded-xl border-l-4 bg-surface shadow-card",
             c.servicePaused || c.highRisk ? "border-hold bg-hold-bg" : "border-pending",
-            quad ? meshFrame(cols ?? 2) : dense ? "px-2 py-1.5" : media ? "px-2.5 py-2" : "px-3 py-3",
+            quad ? "bz-ccard is-quad w-full p-2" : dense ? "px-2 py-1.5" : media ? "px-2.5 py-2" : "px-3 py-3",
           )}
         >
           <Link to="/clientes/$id" params={{ id: String(c.id) }} className={cn(quad ? "block min-w-0" : "flex items-start justify-between gap-2")}>
-            {quad ? <MeshName name={c.name} cols={cols ?? 2} /> : <span className={cn("min-w-0 truncate font-semibold", dense ? "text-xs" : "text-base")}>{c.name}</span>}
+            {quad ? <MeshNameUniform name={c.name} cols={cols ?? 2} /> : <span className={cn("min-w-0 font-semibold", dense ? "text-xs" : "text-base")}>{c.name}</span>}
             <span className={cn("shrink-0 font-semibold tabular-nums text-hold", dense || quad ? "text-xs" : "text-base")}>
               {money(c.balance)}
             </span>
@@ -979,12 +977,12 @@ function DoneList({
         return (
           <li
             key={j.id}
-            className={cn("min-w-0 overflow-hidden rounded-xl bg-surface shadow-card", quad ? meshFrame(cols ?? 2) : dense ? "px-2 py-1.5" : media ? "px-2.5 py-2" : "px-3 py-3")}
+            className={cn("min-w-0 overflow-hidden rounded-xl bg-surface shadow-card", quad ? "bz-ccard is-quad w-full p-2" : dense ? "px-2 py-1.5" : media ? "px-2.5 py-2" : "px-3 py-3")}
           >
             <div className={cn(quad ? "grid gap-1" : "flex items-start justify-between gap-2")}>
               <div className="min-w-0">
                 <Link to="/clientes/$id" params={{ id: String(j.clientId) }} className="min-w-0">
-                  {quad ? <MeshName name={j.clientName} cols={cols ?? 2} /> : <span className={cn("block truncate font-semibold", dense ? "text-xs" : "text-base")}>{j.clientName}</span>}
+                  {quad ? <MeshNameUniform name={j.clientName} cols={cols ?? 2} /> : <span className={cn("block font-semibold", dense ? "text-xs" : "text-base")}>{j.clientName}</span>}
                 </Link>
                 {!dense && (!quad || (cols ?? 2) < 4) ? (
                   <p className="truncate text-[11px] text-muted">
@@ -1022,7 +1020,7 @@ function DoneList({
   );
 }
 
-function Waive({ client }: { client: ClientRow }) {
+function Waive({ client, icon }: { client: ClientRow; icon?: boolean }) {
   const tx = useTx();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -1036,12 +1034,22 @@ function Waive({ client }: { client: ClientRow }) {
   });
   return (
     <>
-      <Button variant="outline" size="sm" disabled={mut.isPending} onClick={() => setOpen(true)}>
-        {tx("Perdonar", "Forgive")}
-      </Button>
+      {icon ? (
+        <button type="button" className="bz-cact is-forgive is-icon" disabled={mut.isPending} onClick={() => setOpen(true)} aria-label={tx(`Perdonar a ${client.name}`, `Forgive ${client.name}`)}>
+          <HandHeart aria-hidden />
+        </button>
+      ) : (
+        <button type="button" className="bz-cact is-forgive" disabled={mut.isPending} onClick={() => setOpen(true)}>
+          <HandHeart aria-hidden />
+          <span className="bz-cact-l">{tx("Perdonar", "Forgive")}</span>
+        </button>
+      )}
       <ConfirmDialog
         open={open}
-        title={tx(`¿Perdonar ${money(client.balance)} de ${client.name}?`, `Forgive ${money(client.balance)} from ${client.name}?`)}
+        icon={<HandHeart />}
+        iconTone="late"
+        title={tx(`¿Perdonar ${money(client.balance)}?`, `Forgive ${money(client.balance)}?`)}
+        subtitle={client.name}
         description={tx("Esto sí sale de Por cobrar. No es una espera: es dinero que decides no cobrar.", "This does leave To collect. It is not a wait: it is money you decide not to collect.")}
         confirmLabel={tx("Perdonar saldo", "Forgive balance")}
         danger
@@ -1050,5 +1058,150 @@ function Waive({ client }: { client: ClientRow }) {
         onCancel={() => setOpen(false)}
       />
     </>
+  );
+}
+
+/** 1.4.78 (Oscar): a selection box with the .bz-pick look (tint, fine outline, inline check). */
+function PickBox({ on, onToggle, label, className }: { on: boolean; onToggle: () => void; label: string; className?: string }) {
+  return (
+    <button type="button" role="checkbox" aria-checked={on} aria-label={label} onClick={onToggle} className={cn("bz-cpick", on && "is-on", className)}>
+      <span className="bz-cpick-box">{on ? <Check aria-hidden /> : null}</span>
+    </button>
+  );
+}
+
+function lateDays(dueDay: number | null | undefined, today: string): number {
+  if (!dueDay) return 0;
+  const due = payDueISO(dueDay, today);
+  return Math.max(0, Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${due}T12:00:00Z`)) / 86400000));
+}
+
+/**
+ * 1.4.78 (Oscar): Cobros debt card for Grande, Media and Malla. Name row = selection · name (one size for every
+ * card, last name to line 2 when it must, never cut) · balance (unchanged look). Then the subline with the state
+ * chips, then the actions: Pagado · Abono · Perdonar · Pausa. No buttons on the name row.
+ */
+function OwingCard({
+  client: c,
+  late,
+  today,
+  on,
+  onToggle,
+  onPay,
+  mode,
+  cols,
+}: {
+  client: ClientRow;
+  late: boolean;
+  today: string;
+  on: boolean;
+  onToggle: () => void;
+  onPay: (mode: PayMode) => void;
+  mode: "grande" | "media" | "quad";
+  cols: QuadCols;
+}) {
+  const tx = useTx();
+  const quad = mode === "quad";
+  const days = late ? lateDays(c.payDueDay, today) : 0;
+  const cut = c.lastCutDate ? tx(`Corte ${formatDay(c.lastCutDate, "d MMM")}`, `Cut ${formatDay(c.lastCutDate, "d MMM")}`) : tx("Sin corte hecho", "No cut done");
+  const pays = c.payDueDay ? payDueLabel(c.payDueDay) : null;
+  const paysShort = c.payDueDay ? tx(`Paga el ${c.payDueDay}`, `Pays on ${c.payDueDay}`) : null;
+  const forms = [pays ? `${cut} · ${pays}` : cut, ...(paysShort ? [`${cut} · ${paysShort}`] : []), cut];
+  const chips: React.ReactNode[] = [];
+  if (late)
+    chips.push(
+      <span key="late" className="bz-state is-late is-xs">
+        <CircleAlert aria-hidden />
+        {quad && cols > 2 ? (days > 0 ? tx(`${days} d`, `${days} d`) : tx("Atrasado", "Late")) : days > 0 ? tx(`Atrasado · ${days} ${days === 1 ? "día" : "días"}`, `Late · ${days} ${days === 1 ? "day" : "days"}`) : tx("Atrasado", "Late")}
+      </span>,
+    );
+  if (c.highRisk && !(quad && cols > 2))
+    chips.push(
+      <span key="risk" className="bz-state is-hold is-xs">
+        <ShieldAlert aria-hidden />
+        {tx("Alto riesgo", "High risk")}
+      </span>,
+    );
+  if (c.payTier === "espera" && !(quad && cols > 2))
+    chips.push(
+      <span key="wait" className="bz-state is-hold is-xs">
+        <Hourglass aria-hidden />
+        {tx("En espera", "Waiting")}
+      </span>,
+    );
+  if (c.servicePaused && !quad)
+    chips.push(
+      <span key="pause" className="bz-state is-soil is-xs">
+        {tx("En pausa", "Paused")}
+      </span>,
+    );
+  if (!c.isActive && !quad)
+    chips.push(
+      <span key="arch" className="bz-state is-soil is-xs">
+        {tx("Archivado", "Archived")}
+      </span>,
+    );
+  const tone = late ? "border-late" : c.highRisk || c.payTier === "espera" ? "border-hold" : "border-due";
+  const balance = (
+    <p className={cn("bz-owe shrink-0 font-display font-semibold tabular-nums text-due", quad ? (cols === 4 ? "text-[11px]" : "text-xs") : "text-lg")}>{money(c.balance)}</p>
+  );
+  const pickLabel = tx(`Elegir ${c.name}`, `Select ${c.name}`);
+
+  if (quad) {
+    return (
+      <li className={cn("bz-ocard bz-ccard is-quad relative min-w-0 overflow-hidden rounded-xl border-l-4 bg-surface shadow-card", `is-c${cols}`, tone, on && "is-picked")}>
+        <PickBox on={on} onToggle={onToggle} label={pickLabel} className="bz-cpick-corner" />
+        <div className="bz-cbody">
+          <Link to="/clientes/$id" params={{ id: String(c.id) }} className="bz-ocard-name block min-w-0">
+            <MeshNameUniform name={c.name} cols={cols} />
+          </Link>
+          {cols === 2 ? <FitLine forms={forms} className="bz-csub is-quad mt-0.5" /> : null}
+          <div className="bz-cfoot">
+            <div className="mt-1 flex min-w-0 items-center justify-between gap-1">
+              {balance}
+              {chips[0] ?? null}
+            </div>
+            {cols === 4 ? (
+              <button type="button" className="bz-cact is-paid is-icon mt-1 w-full" onClick={() => onPay("full")} aria-label={tx(`Pagado: ${c.name}`, `Paid: ${c.name}`)}>
+                <HandCoins aria-hidden />
+              </button>
+            ) : (
+              <button type="button" className="bz-cact is-paid mt-1.5 w-full" onClick={() => onPay("full")}>
+                <HandCoins aria-hidden />
+                {tx("Pagado", "Paid")}
+              </button>
+            )}
+          </div>
+        </div>
+      </li>
+    );
+  }
+
+  const grande = mode === "grande";
+  return (
+    <li className={cn("bz-ocard bz-ccard min-w-0 overflow-hidden rounded-xl border-l-4 bg-surface shadow-card", grande ? "is-grande px-3.5 pt-3 pb-3.5" : "is-media px-3 pt-2.5 pb-3", tone, on && "is-picked")}>
+      <div className="flex min-w-0 items-start gap-2.5">
+        <PickBox on={on} onToggle={onToggle} label={pickLabel} className="mt-0.5" />
+        <Link to="/clientes/$id" params={{ id: String(c.id) }} className="min-w-0 flex-1">
+          <MeshNameUniform name={c.name} cols={2} size={grande ? "grande" : "media"} />
+        </Link>
+        {balance}
+      </div>
+      <div className="bz-ocard-sub mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        <FitLine forms={forms} className={cn("bz-csub min-w-0 flex-[1_1_8rem]", grande ? "is-grande" : "is-media")} />
+        {chips.length ? <span className="ml-auto flex flex-wrap justify-end gap-1">{chips}</span> : null}
+      </div>
+      <div className="bz-ocard-acts mt-2.5">
+        <button type="button" className="bz-cact is-paid" onClick={() => onPay("full")}>
+          <HandCoins aria-hidden />
+          {tx("Pagado", "Paid")}
+        </button>
+        <button type="button" className="bz-cact is-abono" onClick={() => onPay("abono")}>
+          {tx("Abono", "Partial")}
+        </button>
+        <Waive client={c} icon={!grande} />
+        <ServicePause id={c.id} name={c.name} paused={c.servicePaused} />
+      </div>
+    </li>
   );
 }
