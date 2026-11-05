@@ -105,9 +105,9 @@ html[data-sky="niebla"] #root::before, html[data-sky="nieve"] #root::before { di
 /* 1.4.83 (Oscar): fireflies at night. Tiny warm points (2.5px) with a soft glow, drifting slowly on long
    loops and blinking gently out of step. Behind everything (inside .wx), never over content, no layout. */
 /* 1.4.84: its own fixed layer (inside .wx it inherited .wx > * { opacity: 0 } and sat under the cards, so
-   nobody saw it). Above content, below header/dock (z-40) and dialogs; screen blend only adds light and
+   nobody saw it). 1.4.86 (Oscar): back BEHIND content (z -1) so panels read solid; they glow only in the gaps.
    never hides text; points stay tiny. */
-.wx-flies { position: fixed; inset: 0; z-index: 30; pointer-events: none; overflow: hidden; display: none; mix-blend-mode: screen; }
+.wx-flies { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; display: none; }
 html.theme-dark .wx-flies, html.theme-amoled .wx-flies { display: block; }
 .wx-flies > i {
   position: absolute; width: 3px; height: 3px; border-radius: 50%;
