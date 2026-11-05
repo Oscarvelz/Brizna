@@ -81,12 +81,15 @@ export function SwipeRow({
   return (
     // 1.4.67 (Oscar): a sideways drag that starts on the card belongs to the card (its Baja/Borrar),
     // never to the screen-to-screen swipe; the page swipe ignores touches inside [data-swipe-own].
-    <div className={cn("bz-swipe relative overflow-hidden rounded-xl touch-pan-y", className)} data-swipe-own>
+    // 1.4.77 (Oscar): the action layers sit under the card's rounded corners; at rest their colour bled through the
+    // anti-aliased corner pixels as a red/amber arc on the right edge. They are hidden until the card moves
+    // (and stay visible until it has slid back: .bz-swipe-act hides after the 180 ms return).
+    <div className={cn("bz-swipe relative overflow-hidden rounded-xl touch-pan-y", x !== 0 && "is-open", className)} data-swipe-own>
       {leftActions ? (
-        <div className="absolute inset-y-0 left-0 flex w-36 items-stretch">{leftActions}</div>
+        <div className="bz-swipe-act absolute inset-y-0 left-0 flex w-36 items-stretch">{leftActions}</div>
       ) : null}
       {rightActions ? (
-        <div className="absolute inset-y-0 right-0 flex w-36 items-stretch">{rightActions}</div>
+        <div className="bz-swipe-act absolute inset-y-0 right-0 flex w-36 items-stretch">{rightActions}</div>
       ) : null}
       <div
         onPointerDown={onPointerDown}
@@ -105,7 +108,7 @@ export function SwipeRow({
           transform: `translate3d(${x}px,0,0)`,
           transition: dragging.current && axis.current === "h" ? "none" : "transform 180ms var(--ease-out-smooth)",
         }}
-        className="relative z-10 bg-bg will-change-transform"
+        className="bz-swipe-face relative z-10 will-change-transform"
       >
         {children}
       </div>

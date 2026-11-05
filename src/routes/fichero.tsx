@@ -796,7 +796,7 @@ function SwipeCard({
 
   return (
     <div className="relative overflow-hidden rounded-xl" data-no-swipe>
-      <div className="pointer-events-none absolute inset-0 flex">
+      <div className={cn("bz-swipe-act pointer-events-none absolute inset-0 flex", dx !== 0 && "is-on")}>
         <div className="flex w-1/2 items-center gap-2 bg-soil-bg pl-3 text-soil">
           <FolderInput className="size-4" />
           <span className="text-xs font-semibold">{tx("Mover", "Move")}</span>

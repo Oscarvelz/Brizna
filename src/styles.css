@@ -2391,12 +2391,12 @@ html:is(.theme-dark, .theme-amoled) .bz-pad { box-shadow: inset 0 0 0 1px var(--
 html.theme-amoled .bz-ccard { box-shadow: inset 0 0 0 1px var(--bz-hair-2); }
 .bz-cname.is-media { font-size: 1.0625rem; line-height: 1.25; }
 .bz-cname.is-grande { font-size: 1.25rem; line-height: 1.2; }
-.bz-cprice { font-family: var(--font-display); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; line-height: 1.1; white-space: nowrap; }
+.bz-cprice { color: var(--bz-price); font-family: var(--font-display); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; line-height: 1.1; white-space: nowrap; }
 .bz-cprice.is-grande { font-size: 1.5rem; padding-right: 0.125rem; }
 .bz-cprice.is-media { font-size: 1.25rem; padding-right: 0.125rem; }
-.bz-cprice.is-quad2 { font-size: 1rem; }
-.bz-cprice.is-quad3 { font-size: 0.9375rem; }
-.bz-cprice.is-quad4 { font-size: 0.8125rem; }
+.bz-cprice.is-quad2 { font-size: 0.875rem; }
+.bz-cprice.is-quad3 { font-size: 0.8125rem; }
+.bz-cprice.is-quad4 { font-size: 0.75rem; }
 .bz-csub { margin-top: 0.125rem; color: color-mix(in srgb, var(--color-fg) 68%, var(--color-surface)); }
 .bz-csub.is-grande { font-size: 0.875rem; }
 .bz-csub.is-media { font-size: 0.8125rem; }
@@ -2461,3 +2461,25 @@ html:is(.theme-dark, .theme-amoled) .bz-actchip:hover { background: color-mix(in
   .bz-actchip { font-size: 0.75rem; gap: 0.3125rem; }
 }
 @container (max-width: 112px) { .bz-ccard.is-quad .bz-cmeta { display: none; } .bz-ccard.is-quad .bz-state.is-xs { padding: 0; width: 1.375rem; justify-content: center; font-size: 0; gap: 0; } }
+
+/* ================================================================ 1.4.77 (Oscar)
+   Price grey: the same soft grey as the Hoy late-card price (ink at 70%), so the client's name in full ink
+   stands out. One token, used by every client price (list cards, Lista, client file header). */
+:root { --bz-price: color-mix(in srgb, var(--color-fg) 70%, transparent); }
+html.theme-dark, html.theme-amoled { --bz-price: color-mix(in srgb, var(--color-fg) 68%, transparent); }
+.bz-price-grey, .bz-cl-price { color: var(--bz-price); }
+
+/* Swipe rows: action layers stay hidden at rest so their colour never bleeds through the rounded corners. */
+.bz-swipe-act { visibility: hidden; transition: visibility 0s linear 0.2s; }
+.bz-swipe.is-open > .bz-swipe-act, .bz-swipe-act.is-on { visibility: visible; transition-delay: 0s; }
+
+/* Malla x2/x3 on Clientes: one name size for every card in the grid (sized by the card width, so a row is
+   uniform); a long name breaks before the last name onto a second line, never shrinks and never truncates. */
+.bz-mname-u { display: block; min-width: 0; font-weight: 600; line-height: 1.18; white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: none; }
+.bz-mname-u.is-c2 { font-size: clamp(0.875rem, 10.5cqi, 1.1875rem); }
+.bz-mname-u.is-c3 { font-size: clamp(0.71875rem, 13cqi, 1rem); }
+.bz-mname-u > span { white-space: nowrap; }
+.bz-ccard.is-quad .bz-cbody { display: flex; flex-direction: column; height: 100%; }
+.bz-ccard.is-quad .bz-cbody > .bz-cfoot { margin-top: auto; }
+.bz-qcell > .bz-swipe, .bz-qcell > .bz-swipe > .bz-swipe-face, .bz-qcell .bz-ccard.is-quad { height: 100%; }
+.bz-qcell .bz-ccard.is-quad > div { height: 100%; align-items: stretch; }

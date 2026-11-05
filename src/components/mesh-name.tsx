@@ -34,6 +34,70 @@ function rescueOf(full: string): string[] {
   return parts.length > 1 ? [`${parts[0]} ${parts[parts.length - 1]!.charAt(0)}.`, parts[0]!] : [];
 }
 
+/**
+ * 1.4.77 (Oscar): Clientes Malla x2/x3 — every name in the grid at the SAME size (CSS: .bz-mname-u, sized by the
+ * card width). A name that does not fit on one line puts its last name on line 2; the only break point is
+ * before the last name. If even that cannot fit (one very long word), middle names drop first, and only then
+ * does this one card's name shrink.
+ */
+export function MeshNameUniform({ name, cols, className }: { name: string; cols: 2 | 3; className?: string }) {
+  const full = name.trim().replace(/\s+/g, " ");
+  const parts = full.split(" ");
+  const forms: [string, string][] = parts.length > 1 ? [[parts.slice(0, -1).join(" "), parts[parts.length - 1]!]] : [[full, ""]];
+  if (parts.length > 2) forms.push([parts[0]!, parts[parts.length - 1]!]);
+  const [step, setStep] = useState(0);
+  const box = useRef<HTMLSpanElement | null>(null);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const check = () => {
+      const room = el.clientWidth;
+      if (!room) return;
+      el.style.fontSize = "";
+      const twin = el.cloneNode(false) as HTMLSpanElement;
+      twin.style.cssText = `position:absolute;visibility:hidden;left:-9999px;top:0;width:${room}px`;
+      el.parentElement?.appendChild(twin);
+      const widest = (k: number) => {
+        twin.innerHTML = "";
+        for (const t of forms[k]!) {
+          if (!t) continue;
+          const sp = document.createElement("span");
+          sp.textContent = t;
+          sp.style.whiteSpace = "nowrap";
+          twin.appendChild(sp);
+          twin.appendChild(document.createTextNode(" "));
+        }
+        return Math.max(...[...twin.children].map((c) => (c as HTMLElement).getBoundingClientRect().width));
+      };
+      let i = 0;
+      while (i < forms.length - 1 && widest(i) > room + 0.5) i += 1;
+      const w = widest(i);
+      const base = parseFloat(getComputedStyle(twin).fontSize) || 14;
+      twin.remove();
+      el.style.fontSize = w > room + 0.5 ? `${Math.max(9, Math.floor(((base * (room - 1)) / w) * 4) / 4)}px` : "";
+      setStep((p) => (p === i ? p : i));
+    };
+    check();
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(check);
+    ro?.observe(el);
+    let alive = true;
+    document.fonts?.ready.then(() => alive && check()).catch(() => undefined);
+    return () => {
+      alive = false;
+      ro?.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [full, cols]);
+  const [a, b] = forms[step] ?? forms[0]!;
+  return (
+    <span ref={box} title={full} className={cn("bz-mname-u", cols === 3 ? "is-c3" : "is-c2", className)}>
+      <span>{a}</span>
+      {b ? " " : null}
+      {b ? <span>{b}</span> : null}
+    </span>
+  );
+}
+
 export function MeshName({ name, cols, className }: { name: string; cols: QuadCols; className?: string }) {
   const full = name.trim().replace(/\s+/g, " ");
   const rule = RULES[cols] ?? RULES[2];

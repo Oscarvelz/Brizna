@@ -20,7 +20,7 @@ import { SwipeRow } from "@/components/swipe-row";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDay, frequencyLabel, mapsHref, money, telHref, weekdayLabel } from "@/lib/format";
-import { MeshName } from "@/components/mesh-name";
+import { MeshName, MeshNameUniform } from "@/components/mesh-name";
 import { meshFrame, viewGrid } from "@/lib/density";
 import { useTx } from "@/lib/i18n";
 import { bulkClients, deleteClient, getClientInventory, listClients, setClientActive } from "@/lib/server/lawn";
@@ -543,7 +543,7 @@ function ClientesPage() {
 
       <ul id="lista-clientes" className={viewGrid(density, cols, gap)}>
         {clients.map((c) => (
-          <li key={c.id}>
+          <li key={c.id} className={density === "quad" ? "bz-qcell" : undefined}>
             <ClientListCard
               client={c}
               selecting={inArchive}
@@ -805,7 +805,7 @@ function ClientListCard({
                     ) : null}
                     <p
                       className={cn(
-                        "shrink-0 font-semibold tabular-nums",
+                        "bz-price-grey shrink-0 font-semibold tabular-nums",
                         quad && cols === 4 ? "text-xs" : quad || dense ? "text-xs" : media ? "text-sm" : "font-display text-lg",
                       )}
                     >
@@ -1097,31 +1097,40 @@ function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "gran
   if (mode === "quad") {
     const x4 = cols === 4;
     const x3 = cols === 3;
+    // 1.4.77 (Oscar): x2/x3 names share one size (MeshNameUniform); the price is smaller and grey so the
+    // name leads; price/state and the icons sit at the card's foot so a row lines up whatever the name's lines.
+    const name = x4 ? (
+      <MeshName name={client.name} cols={cols} className="min-w-0 flex-1" />
+    ) : (
+      <MeshNameUniform name={client.name} cols={x3 ? 3 : 2} className="min-w-0 flex-1" />
+    );
     return (
-      <div className="min-w-0 flex-1">
+      <div className="bz-cbody min-w-0 flex-1">
         <Link to="/clientes/$id" params={{ id: String(client.id) }} className="block min-w-0">
-          <div className={cn("flex min-w-0 items-baseline gap-1.5", x3 || x4 ? "" : "justify-between")}>
-            <MeshName name={client.name} cols={cols} className="min-w-0 flex-1" />
-            {!x3 && !x4 ? <span className="bz-cprice is-quad2 shrink-0">{money(client.pricePerCut)}</span> : null}
+          <div className={cn("flex min-w-0 gap-1.5", x3 || x4 ? "" : "items-start justify-between")}>
+            {name}
+            {!x3 && !x4 ? <span className="bz-cprice is-quad2 shrink-0 pt-0.5">{money(client.pricePerCut)}</span> : null}
           </div>
           {!x3 && !x4 ? <FitLine forms={freq} className="bz-csub is-quad mt-0.5" /> : null}
+        </Link>
+        <div className="bz-cfoot min-w-0">
           {x3 || x4 ? (
-            <div className="mt-1 flex min-w-0 items-center justify-between gap-1">
+            <Link to="/clientes/$id" params={{ id: String(client.id) }} className="mt-1 flex min-w-0 items-center justify-between gap-1">
               <span className={cn("bz-cprice", x4 ? "is-quad4" : "is-quad3")}>{money(client.pricePerCut)}</span>
               {client.overdueDate || owesOther(client) || !client.isActive ? (
                 <StateChip client={client} size={x4 ? "dot" : "xs"} />
               ) : client.nextCutDate && !x4 ? (
                 <span className="bz-cmeta">{formatDay(client.nextCutDate, "d MMM")}</span>
               ) : null}
+            </Link>
+          ) : null}
+          {!x4 ? (
+            <div className="mt-1.5 flex min-w-0 items-center justify-between gap-1">
+              <ContactIcons phone={client.phone} address={client.address} name={client.name} tight variant="some" className="flex-nowrap" />
+              {!x3 ? <StateChip client={client} size="xs" /> : null}
             </div>
           ) : null}
-        </Link>
-        {!x4 ? (
-          <div className="mt-1.5 flex min-w-0 items-center justify-between gap-1">
-            <ContactIcons phone={client.phone} address={client.address} name={client.name} tight variant="some" className="flex-nowrap" />
-            {!x3 ? <StateChip client={client} size="xs" /> : null}
-          </div>
-        ) : null}
+        </div>
       </div>
     );
   }
