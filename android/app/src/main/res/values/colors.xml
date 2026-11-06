@@ -2,6 +2,8 @@
 <resources>
     <!-- AMOLED night, the same black as the web manifest (background_color #000000). -->
     <color name="bz_night">#000000</color>
+    <!-- Jardín, the default day theme (status bar colour #efe8d6). -->
+    <color name="bz_day">#EFE8D6</color>
     <color name="ic_bg">#1F6A3A</color>
     <color name="bz_green">#2F8A4F</color>
 </resources>

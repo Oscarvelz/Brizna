@@ -26,6 +26,7 @@ import { signOutHere } from "@/spa/session";
 import { Locked, Login, Splash } from "@/spa/login";
 import { warmPglite } from "@/spa/pg-warm";
 import { inAndroidApp, startNative } from "@/spa/native";
+import { markShellReady, quietNextBoot, useSplashGone } from "@/spa/splash-ready";
 
 // 1.4.97 Brizna for Android: back, bars, downloads, share and print bridges (nothing happens in a browser).
 startNative();
@@ -97,6 +98,8 @@ function Gate() {
   const [failed, setFailed] = useState(false);
   const hiddenAt = useRef(0);
   const tried = useRef("");
+  // The fingerprint is asked once the launch splash has gone, so it never pops over it.
+  const splashOver = useSplashGone();
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
@@ -143,11 +146,11 @@ function Gate() {
     try { if (await unlock(user.id)) { markSeen(user.id); setOpen(true); } else setFailed(true); } catch { setFailed(true); }
   };
   useEffect(() => {
-    if (user && !open && booted && tried.current !== user.id && lockDue(user.id)) { tried.current = user.id; void tryUnlock(); }
+    if (user && !open && booted && splashOver && tried.current !== user.id && lockDue(user.id)) { tried.current = user.id; void tryUnlock(); }
   });
 
   // Another account signed in on top of an open one: start clean with that account's data.
-  if (user && openedFor && openedFor !== user.id) { location.reload(); return <Splash />; }
+  if (user && openedFor && openedFor !== user.id) { quietNextBoot(); location.reload(); return <Splash />; }
 
   if (!booted && !user) return <Splash />;
   if (recovery) return <Login recovery />;
@@ -156,7 +159,7 @@ function Gate() {
   }
   if (!open) return <Locked failed={failed} onOpen={() => void tryUnlock()} onSignOut={() => void signOutHere()} />;
   // The early-opened database belongs to someone else: reload so this account opens its own.
-  if (preopenedFor && preopenedFor !== user.id) { location.reload(); return <Splash />; }
+  if (preopenedFor && preopenedFor !== user.id) { quietNextBoot(); location.reload(); return <Splash />; }
   if (openedFor !== user.id) {
     openedFor = user.id;
     setDbUser(user.id);
@@ -201,6 +204,7 @@ function start() {
 }
 
 function OtherTab() {
+  useEffect(() => markShellReady(), []);
   const es = (document.documentElement.lang || "es").startsWith("es");
   return (
     <main style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 24, textAlign: "center", fontFamily: "Figtree, system-ui, sans-serif" }}>
@@ -245,6 +249,7 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
   const reloadOnce = () => {
     if (reloaded) return;
     reloaded = true;
+    quietNextBoot(); // the reload that installs an update never replays the launch splash
     window.location.reload();
   };
   swc.addEventListener("controllerchange", () => {

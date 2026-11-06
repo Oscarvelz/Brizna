@@ -19,6 +19,11 @@ function newNight(v: string | null | undefined): string | null | undefined {
   return v && OLD_NIGHT[v] ? OLD_NIGHT[v] : v;
 }
 
+/** 1.4.98 (Oscar): the day/night switch lands on AMOLED at night and Jardín by day for anyone who never picked a palette
+ * (fresh installs, the Android app's empty storage). A palette someone chose is stored and always wins. */
+export const DEFAULT_NIGHT: NightPalette = "amoled";
+export const DEFAULT_DAY: DayPalette = "jardin";
+
 export type DayPalette = (typeof DAY_PALETTES)[number];
 export type NightPalette = (typeof NIGHT_PALETTES)[number];
 export type AppearanceMode = "day" | "night" | "auto";
@@ -88,7 +93,7 @@ export function readStoredLocale(): LocaleName {
 }
 
 export function readAppearance(): Appearance {
-  if (typeof window === "undefined") return { mode: "day", day: "jardin", night: "noche" };
+  if (typeof window === "undefined") return { mode: "day", day: "jardin", night: DEFAULT_NIGHT };
   try {
     const raw = JSON.parse(window.localStorage.getItem(LOOK_KEY) || "null") as Partial<Appearance> | null;
     if (raw && (raw.mode === "day" || raw.mode === "night" || raw.mode === "auto") && isDayPalette(raw.day) && isNightPalette(newNight(raw.night))) {
@@ -102,7 +107,7 @@ export function readAppearance(): Appearance {
   const dayRaw = window.localStorage.getItem(DAY_KEY);
   const nightRaw = newNight(window.localStorage.getItem(NIGHT_KEY));
   const day = isDayPalette(dayRaw) ? dayRaw : isDayPalette(readStoredPalette()) ? readStoredPalette() : "jardin";
-  const night = isNightPalette(nightRaw) ? nightRaw : readStoredTheme() === "amoled" ? "amoled" : "noche";
+  const night = isNightPalette(nightRaw) ? nightRaw : DEFAULT_NIGHT;
   return { mode, day, night };
 }
 
@@ -167,7 +172,7 @@ if(mode!=="day"&&mode!=="night"&&mode!=="auto")mode=localStorage.getItem("ols-th
 var days=["jardin","costa","barro","pino","cielo","lima","arena","flor"];
 var nights=["noche","medianoche","ciruela","grafito","luciernaga","amoled"];var old={bosque:"noche",mar:"medianoche",tinta:"medianoche",brasa:"grafito",luna:"grafito"};if(old[night])night=old[night];
 if(days.indexOf(day)<0){day=localStorage.getItem("ols-palette-day")||localStorage.getItem("ols-palette")||"jardin";if(days.indexOf(day)<0)day="jardin";}
-if(nights.indexOf(night)<0){night=localStorage.getItem("ols-palette-night");if(old[night])night=old[night];if(nights.indexOf(night)<0)night=localStorage.getItem("ols-theme")==="amoled"?"amoled":"noche";}
+if(nights.indexOf(night)<0){night=localStorage.getItem("ols-palette-night");if(old[night])night=old[night];if(nights.indexOf(night)<0)night="amoled";}
 var mins=new Date().getHours()*60+new Date().getMinutes();
 var useNight=mode==="night"||(mode==="auto"&&(mins<390||mins>=1110));
 var p=useNight?night:day,r=document.documentElement;
@@ -204,7 +209,7 @@ export function ensureAppearance(serverTheme?: ThemeName, serverPalette?: string
     applyAppearance({
       mode: serverTheme === "amoled" ? "night" : "day",
       day: isDayPalette(serverPalette) ? serverPalette : "jardin",
-      night: serverTheme === "amoled" ? "amoled" : "noche",
+      night: DEFAULT_NIGHT,
     });
     return;
   }

@@ -315,6 +315,7 @@ function CobrosPage() {
 
           </>
         }
+        sideLeft
       >
       {paying && (
         <PayDialog

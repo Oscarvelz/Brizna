@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
+import { APPEARANCE_BOOT_SCRIPT } from "./src/lib/theme";
 
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
@@ -36,6 +37,26 @@ export default defineConfig({
         if (id === "./routes/__root") return r("./src/spa/root.tsx");
         if (id === "./routes/api/auth/$") return r("./src/spa/api-stub.ts");
         return null;
+      },
+    },
+    {
+      // 1.4.98: the look (theme classes + status bar colour) is set inline in <head>, before the launch splash paints.
+      name: "brizna-boot-look",
+      transformIndexHtml(html) {
+        return html.replace("<!--BZ_BOOT_LOOK-->", `<script>${APPEARANCE_BOOT_SCRIPT}</script>`);
+      },
+    },
+    {
+      // 1.4.98: the app stylesheet loads just before #root, so the launch splash (inline, above it) paints at once
+      // instead of waiting for the whole stylesheet; the app itself still never paints unstyled.
+      name: "brizna-css-after-splash",
+      transformIndexHtml: {
+        order: "post",
+        handler(html) {
+          const m = html.match(/\s*<link rel="stylesheet" crossorigin href="\.\/index-[^"]+\.css">/);
+          if (!m || !html.includes('<div id="root"></div>')) return html;
+          return html.replace(m[0], "").replace('<div id="root"></div>', `${m[0].trim()}\n    <div id="root"></div>`);
+        },
       },
     },
     tailwindcss(),

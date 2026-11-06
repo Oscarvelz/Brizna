@@ -1,4 +1,4 @@
-import { WideSplit } from "@/components/wide-layout";
+import { NarrowOnly, WideOnly, WideSplit } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { markJump } from "@/lib/jump-back";
@@ -281,6 +281,21 @@ function AgendaPage() {
     return tx("Pendiente", "Pending");
   }
 
+  const viewBar = (
+      <div className="mb-3">
+        <DensityToggle />
+        <p className="bz-tally mt-2">
+          {tx(
+            `${jobs.length} ${jobs.length === 1 ? "trabajo" : "trabajos"} · ${money(total)}${filter === "done" ? " realizados" : ""}`,
+            `${jobs.length} ${jobs.length === 1 ? "job" : "jobs"} · ${money(total)}${filter === "done" ? " done" : ""}`,
+          )}
+          {range === "all" && !cal && filter !== "done" ? (
+            <Hint compact topic="agenda-todo" />
+          ) : null}
+        </p>
+      </div>
+  );
+
   return (
     <AppShell
       title={tx("Agenda", "Schedule")}
@@ -341,6 +356,7 @@ function AgendaPage() {
 
       <WideSplit
         className="is-roomy"
+        sideLeft
         side={
           <>
       <div className="relative mb-3">
@@ -537,24 +553,13 @@ function AgendaPage() {
         </section>
       ) : null}
 
-      {cal ? null : (
-      <div className="mb-3">
-        <DensityToggle />
-        <p className="bz-tally mt-2">
-          {tx(
-            `${jobs.length} ${jobs.length === 1 ? "trabajo" : "trabajos"} · ${money(total)}${filter === "done" ? " realizados" : ""}`,
-            `${jobs.length} ${jobs.length === 1 ? "job" : "jobs"} · ${money(total)}${filter === "done" ? " done" : ""}`,
-          )}
-          {range === "all" && !cal && filter !== "done" ? (
-            <Hint compact topic="agenda-todo" />
-          ) : null}
-        </p>
-      </div>
-      )}
+      {/* 1.4.98 (Oscar): on a wide screen the view bar sits on top of the cards (right column), as in Cobros. */}
+      {cal ? null : <NarrowOnly>{viewBar}</NarrowOnly>}
 
           </>
         }
       >
+      {cal ? null : <WideOnly>{viewBar}</WideOnly>}
       <div id="agenda-trabajos">
         {cal ? (
           <MonthBoard

@@ -111,6 +111,11 @@
   column-gap: 1.75rem; align-items: start;
 }
 .bz-split.is-roomy { grid-template-columns: minmax(0, 1fr) 26.5rem; }
+/* 1.4.98 (Oscar, Cobros on the tablet): the same two columns swapped, tools on the left beside the rail, list on the right. */
+.bz-split.is-side-left { grid-template-columns: clamp(20rem, 32%, 26.5rem) minmax(0, 1fr); }
+.bz-split.is-side-left.is-roomy { grid-template-columns: 26.5rem minmax(0, 1fr); }
+.bz-split.is-side-left > .bz-split-side { grid-column: 1; grid-row: 1; }
+.bz-split.is-side-left > .bz-split-main { grid-column: 2; grid-row: 1; }
 .bz-split-main, .bz-split-side { min-width: 0; }
 .bz-split-side > :first-child, .bz-split-main > :first-child { margin-top: 0; }
 /* The tools column stays in view while the list scrolls; if it is taller than the screen it scrolls on its own. */

@@ -11,14 +11,171 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <!--BZ_BOOT_LOOK-->
     <link rel="icon" type="image/png" href="./icon-512.png" />
     <link rel="apple-touch-icon" href="./icon-180.png" sizes="180x180" />
     <link rel="manifest" href="./manifest.webmanifest?v=1310" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" />
+    <!-- 1.4.98: fonts never hold back the first paint (the splash paints at once, even offline). -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" /></noscript>
+    <style>
+      /* 1.4.98 launch splash: the lawn grows, the sun (moon at night) rises, a breeze passes, Brizna rises.
+         Only HTML boxes animate transform/opacity, so it stays smooth while the app boots behind it. */
+      html.bzs-on, html.bzs-on body { background: var(--bzs-ground, #000); }
+      #bz-splash {
+        --t: clamp(100px, 27vw, 148px);
+        --ground: #000; --ink: #f2f5ef; --sub: #a9b8ad; --glow: rgba(214, 226, 232, 0.16);
+        --m1: rgba(47, 125, 73, 0.55); --m2: rgba(31, 106, 58, 0.62); --m3: rgba(63, 138, 85, 0.42);
+        position: fixed; inset: 0; z-index: 2147483000; display: grid; place-items: center;
+        background: var(--ground); color: var(--ink); overflow: hidden; contain: strict;
+        -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+        transition: opacity 0.46s cubic-bezier(0.4, 0, 0.2, 1), transform 0.46s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      #bz-splash.is-day { --ink: #173c25; --sub: #55695a; --glow: rgba(244, 196, 92, 0.34); --m1: rgba(47, 125, 73, 0.34); --m2: rgba(31, 106, 58, 0.42); --m3: rgba(63, 138, 85, 0.26); }
+      #bz-splash.is-leaving { opacity: 0; transform: scale(1.025); pointer-events: none; }
+      #bz-splash.is-quick { transition-duration: 0.22s; }
+      #bz-splash * { box-sizing: border-box; }
+      .bzs-lock { position: relative; display: grid; justify-items: center; text-align: center; padding: 0 24px calc(6vh + env(safe-area-inset-bottom)); max-width: 100%; }
+      .bzs-glow { position: absolute; left: 50%; top: calc(var(--t) * 0.3); width: calc(var(--t) * 4.6); height: calc(var(--t) * 4.6); margin: calc(var(--t) * -2.3) 0 0 calc(var(--t) * -2.3); border-radius: 50%; background: radial-gradient(circle, var(--glow) 0%, transparent 62%); opacity: 0; transform: scale(0.7); animation: bzs-glow 1.6s 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; pointer-events: none; }
+      .bzs-tile { position: relative; width: var(--t); height: var(--t); border-radius: calc(var(--t) * 0.234); background: #1f6a3a; overflow: hidden; isolation: isolate; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22); }
+      #bz-splash.is-day .bzs-tile { box-shadow: 0 10px 26px rgba(31, 106, 58, 0.22); }
+      .bzs-tile > i { position: absolute; display: block; }
+      .bzs-halo { left: 37%; top: -6%; width: 64%; height: 64%; border-radius: 50%; background: radial-gradient(circle, rgba(255, 236, 170, 0.55), transparent 66%); opacity: 0; transform: scale(0.6); animation: bzs-halo 1.2s 0.8s ease-out forwards; }
+      #bz-splash.is-night .bzs-halo { background: radial-gradient(circle, rgba(225, 235, 240, 0.34), transparent 66%); }
+      .bzs-orb { left: 58.98%; top: 19.53%; width: 20.7%; height: 20.7%; border-radius: 50%; background: #f4c45c; opacity: 0; transform: translateY(150%); animation: bzs-rise 1s 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+      #bz-splash.is-night .bzs-orb { background: #eef1e6; box-shadow: 0 0 calc(var(--t) * 0.06) rgba(238, 241, 230, 0.55); }
+      #bz-splash.is-night .bzs-orb::after { content: ""; position: absolute; left: 30%; top: -18%; width: 84%; height: 84%; border-radius: 50%; background: #1f6a3a; }
+      .bzs-sway { bottom: 26.17%; transform-origin: 50% 100%; animation: bzs-breeze 0.8s ease-in-out forwards; }
+      .bzs-sway > b { display: block; width: 100%; height: 100%; background: #efe8d6; transform-origin: 50% 100%; transform: scaleY(0); animation: bzs-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+      .bzs-a { left: 32.81%; width: 8.01%; height: 35.55%; animation-delay: 1.15s; }
+      .bzs-a > b { clip-path: polygon(0 100%, 39% 0, 100% 100%); animation-delay: 0.12s; }
+      .bzs-b { left: 46.88%; width: 9.18%; height: 47.27%; animation-delay: 1.22s; }
+      .bzs-b > b { clip-path: polygon(0 100%, 36.2% 0, 100% 100%); animation-delay: 0.22s; }
+      .bzs-c { left: 61.33%; width: 7.62%; height: 29.3%; animation-delay: 1.29s; }
+      .bzs-c > b { clip-path: polygon(0 100%, 41% 0, 100% 100%); animation-delay: 0.32s; }
+      .bzs-soil { left: 17.58%; top: 72.66%; width: 64.45%; height: 3.91%; border-radius: 99px; background: #efe8d6; }
+      .bzs-word { margin: calc(var(--t) * 0.2) 0 0; display: flex; font-family: Fraunces, Georgia, "Times New Roman", serif; font-weight: 600; font-size: clamp(2.9rem, 13.5vw, 4.5rem); line-height: 1; letter-spacing: -0.025em; color: var(--ink); }
+      .bzs-word span { display: inline-block; opacity: 0; transform: translateY(0.3em); animation: bzs-letter 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+      .bzs-biz { margin: 0.85rem 0 0; max-width: min(22rem, 86vw); font-family: Figtree, system-ui, sans-serif; font-weight: 500; font-size: clamp(0.98rem, 3.9vw, 1.12rem); line-height: 1.3; letter-spacing: 0.01em; color: var(--sub); text-wrap: balance; opacity: 0; transform: translateY(6px); animation: bzs-fade 0.6s 1.35s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+      .bzs-meadow { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--mh, 96px) + env(safe-area-inset-bottom)); pointer-events: none; }
+      .bzs-meadow::after { content: ""; position: absolute; left: 0; right: 0; bottom: env(safe-area-inset-bottom); height: 1px; background: var(--m2); opacity: 0.5; }
+      .bzs-meadow > i { position: absolute; bottom: env(safe-area-inset-bottom); display: block; transform-origin: 50% 100%; animation: bzs-breeze-soft 0.8s ease-in-out forwards; }
+      .bzs-meadow > i > b { display: block; width: 100%; height: 100%; transform-origin: 50% 100%; transform: scaleY(0); animation: bzs-grow 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+      @keyframes bzs-glow { to { opacity: 1; transform: none; } }
+      @keyframes bzs-halo { to { opacity: 1; transform: none; } }
+      @keyframes bzs-rise { to { opacity: 1; transform: none; } }
+      @keyframes bzs-grow { to { transform: none; } }
+      @keyframes bzs-breeze { 0% { transform: none; } 40% { transform: rotate(-7deg); } 75% { transform: rotate(2.5deg); } 100% { transform: none; } }
+      @keyframes bzs-breeze-soft { 0% { transform: none; } 40% { transform: rotate(-9deg); } 75% { transform: rotate(3deg); } 100% { transform: none; } }
+      @keyframes bzs-letter { to { opacity: 1; transform: none; } }
+      @keyframes bzs-fade { to { opacity: 1; transform: none; } }
+      #bz-splash.is-still *, #bz-splash.is-still *::after { animation: none !important; }
+      #bz-splash.is-still :is(.bzs-glow, .bzs-halo, .bzs-orb, .bzs-word span, .bzs-biz) { opacity: 1; transform: none; }
+      #bz-splash.is-still :is(.bzs-sway > b, .bzs-meadow b) { transform: none; }
+      #bz-splash.is-still.is-leaving { transform: none; }
+    </style>
   </head>
   <body>
+    <div id="bz-splash" aria-hidden="true" hidden>
+      <div class="bzs-lock">
+        <i class="bzs-glow"></i>
+        <div class="bzs-tile">
+          <i class="bzs-halo"></i>
+          <i class="bzs-orb"></i>
+          <i class="bzs-sway bzs-a"><b></b></i>
+          <i class="bzs-sway bzs-b"><b></b></i>
+          <i class="bzs-sway bzs-c"><b></b></i>
+          <i class="bzs-soil"></i>
+        </div>
+        <h1 class="bzs-word"><span>B</span><span>r</span><span>i</span><span>z</span><span>n</span><span>a</span></h1>
+        <p class="bzs-biz"></p>
+      </div>
+      <div class="bzs-meadow"></div>
+    </div>
+    <script>
+      // 1.4.98 launch splash. Cold starts only: not after a reload (pull to refresh, the reload that installs an update,
+      // which also sets brizna-quiet-boot) and not when coming back from another tab. It leaves once the app has drawn
+      // its first real screen (event brizna:shell-ready), never before MIN or after MAX; a tap skips it.
+      (function () {
+        var d = document, r = d.documentElement, s = d.getElementById("bz-splash"), W = window;
+        var st = (W.__bzSplash = { t0: performance.now(), shown: false, ready: 0, leave: 0, gone: 0, reason: "" });
+        W.__bzSplashGone = true;
+        var quiet = false;
+        try { quiet = sessionStorage.getItem("brizna-quiet-boot") === "1"; sessionStorage.removeItem("brizna-quiet-boot"); } catch (e) {}
+        var nav = (performance.getEntriesByType && performance.getEntriesByType("navigation")[0]) || {};
+        var forced = /[?&]splash=1/.test(location.search);
+        if (!forced && (quiet || nav.type === "reload" || nav.type === "back_forward" || navigator.webdriver)) { s.parentNode.removeChild(s); st.reason = "skipped"; return; }
+        W.__bzSplashGone = false; st.shown = true;
+        var still = false;
+        try { still = matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+        var MIN = still ? 500 : 2100, MAX = 4500;
+        var night = r.classList.contains("theme-amoled") || r.classList.contains("theme-dark");
+        var meta = d.querySelector('meta[name="theme-color"]');
+        var ground = (meta && meta.getAttribute("content")) || (night ? "#000000" : "#efe8d6");
+        s.style.setProperty("--ground", ground);
+        r.style.setProperty("--bzs-ground", ground);
+        r.classList.add("bzs-on");
+        s.className = (night ? "is-night" : "is-day") + (still ? " is-still" : "");
+        var name = "";
+        try { name = (localStorage.getItem("ols-business-name") || "").trim(); } catch (e) {}
+        s.querySelector(".bzs-biz").textContent = name || "Oscar's Lawn Service";
+        if (!still) {
+          var spans = s.querySelectorAll(".bzs-word span");
+          for (var k = 0; k < spans.length; k++) spans[k].style.animationDelay = 850 + k * 70 + "ms";
+          // The meadow: thin blades along the bottom edge, grown left to right, then bent once by the same breeze.
+          var m = s.querySelector(".bzs-meadow"), vw = innerWidth || 412, mh = Math.round(Math.min(118, Math.max(72, innerHeight * 0.11)));
+          m.style.setProperty("--mh", mh + "px");
+          var n = Math.round(vw / 6.5), tones = ["var(--m1)", "var(--m2)", "var(--m3)"], seed = 7, html = "";
+          var rnd = function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+          for (var i = 0; i < n; i++) {
+            var x = (i + rnd() * 0.8) * (vw / n), f = x / vw, w = 3 + rnd() * 4, h = mh * (0.32 + 0.68 * rnd() * (0.55 + 0.45 * Math.sin(f * 9 + 1) * Math.sin(f * 9 + 1)));
+            var tip = 30 + rnd() * 40;
+            html += '<i style="left:' + x.toFixed(1) + "px;width:" + w.toFixed(1) + "px;height:" + h.toFixed(0) + "px;animation-delay:" + Math.round(1100 + f * 420) + 'ms"><b style="background:' + tones[i % 3] + ";clip-path:polygon(0 100%," + tip.toFixed(0) + "% 0,100% 100%);animation-delay:" + Math.round(90 + f * 520 + rnd() * 90) + 'ms"></b></i>';
+          }
+          m.innerHTML = html;
+        }
+        s.hidden = false;
+        // While the splash is up, the status bar keeps its colour; the app's own colour comes back as it leaves.
+        var appColor = null, own = false;
+        var guard = function () {
+          var mm = d.querySelector('meta[name="theme-color"]');
+          if (!mm || own || st.leave) return;
+          var c = mm.getAttribute("content");
+          if (c !== ground) { appColor = c; own = true; mm.setAttribute("content", ground); own = false; }
+        };
+        var mo = W.MutationObserver ? new MutationObserver(guard) : null;
+        if (mo) mo.observe(d.head, { attributes: true, childList: true, subtree: true, attributeFilter: ["content"] });
+        var leave = function (why, quick) {
+          if (st.leave) return;
+          st.leave = performance.now(); st.reason = why;
+          if (mo) mo.disconnect();
+          var mm = d.querySelector('meta[name="theme-color"]');
+          if (mm && appColor) mm.setAttribute("content", appColor);
+          r.classList.remove("bzs-on");
+          if (quick || still) s.classList.add("is-quick");
+          s.classList.add("is-leaving");
+          W.dispatchEvent(new Event("brizna:splash-leaving"));
+          setTimeout(function () {
+            if (s.parentNode) s.parentNode.removeChild(s);
+            st.gone = performance.now(); W.__bzSplashGone = true;
+            W.dispatchEvent(new Event("brizna:splash-gone"));
+          }, quick || still ? 240 : 480);
+        };
+        var minAt = st.t0 + MIN;
+        var onReady = function () {
+          if (st.ready) return;
+          st.ready = performance.now();
+          var wait = minAt - st.ready;
+          if (wait > 0) setTimeout(function () { leave("ready"); }, wait); else leave("ready");
+        };
+        W.addEventListener("brizna:shell-ready", onReady);
+        if (W.__bzShellReady) onReady();
+        setTimeout(function () { leave("max"); }, MAX);
+        s.addEventListener("pointerdown", function () { leave("tap", true); });
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="./main.tsx"></script>
   </body>

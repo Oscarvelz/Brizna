@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { markShellReady } from "./splash-ready";
 import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, CloudOff, Eye, EyeOff, Fingerprint, Loader2, LockKeyhole, LogOut, Mail, ShieldCheck, Sprout, UserRound } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { DEFAULT_BUSINESS_NAME, PRODUCT_NAME } from "@/lib/format";
@@ -23,6 +24,7 @@ function friendly(err: unknown, tx: (es: string, en: string) => string) {
 export function Login({ recovery, note }: { recovery?: boolean; note?: string }) {
   const tx = useTx();
   const { locale, setLocale } = useI18n();
+  useEffect(() => markShellReady(), []);
   const [mode, setMode] = useState<Mode>(recovery ? "reset" : "in");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -235,6 +237,7 @@ export function Login({ recovery, note }: { recovery?: boolean; note?: string })
 
 export function Locked({ onOpen, onSignOut, failed }: { onOpen: () => void; onSignOut: () => void; failed: boolean }) {
   const tx = useTx();
+  useEffect(() => markShellReady(), []);
   return (
     <main className="bz-login">
       <LawnScene calm />

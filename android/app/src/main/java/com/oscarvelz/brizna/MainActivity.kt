@@ -95,6 +95,10 @@ class MainActivity : Activity() {
         super.onCreate(state)
         topColor = prefs.getInt("top", topColor); bottomColor = prefs.getInt("bottom", bottomColor)
         topDark = prefs.getBoolean("topDark", true); bottomDark = prefs.getBoolean("bottomDark", true)
+        // 1.4.98 (android-2): the system splash leaves at once (no icon animation); the page's own splash follows on
+        // the same ground colour.
+        if (Build.VERSION.SDK_INT >= 31) runCatching { splashScreen.setOnExitAnimationListener { it.remove() } }
+        splashFor(topDark)
         window.setDecorFitsSystemWindows(false)
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
@@ -263,6 +267,14 @@ class MainActivity : Activity() {
     private fun event(name: String, detail: JSONObject? = null) =
         dispatch(if (detail == null) "dispatchEvent(new Event('$name'))" else "dispatchEvent(new CustomEvent('$name',{detail:$detail}))")
 
+    /** Android 13+: the next launch's system splash takes the ground of the theme the page shows now (night black / day linen). */
+    private var splashDark: Boolean? = null
+    private fun splashFor(dark: Boolean) {
+        if (Build.VERSION.SDK_INT < 33 || splashDark == dark) return
+        splashDark = dark
+        runCatching { splashScreen.setSplashScreenTheme(if (dark) R.style.Brizna else R.style.Brizna_Day) }
+    }
+
     private fun applyBars() {
         statusBg.setBackgroundColor(topColor)
         root.setBackgroundColor(bottomColor)
@@ -370,6 +382,7 @@ class MainActivity : Activity() {
                 topColor = t; bottomColor = b; topDark = darkTop; bottomDark = darkBottom
                 prefs.edit().putInt("top", t).putInt("bottom", b).putBoolean("topDark", darkTop).putBoolean("bottomDark", darkBottom).apply()
                 applyBars()
+                splashFor(darkTop)
             }
         }
 

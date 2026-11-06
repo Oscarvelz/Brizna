@@ -28,6 +28,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ExportSheet, useExportLaunch } from "@/components/export-center";
 import { Hint } from "@/components/hint";
 import { OfflineBanner } from "@/components/offline-banner";
+import { watchShellReady } from "@/spa/splash-ready";
 import { SampleChip } from "@/components/sample-data";
 import { BackupWatch } from "@/components/backup-watch";
 import { SyncNotice } from "@/components/sync-notice";
@@ -196,6 +197,8 @@ export function AppShell({
   useEffect(() => warmStudy(shellQc), [shellQc]);
   // 1.4.95: pressing a link to a client file starts its reading before the page changes.
   useEffect(() => installClientPrefetch(shellQc), [shellQc]);
+  // 1.4.98: the launch splash fades once this first real screen is drawn.
+  useEffect(() => watchShellReady(), []);
   const { t, locale, setLocale } = useI18n();
   const tx = useTx();
   const businessName = settingsQ.data?.businessName || readStoredBusinessName(DEFAULT_BUSINESS_NAME);

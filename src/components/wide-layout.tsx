@@ -13,6 +13,7 @@ export function WideSplit({
   sideFirst = true,
   className,
   sideClassName,
+  sideLeft = false,
 }: {
   side: ReactNode;
   children: ReactNode;
@@ -21,15 +22,25 @@ export function WideSplit({
   sideFirst?: boolean;
   className?: string;
   sideClassName?: string;
+  /** 1.4.98 (Oscar, Cobros): on a wide screen the tools column sits on the LEFT, next to the rail; the list on the right. */
+  sideLeft?: boolean;
 }) {
   const wide = usePageWide(min);
   if (!wide) return sideFirst ? <>{side}{children}</> : <>{children}{side}</>;
   return (
-    <div className={cn("bz-split", className)}>
+    <div className={cn("bz-split", sideLeft && "is-side-left", className)}>
       <div className="bz-split-main">{children}</div>
       <aside className={cn("bz-split-side", sideClassName)}>{side}</aside>
     </div>
   );
+}
+
+/** 1.4.98: render only when WideSplit is two columns (wide) or only when it is one (narrow), at the same breakpoint. */
+export function WideOnly({ min = 880, children }: { min?: number; children: ReactNode }) {
+  return usePageWide(min) ? <>{children}</> : null;
+}
+export function NarrowOnly({ min = 880, children }: { min?: number; children: ReactNode }) {
+  return usePageWide(min) ? null : <>{children}</>;
 }
 
 /** Columns for a page column of this width (0 = keep the phone's single column). */
@@ -47,7 +58,8 @@ const MASONRY_FULL = "#cif-pulso, #cif-mes";
  * so opening a fold only pushes what is below it in that column). Children keep their CSS order.
  * A child with data-masonry-full spans every column. cols = 0 turns it off (phones).
  */
-export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap = 16, fillLast = false) {
+export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap = 16, fillLast = false, under?: Record<string, string>) {
+  const underKey = under ? JSON.stringify(under) : "";
   useLayoutEffect(() => {
     const box = ref.current;
     if (!box) return;
@@ -58,6 +70,7 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
       for (const el of kids()) {
         el.style.removeProperty("grid-column");
         el.style.removeProperty("grid-row-end");
+        el.style.removeProperty("grid-row-start");
       }
     };
     if (cols < 2) {
@@ -66,12 +79,16 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
     }
     box.classList.add("bz-masonry");
     box.style.setProperty("--bz-cols", String(cols));
+    // Sections that sit right under another one: with dense packing a column choice alone could drop them into
+    // an earlier hole, so size() also pins their first row to the line just below their host.
+    let unders: { el: HTMLElement; host: HTMLElement }[] = [];
     const assign = () => {
       const list = kids()
         .map((el, i) => ({ el, i, o: Number.parseInt(getComputedStyle(el).order, 10) || 0 }))
         .sort((a, b) => a.o - b.o || a.i - b.i);
       let k = 0;
       let last: { el: HTMLElement; c: number } | null = null;
+      const later: { el: HTMLElement; host: HTMLElement }[] = [];
       for (const { el } of list) {
         if (el.hasAttribute("data-masonry-full") || el.matches(MASONRY_FULL)) {
           el.style.gridColumn = "1 / -1";
@@ -80,17 +97,23 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
         }
         if (getComputedStyle(el).display === "none") continue;
         // data-masonry-under="<id>": sits in the same column as that section, right below it (balances columns).
-        const under = el.dataset.masonryUnder;
-        const host = under ? box.querySelector<HTMLElement>(`#${CSS.escape(under)}`) : null;
-        const hostCol = host && host.parentElement === box ? Number.parseInt(host.style.gridColumn, 10) : NaN;
-        if (Number.isFinite(hostCol) && hostCol > 0) {
-          el.style.gridColumn = String(hostCol);
+        // (1.4.98: or by id through the hook's `under` map, for sections that cannot carry the attribute)
+        const underId: string | undefined = el.dataset.masonryUnder || (under && el.id ? under[el.id] : undefined);
+        const host: HTMLElement | null = underId ? box.querySelector<HTMLElement>(`#${CSS.escape(underId)}`) : null;
+        if (host && host.parentElement === box) {
+          // The host is placed in this same pass (it may come later in the order): join its column afterwards.
+          later.push({ el, host });
           continue;
         }
         const c = (k % cols) + 1;
         el.style.gridColumn = String(c);
         last = { el, c };
         k += 1;
+      }
+      unders = later;
+      for (const { el, host } of later) {
+        const hostCol = Number.parseInt(host.style.gridColumn, 10);
+        el.style.gridColumn = Number.isFinite(hostCol) && hostCol > 0 ? String(hostCol) : "1";
       }
       // An odd last card (3 cards in 2 columns) takes the rest of the row instead of leaving a hole.
       if (fillLast && last && k % cols !== 0) last.el.style.gridColumn = `${last.c} / -1`;
@@ -101,6 +124,25 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
         const span = h > 0 ? Math.max(1, Math.ceil((h + gap) / UNIT)) : 1;
         const next = `span ${span}`;
         if (el.style.gridRowEnd !== next) el.style.gridRowEnd = next;
+      }
+      pin(0);
+    };
+    // The host's first row is read back from the layout (rows are UNIT px, no row gap). Spans written this frame settle
+    // on the next one (a stretched row moves the host), so look again a few frames on until it holds.
+    let pinRaf = 0;
+    const pin = (tries: number) => {
+      if (!unders.length) return;
+      const top = box.getBoundingClientRect().top;
+      let moved = false;
+      for (const { el, host } of unders) {
+        const span = Number.parseInt((host.style.gridRowEnd || "").replace("span", ""), 10);
+        if (!Number.isFinite(span) || host.getBoundingClientRect().height <= 0) { el.style.removeProperty("grid-row-start"); continue; }
+        const start = String(Math.round((host.getBoundingClientRect().top - top) / UNIT) + 1 + span);
+        if (el.style.gridRowStart !== start) { el.style.gridRowStart = start; moved = true; }
+      }
+      if (tries < 6 && (moved || tries < 3)) {
+        cancelAnimationFrame(pinRaf);
+        pinRaf = requestAnimationFrame(() => pin(tries + 1));
       }
     };
     // Write spans on the next frame: writing inside the observer callback trips its loop guard.
@@ -129,11 +171,13 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
     mo.observe(box, { childList: true });
     return () => {
       if (raf) cancelAnimationFrame(raf);
+      if (pinRaf) cancelAnimationFrame(pinRaf);
       ro.disconnect();
       mo.disconnect();
       clear();
     };
-  }, [ref, cols, gap, fillLast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ref, cols, gap, fillLast, underKey]);
 }
 
 /** A box whose children become steady columns on large screens; phones get the box exactly as before. */
