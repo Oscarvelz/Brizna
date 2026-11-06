@@ -1,5 +1,5 @@
 import type React from "react";
-import { Calculator, GripHorizontal } from "lucide-react";
+import { Calculator, GripHorizontal, PanelRightClose } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -349,6 +349,89 @@ export function QuickPad({ onClose }: { onClose: () => void }) {
 
   if (spot && typeof document !== "undefined") return createPortal(pad, document.body);
   return pad;
+}
+
+/**
+ * 1.5.00: the notepad's calculator docked as a panel (tablet/computer side column). Same keys and
+ * "En la nota" as the floating pad; the keyboard and caret stay in the note while you tap.
+ */
+export function DockCalc({ open, onToggle, onFoldSide, hint }: { open: boolean; onToggle: () => void; onFoldSide?: () => void; hint?: React.ReactNode }) {
+  const [expr, setExpr] = useState("");
+  const [last, setLast] = useState<string | null>(null);
+  const tx = useTx();
+  const preview = evalAmount(expr);
+  useEffect(() => {
+    function onSelect() {
+      rememberCaret();
+    }
+    document.addEventListener("selectionchange", onSelect);
+    return () => document.removeEventListener("selectionchange", onSelect);
+  }, []);
+  const pretty = (expr || "0").replaceAll("*", "×").replaceAll("/", "÷");
+  function press(k: string) {
+    if (k === "=" && preview != null) setLast(`${pretty} =`);
+    else if (k === "C") setLast(null);
+    setExpr((current) => applyKey(current, k, evalAmount(current)));
+  }
+  return (
+    <section className={cn("bz-nb-calc", !open && "is-shut")} aria-label={tx("Calculadora", "Calculator")}>
+      <div className="bz-nb-head">
+        <button type="button" aria-expanded={open} onClick={onToggle} className="bz-nb-headbtn">
+          <Calculator className="size-4.5 shrink-0 text-primary" aria-hidden />
+          <h2 className="bz-nb-title">{tx("Calculadora", "Calculator")}</h2>
+        </button>
+        {hint}
+        <span className="min-w-0 flex-1" />
+        {onFoldSide ? (
+          <button type="button" aria-label={tx("Plegar el panel", "Fold the panel")} onClick={onFoldSide} className="bz-nb-icon">
+            <PanelRightClose className="size-4.5" />
+          </button>
+        ) : null}
+      </div>
+      {open ? (
+        <div
+          className="bz-nb-calc-body"
+          data-no-swipe
+          onPointerDownCapture={(e) => {
+            rememberCaret();
+            e.preventDefault();
+          }}
+          onPointerUp={() => window.setTimeout(keepKeyboard, 0)}
+        >
+          <div className="bz-nb-calc-screen" aria-live="polite">
+            <span className="bz-nb-calc-expr">{preview != null && String(preview) !== expr ? `${pretty} =` : last ?? "\u00a0"}</span>
+            <span className="bz-nb-calc-val">{preview != null && String(preview) !== expr ? money(preview) : pretty}</span>
+          </div>
+          <div className="bz-nb-calc-keys">
+            {CALC_KEYS.map((k) => (
+              <button
+                key={k}
+                type="button"
+                onPointerUp={() => press(k)}
+                className={cn("bz-nb-key", "+-×÷".includes(k) && "is-op", k === "C" && "is-clear", k === "=" && "is-eq", k === "0" && "is-zero")}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            disabled={preview == null}
+            aria-label={tx("Insertar la cuenta en la nota", "Insert the calculation into the note")}
+            onPointerUp={() => {
+              if (preview == null) return;
+              insertCuenta(expr, preview);
+              window.setTimeout(keepKeyboard, 0);
+            }}
+            className="bz-nb-into"
+          >
+            {tx("En la nota", "Into note")}
+            {preview != null ? <span className="tabular-nums">{money(preview)}</span> : null}
+          </button>
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
 export function CalcButton({ pressed, onClick }: { pressed: boolean; onClick: () => void }) {

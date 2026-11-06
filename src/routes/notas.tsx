@@ -1,7 +1,8 @@
-import { WideSplit } from "@/components/wide-layout";
+import { usePageWidth, WideSplit } from "@/components/wide-layout";
+import { DeskDivider, DeskStrip, NotesListPanel, useDesk, type DeskMode } from "@/components/notes-desk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ChevronDown, ChevronLeft, Download, Pencil, Pin, Plus, Search, Share2, Trash2, X } from "lucide-react";
+import { Calculator, CalendarDays, ChevronDown, ChevronLeft, Download, FolderOpen, NotebookPen, Pencil, Pin, Plus, Search, Share2, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { createPortal } from "react-dom";
@@ -11,7 +12,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Hint } from "@/components/hint";
 import { PhotoPicker } from "@/components/photo-picker";
 import { PHOTOS_ENABLED } from "@/lib/photos-flag";
-import { CalcButton, QuickPad } from "@/components/money-calc";
+import { CalcButton, DockCalc, QuickPad } from "@/components/money-calc";
 import { noteReaderHtml, RichNotes } from "@/components/rich-notes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -147,6 +148,26 @@ function PadBody({
   const shotsRef = useRef<string[]>([]);
   const [draftStamp, setDraftStamp] = useState(0);
   const [afterFolder, setAfterFolder] = useState<string | null>(null);
+  const pageWidth = usePageWidth();
+  const [tall, setTall] = useState(() => (typeof window === "undefined" ? false : window.innerHeight >= 700));
+  useEffect(() => {
+    const read = () => setTall(window.innerHeight >= 700);
+    window.addEventListener("resize", read);
+    return () => window.removeEventListener("resize", read);
+  }, []);
+  // 1.5.00: tablet/computer desk. Wide page: list | editor | calculator + week. Tablet portrait: list | editor.
+  const mode: DeskMode | null = pageWidth >= 880 ? "three" : pageWidth >= 640 && tall ? "two" : null;
+  const desk = useDesk(pageWidth, mode ?? "three");
+  const deskRef = useRef<HTMLDivElement>(null);
+  // While a divider is dragged the grid is written straight to the element (no React render per move).
+  function setLive(which: "list" | "side", px: number) {
+    const el = deskRef.current;
+    if (!el) return;
+    const cols = el.style.gridTemplateColumns.split(" ");
+    if (which === "list") cols[0] = `${px}px`;
+    else cols[cols.length - 1] = `${px}px`;
+    el.style.gridTemplateColumns = cols.join(" ");
+  }
 
   useEffect(() => {
     if (initialPage) return;
@@ -443,22 +464,23 @@ function PadBody({
     remember([...cabinet, { id: `new-${Date.now()}`, name: nextName, color: "", trashedAt: null }]);
   }
 
-  return (
-    <>
-      <WideSplit
-        sideFirst={false}
-        side={
-      <div className="mt-6">
-        <WeekAccordion
-          days={data.weekDays}
-          openDay={openDay}
-          onToggle={(date) => setOpenDay((prev) => (prev === date ? "" : date))}
-        />
-      </div>
-        }
-      >
-      <section ref={editorRef} data-spot="notas" className="note-halo p-3">
+  const week = (
+    <WeekAccordion
+      days={data.weekDays}
+      openDay={openDay}
+      onToggle={(date) => setOpenDay((prev) => (prev === date ? "" : date))}
+    />
+  );
+  const calcDocked = mode === "three";
+  const editorSection = (
+      <section ref={editorRef} data-spot="notas" className={cn("note-halo p-3", mode && "bz-nb-editor")}>
         <div className="mb-2 flex items-center gap-1">
+          {mode ? (
+            <span className="bz-nb-where">
+              <FolderOpen className="size-4 shrink-0" aria-hidden />
+              <span>{draftOn ? fresh || folderFromBack(back) || tx("Nota nueva", "New note") : page?.folder || tx("No especificada", "Unspecified")}</span>
+            </span>
+          ) : (
           <button
             type="button"
             onClick={() => {
@@ -471,9 +493,20 @@ function PadBody({
             <ChevronLeft className="size-5 shrink-0" />
             <span>{tx("Abrir bloc", "Open pad")}</span>
           </button>
+          )}
           <Hint topic="notas" />
           <span className="min-w-0 flex-1" />
-          <CalcButton pressed={calcOn} onClick={() => setCalcOn((value) => !value)} />
+          <CalcButton
+            pressed={calcDocked ? desk.desk.sideOpen && desk.desk.calcOpen : calcOn}
+            onClick={() => {
+              if (!calcDocked) {
+                setCalcOn((value) => !value);
+                return;
+              }
+              const shown = desk.desk.sideOpen && desk.desk.calcOpen;
+              desk.update(shown ? { calcOpen: false } : { calcOpen: true, sideOpen: true });
+            }}
+          />
           {!draftOn && page ? (
             <button
               type="button"
@@ -529,7 +562,7 @@ function PadBody({
             <Search className="size-5" />
           </button>
         </div>
-        {calcOn ? <QuickPad onClose={() => setCalcOn(false)} /> : null}
+        {calcOn && !calcDocked ? <QuickPad onClose={() => setCalcOn(false)} /> : null}
         {pinned.length > 0 ? (
           <div className="mb-3">
             <p className="mb-1 text-xs font-semibold text-muted">{tx("Fijadas", "Pinned")}</p>
@@ -670,7 +703,9 @@ function PadBody({
         )}
         {!draftOn && page && reading ? <NotePhotos pageId={page.id} title={title} canAdd={false} /> : null}
       </section>
-
+  );
+  const stayDialogs = (
+    <>
       <ConfirmDialog
         front
         stack
@@ -712,8 +747,106 @@ function PadBody({
         }}
         onCancel={() => setAfterFolder(null)}
       />
+    </>
+  );
+  const listPanel = desk.desk.listOpen ? (
+    <NotesListPanel
+      pages={live}
+      folderOrder={activeFolders.map((f) => f.name)}
+      currentId={page?.id ?? null}
+      drafting={draftOn}
+      draftTitle={draftTitle}
+      onOpen={(id) => openNote(id)}
+      onNew={() => startBlank()}
+      onCabinet={() => void navigate({ to: "/fichero" })}
+      onFold={() => desk.update({ listOpen: false })}
+    />
+  ) : (
+    <DeskStrip
+      side="left"
+      items={[
+        { icon: <NotebookPen className="size-5" />, label: tx("Abrir la lista de notas", "Open the notes list"), onClick: () => desk.update({ listOpen: true }) },
+        { icon: <Plus className="size-5" />, label: tx("Nota nueva", "New note"), onClick: () => startBlank() },
+      ]}
+    />
+  );
+  const sidePanel = desk.desk.sideOpen ? (
+    <div className="bz-nb-side">
+      <DockCalc
+        open={desk.desk.calcOpen}
+        onToggle={() => desk.update({ calcOpen: !desk.desk.calcOpen })}
+        onFoldSide={() => desk.update({ sideOpen: false })}
+        hint={<Hint topic="calculadora" />}
+      />
+      {week}
+    </div>
+  ) : (
+    <DeskStrip
+      side="right"
+      items={[
+        { icon: <Calculator className="size-5" />, label: tx("Abrir la calculadora", "Open the calculator"), onClick: () => desk.update({ sideOpen: true, calcOpen: true }) },
+        { icon: <CalendarDays className="size-5" />, label: tx("Abrir Esta semana", "Open This week"), onClick: () => desk.update({ sideOpen: true }) },
+      ]}
+    />
+  );
+  const deskStyle = {
+    gridTemplateColumns:
+      mode === "three"
+        ? `${desk.listW}px ${desk.desk.listOpen ? 20 : 12}px minmax(0, 1fr) ${desk.desk.sideOpen ? 20 : 12}px ${desk.sideW}px`
+        : `${desk.listW}px ${desk.desk.listOpen ? 20 : 12}px minmax(0, 1fr)`,
+  };
 
-      </WideSplit>
+  return (
+    <>
+      {mode ? (
+        <div className={cn("bz-nb-desk", mode === "two" && "is-two")} style={deskStyle} ref={deskRef}>
+          {listPanel}
+          {desk.desk.listOpen ? (
+            <DeskDivider
+              value={desk.listW}
+              min={desk.limits.list.min}
+              max={desk.limits.list.max}
+              dir={1}
+              open
+              label={tx("Ancho de la lista de notas", "Notes list width")}
+              onSize={(px, done) => (done ? desk.update({ list: px }) : setLive("list", px))}
+              onReset={() => desk.update({ list: null, listOpen: true })}
+              onFold={() => desk.update({ listOpen: false })}
+            />
+          ) : (
+            <span aria-hidden />
+          )}
+          <div className="bz-nb-main">
+            {editorSection}
+            {mode === "two" ? <div className="mt-6">{week}</div> : null}
+          </div>
+          {mode === "three" ? (
+            <>
+              {desk.desk.sideOpen ? (
+                <DeskDivider
+                  value={desk.sideW}
+                  min={desk.limits.side.min}
+                  max={desk.limits.side.max}
+                  dir={-1}
+                  open
+                  label={tx("Ancho de la calculadora y Esta semana", "Calculator and This week width")}
+                  onSize={(px, done) => (done ? desk.update({ side: px }) : setLive("side", px))}
+                  onReset={() => desk.update({ side: null, sideOpen: true })}
+                  onFold={() => desk.update({ sideOpen: false })}
+                />
+              ) : (
+                <span aria-hidden />
+              )}
+              {sidePanel}
+            </>
+          ) : null}
+        </div>
+      ) : (
+        <WideSplit sideFirst={false} side={<div className="mt-6">{week}</div>}>
+          {editorSection}
+        </WideSplit>
+      )}
+      {stayDialogs}
       <ConfirmDialog
         open={askUnpin}
         title={tx("¿Quitar esta nota de fijadas?", "Unpin this note?")}
@@ -746,6 +879,7 @@ function PadBody({
           onClose={() => setAskSave(false)}
         />
       ) : null}
+      {mode ? null : (
       <button
         type="button"
         onClick={() => startBlank()}
@@ -754,6 +888,7 @@ function PadBody({
       >
         <Plus className="size-6" />
       </button>
+      )}
     </>
   );
 }
