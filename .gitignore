@@ -15,3 +15,16 @@ dist
 .rollbacks
 .node_modules.lock
 .project_id
+
+# secrets and loose builds (1.5.02 infra)
+.env
+.env.*
+*.p12
+*.jks
+*.keystore
+*.pem
+*.key
+node_modules/
+dist/
+dist-*/
+*.tgz
