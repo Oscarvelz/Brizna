@@ -229,7 +229,8 @@ function EstadisticasPage() {
       titleExtra={view === "estudio" ? <CifrasOrderButton /> : undefined}
       action={
         <span className="inline-flex items-center gap-3">
-          <WeatherChip />
+          {/* 1.4.99 (Oscar): on phones the weather leaves this row so "Estudio" always shows whole */}
+          <WeatherChip className="max-md:hidden" />
           {view === "asesor" ? null : <TitleSearch
           open={findOn}
           onToggle={() => setFindOn((value) => !value)}

@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTx } from "@/lib/i18n";
@@ -25,7 +26,8 @@ const SKY_EN: Record<string, string> = {
   despejado: "clear",
 };
 
-export function WeatherChip() {
+/** 1.4.99: `className` lets a page hide it on phones where its title needs the room (Estudio). */
+export function WeatherChip({ className }: { className?: string } = {}) {
   const tx = useTx();
   const [label, setLabel] = useState<string | null>(null);
 
@@ -83,7 +85,7 @@ export function WeatherChip() {
   return (
     <Link
       to="/clima"
-      className="max-w-[13rem] shrink-0 truncate text-right text-sm font-semibold text-soil"
+      className={cn("max-w-[13rem] shrink-0 truncate text-right text-sm font-semibold text-soil", className)}
       aria-label={tx("Ver el clima del día", "See the day's weather")}
     >
       {label

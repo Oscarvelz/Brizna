@@ -309,7 +309,8 @@ function ClientesPage() {
       title={inArchive ? tx("Archivos", "Archive") : tx("Clientes", "Clients")}
       action={
         <span className="inline-flex items-center gap-3">
-          <WeatherChip />
+          {/* 1.4.99: on narrow phones (under 400 px) the weather leaves this row so the title shows whole */}
+          <WeatherChip className="max-[399px]:hidden" />
           <span className="mr-2 grid w-10 shrink-0 place-items-center">
             <DayNightSwitch />
           </span>
