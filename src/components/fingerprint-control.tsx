@@ -77,15 +77,15 @@ export function FingerprintControl() {
       {supported && on ? (
         <div className="mt-3 border-t border-border pt-3">
           <p className="mb-2 text-xs font-semibold text-muted">{tx("Pedir la huella solo si Brizna estuvo cerrada más de:", "Ask only if Brizna was away longer than:")}</p>
-          <div className="grid grid-cols-5 gap-1.5">
+          <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr] gap-1.5">
             {LOCK_AFTER_CHOICES.map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => { setLockAfterMinutes(m); setAfter(m); }}
-                className={`h-9 rounded-full text-xs font-semibold ${after === m ? "bz-pick" : "bg-surface-2 text-fg"}`}
+                className={`h-9 min-w-0 whitespace-nowrap rounded-full px-1 text-xs font-semibold ${after === m ? "bz-pick" : "bg-surface-2 text-fg"}`}
               >
-                {m < 60 ? `${m} min` : `${m / 60} h`}
+                {m === 0 ? tx("Al instante", "Right away") : m < 60 ? `${m} min` : `${m / 60} h`}
               </button>
             ))}
           </div>

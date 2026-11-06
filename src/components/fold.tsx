@@ -1,10 +1,43 @@
 import { ChevronDown, Pin } from "lucide-react";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useTx } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const KEY = "ols-folds";
 const ALL_KEY = "ols-folds-all";
+/** 1.4.99: pins chosen in a tablet tools column (kept apart from the phone's, so neither leaks into the other). */
+const WIDE_KEY = "ols-folds-wide";
+
+/** 1.4.99 (Oscar, Cobros on tablet): folds inside a wide tools column start pinned open, so the column fills. */
+export const SidePinContext = createContext(false);
+
+function readWide(): Record<string, boolean> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(WIDE_KEY) || "{}") as unknown;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+    const map: Record<string, boolean> = {};
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) if (typeof v === "boolean") map[k] = v;
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+function writeWide(id: string, pinned: boolean) {
+  const map = readWide();
+  map[id] = pinned;
+  try {
+    localStorage.setItem(WIDE_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Pinned here? In a wide tools column: the tablet choice, or pinned when never chosen. Elsewhere: the phone pins. */
+function isPinned(id: string, wide: boolean): boolean {
+  if (wide) return readWide()[id] ?? true;
+  return readPins().includes(id);
+}
 
 function readPins(): string[] {
   try {
@@ -103,9 +136,23 @@ export function Fold({
   const tx = useTx();
   // Estudio folds (cif-*) also take the small arrow at the right, so the title's leaf leads (Oscar 2026-11-02).
   chevronEnd = chevronEnd || id.startsWith("cif-");
-  const [pinned, setPinned] = useState(() => readPins().includes(id));
-  const [open, setOpen] = useState(() => readForce(id) ?? (readPins().includes(id) || defaultOpen));
+  const wide = useContext(SidePinContext);
+  const wideRef = useRef(wide);
+  wideRef.current = wide;
+  const [pinned, setPinned] = useState(() => isPinned(id, wide));
+  const [open, setOpen] = useState(() => readForce(id) ?? (isPinned(id, wide) || defaultOpen));
   const shown = forceOpen || open;
+  // Turning the tablet (tools column appears or goes): take that layout's pin.
+  const firstWide = useRef(true);
+  useEffect(() => {
+    if (firstWide.current) {
+      firstWide.current = false;
+      return;
+    }
+    const p = isPinned(id, wide);
+    setPinned(p);
+    if (p) setOpen(true);
+  }, [id, wide]);
 
   useEffect(() => {
     const syncHash = () => {
@@ -129,7 +176,7 @@ export function Fold({
       if (!group) return;
       const detail = (event as CustomEvent<{ group?: string; id?: string }>).detail;
       if (!detail || detail.group !== group || detail.id === id) return;
-      if (readPins().includes(id)) return;
+      if (isPinned(id, wideRef.current)) return;
       setOpen(false);
     };
     window.addEventListener("ols-folds-all", onAll);
@@ -144,9 +191,12 @@ export function Fold({
 
   function togglePin() {
     const next = !pinned;
-    const all = readPins().filter((item) => item !== id);
-    if (next) all.push(id);
-    writePins(all);
+    if (wide) writeWide(id, next);
+    else {
+      const all = readPins().filter((item) => item !== id);
+      if (next) all.push(id);
+      writePins(all);
+    }
     setPinned(next);
     if (next) setOpen(true);
   }

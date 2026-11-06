@@ -459,7 +459,7 @@ export function AppShell({
             <div className={cn("flex min-h-10 min-w-0 items-center gap-2 md:hidden", embedded && "hidden")}>
               <BrandMark className="alive-brand size-8 shrink-0" />
               <div className="bz-brandstack flex min-w-0 flex-col justify-center">
-                <span className="flex items-center gap-1.5">
+                <span className="relative top-[2px] flex items-center gap-1.5">
                   <span className="font-display text-lg font-semibold leading-none tracking-tight">{PRODUCT_NAME}</span>
                   <SampleChip />
                 </span>
@@ -486,14 +486,14 @@ export function AppShell({
             </div>
             {embedded ? null : (
               <div className="bz-hd-kicker hidden min-w-0 items-center gap-1.5 md:flex">
-                <span className="shrink-0 font-display text-[13px] font-semibold leading-none tracking-tight text-fg/80">{PRODUCT_NAME}</span>
-                <span className="h-3 w-px shrink-0 bg-border" aria-hidden />
+                <span className="bz-hd-word shrink-0 font-display text-[13px] font-semibold leading-none tracking-tight text-fg/80">{PRODUCT_NAME}</span>
+                <span className="bz-hd-sep h-3 w-px shrink-0 bg-border" aria-hidden />
                 <EditableBrand name={businessName} quiet kicker />
                 <SampleChip className="ml-1" />
               </div>
             )}
             <div className="bz-hd-row mt-0.5 flex min-h-11 min-w-0 items-center gap-2">
-              <h1 className={cn("flex min-w-0 items-center gap-2 font-display font-semibold tracking-tight", titleTight ? "shrink-0 text-lg md:text-2xl" : "flex-1 text-xl sm:text-2xl", !embedded && "md:text-[1.75rem]")}>
+              <h1 className={cn("flex min-w-0 items-center gap-2 font-display font-semibold tracking-tight", titleTight ? "shrink-0 text-[1.03rem] md:text-[1.375rem]" : "flex-1 text-[1.15rem] sm:text-[1.375rem]", !embedded && "md:text-[1.6rem]")}>
                 <span className={titleFull ? "leading-tight" : "truncate"}>{title}</span>
                 {titleExtra}
               </h1>
@@ -557,7 +557,7 @@ export function AppShell({
                 />
               ))}
             </nav>
-            <div className="mt-auto flex w-full flex-col items-center gap-1 px-2">
+            <div className="bz-rail-tools mt-auto flex w-full flex-col items-center gap-1 px-2">
               <NotesDoor rail />
               <button
                 type="button"
@@ -606,7 +606,7 @@ export function AppShell({
                 aria-label={t("nav.settings")}
                 title={t("nav.settings")}
               >
-                <Settings className="size-5" strokeWidth={pathname === "/ajustes" ? 2.3 : 1.9} />
+                <Settings className="size-5" strokeWidth={pathname === "/ajustes" ? 1.9 : 1.6} />
               </Link>
             </div>
           </aside>
@@ -717,7 +717,7 @@ function RailItem({
   const inner = (
     <>
       <span className="bz-rail-pill">
-        <Icon className="alive-nav-icon size-[22px]" strokeWidth={on ? 2.3 : 1.9} />
+        <Icon className="alive-nav-icon size-5" strokeWidth={on ? 1.9 : 1.6} />
       </span>
       <span className="bz-rail-label">{label}</span>
     </>
@@ -1019,7 +1019,7 @@ function EditableBrand({ name, quiet, nowrap, sub, kicker }: { name: string; qui
 
   if (quiet) {
     return (
-      <button type="button" onClick={() => setEditing(true)} className={cn("text-left font-display font-medium leading-none tracking-tight text-muted", kicker ? "min-w-0 truncate whitespace-nowrap text-[13px]" : sub ? "bz-brand-sub mt-1 min-w-0 truncate whitespace-nowrap text-[12.5px]" : nowrap ? "shrink-0 whitespace-nowrap text-[15px]" : "min-w-0 flex-1 truncate text-base")} aria-label={tx("Nombre del negocio", "Business name")}>
+      <button type="button" onClick={() => setEditing(true)} className={cn("text-left font-display font-medium leading-none tracking-tight text-muted", kicker ? "min-w-0 truncate whitespace-nowrap text-[13px]" : sub ? "bz-brand-sub relative -top-[2px] mt-1 min-w-0 truncate whitespace-nowrap text-[12.5px]" : nowrap ? "shrink-0 whitespace-nowrap text-[15px]" : "min-w-0 flex-1 truncate text-base")} aria-label={tx("Nombre del negocio", "Business name")}>
         {name}
       </button>
     );
@@ -1070,7 +1070,7 @@ function NotesDoor({ iconOnly, rail }: { iconOnly?: boolean; rail?: boolean }) {
         aria-label={tx("Notas. Doble toque abre el Fichero.", "Notes. Double tap opens the cabinet.")}
         className={cn("bz-rail-tool", active && "is-on")}
       >
-        <NotebookPen className="size-5" strokeWidth={active ? 2.3 : 1.9} />
+        <NotebookPen className="size-5" strokeWidth={active ? 1.9 : 1.6} />
       </button>
     );
   }

@@ -45,6 +45,33 @@
   .bz-rail-tool:hover { background: var(--color-surface-2); color: var(--color-fg); }
   .bz-rail-tool.is-on { background: var(--color-sun); color: var(--color-primary); }
 
+  /* 1.4.99 (Oscar): a quieter rail. Hierarchy on tablet: Brizna first, the page title second, the rail last.
+     Lighter 20 px icons, small normal-weight labels, the chosen tab a soft tint pill with an accent icon (never a
+     bold title-like word), and the utility tools smaller, fainter and grouped under a hairline. */
+  .bz-rail-item { gap: 0.22rem; padding: 0.3rem 0 0.3rem; font-weight: 500; color: color-mix(in srgb, var(--color-muted) 88%, var(--color-surface)); }
+  .bz-rail-pill { width: 3.1rem; height: 1.85rem; }
+  .bz-rail-label { font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.015em; }
+  .bz-rail-item.is-on { color: var(--color-fg); font-weight: 500; }
+  .bz-rail-item.is-on .bz-rail-pill { background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)); color: var(--color-primary); }
+  html:is(.theme-dark, .theme-amoled) .bz-rail-item.is-on .bz-rail-pill { background: color-mix(in srgb, var(--color-primary) 16%, #161618); }
+  .bz-rail-item.is-on .bz-rail-label { font-weight: 600; color: color-mix(in srgb, var(--color-fg) 82%, var(--color-muted)); }
+  .bz-rail-tools { gap: 0.15rem; padding-top: 0.6rem; position: relative; }
+  .bz-rail-tools::before { content: ""; position: absolute; top: 0; left: 1.6rem; right: 1.6rem; height: 1px; background: var(--color-border); opacity: 0.8; }
+  .bz-rail-tool { width: 2.6rem; height: 2.4rem; border-radius: 0.8rem; color: color-mix(in srgb, var(--color-muted) 78%, var(--color-surface)); }
+  .bz-rail-tool svg { width: 1.125rem; height: 1.125rem; stroke-width: 1.6; }
+  .bz-rail-tool.is-on { background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)); color: var(--color-primary); }
+  html:is(.theme-dark, .theme-amoled) .bz-rail-tool.is-on { background: color-mix(in srgb, var(--color-primary) 16%, #161618); }
+
+  /* 1.4.99: the Brizna wordmark leads the header (larger serif, brand green), the business a quieter subtitle on
+     the same line, so it adds presence without a second row. Aligned with the rail logo. */
+  .bz-hd-kicker { align-items: baseline; gap: 0.7rem; padding-top: 0.3rem; }
+  .bz-hd-kicker .bz-hd-word { font-size: 1.8rem; font-weight: 650; letter-spacing: -0.02em; color: var(--color-primary); line-height: 1; }
+  html:is(.theme-dark, .theme-amoled) .bz-hd-kicker .bz-hd-word { color: color-mix(in srgb, var(--color-primary) 70%, #ffffff); }
+  .bz-hd-kicker .bz-hd-sep { display: none; }
+  .bz-hd-kicker > button:not(.bz-sample-chip) { font-size: 0.95rem; color: var(--color-muted); font-weight: 500; }
+  .bz-hd-kicker > .bz-sample-chip { align-self: center; }
+  .bz-hd-kicker + .bz-hd-row { margin-top: 0; min-height: 2.5rem; }
+
   /* ── View menu: opens beside the rail ── */
   .bz-view-menu {
     position: absolute; left: calc(100% + 1.4rem); bottom: 0; z-index: 70;

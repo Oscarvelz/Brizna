@@ -20,7 +20,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CountUp, useArrived } from "@/components/cifras-visuals";
 import { MessageComposer } from "@/components/message-composer";
 import { money } from "@/lib/format";
@@ -104,46 +104,58 @@ function messageFor(p: AdvisorPerson, business: string, tx: Tx, plan?: number): 
 
 const TONE_CLASS = { good: "is-good", warn: "is-warn", bad: "is-bad" } as const;
 
-/** 1.4.91 (Oscar): a slow breeze in the blades. Each blade sways from its base by a few degrees; the delay follows
- *  its position (a gust travels across) plus a little jitter, durations 4.6–6.8 s, so it never reads as a metronome. */
-function sway(i: number, n: number, deg: number): CSSProperties {
-  const jitter = ((i * 37) % 11) / 11;
-  return {
-    "--sw-a": `${(deg * (0.7 + 0.3 * (((i * 53) % 7) / 6))).toFixed(2)}deg`,
-    "--sw-d": `${(4.6 + 2.2 * (((i * 29) % 9) / 8)).toFixed(2)}s`,
-    "--sw-t": `${(-(i / n) * 6 - jitter * 1.4).toFixed(2)}s`,
-  } as CSSProperties;
-}
-
-/** Score 0–100 as a ring of grass blades: lit blades grow in, the sun sits in the middle. */
-function GrassDial({ score, tone, word }: { score: number; tone: "good" | "warn" | "bad"; word: string }) {
+/** 1.4.99 (Oscar): the score as a refined gauge. A 270° ring open at the bottom: a hairline neutral track, the
+ *  score arc in the band colour with a soft tonal gradient and round caps, fine ticks every 10 points, a small dot
+ *  at the value and a static soft glow inside. The arc draws once from 0 (ease-out, no overshoot); reduced motion
+ *  shows it drawn. The big serif number, "/100" and the band pill sit inside. */
+function ScoreGauge({ score, tone, word }: { score: number; tone: "good" | "warn" | "bad"; word: string }) {
+  const uid = useId().replace(/:/g, "");
   const size = 148;
   const c = size / 2;
-  const n = 36;
-  const lit = Math.round((Math.max(0, Math.min(100, score)) / 100) * n);
-  const rIn = 48;
+  const r = 60;
+  const v = Math.max(0, Math.min(100, Math.round(score)));
+  const a0 = 135; // start angle (degrees, clockwise from 3 o'clock): bottom left
+  const sweep = 270;
+  const pt = (deg: number, rad: number) => {
+    const t = (deg * Math.PI) / 180;
+    return [c + rad * Math.cos(t), c + rad * Math.sin(t)] as const;
+  };
+  const [sx, sy] = pt(a0, r);
+  const [ex, ey] = pt(a0 + sweep, r);
+  const arc = `M ${sx.toFixed(2)} ${sy.toFixed(2)} A ${r} ${r} 0 1 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`;
+  const ticks = Array.from({ length: 11 }, (_, i) => {
+    const deg = a0 + (i / 10) * sweep;
+    const major = i % 5 === 0;
+    const [x1, y1] = pt(deg, r + 7.5);
+    const [x2, y2] = pt(deg, r + (major ? 12 : 10.5));
+    return { x1, y1, x2, y2, major, on: i * 10 <= v };
+  });
   return (
-    <div className={cn("as-dial", TONE_CLASS[tone])} style={{ width: size, height: size }}>
+    <div className={cn("as-dial as-gauge", TONE_CLASS[tone])} style={{ width: size, height: size, "--v": v, "--rot": `${(v / 100) * sweep}deg` } as CSSProperties} role="img" aria-label={`${v}/100 ${word}`}>
       <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden>
-        <circle cx={c} cy={c} r={rIn - 4} className="as-dial-disc" />
-        {Array.from({ length: n }, (_, i) => {
-          const a = (i / n) * 360;
-          const on = i < lit;
-          return (
-            <g key={i} transform={`rotate(${a} ${c} ${c})`}>
-              <g className="as-sway" style={sway(i, n, 2.6)}>
-                <path
-                  d={`M ${c - 3.2} ${c - rIn} Q ${c - 2} ${c - rIn - 13} ${c + 1.5} ${c - rIn - (on ? 21 : 12)} Q ${c + 2.4} ${c - rIn - 9} ${c + 3.2} ${c - rIn} Z`}
-                  className={cn("as-blade", on && "is-on")}
-                  style={{ animationDelay: `${40 + i * 10}ms` }}
-                />
-              </g>
-            </g>
-          );
-        })}
+        <defs>
+          <linearGradient id={`asg-${uid}`} gradientUnits="userSpaceOnUse" x1={sx} y1={sy} x2={ex} y2={ey}>
+            <stop offset="0" className="as-gauge-s0" />
+            <stop offset="0.55" className="as-gauge-s1" />
+            <stop offset="1" className="as-gauge-s2" />
+          </linearGradient>
+          <radialGradient id={`asr-${uid}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0" className="as-gauge-g0" />
+            <stop offset="1" className="as-gauge-g1" />
+          </radialGradient>
+        </defs>
+        <circle cx={c} cy={c} r={r - 6} fill={`url(#asr-${uid})`} className="as-gauge-glow" />
+        {ticks.map((k, i) => (
+          <line key={i} x1={k.x1} y1={k.y1} x2={k.x2} y2={k.y2} className={cn("as-gauge-tick", k.major && "is-major", k.on && "is-on")} />
+        ))}
+        <path d={arc} className="as-gauge-track" pathLength={100} />
+        <path d={arc} className="as-gauge-arc" pathLength={100} stroke={`url(#asg-${uid})`} style={{ strokeDasharray: `${v} 200` }} />
+        <g className="as-gauge-knob" style={{ transformOrigin: `${c}px ${c}px` }}>
+          <circle cx={pt(a0, r)[0]} cy={pt(a0, r)[1]} r={2.6} className="as-gauge-dot" />
+        </g>
       </svg>
       <div className="as-dial-center">
-        <CountUp className="as-dial-num" value={score} format={(v) => String(v)} />
+        <CountUp className="as-dial-num" value={score} duration={950} format={(n) => String(n)} />
         <span className="as-dial-of">/100</span>
         <span className="as-dial-word">{word}</span>
       </div>
@@ -206,24 +218,15 @@ export function verdict(r: AdvisorReading, tx: Tx): { title: string; sub: string
 function Hero({ r }: { r: AdvisorReading }) {
   const tx = useTx();
   const v = verdict(r, tx);
-  const ref = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    // the breeze only runs while the hero is on screen
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(([e]) => el.classList.toggle("is-still", !e?.isIntersecting));
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
   return (
-    <section ref={ref} data-spot="asesor" className={cn("as-card as-hero", TONE_CLASS[r.tone])} data-masonry-full style={{ "--i": 0 } as CSSProperties}>
+    <section data-spot="asesor" className={cn("as-card as-hero", TONE_CLASS[r.tone])} data-masonry-full style={{ "--i": 0 } as CSSProperties}>
       <div className="as-hero-top">
         <div className="min-w-0 flex-1">
           <p className="as-kicker"><Sprout aria-hidden />{tx("Tu negocio, en claro", "Business, in short")}</p>
           <h2 className="as-verdict">{v.title}</h2>
           <p className="as-sub">{v.sub}</p>
         </div>
-        <GrassDial score={r.score} tone={r.tone} word={v.word} />
+        <ScoreGauge score={r.score} tone={r.tone} word={v.word} />
       </div>
       <div className="as-hero-stats">
         <div>
@@ -242,31 +245,7 @@ function Hero({ r }: { r: AdvisorReading }) {
           <small>{tx("activos", "active")}</small>
         </div>
       </div>
-      <Meadow />
     </section>
-  );
-}
-
-/** A strip of grass along the bottom of the hero that grows in. */
-function Meadow() {
-  const blades = 46;
-  return (
-    <svg className="as-meadow" viewBox="0 0 460 26" preserveAspectRatio="none" aria-hidden>
-      {Array.from({ length: blades }, (_, i) => {
-        const x = 4 + i * 10 + ((i * 37) % 5);
-        const h = 12 + ((i * 53) % 13);
-        const lean = ((i * 29) % 7) - 3;
-        return (
-          <g key={i} className="as-sway" style={sway(i, blades, 3.4)}>
-            <path
-              d={`M ${x - 2.6} 26 Q ${x - 1} ${26 - h * 0.6} ${x + lean} ${26 - h} Q ${x + 1.2} ${26 - h * 0.5} ${x + 2.6} 26 Z`}
-              className={cn("as-meadow-blade", i % 3 === 0 && "is-deep")}
-              style={{ animationDelay: `${80 + ((i * 41) % 23) * 10}ms` }}
-            />
-          </g>
-        );
-      })}
-    </svg>
   );
 }
 

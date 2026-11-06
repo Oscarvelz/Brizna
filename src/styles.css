@@ -2088,12 +2088,12 @@ html:is(.theme-dark, .theme-amoled) .bz-pinned-kicker { color: var(--tone-pin); 
 html:is(.theme-dark, .theme-amoled) .bz-pinned-kicker > b { color: #120a0e; background: var(--tone-pin); }
 /* Hoy: the date on the title line (quiet sans, one line; long form, short form when tight, gone when no room — never clipped). */
 h1:has(> .bz-title-date) { container-type: inline-size; }
-.bz-title-date { display: none; white-space: nowrap; font-family: var(--font-sans); font-size: 0.875rem; font-weight: 500; letter-spacing: 0; color: var(--color-muted); padding-top: 0.25rem; }
+.bz-title-date { display: none; white-space: nowrap; font-family: var(--font-sans); font-size: 0.8rem; font-weight: 500; letter-spacing: 0; color: var(--color-muted); padding-top: 0.25rem; }
 .bz-title-date > span { display: none; }
 .bz-title-date > span::first-letter { text-transform: uppercase; }
 @container (min-width: 150px) { .bz-title-date, .bz-title-date > .is-short { display: inline-block; } }
 @container (min-width: 270px) { .bz-title-date > .is-short { display: none; } .bz-title-date > .is-long { display: inline-block; } }
-@media (min-width: 768px) { .bz-title-date { font-size: 1rem; padding-top: 0.375rem; } }
+@media (min-width: 768px) { .bz-title-date { font-size: 0.92rem; padding-top: 0.34rem; } }
 /* Toggle chip for a title line (Ajustes "Desplegar todo"): framed, icon, pressed = soil pick tint. */
 .bz-chiptoggle {
   display: inline-flex; align-items: center; gap: 0.375rem; height: 2rem; padding: 0 0.625rem 0 0.5rem; flex: none;

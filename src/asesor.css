@@ -51,7 +51,7 @@ html.theme-dark .as-wrap .is-abono, html.theme-amoled .as-wrap .is-abono { --t: 
 .as-leaf { width: 0.65rem; height: 1.05rem; flex-shrink: 0; fill: var(--color-primary); transform-origin: 50% 100%; animation: as-sway 2.4s ease-in-out 0.5s 2 both; }
 
 /* ---------------------------------------------------------------- hero */
-.as-hero { overflow: hidden; padding-bottom: 1.9rem; background:
+.as-hero { overflow: hidden; background:
   radial-gradient(130% 85% at 100% 0%, color-mix(in srgb, var(--tb) 85%, transparent) 0%, transparent 62%),
   var(--color-surface); }
 .as-hero-top { display: flex; align-items: flex-start; gap: 0.75rem; }
@@ -62,9 +62,28 @@ html.theme-dark .as-wrap .is-abono, html.theme-amoled .as-wrap .is-abono { --t: 
 
 .as-dial { position: relative; flex-shrink: 0; margin-top: -0.2rem; margin-right: -0.35rem; }
 .as-dial svg { display: block; overflow: visible; }
-.as-dial-disc { fill: var(--tb); stroke: color-mix(in srgb, var(--t) 45%, transparent); stroke-width: 1.5; }
-.as-blade { fill: color-mix(in srgb, var(--color-border) 75%, var(--color-surface)); transform-box: fill-box; transform-origin: 50% 100%; animation: as-sprout 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.as-blade.is-on { fill: var(--t); }
+/* 1.4.99 refined gauge (replaces the ring of grass blades). */
+.as-gauge-track { fill: none; stroke: color-mix(in srgb, var(--color-fg) 11%, transparent); stroke-width: 2; stroke-linecap: round; }
+html:is(.theme-dark, .theme-amoled) .as-gauge-track { stroke: #28282b; }
+.as-gauge-arc { fill: none; stroke-width: 8; stroke-linecap: round; stroke-dashoffset: 0; animation: as-gauge-draw 0.95s cubic-bezier(0.33, 1, 0.68, 1) 0.12s both; }
+.as-gauge-s0 { stop-color: color-mix(in srgb, var(--t) 52%, var(--color-surface)); }
+.as-gauge-s1 { stop-color: color-mix(in srgb, var(--t) 82%, var(--color-surface)); }
+.as-gauge-s2 { stop-color: var(--t); }
+html:is(.theme-dark, .theme-amoled) .as-gauge-s0 { stop-color: color-mix(in srgb, var(--t) 58%, #000); }
+.as-gauge-g0 { stop-color: var(--tb); stop-opacity: 0.95; }
+.as-gauge-g1 { stop-color: var(--tb); stop-opacity: 0; }
+.as-gauge-glow { opacity: 0.9; }
+html:is(.theme-dark, .theme-amoled) .as-gauge-glow { opacity: 0.55; }
+.as-gauge-tick { stroke: color-mix(in srgb, var(--color-fg) 18%, transparent); stroke-width: 1; stroke-linecap: round; }
+.as-gauge-tick.is-major { stroke-width: 1.4; stroke: color-mix(in srgb, var(--color-fg) 30%, transparent); }
+.as-gauge-tick.is-on { stroke: color-mix(in srgb, var(--t) 55%, transparent); }
+.as-gauge-tick.is-on.is-major { stroke: color-mix(in srgb, var(--t) 80%, transparent); }
+html:is(.theme-dark, .theme-amoled) .as-gauge-tick:not(.is-on) { stroke: #34343a; }
+.as-gauge-knob { transform: rotate(var(--rot, 0deg)); animation: as-gauge-turn 0.95s cubic-bezier(0.33, 1, 0.68, 1) 0.12s both; will-change: transform; }
+.as-gauge-dot { fill: var(--color-surface); }
+html:is(.theme-dark, .theme-amoled) .as-gauge-dot { fill: #f4f5f1; }
+@keyframes as-gauge-draw { from { stroke-dashoffset: calc(var(--v, 0) * 1px); } }
+@keyframes as-gauge-turn { from { transform: rotate(0deg); } }
 .as-dial-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .as-dial-num { font-family: var(--font-display); font-size: 2.1rem; font-weight: 700; line-height: 1; color: var(--color-fg); }
 .as-dial-of { font-size: 0.66rem; font-weight: 700; color: var(--color-muted); margin-top: 0.05rem; }
@@ -77,9 +96,6 @@ html.theme-dark .as-dial-word, html.theme-amoled .as-dial-word { color: #06120a;
 .as-stat-num { font-family: var(--font-display); font-size: 1.25rem; font-weight: 650; line-height: 1.15; color: var(--color-fg); }
 .as-hero-stats small { font-size: 0.7rem; line-height: 1.2; color: var(--color-muted); font-weight: 600; }
 .as-hero-stats small.text-late { color: var(--color-late); }
-.as-meadow { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 1.4rem; pointer-events: none; }
-.as-meadow-blade { fill: color-mix(in srgb, var(--color-done) 70%, var(--color-surface)); transform-box: fill-box; transform-origin: 50% 100%; animation: as-grow 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.as-meadow-blade.is-deep { fill: var(--color-done); }
 
 /* ---------------------------------------------------------------- actions */
 .as-acts { display: grid; gap: 0.7rem; }
@@ -254,7 +270,7 @@ html.theme-dark .as-check-dot, html.theme-amoled .as-check-dot { color: #06120a;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .as-card, .as-act, .as-act-pic, .as-blade, .as-meadow-blade, .as-bars li, .as-steps li, .as-plan-wk, .as-people > li,
+  .as-card, .as-act, .as-act-pic, .as-gauge-arc, .as-gauge-knob, .as-bars li, .as-steps li, .as-plan-wk, .as-people > li,
   .as-bed, .as-bubble, .as-group-open, .as-check, .as-check-more, .as-gloss > div, .as-empty-sprout, .as-skel span, .as-leaf { animation: none !important; }
   .as-toggle-thumb, .as-bars-track i, .as-week-load, .as-season-bar i, .as-share i, .as-check-meter i { transition: none !important; }
 }

@@ -18,7 +18,7 @@ import { routeTree } from "@/routeTree.gen";
 import { setPaneRouteTree } from "@/lib/pane-context";
 import { getPglite, getSql, setDbUser } from "@/lib/db";
 import { I18nProvider } from "@/lib/i18n";
-import { lockDue, markSeen, unlock } from "@/lib/device-lock";
+import { awayWasInternal, guardInternalTrips, lockDue, markSeen, unlock } from "@/lib/device-lock";
 import { saveBackupNow } from "@/lib/server/lawn";
 import { CLOUD_READY, emitUser, keepSignedIn, setSessionGone, getUser, lastUser, onUser, rememberUser, supabase, type BriznaUser } from "@/spa/cloud";
 import { setKeepCopy, startSync } from "@/spa/sync";
@@ -30,6 +30,7 @@ import { markShellReady, quietNextBoot, useSplashGone } from "@/spa/splash-ready
 
 // 1.4.97 Brizna for Android: back, bars, downloads, share and print bridges (nothing happens in a browser).
 startNative();
+guardInternalTrips(); // after startNative, so it wraps the Android app's own share/print too
 // The app's storage is its own (a new device to the Nube): the first sign-in says where the clients come from.
 const FIRST_OPEN_NOTE = "Primera vez en la app: entra con tu cuenta y tus clientes bajan de la Nube. Si no usas la Nube, entra y restaura una copia en Ajustes\u00a0›\u00a0Copia de seguridad.";
 
@@ -122,6 +123,7 @@ function Gate() {
     setOpen(!lockDue(user.id));
     const onVis = () => {
       if (document.visibilityState === "hidden") return;
+      if (awayWasInternal()) { markSeen(user.id); return; }
       if (lockDue(user.id)) { tried.current = ""; setFailed(false); setOpen(false); window.dispatchEvent(new Event("bz-locked")); }
     };
     document.addEventListener("visibilitychange", onVis);

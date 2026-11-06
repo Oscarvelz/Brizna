@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
 import { usePageWide, usePageWidth } from "@/components/app-shell";
 import { cn } from "@/lib/utils";
+import { SidePinContext } from "@/components/fold";
 
 /**
  * Large screens: the page's main list on the left and its tools in a side column.
@@ -14,6 +15,7 @@ export function WideSplit({
   className,
   sideClassName,
   sideLeft = false,
+  pinSideFolds = false,
 }: {
   side: ReactNode;
   children: ReactNode;
@@ -24,13 +26,15 @@ export function WideSplit({
   sideClassName?: string;
   /** 1.4.98 (Oscar, Cobros): on a wide screen the tools column sits on the LEFT, next to the rail; the list on the right. */
   sideLeft?: boolean;
+  /** 1.4.99: folds in the wide tools column start pinned open (their own tablet pin; phone pins untouched). */
+  pinSideFolds?: boolean;
 }) {
   const wide = usePageWide(min);
   if (!wide) return sideFirst ? <>{side}{children}</> : <>{children}{side}</>;
   return (
     <div className={cn("bz-split", sideLeft && "is-side-left", className)}>
       <div className="bz-split-main">{children}</div>
-      <aside className={cn("bz-split-side", sideClassName)}>{side}</aside>
+      <aside className={cn("bz-split-side", sideClassName)}>{pinSideFolds ? <SidePinContext.Provider value>{side}</SidePinContext.Provider> : side}</aside>
     </div>
   );
 }

@@ -1819,8 +1819,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Asks for your fingerprint or face when you open Brizna on this device. It works offline.",
         ],
         how: [
-          "Actívala en Ajustes, Huella; el teléfono te pide la huella una vez para registrarla.\nElige cuánto tiempo fuera antes de pedirla otra vez: 5 min, 30 min, 1 h, 4 h o 12 h.\nPara apagarla, desactívala en el mismo lugar.",
-          "Turn it on in Settings, Fingerprint; the phone asks for your fingerprint once to register it.\nChoose how long away before it asks again: 5 min, 30 min, 1 hr, 4 hr, or 12 hr.\nTo turn it off, switch it off in the same place.",
+          "Actívala en Ajustes, Huella; el teléfono te pide la huella una vez para registrarla.\nElige cuándo pedirla otra vez: Al instante (cada vez que vuelves a Brizna), o tras 5 min, 30 min o 1 h fuera.\nPara apagarla, desactívala en el mismo lugar.",
+          "Turn it on in Settings, Fingerprint; the phone asks for your fingerprint once to register it.\nChoose when it asks again: Right away (every time you come back to Brizna), or after 5 min, 30 min, or 1 hr away.\nTo turn it off, switch it off in the same place.",
         ],
         calc: [
           "Cuenta el tiempo desde la última vez que usaste Brizna desbloqueada. Si pasaste fuera menos que el tiempo elegido (1 h de siempre), no la pide. La comprobación ocurre en el teléfono; nada se envía.",

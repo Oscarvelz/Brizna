@@ -156,18 +156,20 @@ export function RadarMap({ lat, lon, host, path }: { lat: number; lon: number; h
   return (
     <div className={cn("radar-map relative h-72 overflow-hidden rounded-lg", night && base === "streets" && "is-night")}>
       <div ref={el} className="h-full w-full" />
-      <div className="absolute top-2 left-2 z-[500] flex overflow-hidden rounded-full bg-surface shadow-card">
+      {/* 1.4.99 (Oscar): no clipping container; each choice is its own pill inside a padded frame, so the selected
+          outline and the focus ring show whole on every side. */}
+      <div className="radar-seg absolute top-2.5 left-2.5 z-[500] flex gap-0.5 rounded-full border border-border bg-surface p-[3px] shadow-card">
         <button
           type="button"
           onClick={() => setBase("streets")}
-          className={cn("h-8 px-3 text-xs font-semibold", base === "streets" ? "bz-pick" : "text-muted")}
+          className={cn("h-7 rounded-full px-3 text-xs font-semibold", base === "streets" ? "bz-pick" : "text-muted")}
         >
           {tx("Calles", "Streets")}
         </button>
         <button
           type="button"
           onClick={() => setBase("satellite")}
-          className={cn("h-8 px-3 text-xs font-semibold", base === "satellite" ? "bz-pick" : "text-muted")}
+          className={cn("h-7 rounded-full px-3 text-xs font-semibold", base === "satellite" ? "bz-pick" : "text-muted")}
         >
           {tx("Satélite", "Satellite")}
         </button>
@@ -179,12 +181,13 @@ export function RadarMap({ lat, lon, host, path }: { lat: number; lon: number; h
           moved.current = false;
           mapRef.current?.setView([lat, lon], 10);
         }}
-        className="absolute top-2 right-2 z-[500] grid size-9 place-items-center rounded-full bg-surface text-fg shadow-card"
+        className="absolute top-2.5 right-2.5 z-[500] grid size-9 place-items-center rounded-full bg-surface text-fg shadow-card"
       >
         <LocateFixed className="size-4" />
       </button>
       <style>{`
         .radar-map.is-night .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.92); }
+        .radar-seg button:focus-visible { outline-offset: 1px; }
         .radar-map .leaflet-container { background: var(--color-bg); font-family: inherit; }
         .radar-map .leaflet-control-zoom a {
           background: var(--color-surface);
