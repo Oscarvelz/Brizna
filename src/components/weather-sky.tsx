@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { readWeatherPlace, PLACE_EVENT } from "@/lib/weather-place";
 import { applySky, restoreSky } from "@/lib/weather-sky";
 
@@ -48,8 +48,15 @@ const FLIES = [
   [5, 50, 6.9, 22], [60, 8, 2.2, 20], [96, 40, 10.2, 23], [19, 5, 4.4, 21], [42, 95, 7.8, 19], [77, 24, 1.3, 24],
 ];
 function Fireflies() {
+  // 1.4.88 (Oscar): slightly bigger fireflies only on Hoy and Cobros.
+  const [big, setBig] = useState(false);
+  useEffect(() => {
+    const check = () => { const h = location.hash.replace(/^#\/?/, "").split(/[?/]/)[0]; setBig(h === "" || h === "cobros"); };
+    check(); window.addEventListener("hashchange", check);
+    return () => window.removeEventListener("hashchange", check);
+  }, []);
   return (
-    <div className="wx-flies" aria-hidden>
+    <div className={big ? "wx-flies is-big" : "wx-flies"} aria-hidden>
       {FLIES.map(([x, y, d, t], i) => (
         <i key={i} style={{ left: `${x}%`, top: `${y}%`, animationDelay: `-${d}s, -${(d * 0.7).toFixed(1)}s`, animationDuration: `${t}s, ${(3.2 + (i % 4) * 0.6).toFixed(1)}s` }} />
       ))}
