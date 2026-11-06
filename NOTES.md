@@ -5,5 +5,6 @@ Instala **Brizna.apk** en el teléfono o la tableta Android (11 o más nuevo).
 - Widget **Hoy** para la pantalla de inicio: cortes de hoy, el próximo cliente y Por cobrar.
 - Huella con el desbloqueo del teléfono, atrás del teléfono, barras del color del tema, archivos en Descargas › Brizna, compartir e imprimir con Android.
 - Cuando haya una versión nueva de la app, te ofrece instalarla.
+- Versión 2: al abrir, la pantalla del sistema muestra solo el fondo del tema (sin el logo que destellaba) y pasa directo a la animación de Brizna; de día usa el fondo claro.
 
 Firma (certificado SHA-256): 7e:ae:31:f1:32:e5:b7:1a:99:2c:cb:83:4b:db:cc:f9:f0:86:34:c7:2e:b8:6e:4d:0b:ca:52:c1:8f:dc:02:32
