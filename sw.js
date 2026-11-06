@@ -1,5 +1,5 @@
-// Brizna service worker: the app opens with no internet. Bump VERSION on every release.
-const VERSION = "brizna-1.5.01";
+// Brizna service worker: the app opens with no internet. VERSION is written by build.sh from package.json "version".
+const VERSION = "brizna-1.5.02";
 const CORE = ["./", "./index.html", "./icon-192.png", "./icon-512.png", "./icon-180.png", "./precache.json"];
 
 self.addEventListener("install", (event) => {
@@ -14,7 +14,8 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
-    for (const k of await caches.keys()) if (k !== VERSION && k.startsWith("brizna-")) await caches.delete(k);
+    // Delete only old app caches (brizna-X.Y.Z); the fonts cache (brizna-fonts) stays across updates.
+    for (const k of await caches.keys()) if (k !== VERSION && /^brizna-\d+\.\d+\.\d+$/.test(k)) await caches.delete(k);
     await self.clients.claim();
   })());
 });

@@ -1,0 +1,12 @@
+# Brizna Pages (main): only the built app is committed here.
+.env
+.env.*
+*.p12
+*.jks
+*.keystore
+*.pem
+*.key
+node_modules/
+dist/
+dist-*/
+*.tgz
