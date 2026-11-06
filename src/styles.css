@@ -2944,5 +2944,6 @@ html.theme-amoled main:has(.bz-cl-card) .bz-rt-page.bz-rt-page:focus { box-shado
 .bz-fold-empty > svg { flex: none; width: 0.9375rem; height: 0.9375rem; opacity: 0.7; }
 
 /* 1.4.92 (Oscar): AMOLED Posponer fill and view-mode track darker, true charcoal (read café before). */
-html.theme-amoled .bz-tone.bz-tone-post:not(.bz-tone-on) { background: color-mix(in oklab, #bcbcc1 7%, #141519) !important; }
-html.theme-amoled .bz-tone.bz-tone-post:not(.bz-tone-on):hover { background: color-mix(in oklab, #bcbcc1 12%, #141519) !important; }
+/* 1.4.93 (Oscar): Posponer takes the same fill as Pasar atrasados (late tone 9% over the surface). */
+html.theme-amoled .bz-tone.bz-tone-post:not(.bz-tone-on) { background: color-mix(in oklab, var(--color-late) 9%, var(--color-surface)) !important; }
+html.theme-amoled .bz-tone.bz-tone-post:not(.bz-tone-on):hover { background: color-mix(in oklab, var(--color-late) 14%, var(--color-surface)) !important; }
