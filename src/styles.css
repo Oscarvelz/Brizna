@@ -2850,7 +2850,7 @@ html.theme-dark:not([data-palette="grafito"]):not(#z) .bz-inv-tile { box-shadow:
    see-through (90%) so the fireflies behind peek faintly. A mask, not opacity, so entrance fades still run;
    no-clip keeps the lift shadows and halos whole. Everything else stays solid. */
 html:is(.theme-dark, .theme-amoled) :is(.bz-stat, .bz-actbtn:not(:disabled), .bz-fold.cob-espera, .bz-fold.cob-perdon, .bz-fold.cob-hecho) {
-  -webkit-mask-image: linear-gradient(rgb(0 0 0 / 0.83), rgb(0 0 0 / 0.83));
-  mask-image: linear-gradient(rgb(0 0 0 / 0.83), rgb(0 0 0 / 0.83));
+  -webkit-mask-image: linear-gradient(rgb(0 0 0 / 0.86), rgb(0 0 0 / 0.86));
+  mask-image: linear-gradient(rgb(0 0 0 / 0.86), rgb(0 0 0 / 0.86));
   -webkit-mask-clip: no-clip; mask-clip: no-clip;
 }

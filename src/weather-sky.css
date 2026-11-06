@@ -132,5 +132,5 @@ html.theme-dark .wx-flies, html.theme-amoled .wx-flies { display: block; }
 @media (max-width: 767px) { .wx-flies > i:nth-child(n+13) { display: none; } }
 @media (prefers-reduced-motion: reduce) { .wx-flies > i { animation: none; opacity: 0.35; } }
 /* 1.4.88 (Oscar): on Hoy and Cobros only, fireflies a little bigger so they read behind the tiles. */
-.wx-flies.is-big > i { width: 4.5px; height: 4.5px; box-shadow: 0 0 7px 2px rgb(226 240 120 / 0.72), 0 0 20px 6px rgb(200 230 90 / 0.24); }
-.wx-flies.is-big > i:nth-child(3n) { width: 3.5px; height: 3.5px; }
+.wx-flies.is-big > i { width: 3.75px; height: 3.75px; box-shadow: 0 0 6px 1.75px rgb(226 240 120 / 0.72), 0 0 18px 5.5px rgb(200 230 90 / 0.24); }
+.wx-flies.is-big > i:nth-child(3n) { width: 3px; height: 3px; }
