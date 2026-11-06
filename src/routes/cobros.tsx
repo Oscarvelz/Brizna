@@ -27,7 +27,7 @@ import {
   startOfWeekISO,
   todayISO,
 } from "@/lib/dates";
-import { formatDay, formatTime, money, payDueLabel } from "@/lib/format";
+import { FREQ_SEP, formatDay, formatTime, money, payDueLabel } from "@/lib/format";
 import { MeshNameUniform } from "@/components/mesh-name";
 import { FitLine } from "@/components/job-card";
 import { viewGrid } from "@/lib/density";
@@ -36,7 +36,7 @@ import { emphasize, useTx } from "@/lib/i18n";
 import { listBalances, recordPayment, recordPaymentsBulk } from "@/lib/server/lawn";
 import type { ClientRow, JobRow, PaymentRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { BadgeCheck, Check, Coins, HandCoins, HandHeart, ShieldAlert, Hourglass, CircleAlert, Wallet } from "lucide-react";
+import { Banknote, BadgeCheck, Check, ReceiptText, Smartphone, Coins, HandCoins, HandHeart, ShieldAlert, Hourglass, CircleAlert, Wallet } from "lucide-react";
 import { DayNightSwitch } from "@/components/day-night-switch";
 import { WeatherChip } from "@/components/weather-chip";
 
@@ -421,7 +421,7 @@ function CobrosPage() {
                             to="/clientes/$id"
                             params={{ id: String(c.id) }}
                             className={cn(
-                              "min-w-0 flex-1 truncate font-semibold leading-snug",
+                              "min-w-0 flex-1 font-semibold leading-snug [text-wrap:pretty]",
                               dense ? "text-sm" : "font-display text-base",
                             )}
                           >
@@ -779,7 +779,7 @@ function AbonoFollow({
               <span className="min-w-0">
                 <span className="min-w-0">{quad ? <MeshNameUniform name={c.name} cols={cols ?? 2} /> : <span className={cn("block font-semibold", dense ? "text-xs" : "text-base")}>{c.name}</span>}</span>
                 {!dense && (!quad || (cols ?? 2) < 4) ? (
-                  <span className="block truncate text-[11px] text-muted">
+                  <span className="block text-[11px] leading-snug text-muted [text-wrap:pretty]">
                     {tx(`Abonado ${money(paid)} • Debe ${money(c.balance)}`, `Partial ${money(paid)} • Owes ${money(c.balance)}`)}
                   </span>
                 ) : null}
@@ -831,35 +831,97 @@ function PayList({
   if (rows.length === 0) {
     return <p className="rounded-xl bg-sun px-4 py-5 text-sm text-muted">{empty}</p>;
   }
+  const c = cols ?? 2;
+  // 1.4.91 (Oscar): never "…". Cobrado lists already say "Cobrado", so the word is gone from every subline;
+  // the method (or Perdonado / Propina) follows the date after the thin en dash used in Clientes and Hoy.
+  // Grande = icon chip + big serif name + price beside it + long date + method chip; Media = one compact row
+  // (name · price) over a short subline; Lista = one line; Malla x2 one subline, x3 date over method, x4 date.
   return (
-    <ul className={viewGrid(quad ? "quad" : dense ? "dense" : media ? "compact" : "full", cols ?? 2, dense ? "gap-1" : "gap-2")}>
-      {rows.map((p) => (
-        <li
-          key={grouped ? p.clientId : p.id}
-          className={cn("min-w-0 overflow-hidden rounded-xl bg-surface shadow-card", quad ? "bz-ccard is-quad w-full p-2" : dense ? "px-2 py-1.5" : media ? "px-2.5 py-2" : "px-3 py-3")}
-        >
-          <div className={cn(quad ? "grid gap-1" : "flex items-start justify-between gap-2")}>
-            <div className="min-w-0">
-              <Link to="/clientes/$id" params={{ id: String(p.clientId) }} className="min-w-0">
-                {quad ? <MeshNameUniform name={p.clientName ?? tx("Cliente", "Client")} cols={cols ?? 2} /> : <span className={cn("block font-semibold", dense ? "text-xs" : "text-base")}>{p.clientName ?? tx("Cliente", "Client")}</span>}
+    <ul className={viewGrid(quad ? "quad" : dense ? "dense" : media ? "compact" : "full", c, dense ? "gap-1" : "gap-2")}>
+      {rows.map((p) => {
+        const name = p.clientName ?? tx("Cliente", "Client");
+        const day = stampDay(p.paidAt);
+        const tipOnly = p.amount === 0 && (p.tip ?? 0) > 0;
+        const amount = money(tipOnly ? (p.tip ?? 0) : p.amount);
+        const how = p.kind === "waived" ? tx("Perdonado", "Forgiven") : tipOnly ? tx("Propina", "Tip") : methodLabel(p.method);
+        const kind = p.kind === "waived" ? "is-waived" : tipOnly ? "is-tip" : `is-${(p.method ?? "otro").split(":")[0]}`;
+        const shortDay = formatDay(day, "EEE d MMM");
+        const tinyDay = formatDay(day, "d MMM");
+        const withHow = (d: string) => (how ? `${d}${FREQ_SEP}${how}` : d);
+        const link = (size?: "grande" | "media") =>
+          quad ? <MeshNameUniform name={name} cols={c} /> : <MeshNameUniform name={name} cols={2} size={size} fit />;
+        const key = grouped ? p.clientId : p.id;
+        if (quad) {
+          return (
+            <li key={key} className={cn("bz-pay min-w-0 overflow-hidden rounded-xl bg-surface shadow-card bz-ccard is-quad w-full", `is-c${c}`, kind)}>
+              <Link to="/clientes/$id" params={{ id: String(p.clientId) }} className="bz-pay-q">
+                {link()}
+                {c === 2 ? <FitLine forms={[withHow(shortDay), withHow(tinyDay), tinyDay]} className="bz-pay-sub" /> : null}
+                {c === 3 ? (
+                  <span className="bz-pay-sub is-stack">
+                    <span>{shortDay}</span>
+                    {how ? <span className="bz-pay-how"><PayIcon kind={kind} />{how}</span> : null}
+                  </span>
+                ) : null}
+                {c === 4 ? <span className="bz-pay-sub">{tinyDay}</span> : null}
+                <span className="bz-pay-amt">{amount}</span>
               </Link>
-              {!dense && (!quad || (cols ?? 2) < 4) ? (
-                <p className="truncate text-[11px] text-muted">
-                  {formatDay(stampDay(p.paidAt), "EEE d MMM")}
-                  {" · "}
-                  {p.kind === "waived" ? tx("Perdonado", "Forgiven") : tx("Cobrado", "Collected")}
-                  {methodLabel(p.method) ? ` · ${methodLabel(p.method)}` : ""}
-                </p>
-              ) : null}
-            </div>
-              <p className={cn("shrink-0 font-semibold tabular-nums", dense || quad ? "text-xs" : "text-base")}>
-                {p.amount === 0 && (p.tip ?? 0) > 0 ? money(p.tip ?? 0) : money(p.amount)}
-              </p>
-          </div>
-        </li>
-      ))}
+            </li>
+          );
+        }
+        if (dense) {
+          return (
+            <li key={key} className={cn("bz-pay min-w-0 overflow-hidden rounded-xl bg-surface shadow-card is-lista", kind)}>
+              <Link to="/clientes/$id" params={{ id: String(p.clientId) }} className="bz-pay-row">
+                <span className="bz-pay-name">{name}</span>
+                <span className="bz-pay-sub">{tinyDay}</span>
+                <span className="bz-pay-amt">{amount}</span>
+              </Link>
+            </li>
+          );
+        }
+        if (media) {
+          return (
+            <li key={key} className={cn("bz-pay min-w-0 overflow-hidden rounded-xl bg-surface shadow-card is-media", kind)}>
+              <Link to="/clientes/$id" params={{ id: String(p.clientId) }} className="block min-w-0">
+                <span className="bz-pay-top" data-name-room>
+                  {link("media")}
+                  <span className="bz-pay-amt">{amount}</span>
+                </span>
+                <FitLine forms={[withHow(shortDay), withHow(tinyDay), tinyDay]} className="bz-pay-sub" />
+              </Link>
+            </li>
+          );
+        }
+        return (
+          <li key={key} className={cn("bz-pay min-w-0 overflow-hidden rounded-xl bg-surface shadow-card is-grande", kind)}>
+            <Link to="/clientes/$id" params={{ id: String(p.clientId) }} className="bz-pay-g">
+              <span className="bz-pay-ic" aria-hidden><PayIcon kind={kind} /></span>
+              <span className="min-w-0 flex-1">
+                <span className="bz-pay-top" data-name-room>
+                  {link("grande")}
+                  <span className="bz-pay-amt">{amount}</span>
+                </span>
+                <span className="bz-pay-line">
+                  <FitLine forms={[tx(formatDay(day, "EEEE d 'de' MMMM"), formatDay(day, "EEEE, MMMM d")), tx(formatDay(day, "EEEE d MMM"), formatDay(day, "EEEE, MMM d")), shortDay]} className="bz-pay-sub min-w-0 flex-1" />
+                  {how ? <span className="bz-pay-chip">{how}</span> : null}
+                </span>
+              </span>
+            </Link>
+          </li>
+        );
+      })}
     </ul>
   );
+}
+
+function PayIcon({ kind }: { kind: string }) {
+  if (kind === "is-waived") return <HandHeart />;
+  if (kind === "is-tip") return <Coins />;
+  if (kind === "is-efectivo") return <Banknote />;
+  if (kind === "is-zelle") return <Smartphone />;
+  if (kind === "is-cheque") return <ReceiptText />;
+  return <BadgeCheck />;
 }
 
 function inEspera(c: ClientRow) {
@@ -905,7 +967,7 @@ function WaitList({
             </span>
           </Link>
           {!dense && (!quad || (cols ?? 2) < 4) ? (
-            <p className="mt-0.5 truncate text-[11px] text-muted">
+            <p className="mt-0.5 text-[11px] leading-snug text-muted [text-wrap:pretty]">
               {emphasize(
                 c.servicePaused
                   ? tx("En pausa · sin cortes hasta Continuar", "Paused · no cuts until Play")
@@ -985,7 +1047,7 @@ function DoneList({
                   {quad ? <MeshNameUniform name={j.clientName} cols={cols ?? 2} /> : <span className={cn("block font-semibold", dense ? "text-xs" : "text-base")}>{j.clientName}</span>}
                 </Link>
                 {!dense && (!quad || (cols ?? 2) < 4) ? (
-                  <p className="truncate text-[11px] text-muted">
+                  <p className="text-[11px] leading-snug text-muted [text-wrap:pretty]">
                     {formatDay(j.scheduledDate, "EEE d MMM")}
                     {j.title ? ` · ${j.title}` : ` · ${kind}`}
                     {j.paySameDay ? tx(" · cobrado al hacer", " · paid when done") : tx(" · puede quedar por cobrar", " · may stay to collect")}

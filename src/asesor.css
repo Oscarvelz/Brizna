@@ -221,10 +221,15 @@ html.theme-dark .as-check-dot, html.theme-amoled .as-check-dot { color: #06120a;
 .as-words { padding-top: 0.55rem; padding-bottom: 0.55rem; }
 .as-words-btn { display: flex; width: 100%; align-items: center; justify-content: space-between; min-height: 2.6rem; }
 .as-words-btn .as-h3 { margin: 0; }
-.as-gloss { margin-top: 0.4rem; display: grid; gap: 0.5rem; padding-bottom: 0.4rem; }
-.as-gloss > div { animation: as-rise 0.3s ease-out both; }
-.as-gloss dt { font-weight: 750; font-size: 0.92rem; color: var(--color-fg); }
-.as-gloss dd { font-size: 0.86rem; line-height: 1.38; color: var(--color-muted); }
+/* 1.4.91 (Oscar: "un poquito más definido y pulido"): term in ink with a small leaf tick, definition in a softer
+   ink with more air, a fine hairline between items. */
+.as-gloss { margin-top: 0.35rem; display: grid; padding-bottom: 0.25rem; }
+.as-gloss > div { padding: 0.625rem 0 0.6875rem; animation: as-rise 0.3s ease-out both; }
+.as-gloss > div + div { border-top: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent); }
+.as-gloss dt { display: flex; align-items: center; gap: 0.4375rem; font-weight: 700; font-size: 0.9375rem; line-height: 1.25; letter-spacing: -0.006em; color: var(--color-fg); }
+.as-gloss dt::before { content: ""; flex: none; width: 0.3125rem; height: 0.5625rem; border-radius: 0.3125rem 0 0.3125rem 0; transform: rotate(-12deg);
+  background: color-mix(in srgb, var(--color-done) 78%, var(--color-surface)); }
+.as-gloss dd { margin-top: 0.1875rem; padding-left: 0.75rem; font-size: 0.875rem; line-height: 1.45; text-wrap: pretty; color: color-mix(in srgb, var(--color-fg) 68%, var(--color-surface)); }
 
 /* ---------------------------------------------------------------- empty + loading */
 .as-empty { text-align: center; display: flex; flex-direction: column; align-items: center; padding: 1.6rem 1.2rem; }
@@ -271,3 +276,9 @@ html.theme-dark .as-bang, html.theme-amoled .as-bang { color: #ff7a72; -webkit-t
 @media (max-width: 879px) {
   .as-wrap > .as-card:nth-child(n+3) { content-visibility: auto; contain-intrinsic-block-size: auto 26rem; }
 }
+
+/* 1.4.91 hero breeze: transform-only sway from each blade's base (the ring and the text never move). */
+.as-sway { transform-box: fill-box; transform-origin: 50% 100%; animation: as-sway var(--sw-d, 5.5s) ease-in-out var(--sw-t, 0s) infinite alternate; }
+@keyframes as-sway { from { transform: rotate(calc(var(--sw-a, 2.5deg) * -1)); } to { transform: rotate(var(--sw-a, 2.5deg)); } }
+.as-hero.is-still .as-sway, [hidden] .as-sway { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .as-sway { animation: none !important; } }

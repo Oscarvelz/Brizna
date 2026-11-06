@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { STUDY_GC } from "@/lib/study-warm";
 import { useNavigate } from "@tanstack/react-router";
 import { useRef, type ReactElement, type ReactNode } from "react";
+import { Clock3, CloudRain } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -110,26 +111,39 @@ export function CobrosCharts({
         <Lead
           kicker={t("stats.hoursWeek")}
           figure={hourText(data.hoursWeek, tx)}
+          tone="pending"
           sentence={tx(`En el mes llevas ${hourText(data.hoursMonth, tx)}.`, `This month you have ${hourText(data.hoursMonth, tx)}.`)}
         />
-        <dl className="grid grid-cols-2 gap-2">
-          <NumberCell label={t("stats.hoursToday")} value={hourText(data.hoursToday, tx)} topic="horas" />
-          <NumberCell
-            label={t("stats.stops")}
-            value={String(data.stopReasons.reduce((n, row) => n + row.count, 0))}
-            topic="dias-parados"
-          />
+        {/* 1.4.91 (Oscar: "se ve apagado"): toned tiles with an inline icon chip; the stop reasons ride as small chips
+            beside the count instead of a loose row underneath. */}
+        <dl className="cif-hts">
+          <div className="cif-ht is-hours">
+            <dt className="cif-ht-head">
+              <span className="min-w-0">{t("stats.hoursToday")}</span>
+              <Hint compact topic="horas" />
+            </dt>
+            <dd className="cif-ht-val">
+              <span className="cif-ht-ic" aria-hidden><Clock3 /></span>
+              {hourText(data.hoursToday, tx)}
+            </dd>
+          </div>
+          <div className="cif-ht is-stop">
+            <dt className="cif-ht-head">
+              <span className="min-w-0">{t("stats.stops")}</span>
+              <Hint compact topic="dias-parados" />
+            </dt>
+            <dd className="cif-ht-val">
+              <span className="cif-ht-ic" aria-hidden><CloudRain /></span>
+              {String(data.stopReasons.reduce((n, row) => n + row.count, 0))}
+              {data.stopReasons.map((row) => (
+                <span key={row.reason} className="cif-ht-chip">
+                  {data.stopReasons.length > 1 ? `${row.count} ` : ""}
+                  {reasonLabel(locale, row.reason).toLocaleLowerCase(locale)}
+                </span>
+              ))}
+            </dd>
+          </div>
         </dl>
-        {data.stopReasons.length > 0 ? (
-          <ul className="mt-2 grid gap-1 text-sm">
-            {data.stopReasons.map((row) => (
-              <li key={row.reason} className="flex justify-between gap-2">
-                <span>{reasonLabel(locale, row.reason)}</span>
-                <span className="tabular-nums">{row.count}</span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
       </Fold>
       ) : null}
       {show("semana anterior cortes cobrado dinero por semana barras trabajo hecho") ? (
@@ -392,28 +406,6 @@ function hourText(minutes: number, tx: (es: string, en: string) => string) {
   const h = Math.floor((minutes || 0) / 60);
   const m = (minutes || 0) % 60;
   return m === 0 ? tx(`${h} h`, `${h} hr`) : tx(`${h} h ${m} min`, `${h} hr ${m} min`);
-}
-
-function NumberCell({
-  label,
-  value,
-  hold,
-  topic,
-}: {
-  label: string;
-  value: string;
-  hold?: boolean;
-  topic?: string;
-}) {
-  return (
-    <div className={cn("rounded-sm px-2.5 py-2", hold ? "bg-surface" : "bg-surface-2")}>
-      <dt className="flex items-center text-xs font-medium tracking-wide text-muted uppercase">
-        <span className="min-w-0">{label}</span>
-        {topic ? <Hint topic={topic} /> : null}
-      </dt>
-      <dd className={cn("font-display text-lg font-semibold tabular-nums", hold && "text-hold")}>{value}</dd>
-    </div>
-  );
 }
 
 function ChartBlock({

@@ -20,7 +20,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CountUp, useArrived } from "@/components/cifras-visuals";
 import { MessageComposer } from "@/components/message-composer";
 import { money } from "@/lib/format";
@@ -104,6 +104,17 @@ function messageFor(p: AdvisorPerson, business: string, tx: Tx, plan?: number): 
 
 const TONE_CLASS = { good: "is-good", warn: "is-warn", bad: "is-bad" } as const;
 
+/** 1.4.91 (Oscar): a slow breeze in the blades. Each blade sways from its base by a few degrees; the delay follows
+ *  its position (a gust travels across) plus a little jitter, durations 4.6–6.8 s, so it never reads as a metronome. */
+function sway(i: number, n: number, deg: number): CSSProperties {
+  const jitter = ((i * 37) % 11) / 11;
+  return {
+    "--sw-a": `${(deg * (0.7 + 0.3 * (((i * 53) % 7) / 6))).toFixed(2)}deg`,
+    "--sw-d": `${(4.6 + 2.2 * (((i * 29) % 9) / 8)).toFixed(2)}s`,
+    "--sw-t": `${(-(i / n) * 6 - jitter * 1.4).toFixed(2)}s`,
+  } as CSSProperties;
+}
+
 /** Score 0–100 as a ring of grass blades: lit blades grow in, the sun sits in the middle. */
 function GrassDial({ score, tone, word }: { score: number; tone: "good" | "warn" | "bad"; word: string }) {
   const size = 148;
@@ -120,11 +131,13 @@ function GrassDial({ score, tone, word }: { score: number; tone: "good" | "warn"
           const on = i < lit;
           return (
             <g key={i} transform={`rotate(${a} ${c} ${c})`}>
-              <path
-                d={`M ${c - 3.2} ${c - rIn} Q ${c - 2} ${c - rIn - 13} ${c + 1.5} ${c - rIn - (on ? 21 : 12)} Q ${c + 2.4} ${c - rIn - 9} ${c + 3.2} ${c - rIn} Z`}
-                className={cn("as-blade", on && "is-on")}
-                style={{ animationDelay: `${40 + i * 10}ms` }}
-              />
+              <g className="as-sway" style={sway(i, n, 2.6)}>
+                <path
+                  d={`M ${c - 3.2} ${c - rIn} Q ${c - 2} ${c - rIn - 13} ${c + 1.5} ${c - rIn - (on ? 21 : 12)} Q ${c + 2.4} ${c - rIn - 9} ${c + 3.2} ${c - rIn} Z`}
+                  className={cn("as-blade", on && "is-on")}
+                  style={{ animationDelay: `${40 + i * 10}ms` }}
+                />
+              </g>
             </g>
           );
         })}
@@ -193,8 +206,17 @@ export function verdict(r: AdvisorReading, tx: Tx): { title: string; sub: string
 function Hero({ r }: { r: AdvisorReading }) {
   const tx = useTx();
   const v = verdict(r, tx);
+  const ref = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    // the breeze only runs while the hero is on screen
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => el.classList.toggle("is-still", !e?.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   return (
-    <section data-spot="asesor" className={cn("as-card as-hero", TONE_CLASS[r.tone])} data-masonry-full style={{ "--i": 0 } as CSSProperties}>
+    <section ref={ref} data-spot="asesor" className={cn("as-card as-hero", TONE_CLASS[r.tone])} data-masonry-full style={{ "--i": 0 } as CSSProperties}>
       <div className="as-hero-top">
         <div className="min-w-0 flex-1">
           <p className="as-kicker"><Sprout aria-hidden />{tx("Tu negocio, en claro", "Business, in short")}</p>
@@ -235,12 +257,13 @@ function Meadow() {
         const h = 12 + ((i * 53) % 13);
         const lean = ((i * 29) % 7) - 3;
         return (
-          <path
-            key={i}
-            d={`M ${x - 2.6} 26 Q ${x - 1} ${26 - h * 0.6} ${x + lean} ${26 - h} Q ${x + 1.2} ${26 - h * 0.5} ${x + 2.6} 26 Z`}
-            className={cn("as-meadow-blade", i % 3 === 0 && "is-deep")}
-            style={{ animationDelay: `${80 + ((i * 41) % 23) * 10}ms` }}
-          />
+          <g key={i} className="as-sway" style={sway(i, blades, 3.4)}>
+            <path
+              d={`M ${x - 2.6} 26 Q ${x - 1} ${26 - h * 0.6} ${x + lean} ${26 - h} Q ${x + 1.2} ${26 - h * 0.5} ${x + 2.6} 26 Z`}
+              className={cn("as-meadow-blade", i % 3 === 0 && "is-deep")}
+              style={{ animationDelay: `${80 + ((i * 41) % 23) * 10}ms` }}
+            />
+          </g>
         );
       })}
     </svg>

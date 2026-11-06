@@ -65,14 +65,14 @@ export function CountUp({ value, format, duration = 650, className }: { value: n
   return <span className={cn("tabular-nums", className)} data-v={value}>{format(shown)}</span>;
 }
 
-const TONE = { done: "text-done", money: "text-money", hold: "text-hold", late: "text-late", due: "text-due" } as const;
+const TONE = { done: "text-done", money: "text-money", hold: "text-hold", late: "text-late", due: "text-due", pending: "text-pending" } as const;
 
 /** Big headline figure first, one short plain sentence under it. */
 export function Lead({ kicker, figure, sentence, tone, aside, icon }: {
   kicker?: ReactNode;
   figure: ReactNode;
   sentence?: ReactNode;
-  tone?: "done" | "money" | "hold" | "late" | "due";
+  tone?: "done" | "money" | "hold" | "late" | "due" | "pending";
   aside?: ReactNode;
   icon?: ReactNode;
 }) {

@@ -107,7 +107,7 @@ html.theme-amoled {
   --color-bg: #000000;
   --color-sun: #000000;
   --color-surface: #141415;
-  --color-surface-2: #222224;
+  --color-surface-2: #1e1f23;
   --color-fg: #f5f5f5;
   --color-muted: #cfcfcf;
   --color-subtle: #9e9e9e;
@@ -1933,7 +1933,7 @@ html.theme-amoled {
   --bz-hair-2: rgb(255 255 255 / 0.085);
   --bz-hair-3: rgb(255 255 255 / 0.10);
   --color-surface: var(--bz-l2);
-  --color-surface-2: #222224;
+  --color-surface-2: #1e1f23;
   --color-sun: var(--bz-l3);
   --color-border: #2c2c2f;
   --color-late-bg: color-mix(in oklab, #ff6b6b 17%, #141415);
@@ -2854,3 +2854,91 @@ html:is(.theme-dark, .theme-amoled) :is(.bz-stat, .bz-actbtn:not(:disabled), .bz
   mask-image: linear-gradient(rgb(0 0 0 / 0.86), rgb(0 0 0 / 0.86));
   -webkit-mask-clip: no-clip; mask-clip: no-clip;
 }
+
+/* 1.4.91 Cobros paid lists (PayList): no ellipsis, clear Grande / Media / Lista / Malla hierarchy. */
+.bz-pay { --pt: var(--color-done); }
+.bz-pay.is-waived { --pt: var(--tone-heather); }
+.bz-pay.is-tip { --pt: var(--color-due); }
+html.theme-amoled .bz-pay { box-shadow: inset 0 0 0 1px var(--bz-hair-2); }
+.bz-pay-amt { flex: none; color: var(--bz-price); font-family: var(--font-display); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; line-height: 1.1; white-space: nowrap; }
+.bz-pay.is-waived .bz-pay-amt { text-decoration: line-through; text-decoration-thickness: 1px; }
+.bz-pay-sub { display: block; min-width: 0; font-size: 0.75rem; line-height: 1.25; white-space: nowrap; color: color-mix(in srgb, var(--color-fg) 66%, var(--color-surface)); }
+.bz-pay-top { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+/* Grande: tone icon chip, big serif name with the price beside it, long date + method chip */
+.bz-pay.is-grande { padding: 0.875rem 1rem 0.9375rem 0.875rem; }
+.bz-pay-g { display: flex; align-items: flex-start; gap: 0.75rem; min-width: 0; }
+.bz-pay-ic { flex: none; display: grid; place-items: center; width: 2.5rem; height: 2.5rem; margin-top: 0.0625rem; border-radius: 0.875rem; color: var(--pt);
+  background: color-mix(in oklab, var(--pt) 12%, var(--bz-in)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pt) 32%, transparent); }
+.bz-pay-ic > svg { width: 1.125rem; height: 1.125rem; stroke-width: 2.1; }
+.bz-pay.is-grande .bz-pay-amt { font-size: 1.1875rem; }
+.bz-pay-line { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3125rem; min-width: 0; }
+.bz-pay.is-grande .bz-pay-sub { font-size: 0.875rem; }
+.bz-pay-chip { flex: none; margin-left: auto; display: inline-flex; align-items: center; height: 1.375rem; padding: 0 0.5rem; border-radius: 999px; font-size: 0.6875rem; font-weight: 650; white-space: nowrap;
+  color: color-mix(in oklab, var(--pt) 80%, var(--color-fg)); background: color-mix(in oklab, var(--pt) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pt) 30%, transparent); }
+/* Media: one compact row (name, price) over a short subline */
+.bz-pay.is-media { padding: 0.5625rem 0.875rem 0.625rem; }
+.bz-pay.is-media .bz-pay-top { gap: 0.625rem; }
+.bz-pay.is-media .bz-pay-amt { font-size: 1rem; }
+.bz-pay.is-media .bz-pay-sub { margin-top: 0.0625rem; }
+/* Lista: one line */
+.bz-pay.is-lista { padding: 0.5rem 0.875rem; }
+.bz-pay-row { display: flex; align-items: baseline; gap: 0.5rem; min-width: 0; }
+.bz-pay-name { min-width: 0; font-size: 0.875rem; font-weight: 600; line-height: 1.25; }
+.bz-pay.is-lista .bz-pay-sub { font-size: 0.6875rem; }
+.bz-pay.is-lista .bz-pay-amt { margin-left: auto; font-size: 0.9375rem; }
+/* Malla */
+.bz-pay-q { display: flex; flex-direction: column; height: 100%; min-width: 0; }
+.bz-pay.is-quad .bz-pay-sub { margin-top: 0.1875rem; font-size: 0.6875rem; }
+.bz-pay-sub.is-stack { display: grid; gap: 0.0625rem; white-space: normal; }
+.bz-pay-how { display: inline-flex; align-items: center; gap: 0.25rem; min-width: 0; }
+.bz-pay-how > svg { flex: none; width: 0.75rem; height: 0.75rem; color: var(--pt); stroke-width: 2.2; }
+.bz-pay.is-quad .bz-pay-amt { margin-top: auto; padding-top: 0.4375rem; font-size: 1rem; }
+.bz-pay.is-quad.is-c4 .bz-pay-amt { font-size: 0.875rem; padding-top: 0.3125rem; }
+.bz-pay.is-quad.is-c4 .bz-pay-sub { font-size: 0.625rem; }
+
+/* 1.4.91 client page (AMOLED, Oscar: "más definidos y terminados", same colours): hairlines a touch firmer, a faint
+   top highlight as a finished bevel, radii unified (outer boxes 28px, insets 14px, small tools 12px). */
+html.theme-amoled main:has(.bz-cl-card) {
+  --bz-hair-1: rgb(255 255 255 / 0.095);
+  --bz-hair-2: rgb(255 255 255 / 0.115);
+  --bz-hair-3: rgb(255 255 255 / 0.13);
+  --bz-in-hair: var(--bz-hair-3);
+  --bz-pad-hair: var(--bz-hair-1);
+  --bz-bevel: inset 0 1px 0 rgb(255 255 255 / 0.045);
+}
+html.theme-amoled main:has(.bz-cl-card) :is(.bz-cl-card, #movimientos, #cambios-hechos) { box-shadow: inset 0 0 0 1px var(--bz-hair-2), var(--bz-bevel); }
+html.theme-amoled main:has(.bz-cl-card) .bz-pad { border-radius: 1.75rem; box-shadow: inset 0 0 0 1px var(--bz-hair-2), var(--bz-bevel); }
+html.theme-amoled main:has(.bz-cl-card) :is(.bz-inset.bz-inset, .bz-pad-find) { border-radius: 0.875rem; box-shadow: inset 0 0 0 1px var(--bz-in-hair), var(--bz-bevel); }
+html.theme-amoled main:has(.bz-cl-card) .bz-pad-find:focus-within { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-primary) 60%, transparent); }
+html.theme-amoled main:has(.bz-cl-card) .bz-rt-tool.bz-rt-tool:not(.format-on) { border-radius: 0.75rem; box-shadow: inset 0 0 0 1px var(--bz-in-hair), var(--bz-bevel); }
+html.theme-amoled main:has(.bz-cl-card) .bz-fact { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ft) 28%, transparent), var(--bz-bevel); }
+/* the note page: the gold margin is a straight 3px rule that stops short of the rounded corners (no smeared corner) */
+main:has(.bz-cl-card) .bz-rt-page.bz-rt-page {
+  background-image: linear-gradient(color-mix(in oklab, var(--tone-msg) 42%, transparent), color-mix(in oklab, var(--tone-msg) 42%, transparent)),
+    linear-gradient(var(--bz-pg), var(--bz-pg)), linear-gradient(to bottom, transparent calc(100% - 1px), color-mix(in srgb, var(--color-fg) 6%, transparent) calc(100% - 1px));
+  background-size: 3px calc(100% - 1.75rem), 100% 0.5rem, 100% 1.3125rem;
+  background-position: 0 0.875rem, 0 0, 0 0.5rem;
+  background-repeat: no-repeat, no-repeat, repeat-y;
+  background-attachment: scroll, local, local;
+  box-shadow: inset 0 0 0 1px var(--bz-in-hair);
+}
+main:has(.bz-cl-card) .bz-rt-page.bz-rt-page:focus { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-primary) 55%, transparent); }
+html.theme-amoled main:has(.bz-cl-card) .bz-rt-page.bz-rt-page { border-radius: 0.875rem; box-shadow: inset 0 0 0 1px var(--bz-in-hair), var(--bz-bevel); }
+html.theme-amoled main:has(.bz-cl-card) .bz-rt-page.bz-rt-page:focus { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-primary) 55%, transparent); }
+
+/* 1.4.91 Movimientos / Cambios hechos rows: tone dot + word, muted smaller date – method, grey tabular amount. */
+.bz-mov { --mt: var(--color-done); min-height: 2.5rem; gap: 0.625rem; }
+.bz-mov.is-abono { --mt: var(--color-due); }
+.bz-mov.is-prepaid { --mt: var(--color-money); }
+.bz-mov.is-waived { --mt: var(--tone-heather); }
+.bz-mov.is-opening { --mt: var(--color-soil); }
+.bz-mov.is-tip { --mt: var(--color-pending); }
+.bz-mov-main { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.5rem; row-gap: 0.0625rem; min-width: 0; }
+.bz-mov-kind { display: inline-flex; align-items: center; gap: 0.4375rem; font-size: 0.875rem; font-weight: 650; line-height: 1.25; color: color-mix(in oklab, var(--mt) 82%, var(--color-fg)); }
+.bz-mov-kind::before { content: ""; flex: none; width: 0.4375rem; height: 0.4375rem; border-radius: 999px; background: var(--mt); box-shadow: 0 0 0 3px color-mix(in oklab, var(--mt) 16%, transparent); }
+.bz-mov-kind.is-plain { color: var(--color-fg); text-wrap: pretty; }
+.bz-mov-kind.is-plain::before { content: none; }
+.bz-mov-sub { font-size: 0.78125rem; line-height: 1.25; white-space: nowrap; color: color-mix(in srgb, var(--color-fg) 62%, var(--color-surface)); }
+.bz-mov-amt { font-family: var(--font-display); font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.01em; color: var(--bz-price); font-variant-numeric: tabular-nums; }
+.bz-fold-empty { display: flex; align-items: center; gap: 0.5rem; min-height: 2.25rem; font-size: 0.8125rem; font-style: italic; color: var(--color-muted); }
+.bz-fold-empty > svg { flex: none; width: 0.9375rem; height: 0.9375rem; opacity: 0.7; }

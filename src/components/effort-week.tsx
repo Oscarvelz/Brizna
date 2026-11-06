@@ -91,148 +91,127 @@ export function EffortWeek({
             ? tx(" Toca un día para fijar su meta.", " Tap a day to set its goal.")
             : ""}
       </p>
-      <div className="grid grid-cols-7 gap-1.5">
+      {/* 1.4.91 (Oscar): one fixed track per day, the planned part in a faint ink, what is done in its tone,
+          the goal as a small tick on the track; today = soft wash, the chosen day = primary ring. */}
+      <div className="ew-days grid grid-cols-7 gap-1.5">
         {days.map((d) => {
           const label = weekdayOptions().find((w) => w.value === d.weekday)?.short ?? "";
           const isToday = d.date === today;
           const goal = goalByDate.get(d.date) ?? null;
-          const height = Math.max(8, Math.round(((d.done + d.pending) / max) * 56));
-          const doneH = d.done + d.pending === 0 ? 0 : Math.round((d.done / (d.done + d.pending)) * height);
+          const planned = d.done + d.pending;
+          const plannedPct = planned === 0 ? 0 : Math.max(10, Math.round((planned / max) * 100));
+          const donePct = d.done === 0 ? 0 : Math.max(10, Math.round((d.done / max) * 100));
           const vsGoal =
-            !goal || d.date > today || (d.date !== today && d.done + d.pending === 0)
+            !goal || d.date > today || (d.date !== today && planned === 0)
               ? "none"
               : d.done >= goal
                 ? "above"
                 : d.date < today
                   ? "below"
                   : "today";
-          const goalH = goal ? Math.max(2, Math.round((goal / max) * 56)) : 0;
+          const goalPct = goal ? Math.min(100, Math.round((goal / max) * 100)) : 0;
           return (
             <button
               key={d.date}
               type="button"
               onClick={() => setEditDate(d.date)}
-              className={cn(
-                "flex min-h-11 flex-col items-center gap-1 rounded-md px-0.5 py-1 touch-manipulation",
-                isToday && "bg-today-bg",
-                editDate === d.date && "bz-chosen",
-              )}
+              aria-pressed={editDate === d.date}
+              className={cn("ew-day touch-manipulation", isToday && "is-today", editDate === d.date && "is-sel")}
             >
-              <div className="relative flex h-14 w-full items-end justify-center">
-                {goal && (d.date === today || d.done + d.pending > 0) ? (
+              <span className="ew-track" aria-hidden>
+                {plannedPct ? <span className="ew-plan" style={{ height: `${plannedPct}%` }} /> : null}
+                {donePct ? (
                   <span
-                    className="absolute right-0 left-0 border-t border-dashed border-muted"
-                    style={{ bottom: `${goalH}px` }}
-                    aria-hidden
+                    className={cn("ew-done", vsGoal === "below" ? "is-below" : vsGoal === "today" ? "is-today" : "is-ok")}
+                    style={{ height: `${donePct}%` }}
                   />
                 ) : null}
-                <div
-                  className="flex w-4 flex-col-reverse overflow-hidden rounded-sm bg-surface-2"
-                  style={{ height: `${height}px` }}
-                >
-                  <div
-                    className={cn(
-                      "w-full",
-                      vsGoal === "below" ? "bg-late" : vsGoal === "today" ? "bg-pending" : "bg-done",
-                    )}
-                    style={{ height: `${doneH}px` }}
-                  />
-                </div>
-              </div>
-              <p className={cn("text-xs font-semibold", isToday ? "text-today" : "text-muted")}>
-                {label}
-              </p>
-              <p
+                {goal ? <span className={cn("ew-goal", d.date > today && "is-ahead")} style={{ bottom: `${goalPct}%` }} /> : null}
+              </span>
+              <span className="ew-lbl">{label}</span>
+              <span
                 className={cn(
-                  "text-xs font-semibold tabular-nums",
+                  "ew-num",
                   vsGoal === "above" && "text-done",
                   vsGoal === "below" && "text-late",
                   vsGoal === "today" && "text-pending",
                 )}
               >
                 {d.done}
-                {d.pending > 0 ? <span className="text-muted">/{d.done + d.pending}</span> : null}
-              </p>
+                {d.pending > 0 ? <span className="ew-of">/{planned}</span> : null}
+              </span>
             </button>
           );
         })}
       </div>
       {editDate ? (
-        <div className="mt-4 rounded-md bg-sun p-3">
-          <p className="text-sm font-semibold first-letter:uppercase">
-            {tx(`Meta del ${formatLongDay(editDate)}`, `Goal for ${formatLongDay(editDate)}`)}
-          </p>
-          <p className="mt-1 text-xs text-muted">
-            {editingGoal
-              ? tx(
-                  `Ahora mismo: ${editingGoal} patios. Puedes cambiarla o igualarla a lo hecho.`,
-                  `Right now: ${editingGoal} yards. You can change it or match it to what is done.`,
-                )
-              : tx("Sin meta este día. Pon un número o déjalo así.", "No goal this day. Enter a number or leave it.")}
-          </p>
-          <div className="mt-3 flex items-center gap-2">
+        (() => {
+          const doneThere = days.find((d) => d.date === editDate)?.done ?? 0;
+          const cur = Math.min(80, Math.max(1, Number(draft) || 1));
+          const extra = [
+            doneThere > 0 && doneThere !== editingGoal ? (
+              <button key="match" type="button" className="ew-btn" disabled={saveGoal.isPending} onClick={() => saveGoal.mutate({ date: editDate, goal: doneThere })}>
+                {tx(`Igualar a ${doneThere}`, `Match ${doneThere}`)}
+              </button>
+            ) : null,
+            editingGoal ? (
+              <button key="none" type="button" className="ew-btn" disabled={saveGoal.isPending} onClick={() => saveGoal.mutate({ date: editDate, goal: null })}>
+                {tx("Sin meta", "No goal")}
+              </button>
+            ) : null,
+          ].filter(Boolean);
+          const close = (
+            <button key="close" type="button" className="ew-btn" disabled={saveGoal.isPending} onClick={() => setEditDate(null)}>
+              {tx("Cerrar", "Close")}
+            </button>
+          );
+          const save = (
             <Button
+              key="save"
               type="button"
-              variant="outline"
-              className="size-12 shrink-0 px-0"
-              onClick={() => setDraft(String(Math.max(1, (Number(draft) || 1) - 1)))}
-            >
-              −
-            </Button>
-            <input
-              type="number"
-              min={1}
-              max={80}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              className="h-12 min-w-0 flex-1 rounded-sm bg-surface text-center font-display text-xl font-semibold tabular-nums shadow-card"
-              aria-label={tx("Patios de meta", "Goal yards")}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              className="size-12 shrink-0 px-0"
-              onClick={() => setDraft(String(Math.min(80, (Number(draft) || 1) + 1)))}
-            >
-              +
-            </Button>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <Button
-              type="button"
+              className={cn("ew-save h-11", extra.length === 1 && "col-span-2")}
               disabled={saveGoal.isPending}
-              onClick={() =>
-                saveGoal.mutate({ date: editDate, goal: Math.min(80, Math.max(1, Number(draft) || 1)) })
-              }
+              onClick={() => saveGoal.mutate({ date: editDate, goal: cur })}
             >
               {tx("Guardar meta", "Save goal")}
             </Button>
-            <Button type="button" variant="outline" disabled={saveGoal.isPending} onClick={() => setEditDate(null)}>
-              {tx("Cerrar", "Close")}
-            </Button>
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={saveGoal.isPending}
-              onClick={() => saveGoal.mutate({ date: editDate, goal: null })}
-            >
-              {tx("Sin meta", "No goal")}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={saveGoal.isPending || (days.find((d) => d.date === editDate)?.done ?? 0) === 0}
-              onClick={() => {
-                const done = days.find((d) => d.date === editDate)?.done ?? 0;
-                if (done > 0) saveGoal.mutate({ date: editDate, goal: done });
-              }}
-            >
-              {tx("Igualar a lo hecho", "Match what is done")}
-            </Button>
-          </div>
-        </div>
+          );
+          return (
+            <div className="ew-ed mt-3.5">
+              <p className="ew-ed-title first-letter:uppercase">
+                {tx(`Meta del ${formatLongDay(editDate)}`, `Goal for ${formatLongDay(editDate)}`)}
+              </p>
+              <p className="ew-ed-sub">
+                {editingGoal
+                  ? tx(`Ahora: ${editingGoal} ${editingGoal === 1 ? "patio" : "patios"}.`, `Now: ${editingGoal} ${editingGoal === 1 ? "yard" : "yards"}.`)
+                  : tx("Sin meta este día.", "No goal this day.")}
+              </p>
+              <div className="ew-ed-row">
+                <span className="ew-ed-lbl">{tx("Patios de meta", "Goal yards")}</span>
+                <div className="aj-num-ctl">
+                  <button type="button" className="aj-num-btn" aria-label="−" disabled={cur <= 1} onClick={() => setDraft(String(Math.max(1, cur - 1)))}>
+                    <span aria-hidden>−</span>
+                  </button>
+                  <label className="aj-num-val">
+                    <input
+                      inputMode="numeric"
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ""))}
+                      aria-label={tx("Patios de meta", "Goal yards")}
+                      style={{ width: `${Math.max(2, draft.length) + 0.5}ch` }}
+                    />
+                  </label>
+                  <button type="button" className="aj-num-btn" aria-label="+" disabled={cur >= 80} onClick={() => setDraft(String(Math.min(80, cur + 1)))}>
+                    <span aria-hidden>+</span>
+                  </button>
+                </div>
+              </div>
+              <div className="ew-acts">
+                {extra.length === 1 ? [save, extra[0], close] : [save, close, ...extra]}
+              </div>
+            </div>
+          );
+        })()
       ) : (
         <p className="mt-3 text-xs text-muted">
           {tx(

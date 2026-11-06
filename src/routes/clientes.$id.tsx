@@ -621,13 +621,13 @@ function ChangeHistory({ clientId }: { clientId: number }) {
       {open ? (
         <ul className="bz-fold-list">
           {(q.data ?? []).length === 0 ? (
-            <li className="text-sm text-muted">{tx("Todavía no hay cambios registrados.", "There are no recorded changes yet.")}</li>
+            <li className="bz-fold-empty"><History aria-hidden />{tx("Todavía no hay cambios registrados.", "There are no recorded changes yet.")}</li>
           ) : (
             (q.data ?? []).map((c) => (
               <li key={c.id} className="flex min-h-11 items-center justify-between gap-2 text-sm">
-                <span className="min-w-0 text-pretty break-words">
-                  <span className="font-semibold">{c.summary}</span>
-                  <span className="text-muted"> · {formatDay(stampDay(c.createdAt), "d MMM")}</span>
+                <span className="bz-mov-main">
+                  <span className="bz-mov-kind is-plain">{c.summary}</span>
+                  <span className="bz-mov-sub">{formatDay(stampDay(c.createdAt), "d MMM")}</span>
                 </span>
                 <Button variant="ghost" size="sm" onClick={() => setRestoreId(c.id)}>
                   {tx("Restaurar", "Restore")}
@@ -651,6 +651,16 @@ function ChangeHistory({ clientId }: { clientId: number }) {
       />
     </section>
   );
+}
+
+/** 1.4.91: the tone each movement reads in (dot + word). */
+function payKindTone(p: PaymentRow) {
+  if (p.kind === "opening") return "is-opening";
+  if (p.kind === "prepaid") return "is-prepaid";
+  if (p.kind === "waived") return "is-waived";
+  if (p.amount <= 0 && (p.tip ?? 0) > 0) return "is-tip";
+  if ((p.note ?? "").toLowerCase().includes("abono")) return "is-abono";
+  return "is-paid";
 }
 
 function payKindLabel(p: PaymentRow, tx: (es: string, en: string) => string) {
@@ -727,7 +737,9 @@ function MovesBlock({ clientId, payments }: { clientId: number; payments: Paymen
         icon={<Wallet aria-hidden />}
         chip={
           <>
-            {payments.length} · {money(cashIn)}
+            {payments.length}
+            <span className="bz-sep">{FREQ_SEP}</span>
+            {money(cashIn)}
           </>
         }
         topic="movimientos"
@@ -738,24 +750,24 @@ function MovesBlock({ clientId, payments }: { clientId: number; payments: Paymen
             const tipOnly = p.amount <= 0 && (p.tip ?? 0) > 0;
             const tip = p.tip ?? 0;
             return (
-              <li key={p.id} className="bz-mov">
-                <span className="min-w-0">
-                  <span className="font-semibold">{payKindLabel(p, tx)}</span>
-                  <span className="text-muted"> · {formatDay(stampDay(p.paidAt), "d MMM")}</span>
-                  {methodLabel(p.method) ? <span className="text-muted"> · {methodLabel(p.method)}</span> : null}
+              <li key={p.id} className={cn("bz-mov", payKindTone(p))}>
+                <span className="bz-mov-main">
+                  <span className="bz-mov-kind">{payKindLabel(p, tx)}</span>
+                  <span className="bz-mov-sub">
+                    {formatDay(stampDay(p.paidAt), "d MMM")}
+                    {methodLabel(p.method) ? (
+                      <>
+                        <span className="bz-sep">{FREQ_SEP}</span>
+                        {methodLabel(p.method)}
+                      </>
+                    ) : null}
+                  </span>
                 </span>
                 <span className="flex shrink-0 items-baseline gap-1.5 tabular-nums">
                   {!tipOnly && tip > 0 ? (
                     <span className="text-xs font-semibold text-done">{tx(`+${money(tip)} propina`, `+${money(tip)} tip`)}</span>
                   ) : null}
-                  <span
-                    className={cn(
-                      "font-semibold",
-                      p.kind === "waived" && "text-muted line-through decoration-1",
-                      p.kind === "opening" && "text-due",
-                      tipOnly && "text-done",
-                    )}
-                  >
+                  <span className={cn("bz-mov-amt", p.kind === "waived" && "line-through decoration-1")}>
                     {tipOnly ? money(tip) : money(p.amount)}
                   </span>
                 </span>
