@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AMOLED night, the same black as the web manifest (background_color #000000). -->
+    <color name="bz_night">#000000</color>
+    <color name="ic_bg">#1F6A3A</color>
+    <color name="bz_green">#2F8A4F</color>
+</resources>

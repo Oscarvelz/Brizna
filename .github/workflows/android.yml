@@ -1,0 +1,69 @@
+# Brizna for Android (WebView app, package com.oscarvelz.brizna). Runs only on the `source` branch when android/ changes
+# (or by hand); it never touches `main` or GitHub Pages.
+# The signing key is NOT in this public repo. If the repository secrets BRIZNA_KS_B64 (base64 of the PKCS12 keystore)
+# and BRIZNA_KS_PASS exist, the APK is signed here and published as release android-<versionCode> with Brizna.apk.
+# Without them the job uploads an unsigned APK artifact (brizna-unsigned-N); it is signed privately with the same key and
+# pushed to the orphan branch `android-signed` (Brizna.apk + VERSION=N), whose own workflow publishes release android-N.
+# versionCode = android/version.txt. Every update must be signed with that one key or Android refuses it.
+name: Brizna for Android
+on:
+  push:
+    branches: [source]
+    paths: ['android/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: brizna-android
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.9' }
+      - name: Version
+        run: echo "N=$(tr -dc '0-9' < android/version.txt)" >> "$GITHUB_ENV"
+      - name: Signing key (only if the secrets exist)
+        env:
+          KS_B64: ${{ secrets.BRIZNA_KS_B64 }}
+          KS_PASS: ${{ secrets.BRIZNA_KS_PASS }}
+        run: |
+          if [ -n "$KS_B64" ] && [ -n "$KS_PASS" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/brizna.p12"
+            echo "BRIZNA_KS_FILE=$RUNNER_TEMP/brizna.p12" >> "$GITHUB_ENV"
+            echo "SIGNED=1" >> "$GITHUB_ENV"
+          else
+            echo "SIGNED=0" >> "$GITHUB_ENV"
+          fi
+      - name: Build
+        working-directory: android
+        run: gradle assembleRelease --no-daemon --stacktrace
+        env:
+          BRIZNA_KS_PASS: ${{ secrets.BRIZNA_KS_PASS }}
+      - name: Collect
+        run: |
+          ls -la android/app/build/outputs/apk/release/
+          if [ "$SIGNED" = "1" ]; then cp android/app/build/outputs/apk/release/app-release.apk Brizna.apk
+          else cp android/app/build/outputs/apk/release/app-release-unsigned.apk Brizna-unsigned.apk; fi
+          rm -f "$RUNNER_TEMP/brizna.p12"
+      - name: Unsigned APK (signed privately afterwards)
+        if: env.SIGNED != '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: brizna-unsigned-${{ env.N }}
+          path: Brizna-unsigned.apk
+          retention-days: 14
+      - name: Release
+        if: env.SIGNED == '1'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-${{ env.N }}
+          target_commitish: ${{ github.sha }}
+          name: Brizna para Android ${{ env.N }}
+          body: Instala Brizna.apk en el teléfono. La app abre https://oscarvelz.github.io/Brizna/ con su propio almacenamiento; entra con tu cuenta para traer tus clientes.
+          files: Brizna.apk
+          make_latest: 'true'
