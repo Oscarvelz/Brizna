@@ -2947,3 +2947,17 @@ html.theme-amoled main:has(.bz-cl-card) .bz-rt-page.bz-rt-page:focus { box-shado
 /* 1.4.93 (Oscar): Posponer takes the same fill as Pasar atrasados (late tone 9% over the surface). */
 html.theme-amoled .bz-tone.bz-tone-post:not(.bz-tone-on) { background: color-mix(in oklab, var(--color-late) 9%, var(--color-surface)) !important; }
 html.theme-amoled .bz-tone.bz-tone-post:not(.bz-tone-on):hover { background: color-mix(in oklab, var(--color-late) 14%, var(--color-surface)) !important; }
+
+/* 1.4.94 (Oscar): unpicked suggestion chips and the date/time picker field get a clear fine edge so they
+   read as buttons (were edge-less blobs at night). Same hue family, crisp 1px + faint top light. */
+.bz-chip:not(.bz-pick), .bz-pf-trigger { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 16%, transparent); }
+html:is(.theme-dark, .theme-amoled) .bz-chip:not(.bz-pick),
+html:is(.theme-dark, .theme-amoled) .bz-pf-trigger {
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.15), inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+.bz-pf-trigger:focus-visible { box-shadow: inset 0 0 0 1.5px var(--color-primary); }
+
+/* 1.4.94 (Oscar): the bottom dock takes the header's own background (true black in AMOLED, the night top
+   colour in other nights) and the same quiet hairline, so top and bottom read as one frame. */
+html.theme-amoled .pod-dock { background-color: var(--color-bg) !important; border-top-color: color-mix(in srgb, var(--color-border) 70%, transparent) !important; }
+html.theme-dark .pod-dock { background-color: var(--nv-top) !important; border-top-color: color-mix(in srgb, var(--color-border) 70%, transparent) !important; }
