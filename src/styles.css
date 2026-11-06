@@ -3166,3 +3166,19 @@ html:is(.theme-dark, .theme-amoled) .bz-dialog-actions button:is(.btn-hecho-owe,
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--hb) 48%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.05) !important;
 }
 html:is(.theme-dark, .theme-amoled) .bz-dialog-actions button:is(.btn-hecho-owe, .btn-hecho-abono).bz-hb:hover { background-color: color-mix(in oklab, var(--hb) 28%, #111113) !important; }
+
+/* 1.4.97 Ajustes › Notificaciones (Android app only): status rows with one action, switches, test row.
+   Labels and subs wrap (never an ellipsis); one action per row, same pill as the time picker. */
+.aj-notif .aj-num-label, .aj-notif .aj-num-sub { white-space: normal; overflow: visible; text-overflow: clip; text-wrap: pretty; }
+.aj-act { flex-shrink: 0; height: 2.35rem; min-width: 5.6rem; padding: 0 1rem; border-radius: 999px; font-size: .92rem; font-weight: 700;
+  color: color-mix(in srgb, var(--color-primary) 82%, var(--color-fg)); background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 34%, transparent); transition: transform .14s ease, background-color .2s ease; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.aj-act:active { transform: scale(.96); }
+.aj-act:disabled { filter: saturate(0); opacity: .55; cursor: default; }
+.aj-ok { display: inline-flex; align-items: center; gap: .3rem; flex-shrink: 0; height: 2.35rem; padding: 0 .55rem; font-size: .88rem; font-weight: 700; color: var(--color-done, var(--color-primary)); }
+.aj-ok svg { width: 1.05rem; height: 1.05rem; animation: aj-ok-in .32s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes aj-ok-in { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .aj-ok svg { animation: none; } }
+.aj-link { font-weight: 700; color: var(--color-primary); text-decoration: underline; text-underline-offset: 2px; }
+.aj-notif-foot { display: flex; align-items: center; gap: .75rem; }
+@media (max-width: 380px) { .aj-notif .aj-act { min-width: 0; padding: 0 .8rem; font-size: .88rem; } .aj-notif .aj-num { gap: .5rem; } }

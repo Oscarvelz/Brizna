@@ -5,6 +5,7 @@ import { FingerprintOffer } from "@/components/fingerprint-offer";
 import { WeatherSky } from "@/components/weather-sky";
 import { NavHost } from "@/components/nav-host";
 import { TapBloom } from "@/components/tap-bloom";
+import { NativeHost } from "@/components/native-host";
 
 export const Route = createRootRoute({
   component: () => (
@@ -15,6 +16,7 @@ export const Route = createRootRoute({
       <FingerprintOffer />
       <NavHost />
       <TapBloom />
+      <NativeHost />
     </AppProviders>
   ),
 });

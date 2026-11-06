@@ -31,7 +31,7 @@ function chain(method: string) {
         catch (e) { trace?.push(["err", String(fn).slice(0, 60), String(e)]); throw e; }
         finally { if (method === "POST") { G.__bzInPost -= 1; G.__bzWriteEpoch += 1; } }
         trace?.push(["end", String(fn).slice(0, 60), Date.now() - t0]);
-        if (method === "POST") { await flushDb(); markDirty(); }
+        if (method === "POST") { await flushDb(); markDirty(); if (typeof window !== "undefined") window.dispatchEvent(new Event("bz-data-write")); }
         // Server functions returned JSON; keep the same shapes (Dates -> strings).
         return out === undefined ? undefined : JSON.parse(JSON.stringify(out));
       };

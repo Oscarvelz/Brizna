@@ -1,5 +1,9 @@
 // Fingerprint / face unlock with the phone's own biometrics (WebAuthn platform authenticator).
 // Works offline: the check happens on the device, nothing is sent anywhere.
+// 1.4.97: inside the Android app (WebView, no WebAuthn) the phone's own BiometricPrompt does the check instead; the
+// "away for longer than" rule (lockAfter, default 60 min) is the same.
+import { inAndroidApp, nativeAuth, nativeCanAuth } from "@/spa/native";
+const NATIVE = "native";
 const KEY = (uid: string) => `brizna.lock.${uid}`;
 
 function b64(buf: ArrayBuffer) {
@@ -16,6 +20,7 @@ function rand(n: number) {
 }
 
 export async function lockSupported(): Promise<boolean> {
+  if (inAndroidApp()) return nativeCanAuth();
   try {
     if (!window.PublicKeyCredential || !window.isSecureContext) return false;
     return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
@@ -29,6 +34,11 @@ export function lockCredential(uid: string): string | null {
 }
 
 export async function enableLock(uid: string, email: string): Promise<boolean> {
+  if (inAndroidApp()) {
+    if (!(await nativeAuth())) return false;
+    localStorage.setItem(KEY(uid), NATIVE);
+    return true;
+  }
   const cred = (await navigator.credentials.create({
     publicKey: {
       challenge: rand(32),
@@ -52,6 +62,8 @@ export function disableLock(uid: string) {
 export async function unlock(uid: string): Promise<boolean> {
   const id = lockCredential(uid);
   if (!id) return true;
+  if (inAndroidApp()) return nativeAuth();
+  if (id === NATIVE) return true; // set in the Android app; a browser never shares its storage, so this is only a safety net
   const got = await navigator.credentials.get({
     publicKey: {
       challenge: rand(32),

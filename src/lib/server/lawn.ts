@@ -6632,3 +6632,64 @@ export const exportCenterData = createServerFn({ method: "GET" })
       before: { jobs: intId(before[0]?.n), value: money(before[0]?.v) },
     };
   });
+
+/* ---------- 1.4.97: Brizna for Android (reminders + the Hoy widget) ---------- */
+
+export type NativePlanCut = { name: string; time: string | null; rain: boolean };
+export type NativePlan = {
+  today: string;
+  days: { date: string; cuts: NativePlanCut[]; done: number }[];
+  pay: { name: string; day: number; balance: number }[];
+  overdue: string[];
+  risk: string[];
+  outstanding: number;
+};
+
+/** What the Android app needs to schedule its reminders and fill its widget: the next 8 days of open cuts (route
+ *  order), today's done count, who pays on which day of the month, late cuts, Alto riesgo and the Por cobrar total.
+ *  Read-only; only ever called inside the Android app. */
+export const getNativePlan = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<NativePlan> => {
+    await ensureScheduleForUser(context.userId);
+    const sql = await getSql();
+    const today = todayISO();
+    const jobs = await loadJobsForIds(context.userId, today);
+    const days: NativePlan["days"] = [];
+    for (let i = 0; i <= 8; i += 1) {
+      const date = addDaysISO(today, i);
+      const open = jobs.filter((j) => j.status === "pending" && j.scheduledDate === date);
+      days.push({
+        date,
+        cuts: open.map((j) => ({
+          name: j.clientName,
+          time: j.arrivalTime,
+          rain: Boolean(j.originDate && j.originDate < date && /lluvia|rain/i.test(j.postponeReason ?? "")),
+        })),
+        done: jobs.filter((j) => j.status === "done" && j.scheduledDate === date).length,
+      });
+    }
+    const overdue = jobs.filter((j) => j.computedStatus === "late").map((j) => j.clientName);
+    const payRows = await sql.query<{ name: string; pay_due_day: unknown; balance: unknown }>(
+      `select name, pay_due_day, balance from clients
+        where user_id = $1 and is_active = true and blacklisted = false and pay_due_day is not null
+        order by name`,
+      [context.userId],
+    );
+    const riskIds = await highRiskClientIds(context.userId, today);
+    const riskRows = riskIds.size
+      ? await sql.query<{ name: string }>(`select name from clients where user_id = $1 and id = any($2::int[]) order by balance desc`, [
+          context.userId,
+          [...riskIds],
+        ])
+      : [];
+    const owed = await sql.query<{ total: unknown }>(`select coalesce(sum(balance),0) as total from clients where user_id = $1`, [context.userId]);
+    return {
+      today,
+      days,
+      pay: payRows.map((r) => ({ name: r.name, day: intId(r.pay_due_day), balance: money(r.balance) })),
+      overdue,
+      risk: riskRows.map((r) => r.name),
+      outstanding: money(owed[0]?.total),
+    };
+  });

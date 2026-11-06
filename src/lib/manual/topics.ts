@@ -1699,6 +1699,34 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         terms: [["Avisos", "Alerts"]],
       },
       {
+        id: "notificaciones",
+        title: ["Notificaciones", "Notifications"],
+        sum: ["Avisos de la app de Android, aunque Brizna esté cerrada.", "Alerts from the Android app, even with Brizna closed."],
+        what: [
+          "Solo en la app de Android: avisos de cortes, pagos, atrasos y lluvia que llegan con Brizna cerrada.",
+          "Android app only: alerts for cuts, payments, late work, and rain that arrive with Brizna closed.",
+        ],
+        how: [
+          "Toca Permitir en Avisos del teléfono.\nToca Proteger en Ahorro de batería, para que Android no los frene.\nEnciende o apaga cada tipo y elige la hora del aviso de la noche.\nProbar manda un aviso en 5 segundos: cierra la app y espera.\nEl widget Hoy (cortes de hoy, el próximo cliente y Por cobrar) se pone desde la pantalla de inicio: mantén pulsado, Widgets, Brizna.",
+          "Tap Allow on Phone alerts.\nTap Protect on Battery saving, so Android does not hold them back.\nTurn each kind on or off and pick the evening alert time.\nTest sends an alert in 5 seconds: close the app and wait.\nThe Hoy widget (today's cuts, the next client, and To collect) goes on the home screen: press and hold, Widgets, Brizna.",
+        ],
+        calc: [
+          "Cortes de mañana: la noche antes, a tu hora (7:00 p. m. de siempre), con los nombres en el orden de la ruta.\nDías de pago: 7:30 a. m. del día del mes en que paga cada cliente; quien paga el 31 avisa el último día del mes.\nAtrasados y Alto riesgo: 7:30 a. m., con los cortes que siguen abiertos y los clientes en riesgo.\nParada por lluvia: 7:30 a. m. del día al que pasaron esos patios.\nBrizna rehace la lista cada vez que la abres o cambias algo, y el teléfono la guarda aunque se reinicie.",
+          "Tomorrow's cuts: the night before, at your time (7:00 PM by default), with the names in route order.\nPay days: 7:30 AM on the day of the month each client pays; someone who pays on the 31st is reminded on the month's last day.\nLate and high risk: 7:30 AM, with the cuts still open and the clients at risk.\nRain stop: 7:30 AM on the day those yards moved to.\nBrizna rebuilds the list each time you open it or change something, and the phone keeps it even after a restart.",
+        ],
+        example: [
+          "El jueves paras por lluvia y los patios pasan al viernes. Esa noche a las 7:00 llega Mañana: 6 cortes, con 3 que vienen de la lluvia. El viernes a las 7:30 a. m. llega otro con esos tres nombres, sin abrir Brizna.",
+          "On Thursday you stop for rain and the yards move to Friday. That night at 7:00 comes Tomorrow: 6 cuts, with 3 coming from the rain. Friday at 7:30 AM another one lists those three names, without opening Brizna.",
+        ],
+        cases: [
+          "No llegan: revisa Permitir y Proteger; en Samsung añade Brizna a las apps que nunca se suspenden.\nCambias un corte después del aviso: el aviso ya salió, el de mañana usa lo nuevo.\nEn la computadora o en el navegador no hay este apartado.",
+          "They don't arrive: check Allow and Protect; on Samsung add Brizna to the never sleeping apps.\nYou change a cut after the alert: that alert already went out, tomorrow's uses the change.\nOn a computer or in the browser this section does not exist.",
+        ],
+        related: ["recordatorios", "hoy"],
+        go: { to: "/ajustes", focus: "aj-notificaciones", where: ["Ajustes, Notificaciones", "Settings, Notifications"] },
+        terms: [["Notificaciones", "Notifications"], ["Widget", "Widget"]],
+      },
+      {
         id: "exportar",
         title: ["Exportar e imprimir", "Export and print"],
         sum: ["Un informe en PDF, hoja de cálculo o papel.", "A report as a PDF, a worksheet, or on paper."],

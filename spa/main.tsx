@@ -25,6 +25,12 @@ import { setKeepCopy, startSync } from "@/spa/sync";
 import { signOutHere } from "@/spa/session";
 import { Locked, Login, Splash } from "@/spa/login";
 import { warmPglite } from "@/spa/pg-warm";
+import { inAndroidApp, startNative } from "@/spa/native";
+
+// 1.4.97 Brizna for Android: back, bars, downloads, share and print bridges (nothing happens in a browser).
+startNative();
+// The app's storage is its own (a new device to the Nube): the first sign-in says where the clients come from.
+const FIRST_OPEN_NOTE = "Primera vez en la app: entra con tu cuenta y tus clientes bajan de la Nube. Si no usas la Nube, entra y restaura una copia en Ajustes\u00a0›\u00a0Copia de seguridad.";
 
 // Tiny Buffer stand-in for the two report exports that used Node's Buffer.
 const g = globalThis as any;
@@ -146,7 +152,7 @@ function Gate() {
   if (!booted && !user) return <Splash />;
   if (recovery) return <Login recovery />;
   if (!user || expired) {
-    return <Login note={expired ? "Tu sesión venció. Entra de nuevo para sincronizar; tus datos siguen en este equipo. / Your session expired: sign in again to sync." : undefined} />;
+    return <Login note={expired ? "Tu sesión venció. Entra de nuevo para sincronizar; tus datos siguen en este equipo. / Your session expired: sign in again to sync." : inAndroidApp() && !lastUser() ? FIRST_OPEN_NOTE : undefined} />;
   }
   if (!open) return <Locked failed={failed} onOpen={() => void tryUnlock()} onSignOut={() => void signOutHere()} />;
   // The early-opened database belongs to someone else: reload so this account opens its own.

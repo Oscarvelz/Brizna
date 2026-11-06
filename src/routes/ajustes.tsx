@@ -2,7 +2,7 @@ import { Masonry } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScrollTop } from "@/components/scroll-top";
 import { createFileRoute } from "@tanstack/react-router";
-import { Bell, Check, ChevronDown, ChevronsUpDown, CalendarRange, Clock, FlaskConical, Download, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
+import { BatteryCharging, Bell, BellRing, Check, ChevronDown, ChevronsUpDown, CalendarRange, Clock, FlaskConical, Download, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell, SignOutControl, TitleSearch } from "@/components/app-shell";
@@ -20,6 +20,9 @@ import { Input, Label, NativeSelect } from "@/components/ui/input";
 import { PickerField } from "@/components/ui/picker-field";
 import { SettingsOrderButton } from "@/components/settings-order-button";
 import { useAjustesRank } from "@/lib/ajustes-order";
+import { inAndroidApp, native, nativeNotifyStatus, type NativeNotifyStatus } from "@/spa/native";
+import { MORNING, readNotifyPrefs, writeNotifyPrefs, type NotifyPrefs } from "@/lib/native-plan";
+import { refreshNativeSoon } from "@/components/native-host";
 import { useUndo } from "@/lib/undo";
 import { UserManual } from "@/components/user-manual";
 import { addDaysISO, todayISO } from "@/lib/dates";
@@ -342,6 +345,10 @@ function AjustesPage() {
   }
 
   async function toggleReminders(next: boolean) {
+    if (next && inAndroidApp()) {
+      toast(tx("En la app, los avisos están en Notificaciones, justo debajo.", "In the app, alerts live in Notifications, just below."));
+      return;
+    }
     if (next) {
       if (!(await requestNotificationPermission())) {
         toast.error(
@@ -748,6 +755,8 @@ function AjustesPage() {
           </NativeSelect>
         </SettingFold>
 
+        {inAndroidApp() ? <NotifyFold query={query} /> : null}
+
         <SeasonBlock settings={settings} query={query} />
 
         <SettingFold
@@ -983,6 +992,154 @@ function AjustesPage() {
       </Masonry>
     </AppShell>
   );
+}
+
+/* 1.4.97 Brizna for Android only: local reminders, battery protection and the Hoy widget. */
+function NotifyFold({ query }: { query: string }) {
+  const tx = useTx();
+  const rank = useAjustesRank("aj-recordatorios");
+  const [prefs, setPrefs] = useState<NotifyPrefs>(() => readNotifyPrefs());
+  const [st, setSt] = useState<NativeNotifyStatus | null>(() => nativeNotifyStatus());
+  useEffect(() => {
+    const read = () => setSt(nativeNotifyStatus());
+    window.addEventListener("briznanative-status", read);
+    document.addEventListener("visibilitychange", read);
+    const t = window.setInterval(read, 4000);
+    return () => { window.removeEventListener("briznanative-status", read); document.removeEventListener("visibilitychange", read); window.clearInterval(t); };
+  }, []);
+  if (query && !smartHit(query, "notificaciones avisos recordatorios bateria batería alarma widget hoy notifications battery")) return null;
+  const n = native();
+  const set = (patch: Partial<NotifyPrefs>) => {
+    const next = { ...prefs, ...patch };
+    setPrefs(next);
+    writeNotifyPrefs(next);
+    refreshNativeSoon(300);
+  };
+  const allowed = st?.permission === "granted";
+  const anyOn = prefs.cuts || prefs.pay || prefs.risk || prefs.rain;
+  const morning = formatClock(MORNING, tx);
+  const types: { key: "cuts" | "pay" | "risk" | "rain"; label: string; sub: string }[] = [
+    { key: "cuts", label: tx("Cortes de mañana", "Tomorrow's cuts"), sub: tx("La noche antes, a tu hora", "The night before, at your hour") },
+    { key: "pay", label: tx("Días de pago", "Pay days"), sub: tx(`El día que pagan, ${morning}`, `On their pay day, ${morning}`) },
+    { key: "risk", label: tx("Atrasados y Alto riesgo", "Late and high risk"), sub: tx(`Cada mañana que haya, ${morning}`, `Each morning there are any, ${morning}`) },
+    { key: "rain", label: tx("Parada por lluvia", "Rain stop"), sub: tx(`El día al que pasaron, ${morning}`, `The day they moved to, ${morning}`) },
+  ];
+  const nextLine = st?.next ? nextWhen(st.next, tx) : null;
+  return (
+    <Fold
+      id="aj-notificaciones"
+      forceOpen={Boolean(query)}
+      className="mb-4 aj-notif"
+      chevronEnd
+      style={{ order: rank }}
+      titleClassName="text-lg"
+      contentClassName="px-4 pb-4"
+      title={
+        <span className="flex items-center gap-2">
+          <BellRing className="size-5 shrink-0 text-primary" />
+          {tx("Notificaciones", "Notifications")}
+        </span>
+      }
+      hint={<Hint topic="notificaciones" />}
+      peek={<span className={`text-xs font-semibold ${allowed && anyOn ? "text-primary" : "text-muted"}`}>{allowed && anyOn ? tx("encendidas", "on") : tx("apagadas", "off")}</span>}
+    >
+      <div className="aj-nums">
+        <div className="aj-num">
+          <Bell className="size-5 shrink-0 text-primary" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="aj-num-label">{tx("Avisos del teléfono", "Phone alerts")}</p>
+            <p className="aj-num-sub">{allowed ? tx("Permitidos", "Allowed") : tx("Brizna aún no puede avisarte", "Brizna can't alert you yet")}</p>
+          </div>
+          {allowed ? <span className="aj-ok"><Check aria-hidden />{tx("Listo", "Ready")}</span> : (
+            <button type="button" className="aj-act" onClick={() => n?.requestNotify?.()}>{tx("Permitir", "Allow")}</button>
+          )}
+        </div>
+        <div className="aj-num">
+          <BatteryCharging className="size-5 shrink-0 text-primary" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="aj-num-label">{st?.battery ? tx("Protegida de la batería", "Safe from battery saving") : tx("Ahorro de batería", "Battery saving")}</p>
+            <p className="aj-num-sub">{st?.battery ? tx("Llegan aunque no la abras", "They arrive even if closed") : tx("Puede frenar los avisos", "It may hold alerts back")}</p>
+          </div>
+          {st?.battery ? <span className="aj-ok"><Check aria-hidden />{tx("Listo", "Ready")}</span> : (
+            <button type="button" className="aj-act" onClick={() => n?.requestBattery?.()}>{tx("Proteger", "Protect")}</button>
+          )}
+        </div>
+        {st && !st.exact ? (
+          <div className="aj-num">
+            <Clock className="size-5 shrink-0 text-primary" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="aj-num-label">{tx("Hora exacta", "Exact time")}</p>
+              <p className="aj-num-sub">{tx("Si no, llegan algo tarde", "Otherwise they come late")}</p>
+            </div>
+            <button type="button" className="aj-act" onClick={() => n?.requestExact?.()}>{tx("Permitir", "Allow")}</button>
+          </div>
+        ) : null}
+      </div>
+      {st?.samsung ? (
+        <p className="aj-fine mt-2">
+          {tx("En Samsung, añade Brizna en Ajustes\u00a0›\u00a0Batería\u00a0›\u00a0Apps que nunca se suspenden.", "On Samsung, add Brizna in Settings\u00a0›\u00a0Battery\u00a0›\u00a0Never sleeping apps.")}{" "}
+          <button type="button" className="aj-link" onClick={() => n?.openAppSettings?.()}>{tx("Abrir", "Open")}</button>
+        </p>
+      ) : null}
+
+      <div className="aj-nums mt-3">
+        {types.map((t) => (
+          <div className="aj-num" key={t.key}>
+            <div className="min-w-0 flex-1">
+              <p className="aj-num-label">{t.label}</p>
+              <p className="aj-num-sub">{t.sub}</p>
+            </div>
+            <button type="button" role="switch" aria-checked={prefs[t.key]} aria-label={t.label} onClick={() => set({ [t.key]: !prefs[t.key] })} className={cn("aj-switch", prefs[t.key] && "is-on")}>
+              <span />
+            </button>
+          </div>
+        ))}
+        <div className="aj-num">
+          <div className="min-w-0 flex-1">
+            <p className="aj-num-label">{tx("Aviso de la noche", "Evening alert")}</p>
+            <p className="aj-num-sub">{tx("Para los cortes de mañana", "For tomorrow's cuts")}</p>
+          </div>
+          <PickerField type="time" className="aj-pf" value={prefs.hour.padStart(5, "0")} onChange={(e) => e.target.value && set({ hour: e.target.value.slice(0, 5) })} required />
+        </div>
+      </div>
+      <div className="aj-notif-foot mt-3">
+        <p className="aj-fine min-w-0 flex-1">
+          {!allowed ? tx("Permite los avisos para recibirlos.", "Allow alerts to get them.") : nextLine ? tx(`Próximo: ${nextLine}`, `Next: ${nextLine}`) : anyOn ? tx("Sin avisos pendientes por ahora.", "No alerts due for now.") : tx("Todos los avisos están apagados.", "All alerts are off.")}
+        </p>
+        <button
+          type="button"
+          className="aj-act"
+          disabled={!allowed}
+          onClick={() => {
+            n?.testNotify?.(5000, tx("Brizna: aviso de prueba", "Brizna: test alert"), tx("Así llegan los avisos, aunque Brizna esté cerrada.", "This is how alerts arrive, even with Brizna closed."));
+            toast(tx("Llega en 5 segundos. Puedes cerrar la app.", "It arrives in 5 seconds. You can close the app."));
+          }}
+        >
+          {tx("Probar", "Test")}
+        </button>
+      </div>
+      <p className="aj-fine mt-2">{tx("Widget Hoy: mantén pulsado el inicio\u00a0›\u00a0Widgets\u00a0›\u00a0Brizna.", "Hoy widget: hold the home screen\u00a0›\u00a0Widgets\u00a0›\u00a0Brizna.")}</p>
+    </Fold>
+  );
+}
+
+function formatClock(hhmm: string, tx: (es: string, en: string) => string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const pm = h! >= 12;
+  const h12 = h! % 12 || 12;
+  return `${h12}:${String(m).padStart(2, "0")}\u00a0${pm ? tx("p.\u00a0m.", "PM") : tx("a.\u00a0m.", "AM")}`;
+}
+
+function nextWhen(ms: number, tx: (es: string, en: string) => string): string {
+  const d = new Date(ms);
+  const now = new Date();
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(d) - day(now)) / 86_400_000);
+  const clock = formatClock(`${d.getHours()}:${d.getMinutes()}`, tx);
+  if (diff <= 0) return tx(`hoy, ${clock}`, `today, ${clock}`);
+  if (diff === 1) return tx(`mañana, ${clock}`, `tomorrow, ${clock}`);
+  const wd = d.toLocaleDateString(tx("es", "en"), { weekday: "long" });
+  return tx(`${wd}, ${clock}`, `${wd}, ${clock}`);
 }
 
 function SeasonBlock({ settings, query }: { settings?: AppSettings; query: string }) {
