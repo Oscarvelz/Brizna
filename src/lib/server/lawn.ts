@@ -6021,7 +6021,7 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
 export type AdvisorStatus = "pass" | "warn" | "fail";
 export type AdvisorPillarKey = "cobro" | "precios" | "clientes" | "agenda" | "fijo";
 export type AdvisorGroupKey = "estrellas" | "fieles" | "riesgo" | "morosos" | "ocasionales";
-export type AdvisorActionKind = "collect" | "raise" | "winback" | "fill" | "plans" | "season";
+export type AdvisorActionKind = "collect" | "raise" | "winback" | "fill" | "plans" | "season" | "unbooked" | "trend" | "time";
 export type AdvisorTip = "thank" | "raise" | "keep" | "call" | "collect" | "plan";
 export type AdvisorRiskReason = "gap" | "moves" | "paused" | "stopped";
 
@@ -6048,9 +6048,20 @@ export type AdvisorPerson = {
   suggested: number | null;
   gainYear: number;
   tip: AdvisorTip;
+  /** 1.5.01: owes money and has never paid anything (at least 2 cuts done). */
+  neverPaid?: boolean;
+  /** 1.5.01: pending cuts in the next 14 days. */
+  booked?: number;
+  /** 1.5.01: median minutes per visit (from Hecho times), when measured on 3+ visits. */
+  minutes?: number | null;
+  /** 1.5.01: what one hour at their yard pays (price ÷ measured time). */
+  hourly?: number | null;
+  /** 1.5.01: date of their next booked visit. */
+  nextCut?: string | null;
 };
 
-export type AdvisorWeekday = { dow: number; load: number; capacity: number };
+/** seen (1.5.01): with no goals, on how many days of the last 90 you reached `capacity` on this weekday. */
+export type AdvisorWeekday = { dow: number; load: number; capacity: number; seen?: number };
 
 export type AdvisorAction = {
   kind: AdvisorActionKind;
@@ -6072,6 +6083,19 @@ export type AdvisorAction = {
   restAvg?: number;
   months?: { m: number; value: number }[];
   monthsLeft?: number;
+  /** 1.5.01 collect: cuts booked in the next 14 days with clients who owe overdue; how many never paid. */
+  bookedLate?: number;
+  neverPaid?: number;
+  /** 1.5.01 fill: working days in the next 14 with no yard at all; whether room comes from goals or from proven days. */
+  empty?: string[];
+  emptyOnly?: boolean;
+  roomFrom?: "goals" | "proven" | "booked";
+  /** 1.5.01 trend: 8 weekly totals (oldest first) and the two 4-week averages. */
+  weeks?: { start: string; value: number }[];
+  nowAvg?: number;
+  beforeAvg?: number;
+  /** 1.5.01 time: your median $ per hour across measured yards. */
+  medianHourly?: number;
 };
 
 export type AdvisorPillar = {
@@ -6168,6 +6192,35 @@ export const getAdvisor = createServerFn({ method: "GET" })
       `select business_name from app_settings where user_id = $1`,
       [uid],
     );
+    // 1.5.01: what each day of the last 90 really was (yards done, money), the next 14 days booked by client,
+    // the Hecho times (time per yard) and the clock-ins of those days, and the days marked off.
+    const to14 = addDaysISO(today, 14);
+    const dayRows = await sql.query<{ d: unknown; n: unknown; v: unknown }>(
+      `select scheduled_date as d, count(*) as n, coalesce(sum(amount),0) as v from jobs
+        where user_id = $1 and status = 'done' and scheduled_date >= $2::date and scheduled_date < $3::date
+        group by 1`,
+      [uid, from90, today],
+    );
+    const soonRows = await sql.query<{ d: unknown; client_id: unknown }>(
+      `select scheduled_date as d, client_id from jobs
+        where user_id = $1 and status = 'pending' and scheduled_date >= $2::date and scheduled_date <= $3::date`,
+      [uid, today, to14],
+    );
+    const timeRows = await sql.query<{ client_id: unknown; d: unknown; t: unknown }>(
+      `select client_id, scheduled_date as d, to_char(completed_at, 'HH24:MI') as t from jobs
+        where user_id = $1 and status = 'done' and completed_at is not null
+          and scheduled_date >= $2::date and scheduled_date <= $3::date and completed_at::date = scheduled_date
+        order by scheduled_date, completed_at`,
+      [uid, from90, today],
+    );
+    const clockRows = await sql.query<{ d: unknown; clock_in: string | null }>(
+      `select work_date as d, clock_in from work_days where user_id = $1 and work_date >= $2::date and work_date <= $3::date and clock_in is not null`,
+      [uid, from90, today],
+    );
+    const offRows = await sql.query<{ d: unknown }>(
+      `select off_date as d from week_off_dates where user_id = $1 and off_date >= $2::date and off_date <= $3::date`,
+      [uid, today, to14],
+    );
     const prefs = await loadPrefs(uid).catch(() => null);
     const business = settingRows[0]?.business_name || DEFAULT_BUSINESS_NAME;
 
@@ -6187,6 +6240,47 @@ export const getAdvisor = createServerFn({ method: "GET" })
     }
     const typicalAll = median(regularsActive.map((c) => c.pricePerCut)) || avgCut;
     const typicalFor = (v: number) => typicalBy.get(bucketOf(v)) ?? typicalAll;
+
+    // 1.5.01 time per yard: gap between one Hecho and the one before it that day (the first yard counts from the
+    // clock-in). Only gaps of 10–180 min count (marking several at once, or a lunch break, would lie).
+    const hm = (t: unknown) => {
+      const m = /^(\d{1,2}):(\d{2})/.exec(String(t ?? ""));
+      return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+    };
+    const clockIn = new Map(clockRows.map((r) => [asIsoDate(r.d), hm(r.clock_in)]));
+    const gapsBy = new Map<number, number[]>();
+    let lastDay = "";
+    let lastT: number | null = null;
+    for (const row of timeRows) {
+      const d = asIsoDate(row.d);
+      const t = hm(row.t);
+      if (t == null) continue;
+      if (d !== lastDay) {
+        lastDay = d;
+        lastT = clockIn.get(d) ?? null;
+      }
+      if (lastT != null) {
+        const gap = t - lastT;
+        if (gap >= 10 && gap <= 180) {
+          const id = intId(row.client_id);
+          const list = gapsBy.get(id) ?? [];
+          list.push(gap);
+          gapsBy.set(id, list);
+        }
+      }
+      lastT = t;
+    }
+    const minutesOf = (id: number) => {
+      const g = gapsBy.get(id);
+      return g && g.length >= 3 ? Math.round(median(g)) : null;
+    };
+    const bookedBy = new Map<number, number>();
+    const bookedDays = new Set<string>();
+    for (const row of soonRows) {
+      const id = intId(row.client_id);
+      bookedBy.set(id, (bookedBy.get(id) ?? 0) + 1);
+      bookedDays.add(asIsoDate(row.d));
+    }
 
     const people: AdvisorPerson[] = [];
     const lostIds = new Set<number>();
@@ -6239,6 +6333,14 @@ export const getAdvisor = createServerFn({ method: "GET" })
         suggested,
         gainYear,
         tip: "keep",
+        neverPaid: c.balance > 0 && !c.lastPaidDate && c.collectedTotal <= 0 && intId(s?.done12) >= 2,
+        booked: bookedBy.get(c.id) ?? 0,
+        minutes: minutesOf(c.id),
+        hourly: (() => {
+          const m = minutesOf(c.id);
+          return m && c.pricePerCut > 0 ? Math.round((c.pricePerCut / m) * 60) : null;
+        })(),
+        nextCut: c.nextCutDate,
       });
     }
     const lateIds = new Set(clients.filter((c) => c.balance > 0 && c.payTier !== "al_dia").map((c) => c.id));
@@ -6282,10 +6384,41 @@ export const getAdvisor = createServerFn({ method: "GET" })
     const workDays = [1, 2, 3, 4, 5, 6].filter((d) => !excluded.has(d));
     const busiest = Math.max(0, ...workDays.map((d) => loads.get(d) ?? 0));
     const hasGoals = workDays.some((d) => Number(goals[String(d)]) > 0);
-    const week: AdvisorWeekday[] = workDays.map((d) => ({
+    // 1.5.01: without goals, a day's room is what you have proven you can do: the most yards you finished on one
+    // day of the week in the last 90 days (a real day of yours), not the busiest day still to come.
+    // A level counts only once you reached it on 2 of those days: one odd day (a backlog marked Hecho at once,
+    // a one-off crew day) would promise room you do not really have. With a single day worked, that day is it.
+    const daysBy = new Map<number, number[]>();
+    for (const row of dayRows) {
+      const d = asIsoDate(row.d);
+      const dow = new Date(`${d}T12:00:00`).getDay();
+      const list = daysBy.get(dow) ?? [];
+      list.push(intId(row.n));
+      daysBy.set(dow, list);
+    }
+    const provenBy = new Map<number, number>();
+    const provenSeen = new Map<number, number>();
+    for (const [dow, list] of daysBy) {
+      list.sort((a, b) => b - a);
+      const level = list.length >= 2 ? list[1] : list[0];
+      provenBy.set(dow, level);
+      provenSeen.set(dow, list.filter((n) => n >= level).length);
+    }
+    const provenTop = Math.max(0, ...provenBy.values());
+    const hasProven = provenTop >= 3;
+    // A weekday with nothing done in 90 days and nothing booked is a day you do not work, not an empty day to fill.
+    const weekDays = hasProven && !hasGoals
+      ? workDays.filter((d) => (provenBy.get(d) ?? 0) > 0 || (loads.get(d) ?? 0) > 0)
+      : workDays;
+    const week: AdvisorWeekday[] = weekDays.map((d) => ({
       dow: d,
       load: Math.round((loads.get(d) ?? 0) * 10) / 10,
-      capacity: Number(goals[String(d)]) > 0 ? Number(goals[String(d)]) : Math.round(busiest),
+      capacity: Number(goals[String(d)]) > 0
+        ? Number(goals[String(d)])
+        : hasProven
+          ? provenBy.get(d) ?? 0
+          : Math.round(busiest),
+      seen: !hasGoals && hasProven ? provenSeen.get(d) ?? 0 : undefined,
     }));
     const weekLoad = week.reduce((t, w) => t + w.load, 0);
     const weekCap = week.reduce((t, w) => t + w.capacity, 0);
@@ -6302,7 +6435,9 @@ export const getAdvisor = createServerFn({ method: "GET" })
       // Biggest first, nudged up by age (capped at 6 months so an old $50 never beats a fresh $2,000).
       const urgency = (p: AdvisorPerson) => p.balance * (1 + Math.min(180, p.payDays ?? 0) / 90);
       const ranked = [...morosos.people].sort((a, b) => urgency(b) - urgency(a));
-      actions.push({ kind: "collect", impact: Math.round(owedLate), per: "now", weight: owedLate * 1.2, people: ranked.slice(0, 8), count: morosos.count });
+      const bookedLate = morosos.people.reduce((t, p) => t + (p.booked ?? 0), 0);
+      const neverPaid = morosos.people.filter((p) => p.neverPaid).length;
+      actions.push({ kind: "collect", impact: Math.round(owedLate), per: "now", weight: owedLate * 1.2, people: ranked.slice(0, 8), count: morosos.count, bookedLate, neverPaid });
     }
     const raise = people.filter((p) => p.suggested && !lostIds.has(p.id)).sort((a, b) => b.gainYear - a.gainYear);
     if (raise.length) {
@@ -6314,18 +6449,86 @@ export const getAdvisor = createServerFn({ method: "GET" })
       const atStake = risky.people.reduce((t, p) => t + p.monthly, 0) * 12;
       if (atStake > 0) actions.push({ kind: "winback", impact: Math.round(atStake), per: "year", weight: atStake * 0.5, people: risky.people.slice(0, 8), count: risky.count });
     }
-    if (lightDays.length && avgCut > 0) {
-      const light = lightDays[0];
+    // 1.5.01: working days in the next 2 weeks with no yard at all (not Sunday, not a weekday you never work, not a day off).
+    const offSet = new Set(offRows.map((r) => asIsoDate(r.d)));
+    const empty: string[] = [];
+    for (let i = 1; i <= 14; i++) {
+      const d = addDaysISO(today, i);
+      const dow = new Date(`${d}T12:00:00`).getDay();
+      if (dow === 0 || excluded.has(dow) || !weekDays.includes(dow) || offSet.has(d) || bookedDays.has(d)) continue;
+      empty.push(d);
+    }
+    const roomFrom: "goals" | "proven" | "booked" = hasGoals ? "goals" : hasProven ? "proven" : "booked";
+    if ((lightDays.length || empty.length >= 2) && avgCut > 0 && activeRegular.length > 0) {
+      const light = lightDays[0] ?? [...week].sort((a, b) => (b.capacity - b.load) - (a.capacity - a.load))[0];
       const room = lightDays.reduce((t, w) => t + (w.capacity - w.load), 0);
-      const perYear = Math.round(Math.floor(light.capacity - light.load) * avgCut * 4.33 * 12);
+      const perYear = Math.round(Math.max(1, Math.floor(light.capacity - light.load)) * avgCut * 4.33 * 12);
       const heavy = [...week].filter((w) => w.capacity > 0 && w.load > w.capacity * 1.15).sort((a, b) => (b.load - b.capacity) - (a.load - a.capacity))[0];
-      actions.push({ kind: "fill", impact: perYear, per: "year", weight: perYear * 0.2, people: [], count: Math.round(room), week, light, heavy, avgPrice: Math.round(avgCut) });
+      const emptyOnly = lightDays.length === 0;
+      const perDay = median(dayRows.map((r) => intId(r.n))) || 1;
+      const impact = emptyOnly ? Math.round(empty.length * perDay * avgCut) : perYear;
+      if (light) actions.push({ kind: "fill", impact, per: emptyOnly ? "now" : "year", weight: emptyOnly ? impact * 0.8 : perYear * 0.2 + empty.length * avgCut * 2, people: [], count: Math.round(room), week, light, heavy, avgPrice: Math.round(avgCut), empty, roomFrom, emptyOnly });
+    }
+    // 1.5.01: regular clients with no visit booked in the next 4 weeks (they drop out of the route without a sound).
+    const unbooked = people
+      .filter((p) => p.kind === "regular" && !p.reason && !lostIds.has(p.id))
+      .filter((p) => {
+        const c = clients.find((x) => x.id === p.id);
+        if (!c || !c.isActive || c.servicePaused) return false;
+        const wait = Math.max(28, Math.round((p.every || 14) * 1.5), (c.seasonEvery ?? 0) + 7);
+        return !p.nextCut || daysBetween(today, p.nextCut) > wait;
+      })
+      .sort((a, b) => b.monthly - a.monthly);
+    if (unbooked.length) {
+      const atStake = unbooked.reduce((t, p) => t + p.monthly, 0) * 12;
+      if (atStake > 0) actions.push({ kind: "unbooked", impact: Math.round(atStake), per: "year", weight: atStake * 0.45, people: unbooked.slice(0, 8), count: unbooked.length });
+    }
+    // 1.5.01: money of the last 4 weeks against the 4 before (blocks of 7 days ending yesterday).
+    {
+      const blocks = Array.from({ length: 8 }, (_, i) => ({ start: addDaysISO(today, -56 + i * 7), value: 0 }));
+      for (const row of dayRows) {
+        const d = asIsoDate(row.d);
+        const back = daysBetween(d, today);
+        if (back < 1 || back > 56) continue;
+        const idx = 7 - Math.floor((back - 1) / 7);
+        if (idx >= 0 && idx < 8) blocks[idx].value += money(row.v);
+      }
+      const beforeAvg = blocks.slice(0, 4).reduce((t, b) => t + b.value, 0) / 4;
+      const nowAvg = blocks.slice(4).reduce((t, b) => t + b.value, 0) / 4;
+      const firstWork = dayRows.map((r) => asIsoDate(r.d)).sort()[0];
+      if (firstWork && firstWork <= blocks[0].start && beforeAvg >= 150 && nowAvg <= beforeAvg * 0.85) {
+        const lost = Math.round((beforeAvg - nowAvg) * 4);
+        actions.push({ kind: "trend", impact: lost, per: "now", weight: lost * 0.5, people: [], count: 0, weeks: blocks.map((b) => ({ start: b.start, value: Math.round(b.value) })), nowAvg: Math.round(nowAvg), beforeAvg: Math.round(beforeAvg) });
+      }
+    }
+    // 1.5.01: price against time. One hour at each measured yard (price ÷ minutes per visit) vs your middle hour.
+    {
+      const measured = people.filter((p) => p.hourly && p.kind === "regular" && !lostIds.has(p.id));
+      const medianHourly = median(measured.map((p) => p.hourly ?? 0));
+      if (measured.length >= 5 && medianHourly > 0) {
+        const slow = measured
+          .filter((p) => !p.suggested && !p.reason && !isLate(p) && (p.hourly ?? 0) < medianHourly * 0.7 && p.minutes)
+          .map((p) => {
+            const fair = (medianHourly * (p.minutes ?? 0)) / 60;
+            const target = Math.max(p.price + 5, Math.min(Math.round(fair / 5) * 5, Math.floor((p.price * 1.25) / 5) * 5));
+            const visits = 30.44 / Math.max(1, p.every || 14);
+            return { ...p, suggested: target, gainYear: Math.round((target - p.price) * visits * 12) };
+          })
+          .filter((p) => p.gainYear > 0)
+          .sort((a, b) => b.gainYear - a.gainYear);
+        if (slow.length) {
+          const gain = slow.reduce((t, p) => t + p.gainYear, 0);
+          if (gain >= 60) actions.push({ kind: "time", impact: gain, per: "year", weight: gain * 1.3, people: slow.slice(0, 8), count: slow.length, medianHourly: Math.round(medianHourly) });
+        }
+      }
     }
     const occasional = groupList.find((g) => g.key === "ocasionales")!;
-    if (occasional.count > 0) {
+    // 1.5.01: only one-time clients you worked for in the last 12 months (an offer to someone from years ago is noise).
+    const recentOnce = occasional.people.filter((p) => p.value12 > 0);
+    if (recentOnce.length > 0) {
       const plan = Math.round(typicalBy.get("b") ?? typicalAll);
       const each = Math.round(plan * (30.44 / 14) * 12);
-      if (each > 0) actions.push({ kind: "plans", impact: each, per: "each", weight: each * Math.max(1, Math.floor(occasional.count / 3)) * 0.35, people: occasional.people.slice(0, 8), count: occasional.count, typical: plan });
+      if (each > 0) actions.push({ kind: "plans", impact: each, per: "each", weight: each * Math.max(1, Math.floor(recentOnce.length / 3)) * 0.35, people: recentOnce.slice(0, 8), count: recentOnce.length, typical: plan });
     }
     // Winter (Nov–Feb in Miami): grass grows slower, visits drop.
     const monthVals = monthRows.map((r) => ({ ym: r.ym, m: Number(r.ym.slice(5, 7)), value: money(r.v) })).filter((r) => r.value > 0);
@@ -6356,7 +6559,8 @@ export const getAdvisor = createServerFn({ method: "GET" })
     const cobroScore = clamp01((rate - 0.6) / 0.35) * (1 - Math.min(0.6, lateShare));
     const cobroStatus: AdvisorStatus = rate >= 0.92 && lateShare <= 0.1 ? "pass" : rate >= 0.8 && lateShare <= 0.25 ? "warn" : "fail";
     const eligible = activeRegular.filter((p) => p.years >= 1 && p.price > 0 && !p.reason);
-    const under = eligible.filter((p) => p.price <= typicalFor(30.44 / Math.max(1, p.every)) * 0.9).length;
+    // 1.5.01: the same clients the Subir precios card names (not late, not paused, a real suggestion), so check and card agree.
+    const under = eligible.filter((p) => p.suggested != null).length;
     const underShare = eligible.length ? under / eligible.length : 0;
     const priceStatus: AdvisorStatus = underShare <= 0.1 ? "pass" : underShare <= 0.25 ? "warn" : "fail";
     const leaving = risky.count;
@@ -6396,7 +6600,7 @@ export const getAdvisor = createServerFn({ method: "GET" })
       owedLate,
       monthly,
       hasGoals,
-      actions: actions.slice(0, 3),
+      actions,
       pillars,
       groups: groupList,
     };

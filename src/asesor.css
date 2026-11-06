@@ -298,3 +298,12 @@ html.theme-dark .as-bang, html.theme-amoled .as-bang { color: #ff7a72; -webkit-t
 @keyframes as-sway { from { transform: rotate(calc(var(--sw-a, 2.5deg) * -1)); } to { transform: rotate(var(--sw-a, 2.5deg)); } }
 .as-hero.is-still .as-sway, [hidden] .as-sway { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .as-sway { animation: none !important; } }
+
+/* 1.5.01: new tips inside the same cards. */
+.as-steps-note { display: block; margin-top: 0.1rem; font-size: 0.72rem; font-weight: 500; color: var(--color-muted); font-variant-numeric: tabular-nums; }
+.as-trend .as-season-col.is-now .as-season-bar i { background: var(--color-late); }
+.as-trend .as-season-col.is-now .as-season-m { color: var(--color-late); }
+.as-trend .as-season-m { font-variant-numeric: tabular-nums; }
+.as-check-do { margin-top: 0.55rem; }
+.as-check-do > * { flex: 0 1 auto; }
+.as-season.as-trend { grid-template-columns: repeat(8, minmax(0, 1fr)); }

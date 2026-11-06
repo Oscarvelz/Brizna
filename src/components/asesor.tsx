@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
   CalendarPlus,
+  CalendarX2,
   Check,
   ChevronDown,
   ChevronRight,
@@ -15,7 +16,9 @@ import {
   Snowflake,
   Sprout,
   Star,
+  TrendingDown,
   TrendingUp,
+  Timer,
   Wallet,
   X,
   type LucideIcon,
@@ -56,6 +59,10 @@ const DAY_PLURAL: Record<number, [string, string]> = {
   5: ["viernes", "Fridays"],
   6: ["sábados", "Saturdays"],
 };
+const DAY_ONE: Record<number, [string, string]> = {
+  0: ["domingo", "Sunday"], 1: ["lunes", "Monday"], 2: ["martes", "Tuesday"], 3: ["miércoles", "Wednesday"],
+  4: ["jueves", "Thursday"], 5: ["viernes", "Friday"], 6: ["sábado", "Saturday"],
+};
 const DAY_SHORT: Record<number, [string, string]> = {
   0: ["Do", "Su"], 1: ["Lu", "Mo"], 2: ["Ma", "Tu"], 3: ["Mi", "We"], 4: ["Ju", "Th"], 5: ["Vi", "Fr"], 6: ["Sá", "Sa"],
 };
@@ -64,9 +71,17 @@ const MONTH_LETTER_EN = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", 
 
 /* ------------------------------------------------------------------ messages */
 
-function messageFor(p: AdvisorPerson, business: string, tx: Tx, plan?: number): string {
+function messageFor(p: AdvisorPerson, business: string, tx: Tx, plan?: number, kind?: AdvisorAction["kind"]): string {
   const n = firstName(p.name);
-  switch (p.tip) {
+  // 1.5.01: a client with no visit booked gets a booking message; a yard priced under its time gets the raise one.
+  if (kind === "unbooked") {
+    return tx(
+      `Hola ${n}, te saluda ${business}. No tengo tu próximo corte en la agenda. ¿Te lo dejo para esta semana o la próxima?`,
+      `Hi ${n}, this is ${business}. I don't have your next cut on the schedule. Shall I book you for this week or next?`,
+    );
+  }
+  const tip = kind === "time" ? "raise" : p.tip;
+  switch (tip) {
     case "collect":
       return tx(
         `Hola ${n}, te saluda ${business}. Tienes un saldo pendiente de ${usd(p.balance)} por el servicio del patio. ¿Me lo puedes pagar esta semana? ¡Muchas gracias!`,
@@ -258,6 +273,9 @@ const ACT_ICON: Record<AdvisorAction["kind"], LucideIcon> = {
   fill: CalendarPlus,
   plans: Repeat,
   season: Snowflake,
+  unbooked: CalendarX2,
+  trend: TrendingDown,
+  time: Timer,
 };
 const ACT_TONE: Record<AdvisorAction["kind"], string> = {
   collect: "is-late",
@@ -266,6 +284,9 @@ const ACT_TONE: Record<AdvisorAction["kind"], string> = {
   fill: "is-done",
   plans: "is-abono",
   season: "is-money",
+  unbooked: "is-hold",
+  trend: "is-late",
+  time: "is-money",
 };
 
 function reasonLine(p: AdvisorPerson, tx: Tx): string {
@@ -277,10 +298,15 @@ function reasonLine(p: AdvisorPerson, tx: Tx): string {
 
 function tipLine(p: AdvisorPerson, tx: Tx, plan: number): string {
   switch (p.tip) {
-    case "collect":
-      return p.payDays != null
-        ? tx(`Debe ${usd(p.balance)} ${ago(p.payDays, tx)}. Cóbrale.`, `Owes ${usd(p.balance)} ${ago(p.payDays, tx)}. Collect.`)
-        : tx(`Debe ${usd(p.balance)}. Cóbrale.`, `Owes ${usd(p.balance)}. Collect.`);
+    case "collect": {
+      const base = p.neverPaid
+        ? tx(`Nunca te ha pagado: debe ${usd(p.balance)}.`, `Has never paid you: owes ${usd(p.balance)}.`)
+        : p.payDays != null
+          ? tx(`Debe ${usd(p.balance)} ${ago(p.payDays, tx)}.`, `Owes ${usd(p.balance)} ${ago(p.payDays, tx)}.`)
+          : tx(`Debe ${usd(p.balance)}.`, `Owes ${usd(p.balance)}.`);
+      const soon = p.booked ? tx(` Tiene ${p.booked} ${plural(p.booked, "corte agendado", "cortes agendados")} en 2 semanas: cobra antes de ir.`, ` ${p.booked} ${plural(p.booked, "cut", "cuts")} booked in 2 weeks: collect before you go.`) : tx(" Cóbrale.", " Collect.");
+      return base + soon;
+    }
     case "call":
       return `${reasonLine(p, tx)} ${tx("Escríbele.", "Message them.")}`;
     case "raise":
@@ -302,8 +328,8 @@ export function actionWords(a: AdvisorAction, r: AdvisorReading, tx: Tx): { titl
       return {
         title: others > 0 ? tx(`Cobra a ${top.name} y ${others} más`, `Collect from ${top.name} and ${others} more`) : tx(`Cobra a ${top.name}`, `Collect from ${top.name}`),
         line: tx(
-          `${a.count} ${plural(a.count, "cliente te debe", "clientes te deben")} con atraso. Empieza por quien más debe y hace más tiempo.`,
-          `${a.count} ${plural(a.count, "client owes", "clients owe")} you, overdue. Start with the biggest and oldest.`,
+          `${a.count} ${plural(a.count, "cliente te debe", "clientes te deben")} con atraso${a.neverPaid ? ` (${a.neverPaid} nunca te ${plural(a.neverPaid, "ha", "han")} pagado)` : ""}. Empieza por quien más debe y hace más tiempo.${a.bookedLate ? ` Tienes ${a.bookedLate} ${plural(a.bookedLate, "corte agendado", "cortes agendados")} con ellos en 2 semanas: cobra antes de volver.` : ""}`,
+          `${a.count} ${plural(a.count, "client owes", "clients owe")} you, overdue${a.neverPaid ? ` (${a.neverPaid} never paid)` : ""}. Start with the biggest and oldest.${a.bookedLate ? ` You have ${a.bookedLate} ${plural(a.bookedLate, "cut", "cuts")} booked with them in 2 weeks: collect before you go back.` : ""}`,
         ),
         unit: tx("por cobrar", "to collect"),
         sign: "",
@@ -321,7 +347,7 @@ export function actionWords(a: AdvisorAction, r: AdvisorReading, tx: Tx): { titl
     case "winback":
       return {
         title: tx(`Recupera a ${a.count} ${plural(a.count, "cliente que se aleja", "clientes que se alejan")}`, `Win back ${a.count} ${plural(a.count, "client who is drifting", "clients drifting away")}`),
-        line: `${top.name}: ${reasonLine(top, tx).toLowerCase()} ${tx("Un mensaje a tiempo los trae de vuelta.", "A timely message brings them back.")}`,
+        line: `${top.name}: ${reasonLine(top, tx).toLowerCase()} ${a.count === 1 ? tx("Un mensaje a tiempo lo trae de vuelta.", "A timely message brings them back.") : tx("Un mensaje a tiempo los trae de vuelta.", "A timely message brings them back.")}`,
         unit: tx("en juego al año", "at stake a year"),
         sign: "",
       };
@@ -330,9 +356,31 @@ export function actionWords(a: AdvisorAction, r: AdvisorReading, tx: Tx): { titl
       const day = tx(...DAY_PLURAL[l.dow]);
       const n = Math.round(l.load);
       const h = a.heavy;
+      const empty = a.empty ?? [];
+      const seen = l.seen ?? 0;
+      const roomWord = a.roomFrom === "proven"
+        ? seen >= 2
+          ? tx(` (lo hiciste en ${seen} ${DAY_PLURAL[l.dow][0]} de los últimos 90 días)`, ` (you did it on ${seen} ${DAY_PLURAL[l.dow][1]} in the last 90 days)`)
+          : tx(` (lo hiciste un ${DAY_ONE[l.dow][0]} de los últimos 90 días)`, ` (you did it one ${DAY_ONE[l.dow][1]} in the last 90 days)`)
+        : "";
+      const emptyNames = empty.slice(0, 6).map((d) => `${tx(...DAY_SHORT[new Date(`${d}T12:00:00`).getDay()])} ${Number(d.slice(8, 10))}`).join(", ");
+      const emptyLine = empty.length >= 2
+        ? tx(` En las próximas 2 semanas, ${empty.length} días de trabajo no tienen ningún patio (${emptyNames}).`, ` In the next 2 weeks, ${empty.length} work days have no yard at all (${emptyNames}).`)
+        : "";
+      if (a.emptyOnly) {
+        return {
+          title: tx(`Llena ${empty.length} días vacíos`, `Fill ${empty.length} empty days`),
+          line: tx(
+            `En las próximas 2 semanas, ${empty.length} días de trabajo no tienen ningún patio (${emptyNames}). Pasa ahí clientes de tus días llenos o busca clientes nuevos cerca de la ruta.`,
+            `In the next 2 weeks, ${empty.length} work days have no yard at all (${emptyNames}). Move clients there from your full days or find new ones near the route.`,
+          ),
+          unit: tx("en 2 semanas, si los llenas", "in 2 weeks, once full"),
+          sign: "+",
+        };
+      }
       return {
         title: tx(`Llena tus ${day}`, `Fill your ${day}`),
-        line: h
+        line: (h
           ? tx(
               `Tienes ${n} ${plural(n, "patio", "patios")} y caben ${l.capacity}, mientras los ${DAY_PLURAL[h.dow][0]} van con ${Math.round(h.load)}. Pasa algunos a ese día y llena el resto con clientes nuevos.`,
               `You have ${n} ${plural(n, "yard", "yards")} and room for ${l.capacity}, while ${DAY_PLURAL[h.dow][1]} carry ${Math.round(h.load)}. Move some there and fill the rest with new clients.`,
@@ -340,19 +388,55 @@ export function actionWords(a: AdvisorAction, r: AdvisorReading, tx: Tx): { titl
           : tx(
               `Tienes ${n} ${plural(n, "patio", "patios")} y caben ${l.capacity}. Busca clientes cerca de la ruta de ese día.`,
               `You have ${n} ${plural(n, "yard", "yards")} and room for ${l.capacity}. Look for clients near that day's route.`,
-            ),
+            )).replace(tx(`caben ${l.capacity}`, `room for ${l.capacity}`), tx(`caben ${l.capacity}${roomWord}`, `room for ${l.capacity}${roomWord}`)) + emptyLine,
         unit: tx("al año, si lo llenas", "a year, once full"),
         sign: "+",
       };
     }
     case "plans":
       return {
-        title: tx(`Ofrece un plan fijo a ${a.count} ${plural(a.count, "cliente de una vez", "clientes de una vez")}`, `Offer a regular plan to ${a.count} one-time ${plural(a.count, "client", "clients")}`),
+        title: tx(`Ofrece un plan fijo a ${a.count} ${plural(a.count, "cliente que vino una vez", "clientes que vinieron una vez")}`, `Offer a regular plan to ${a.count} one-time ${plural(a.count, "client", "clients")}`),
         line: tx(
           `Cada 2 semanas por ${usd(a.typical ?? 0)}. Cada uno que diga que sí deja unos ${usd(a.impact)} al año.`,
           `Every 2 weeks for ${usd(a.typical ?? 0)}. Each one who says yes brings about ${usd(a.impact)} a year.`,
         ),
         unit: tx("por cada sí", "per yes"),
+        sign: "+",
+      };
+    case "unbooked":
+      return {
+        title: others > 0
+          ? tx(`Agenda a ${top.name} y ${others} más`, `Book ${top.name} and ${others} more`)
+          : tx(`Agenda a ${top.name}`, `Book ${top.name}`),
+        line: tx(
+          `${a.count} ${plural(a.count, "cliente fijo no tiene", "clientes fijos no tienen")} ninguna visita en las próximas 4 semanas. Sin fecha, se caen de la ruta sin que te des cuenta.`,
+          `${a.count} regular ${plural(a.count, "client has", "clients have")} no visit in the next 4 weeks. With no date, they drop off the route unnoticed.`,
+        ),
+        unit: tx("en juego al año", "at stake a year"),
+        sign: "",
+      };
+    case "trend": {
+      const drop = a.beforeAvg ? Math.round((1 - (a.nowAvg ?? 0) / a.beforeAvg) * 100) : 0;
+      const m = Number(r.today.slice(5, 7));
+      const winter = m === 11 || m === 12 || m === 1 || m === 2;
+      return {
+        title: tx(`Tus semanas bajaron ${drop}%`, `Your weeks dropped ${drop}%`),
+        line: tx(
+          `Las últimas 4 semanas dejaron ${usd(a.nowAvg ?? 0)} por semana; las 4 de antes, ${usd(a.beforeAvg ?? 0)}.${winter ? " Parte es la temporada: el pasto crece menos." : ""} Mira qué días quedaron flojos y llénalos.`,
+          `The last 4 weeks brought ${usd(a.nowAvg ?? 0)} a week; the 4 before, ${usd(a.beforeAvg ?? 0)}.${winter ? " Part of it is the season: grass grows slower." : ""} See which days went light and fill them.`,
+        ),
+        unit: tx("menos en 4 semanas", "less in 4 weeks"),
+        sign: "",
+      };
+    }
+    case "time":
+      return {
+        title: tx(`${a.count} ${plural(a.count, "patio paga", "patios pagan")} poco por su tiempo`, `${a.count} ${plural(a.count, "yard pays", "yards pay")} little for the time`),
+        line: tx(
+          `Tu hora vale ${usd(a.medianHourly ?? 0)} (lo del medio de tus patios medidos). ${top.name}: ${top.minutes} min por visita, de un Hecho al siguiente, por ${usd(top.price)}. Te deja ${usd(top.hourly ?? 0)} la hora. Sube su corte de ${usd(top.price)} a ${usd(top.suggested ?? top.price)}.`,
+          `Your hour is worth ${usd(a.medianHourly ?? 0)} (the middle of your measured yards). ${top.name}: ${top.minutes} min per visit, from one Done to the next, for ${usd(top.price)}. That leaves you ${usd(top.hourly ?? 0)} an hour. Raise the cut from ${usd(top.price)} to ${usd(top.suggested ?? top.price)}.`,
+        ),
+        unit: tx("al año", "a year"),
         sign: "+",
       };
     default:
@@ -433,6 +517,25 @@ function SeasonViz({ months }: { months: { m: number; value: number }[] }) {
   );
 }
 
+/** 1.5.01: eight weeks of money (7-day blocks ending yesterday); the last four in full colour. */
+function TrendViz({ weeks }: { weeks: { start: string; value: number }[] }) {
+  const tx = useTx();
+  const arrived = useArrived();
+  const max = Math.max(1, ...weeks.map((x) => x.value));
+  return (
+    <div className="as-season as-trend" role="img" aria-label={tx("Dinero por semana, 8 semanas", "Money per week, 8 weeks")}>
+      {weeks.map((x, i) => (
+        <div key={x.start} className={cn("as-season-col", i >= 4 && "is-now")}>
+          <span className="as-season-bar">
+            <i style={{ height: `${(x.value / max) * 100}%`, transform: `scaleY(${arrived ? 1 : 0})`, transitionDelay: `${i * 45}ms` }} />
+          </span>
+          <span className="as-season-m">{Number(x.start.slice(8, 10))}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PlanViz() {
   const tx = useTx();
   return (
@@ -495,6 +598,28 @@ function ActionViz({ a }: { a: AdvisorAction }) {
       />
     );
   }
+  if (a.kind === "time") {
+    return (
+      <ul className="as-steps">
+        {a.people.slice(0, 3).map((p, i) => (
+          <li key={p.id} style={{ "--d": `${i * 90}ms` } as CSSProperties}>
+            <span className="as-bars-name">{p.name}<small className="as-steps-note">{p.minutes} min · {usd(p.hourly ?? 0)}{tx("/h", "/h")}</small></span>
+            <span className="as-price is-old">{usd(p.price)}</span>
+            <ChevronRight aria-hidden className="as-steps-arrow" />
+            <span className="as-price is-new">{usd(p.suggested ?? p.price)}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (a.kind === "unbooked") {
+    return (
+      <Bars
+        rows={a.people.slice(0, 3).map((p) => ({ key: p.id, label: p.name, value: p.monthly, text: `${usd(p.monthly)}${tx("/mes", "/mo")}`, note: p.nextCut ? undefined : tx("sin fecha", "no date"), tone: "is-hold" }))}
+      />
+    );
+  }
+  if (a.kind === "trend" && a.weeks) return <TrendViz weeks={a.weeks} />;
   if (a.kind === "fill" && a.week && a.light) return <WeekViz week={a.week} light={a.light} />;
   if (a.kind === "plans") return <PlanViz />;
   if (a.kind === "season" && a.months) return <SeasonViz months={a.months} />;
@@ -517,9 +642,11 @@ function ActionDo({ a, r }: { a: AdvisorAction; r: AdvisorReading }) {
     a.kind === "collect" ? tx(`Cobrar a ${firstName(p.name)}`, `Ask ${firstName(p.name)} to pay`)
     : a.kind === "raise" ? tx(`Avisar a ${firstName(p.name)}`, `Tell ${firstName(p.name)}`)
     : a.kind === "plans" ? tx(`Ofrecer a ${firstName(p.name)}`, `Offer ${firstName(p.name)}`)
+    : a.kind === "unbooked" ? tx(`Agendar a ${firstName(p.name)}`, `Book ${firstName(p.name)}`)
+    : a.kind === "time" ? tx(`Avisar a ${firstName(p.name)}`, `Tell ${firstName(p.name)}`)
     : tx(`Escribir a ${firstName(p.name)}`, `Message ${firstName(p.name)}`);
   const message = top ? (
-    <MessageComposer phone={top.phone!} name={top.name} initialText={messageFor(top, r.business, tx, plan)} label={msgLabel(top)} className="as-btn-main" />
+    <MessageComposer phone={top.phone!} name={top.name} initialText={messageFor(top, r.business, tx, plan, a.kind)} label={msgLabel(top)} className="as-btn-main" />
   ) : null;
   if (a.kind === "collect") {
     return (
@@ -536,6 +663,14 @@ function ActionDo({ a, r }: { a: AdvisorAction; r: AdvisorReading }) {
       <div className="as-do">
         <Link to="/nuevo" className="as-btn as-btn-solid"><CalendarPlus aria-hidden />{tx("Añadir cliente", "Add client")}</Link>
         <Link to="/agenda" className="as-btn">{tx("Ver agenda", "Open schedule")}</Link>
+      </div>
+    );
+  }
+  if (a.kind === "trend") {
+    return (
+      <div className="as-do">
+        <Link to="/agenda" className="as-btn as-btn-solid"><CalendarPlus aria-hidden />{tx("Ver agenda", "Open schedule")}</Link>
+        <Link to="/cobros" className="as-btn"><Wallet aria-hidden />{tx("Abrir Cobros", "Open Payments")}</Link>
       </div>
     );
   }
@@ -560,7 +695,23 @@ function ActionDo({ a, r }: { a: AdvisorAction; r: AdvisorReading }) {
   );
 }
 
-function PeopleList({ people, r, plan, extra }: { people: AdvisorPerson[]; r: AdvisorReading; plan: number; extra?: number }) {
+/** 1.5.01: inside an action's list, each person's line speaks to that action (its own number). */
+function kindTip(p: AdvisorPerson, kind: AdvisorAction["kind"] | undefined, tx: Tx): string | null {
+  if (kind === "unbooked") {
+    return p.nextCut
+      ? tx(`Próxima visita: ${p.nextCut.slice(8, 10)}/${p.nextCut.slice(5, 7)}. Deja ${usd(p.monthly)} al mes.`, `Next visit: ${p.nextCut.slice(5, 7)}/${p.nextCut.slice(8, 10)}. Brings ${usd(p.monthly)} a month.`)
+      : tx(`Sin próxima visita. Deja ${usd(p.monthly)} al mes.`, `No next visit. Brings ${usd(p.monthly)} a month.`);
+  }
+  if (kind === "time" && p.minutes) {
+    return tx(
+      `${p.minutes} min por ${usd(p.price)} = ${usd(p.hourly ?? 0)} la hora. Sube a ${usd(p.suggested ?? p.price)} (+${usd(p.gainYear)} al año).`,
+      `${p.minutes} min for ${usd(p.price)} = ${usd(p.hourly ?? 0)} an hour. Raise to ${usd(p.suggested ?? p.price)} (+${usd(p.gainYear)} a year).`,
+    );
+  }
+  return null;
+}
+
+function PeopleList({ people, r, plan, extra, kind }: { people: AdvisorPerson[]; r: AdvisorReading; plan: number; extra?: number; kind?: AdvisorAction["kind"] }) {
   const tx = useTx();
   return (
     <ul className="as-people">
@@ -568,9 +719,9 @@ function PeopleList({ people, r, plan, extra }: { people: AdvisorPerson[]; r: Ad
         <li key={p.id} style={{ "--d": `${i * 50}ms` } as CSSProperties}>
           <GoClient id={p.id} className="as-person">
             <span className="as-person-name">{p.name}</span>
-            <span className="as-person-tip">{tipLine(p, tx, plan)}</span>
+            <span className="as-person-tip">{kindTip(p, kind, tx) ?? tipLine(p, tx, plan)}</span>
           </GoClient>
-          {p.phone ? <MessageComposer phone={p.phone} name={p.name} compact tight initialText={messageFor(p, r.business, tx, plan)} /> : null}
+          {p.phone ? <MessageComposer phone={p.phone} name={p.name} compact tight initialText={messageFor(p, r.business, tx, plan, kind)} /> : null}
           <GoClient id={p.id} className="as-person-go"><ChevronRight aria-hidden /></GoClient>
         </li>
       ))}
@@ -609,7 +760,7 @@ function ActionCard({ a, i, r }: { a: AdvisorAction; i: number; r: AdvisorReadin
             {open ? tx("Ocultar", "Hide") : tx(`Ver a quién (${a.count})`, `See who (${a.count})`)}
             <ChevronDown aria-hidden className={cn(open && "rotate-180")} />
           </button>
-          {open ? <PeopleList people={a.people} r={r} plan={a.typical ?? 0} extra={a.count - listed} /> : null}
+          {open ? <PeopleList people={a.people} r={r} plan={a.typical ?? 0} extra={a.count - listed} kind={a.kind} /> : null}
         </>
       ) : null}
     </li>
@@ -619,15 +770,24 @@ function ActionCard({ a, i, r }: { a: AdvisorAction; i: number; r: AdvisorReadin
 function Actions({ r }: { r: AdvisorReading }) {
   const tx = useTx();
   const acts = useRef<HTMLOListElement | null>(null);
+  const [all, setAll] = useState(false);
   const width = usePageWidth();
   useMasonry(acts, width >= 1150 ? 3 : width >= 600 ? 2 : 0, 11, true);
   return (
     <section data-spot="asesor-pasos" className="as-card" data-masonry-full style={{ "--i": 1 } as CSSProperties}>
       <h3 className="as-h3"><Leafy />{tx("Lo que yo haría ahora", "What I'd do now")}</h3>
       {r.actions.length ? (
-        <ol ref={acts} className="as-acts">
-          {r.actions.map((a, i) => <ActionCard key={a.kind} a={a} i={i} r={r} />)}
-        </ol>
+        <>
+          <ol ref={acts} className="as-acts">
+            {r.actions.slice(0, all ? undefined : 3).map((a, i) => <ActionCard key={a.kind} a={a} i={i} r={r} />)}
+          </ol>
+          {r.actions.length > 3 ? (
+            <button type="button" className="as-more" aria-expanded={all} onClick={() => setAll((v) => !v)}>
+              {all ? tx("Ver solo las tres primeras", "Show only the first three") : tx(`Ver ${r.actions.length - 3} ${plural(r.actions.length - 3, "consejo más", "consejos más")}`, `See ${r.actions.length - 3} more ${plural(r.actions.length - 3, "tip", "tips")}`)}
+              <ChevronDown aria-hidden className={cn(all && "rotate-180")} />
+            </button>
+          ) : null}
+        </>
       ) : (
         <p className="as-calm"><Check aria-hidden />{tx("Nada urgente. Todo está en orden: sigue así.", "Nothing urgent. Everything is in order: keep it up.")}</p>
       )}
@@ -760,7 +920,7 @@ export function pillarWords(p: AdvisorPillar, r: AdvisorReading, tx: Tx): { line
         line: tx(`Llena al ${p.a}%: ${p.b} de ${p.c} patios por semana.`, `${p.a}% full: ${p.b} of ${p.c} yards a week.`),
         more: r.hasGoals
           ? tx("Se mide contra tu meta de patios por día (Esfuerzo de la semana), con lo agendado en las próximas 4 semanas.", "Measured against your daily yard goal (Week effort), using the next 4 weeks of schedule.")
-          : tx("Se mide contra tu día más lleno. Pon tu meta de patios por día en Esfuerzo de la semana y lo mediré mejor.", "Measured against your busiest day. Set your daily yard goal in Week effort for a better reading."),
+          : tx("Se mide contra lo más que hiciste cada día de la semana al menos 2 veces en los últimos 90 días. Pon tu meta de patios por día en Esfuerzo de la semana y lo mediré mejor.", "Measured against the most you did on each weekday at least twice in the last 90 days. Set your daily yard goal in Week effort for a better reading."),
       };
     default:
       return {
@@ -774,6 +934,43 @@ export function pillarWords(p: AdvisorPillar, r: AdvisorReading, tx: Tx): { line
 }
 
 const STATUS_ICON = { pass: Check, warn: AlertTriangle, fail: X } as const;
+
+/** 1.5.01: every check ends in one tap that acts on it. */
+function CheckDo({ p, r }: { p: AdvisorPillar; r: AdvisorReading }) {
+  const tx = useTx();
+  const act = (k: AdvisorAction["kind"]) => r.actions.find((a) => a.kind === k);
+  if (p.key === "cobro") {
+    return (
+      <div className="as-do as-check-do">
+        <Link to="/cobros" search={{ view: "owing" }} hash="lista" className="as-btn"><Wallet aria-hidden />{tx("Abrir Cobros", "Open Payments")}</Link>
+      </div>
+    );
+  }
+  if (p.key === "agenda") {
+    return (
+      <div className="as-do as-check-do">
+        <Link to="/agenda" className="as-btn"><CalendarPlus aria-hidden />{tx("Ver agenda", "Open schedule")}</Link>
+      </div>
+    );
+  }
+  const who = p.key === "precios"
+    ? (act("raise") ?? act("time"))?.people[0]
+    : p.key === "clientes"
+      ? r.groups.find((g) => g.key === "riesgo")?.people[0] ?? act("unbooked")?.people[0]
+      : r.groups.find((g) => g.key === "ocasionales")?.people.find((x) => x.value12 > 0);
+  if (who) {
+    return (
+      <div className="as-do as-check-do">
+        <GoClient id={who.id} className="as-btn">{tx("Ver a", "Open")} {firstName(who.name)}<ChevronRight aria-hidden /></GoClient>
+      </div>
+    );
+  }
+  return (
+    <div className="as-do as-check-do">
+      <Link to="/clientes" className="as-btn">{tx("Ver clientes", "Open clients")}<ChevronRight aria-hidden /></Link>
+    </div>
+  );
+}
 
 function Checks({ r }: { r: AdvisorReading }) {
   const tx = useTx();
@@ -802,7 +999,12 @@ function Checks({ r }: { r: AdvisorReading }) {
                 <span className="as-check-meter" aria-hidden><i style={{ transform: `scaleX(${arrived ? Math.max(0.05, p.score) : 0})` }} /></span>
                 <ChevronDown aria-hidden className={cn("as-check-chev", isOpen && "rotate-180")} />
               </button>
-              {isOpen ? <p className="as-check-more">{w.more}</p> : null}
+              {isOpen ? (
+                <>
+                  <p className="as-check-more">{w.more}</p>
+                  <CheckDo p={p} r={r} />
+                </>
+              ) : null}
             </li>
           );
         })}
@@ -824,6 +1026,8 @@ function Glossary() {
     ["En riesgo", "At risk", "Lleva el doble de lo normal sin corte, está en pausa, lo dejó o cambia seguido.", "Twice the usual gap, paused, stopped, or often moved."],
     ["Ingreso fijo", "Fixed income", "Lo que tus clientes fijos dejan en un mes normal.", "What your regular clients bring in a normal month."],
     ["Al año", "A year", "Lo que suma en 12 meses si lo haces y el cliente sigue.", "What it adds up to in 12 months if you do it and the client stays."],
+    ["Tu hora", "Your hour", "Precio ÷ minutos por visita, medidos entre un Hecho y el anterior de ese día (o la hora de entrada). Cuenta con 3 visitas medidas o más.", "Price ÷ minutes per visit, measured between one Done and the one before it that day (or clock-in). Counts with 3 or more measured visits."],
+    ["Sin próxima visita", "No next visit", "Cliente fijo activo sin ningún corte agendado en las próximas 4 semanas.", "An active regular client with no cut booked in the next 4 weeks."],
   ];
   return (
     <section className="as-card as-words" style={{ "--i": 4 } as CSSProperties}>
