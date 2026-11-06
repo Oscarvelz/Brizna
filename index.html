@@ -45,7 +45,11 @@ meta.setAttribute("content",bar);
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" /></noscript>
     <style>
       /* 1.4.98 launch splash: the lawn grows, the sun (moon at night) rises, a breeze passes, Brizna rises.
-         Only HTML boxes animate transform/opacity, so it stays smooth while the app boots behind it. */
+         1.4.99 (smoothness): only transform and opacity animate, on about 24 layers made up front (will-change), so the
+         compositor runs every frame by itself while the app boots behind it. The bottom lawn is a few grouped SVG
+         strips (it was 63 blades = 126 layers, each with a clip-path mask), the breeze is a skew from the ground (base
+         never moves), blades are SVG shapes (no clip-path), letters wait for their font before they show (no swap jump),
+         and the app under it does not paint until it is ready. */
       html.bzs-on, html.bzs-on body { background: var(--bzs-ground, #000); }
       #bz-splash {
         --t: clamp(100px, 27vw, 148px);
@@ -54,8 +58,13 @@ meta.setAttribute("content",bar);
         position: fixed; inset: 0; z-index: 2147483000; display: grid; place-items: center;
         background: var(--ground); color: var(--ink); overflow: hidden; contain: strict;
         -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
-        transition: opacity 0.46s cubic-bezier(0.4, 0, 0.2, 1), transform 0.46s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: opacity 0.46s cubic-bezier(0.33, 1, 0.68, 1), transform 0.46s cubic-bezier(0.33, 1, 0.68, 1);
+        will-change: opacity, transform;
       }
+      /* the app under the splash does not paint (or raster) until its first screen is ready */
+      html.bzs-hold #root { visibility: hidden; }
+      #bz-splash :is(.bzs-glow, .bzs-halo, .bzs-orb, .bzs-sway, .bzs-sway > b, .bzs-word span, .bzs-biz, .bzs-mg, .bzs-mg > b) { will-change: transform, opacity; backface-visibility: hidden; }
+      #bz-splash svg { display: block; width: 100%; height: 100%; }
       #bz-splash.is-day { --ink: #173c25; --sub: #55695a; --glow: rgba(244, 196, 92, 0.34); --m1: rgba(47, 125, 73, 0.34); --m2: rgba(31, 106, 58, 0.42); --m3: rgba(63, 138, 85, 0.26); }
       #bz-splash.is-leaving { opacity: 0; transform: scale(1.025); pointer-events: none; }
       #bz-splash.is-quick { transition-duration: 0.22s; }
@@ -71,53 +80,81 @@ meta.setAttribute("content",bar);
       #bz-splash.is-night .bzs-orb { background: #eef1e6; box-shadow: 0 0 calc(var(--t) * 0.06) rgba(238, 241, 230, 0.55); }
       #bz-splash.is-night .bzs-orb::after { content: ""; position: absolute; left: 30%; top: -18%; width: 84%; height: 84%; border-radius: 50%; background: #1f6a3a; }
       .bzs-sway { bottom: 26.17%; transform-origin: 50% 100%; animation: bzs-breeze 0.8s ease-in-out forwards; }
-      .bzs-sway > b { display: block; width: 100%; height: 100%; background: #efe8d6; transform-origin: 50% 100%; transform: scaleY(0); animation: bzs-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+      .bzs-sway > b { display: block; width: 100%; height: 100%; fill: #efe8d6; transform-origin: 50% 100%; transform: scaleY(0); animation: bzs-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
       .bzs-a { left: 32.81%; width: 8.01%; height: 35.55%; animation-delay: 1.15s; }
-      .bzs-a > b { clip-path: polygon(0 100%, 39% 0, 100% 100%); animation-delay: 0.12s; }
+      .bzs-a > b { animation-delay: 0.12s; }
       .bzs-b { left: 46.88%; width: 9.18%; height: 47.27%; animation-delay: 1.22s; }
-      .bzs-b > b { clip-path: polygon(0 100%, 36.2% 0, 100% 100%); animation-delay: 0.22s; }
+      .bzs-b > b { animation-delay: 0.22s; }
       .bzs-c { left: 61.33%; width: 7.62%; height: 29.3%; animation-delay: 1.29s; }
-      .bzs-c > b { clip-path: polygon(0 100%, 41% 0, 100% 100%); animation-delay: 0.32s; }
+      .bzs-c > b { animation-delay: 0.32s; }
       .bzs-soil { left: 17.58%; top: 72.66%; width: 64.45%; height: 3.91%; border-radius: 99px; background: #efe8d6; }
-      .bzs-word { margin: calc(var(--t) * 0.2) 0 0; display: flex; font-family: Fraunces, Georgia, "Times New Roman", serif; font-weight: 600; font-size: clamp(2.9rem, 13.5vw, 4.5rem); line-height: 1; letter-spacing: -0.025em; color: var(--ink); }
+      .bzs-word { margin: calc(var(--t) * 0.2) 0 0; display: flex; font-family: Georgia, "Times New Roman", serif; font-weight: 600; font-size: clamp(2.9rem, 13.5vw, 4.5rem); line-height: 1; letter-spacing: -0.025em; color: var(--ink); }
       .bzs-word span { display: inline-block; opacity: 0; transform: translateY(0.3em); animation: bzs-letter 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-      .bzs-biz { margin: 0.85rem 0 0; max-width: min(22rem, 86vw); font-family: Figtree, system-ui, sans-serif; font-weight: 500; font-size: clamp(0.98rem, 3.9vw, 1.12rem); line-height: 1.3; letter-spacing: 0.01em; color: var(--sub); text-wrap: balance; opacity: 0; transform: translateY(6px); animation: bzs-fade 0.6s 1.35s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+      .bzs-biz { margin: 0.85rem 0 0; max-width: min(22rem, 86vw); font-family: system-ui, sans-serif; font-weight: 500; font-size: clamp(0.98rem, 3.9vw, 1.12rem); line-height: 1.3; letter-spacing: 0.01em; color: var(--sub); text-wrap: balance; opacity: 0; transform: translateY(6px); animation: bzs-fade 0.6s 1.35s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
       .bzs-meadow { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--mh, 96px) + env(safe-area-inset-bottom)); pointer-events: none; }
       .bzs-meadow::after { content: ""; position: absolute; left: 0; right: 0; bottom: env(safe-area-inset-bottom); height: 1px; background: var(--m2); opacity: 0.5; }
-      .bzs-meadow > i { position: absolute; bottom: env(safe-area-inset-bottom); display: block; transform-origin: 50% 100%; animation: bzs-breeze-soft 0.8s ease-in-out forwards; }
-      .bzs-meadow > i > b { display: block; width: 100%; height: 100%; transform-origin: 50% 100%; transform: scaleY(0); animation: bzs-grow 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+      #bz-splash.is-font .bzs-word { font-family: Fraunces, Georgia, "Times New Roman", serif; }
+      #bz-splash.is-font .bzs-biz { font-family: Figtree, system-ui, sans-serif; }
+      .bzs-mg { position: absolute; bottom: env(safe-area-inset-bottom); height: var(--mh, 96px); transform-origin: 50% 100%; animation: bzs-breeze-soft 0.8s ease-in-out forwards; }
+      .bzs-mg > b { display: block; width: 100%; height: 100%; transform-origin: 50% 100%; transform: scaleY(0); animation: bzs-grow 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
       @keyframes bzs-glow { to { opacity: 1; transform: none; } }
       @keyframes bzs-halo { to { opacity: 1; transform: none; } }
       @keyframes bzs-rise { to { opacity: 1; transform: none; } }
       @keyframes bzs-grow { to { transform: none; } }
       @keyframes bzs-breeze { 0% { transform: none; } 40% { transform: rotate(-7deg); } 75% { transform: rotate(2.5deg); } 100% { transform: none; } }
-      @keyframes bzs-breeze-soft { 0% { transform: none; } 40% { transform: rotate(-9deg); } 75% { transform: rotate(3deg); } 100% { transform: none; } }
+      /* the lawn bends from the ground like the old per-blade rotate(-9deg)/(3deg), as one skew per strip */
+      @keyframes bzs-breeze-soft { 0% { transform: none; } 40% { transform: skewX(9deg); } 75% { transform: skewX(-3deg); } 100% { transform: none; } }
       @keyframes bzs-letter { to { opacity: 1; transform: none; } }
       @keyframes bzs-fade { to { opacity: 1; transform: none; } }
+      /* 1.4.99 (Oscar): AMOLED at night only, a moonlit aura breathing very gently behind the logo and a few fireflies
+         (the in-app night fireflies' colour), drifting and pulsing slowly. Pre-rendered gradients and static glows;
+         only transform and opacity move. Reduced motion: the aura still, no fireflies. */
+      .bzs-aura { position: absolute; left: 50%; top: calc(var(--t) * 0.5); width: calc(var(--t) * 3.6); height: calc(var(--t) * 2.7); margin: calc(var(--t) * -1.35) 0 0 calc(var(--t) * -1.8); pointer-events: none;
+        opacity: 0; transform: scale(0.92); animation: bzs-aura-in 1.4s 0.5s cubic-bezier(0.33, 1, 0.68, 1) forwards; }
+      /* the breath is on its own layer (one animation per element keeps both on the compositor) */
+      .bzs-aura::before { content: ""; position: absolute; inset: 0; border-radius: 50%;
+        background: radial-gradient(closest-side, rgba(214, 228, 236, 0.15), rgba(150, 205, 175, 0.07) 48%, rgba(80, 160, 120, 0.03) 70%, transparent 100%);
+        opacity: 0.8; animation: bzs-aura 4.8s 1.9s ease-in-out infinite alternate; will-change: transform, opacity; }
+      @keyframes bzs-aura-in { to { opacity: 1; transform: none; } }
+      @keyframes bzs-aura { from { opacity: 0.8; transform: none; } to { opacity: 1; transform: scale(1.035); } }
+      .bzs-flies { position: absolute; inset: 0; pointer-events: none; }
+      .bzs-fly { position: absolute; width: 3.5px; height: 3.5px; border-radius: 50%; background: #f3f7b4; opacity: 0; pointer-events: none;
+        box-shadow: 0 0 6px 1.75px rgba(226, 240, 120, 0.72), 0 0 18px 5.5px rgba(200, 230, 90, 0.24);
+        animation-name: bzs-fly-a, bzs-fly-blink; animation-timing-function: ease-in-out, ease-in-out; animation-iteration-count: infinite, infinite; animation-direction: alternate, normal; animation-fill-mode: both, both; }
+      .bzs-fly:nth-child(2n) { width: 2.75px; height: 2.75px; animation-name: bzs-fly-b, bzs-fly-blink; }
+      @keyframes bzs-fly-a { 0% { transform: translate(0, 0); } 50% { transform: translate(14px, -18px); } 100% { transform: translate(-10px, -30px); } }
+      @keyframes bzs-fly-b { 0% { transform: translate(0, 0); } 50% { transform: translate(-16px, -10px); } 100% { transform: translate(8px, -26px); } }
+      @keyframes bzs-fly-blink { 0%, 100% { opacity: 0; } 35% { opacity: 0.35; } 55% { opacity: 0.9; } 75% { opacity: 0.4; } }
+      #bz-splash :is(.bzs-aura, .bzs-fly) { will-change: transform, opacity; }
+      #bz-splash.is-still .bzs-aura { opacity: 1; transform: none; }
+      #bz-splash.is-still .bzs-aura::before { animation: none; }
       #bz-splash.is-still *, #bz-splash.is-still *::after { animation: none !important; }
       #bz-splash.is-still :is(.bzs-glow, .bzs-halo, .bzs-orb, .bzs-word span, .bzs-biz) { opacity: 1; transform: none; }
       #bz-splash.is-still :is(.bzs-sway > b, .bzs-meadow b) { transform: none; }
+      #bz-splash.is-still * { will-change: auto; }
       #bz-splash.is-still.is-leaving { transform: none; }
     </style>
-    <script type="module" crossorigin src="./index-Df5TyaD9.js"></script>
+    <script type="module" crossorigin src="./index-BYuz1ruP.js"></script>
     <link rel="modulepreload" crossorigin href="./rolldown-runtime-hePW80VL.js">
   </head>
   <body>
     <div id="bz-splash" aria-hidden="true" hidden>
       <div class="bzs-lock">
+        <i class="bzs-aura" hidden></i>
         <i class="bzs-glow"></i>
         <div class="bzs-tile">
           <i class="bzs-halo"></i>
           <i class="bzs-orb"></i>
-          <i class="bzs-sway bzs-a"><b></b></i>
-          <i class="bzs-sway bzs-b"><b></b></i>
-          <i class="bzs-sway bzs-c"><b></b></i>
+          <i class="bzs-sway bzs-a"><b><svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="0,100 39,0 100,100"/></svg></b></i>
+          <i class="bzs-sway bzs-b"><b><svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="0,100 36.2,0 100,100"/></svg></b></i>
+          <i class="bzs-sway bzs-c"><b><svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="0,100 41,0 100,100"/></svg></b></i>
           <i class="bzs-soil"></i>
         </div>
         <h1 class="bzs-word"><span>B</span><span>r</span><span>i</span><span>z</span><span>n</span><span>a</span></h1>
         <p class="bzs-biz"></p>
       </div>
       <div class="bzs-meadow"></div>
+      <div class="bzs-flies"></div>
     </div>
     <script>
       // 1.4.98 launch splash. Cold starts only: not after a reload (pull to refresh, the reload that installs an update,
@@ -143,6 +180,18 @@ meta.setAttribute("content",bar);
         r.style.setProperty("--bzs-ground", ground);
         r.classList.add("bzs-on");
         s.className = (night ? "is-night" : "is-day") + (still ? " is-still" : "");
+        if (night && r.classList.contains("theme-amoled")) {
+          s.querySelector(".bzs-aura").hidden = false;
+          if (!still) {
+            // eight fireflies around the logo and over the lawn, each on its own slow loop, out of step
+            var fl = "", fw = innerWidth || 412, fh = innerHeight || 915;
+            var spots = [[0.14, 0.3], [0.84, 0.24], [0.22, 0.62], [0.78, 0.58], [0.1, 0.8], [0.62, 0.84], [0.9, 0.75], [0.4, 0.18]];
+            for (var q = 0; q < spots.length; q++) {
+              fl += '<i class="bzs-fly" style="left:' + Math.round(spots[q][0] * fw) + "px;top:" + Math.round(spots[q][1] * fh) + "px;animation-duration:" + (5.2 + (q % 4) * 0.9).toFixed(1) + "s," + (3.4 + (q % 3) * 0.8).toFixed(1) + "s;animation-delay:" + (-q * 0.7).toFixed(1) + "s," + (0.7 + q * 0.17).toFixed(2) + 's"></i>';
+            }
+            s.querySelector(".bzs-flies").innerHTML = fl;
+          }
+        }
         var name = "";
         try { name = (localStorage.getItem("ols-business-name") || "").trim(); } catch (e) {}
         s.querySelector(".bzs-biz").textContent = name || "Oscar's Lawn Service";
@@ -152,15 +201,38 @@ meta.setAttribute("content",bar);
           // The meadow: thin blades along the bottom edge, grown left to right, then bent once by the same breeze.
           var m = s.querySelector(".bzs-meadow"), vw = innerWidth || 412, mh = Math.round(Math.min(118, Math.max(72, innerHeight * 0.11)));
           m.style.setProperty("--mh", mh + "px");
+          // 1.4.99: the same blades, drawn as SVG into a few strips; each strip grows and bends as one layer
+          // (strips follow each other left to right, so the wave reads as before).
           var n = Math.round(vw / 6.5), tones = ["var(--m1)", "var(--m2)", "var(--m3)"], seed = 7, html = "";
+          var G = Math.max(4, Math.min(12, Math.round(vw / 68))), gw = vw / G, parts = [];
+          for (var g = 0; g < G; g++) parts.push("");
           var rnd = function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
           for (var i = 0; i < n; i++) {
             var x = (i + rnd() * 0.8) * (vw / n), f = x / vw, w = 3 + rnd() * 4, h = mh * (0.32 + 0.68 * rnd() * (0.55 + 0.45 * Math.sin(f * 9 + 1) * Math.sin(f * 9 + 1)));
             var tip = 30 + rnd() * 40;
-            html += '<i style="left:' + x.toFixed(1) + "px;width:" + w.toFixed(1) + "px;height:" + h.toFixed(0) + "px;animation-delay:" + Math.round(1100 + f * 420) + 'ms"><b style="background:' + tones[i % 3] + ";clip-path:polygon(0 100%," + tip.toFixed(0) + "% 0,100% 100%);animation-delay:" + Math.round(90 + f * 520 + rnd() * 90) + 'ms"></b></i>';
+            rnd(); // keeps the same random sequence as 1.4.98 (its per-blade jitter)
+            var gi = Math.min(G - 1, Math.floor((x + w / 2) / gw)), lx = x - gi * gw;
+            parts[gi] += '<polygon style="fill:' + tones[i % 3] + '" points="' + lx.toFixed(1) + "," + mh + " " + (lx + (w * tip) / 100).toFixed(1) + "," + (mh - h).toFixed(1) + " " + (lx + w).toFixed(1) + "," + mh + '"/>';
+          }
+          for (g = 0; g < G; g++) {
+            var gf = (g + 0.5) / G, pad = 8;
+            html += '<i class="bzs-mg" style="left:' + (g * gw - pad).toFixed(1) + "px;width:" + (gw + pad * 2).toFixed(1) + "px;animation-delay:" + Math.round(1100 + gf * 420) + 'ms"><b style="animation-delay:' + Math.round(90 + gf * 520 + 45) + 'ms"><svg viewBox="' + -pad + " 0 " + (gw + pad * 2).toFixed(1) + " " + mh + '" preserveAspectRatio="none" style="overflow:visible">' + parts[g] + "</svg></b></i>";
           }
           m.innerHTML = html;
         }
+        // 1.4.99: Brizna and the business name show in their own fonts only if those are ready before the letters
+        // appear; otherwise the splash keeps the fallback, so a late font never makes the letters jump mid-animation.
+        var fontBy = still ? 1e9 : 820, fontOn = function () { if (performance.now() - st.t0 < fontBy) s.classList.add("is-font"); };
+        try {
+          if (d.fonts && d.fonts.check('600 16px Fraunces') && d.fonts.check('500 16px Figtree')) s.classList.add("is-font");
+          else if (d.fonts && d.fonts.load) {
+            var tryFonts = function () { Promise.all([d.fonts.load('600 16px Fraunces', 'Brizna'), d.fonts.load('500 16px Figtree', 'Os')]).then(function (a) { if (a[0].length && a[1].length) fontOn(); }, function () {}); };
+            tryFonts();
+            var fl = d.querySelector('link[href*="fonts.googleapis"]');
+            if (fl) fl.addEventListener("load", tryFonts);
+          }
+        } catch (e) {}
+        r.classList.add("bzs-hold");
         s.hidden = false;
         // While the splash is up, the status bar keeps its colour; the app's own colour comes back as it leaves.
         var appColor = null, own = false;
@@ -178,7 +250,7 @@ meta.setAttribute("content",bar);
           if (mo) mo.disconnect();
           var mm = d.querySelector('meta[name="theme-color"]');
           if (mm && appColor) mm.setAttribute("content", appColor);
-          r.classList.remove("bzs-on");
+          r.classList.remove("bzs-on"); r.classList.remove("bzs-hold");
           if (quick || still) s.classList.add("is-quick");
           s.classList.add("is-leaving");
           W.dispatchEvent(new Event("brizna:splash-leaving"));
@@ -192,8 +264,10 @@ meta.setAttribute("content",bar);
         var onReady = function () {
           if (st.ready) return;
           st.ready = performance.now();
-          var wait = minAt - st.ready;
-          if (wait > 0) setTimeout(function () { leave("ready"); }, wait); else leave("ready");
+          r.classList.remove("bzs-hold");
+          // at least ~3 frames between the app's first paint and the fade, so the fade never starts on a raster spike
+          var wait = Math.max(minAt - st.ready, 50);
+          setTimeout(function () { leave("ready"); }, wait);
         };
         W.addEventListener("brizna:shell-ready", onReady);
         if (W.__bzShellReady) onReady();
@@ -201,7 +275,7 @@ meta.setAttribute("content",bar);
         s.addEventListener("pointerdown", function () { leave("tap", true); });
       })();
     </script>
-    <link rel="stylesheet" crossorigin href="./index-C-rHN6Pf.css">
+    <link rel="stylesheet" crossorigin href="./index-D64K-UIp.css">
     <div id="root"></div>
   </body>
 </html>
