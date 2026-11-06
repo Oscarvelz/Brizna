@@ -215,7 +215,7 @@ function ClientDetailPage() {
             sideFirst={false}
             side={
               painted ? <>
-          <section className="mt-4 rounded-xl border-l-4 border-hold bg-hold-bg p-4 shadow-card">
+          <section className="bz-cl-tone mt-4 rounded-xl border-l-4 border-hold bg-hold-bg p-4 shadow-card">
             <h2 className="font-display text-lg font-semibold text-hold">{tx("Fiabilidad", "Reliability")}</h2>
             <p className="mt-1 text-sm">
               {emphasize(
@@ -1229,7 +1229,7 @@ function ShimmerCards({ n }: { n: number }) {
   return (
     <div className="grid gap-2" aria-busy="true">
       {Array.from({ length: n }, (_, i) => (
-        <div key={i} className="bz-shim-job grid min-w-0 gap-2 rounded-xl bg-surface p-3 shadow-card">
+        <div key={i} className="bz-shim-job bz-cl-job grid min-w-0 gap-2 rounded-xl bg-surface p-3 shadow-card">
           <span className="bz-shim is-line" aria-hidden />
           <span className="bz-shim is-bar" aria-hidden />
         </div>
@@ -1270,7 +1270,7 @@ function UpcomingCuts({ jobs }: { jobs: JobRow[] }) {
     <>
     <div className="grid gap-2">
       {jobs.slice(0, shown).map((job) => (
-        <div key={job.id} className="grid min-w-0 gap-2 rounded-xl bg-surface p-3 shadow-card">
+        <div key={job.id} className="bz-cl-job grid min-w-0 gap-2 rounded-xl bg-surface p-3 shadow-card">
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="min-w-0 break-words text-sm font-semibold">{jobKindLabel(job.kind, job.title)}</p>
             <Input
@@ -1426,7 +1426,7 @@ function JobHistory({ jobs }: { jobs: JobRow[] }) {
     <>
       <ul className={viewGrid(density, cols, dense ? "gap-1" : media ? "gap-1.5" : "gap-2")}>
         {ordered.map((job) => (
-          <li key={job.id} className={cn("min-w-0 overflow-hidden rounded-xl bg-surface shadow-card", quad ? meshFrame(cols) : dense ? "px-2 py-1.5" : "px-3 py-3")}>
+          <li key={job.id} className={cn("bz-cl-job min-w-0 overflow-hidden rounded-xl bg-surface shadow-card", quad ? meshFrame(cols) : dense ? "px-2 py-1.5" : "px-3 py-3")}>
             <div className={cn(quad ? "grid gap-1" : "flex items-center justify-between gap-2")}>
               <div className="min-w-0">
                 <p className={cn("truncate font-medium", quad || dense ? "text-xs" : "text-base")}>{job.title && job.title !== DEFAULT_CUT_TITLE ? job.title : tx("Corte", "Cut")}</p>

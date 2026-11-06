@@ -34,8 +34,18 @@ export function canGoBack(): boolean {
 
 export function historyKey(): string {
   if (typeof window === "undefined") return "";
-  const state = window.history.state as { __TSR_key?: string; key?: string } | null;
-  return state?.__TSR_key ?? state?.key ?? "";
+  const state = window.history.state as { __TSR_key?: string; key?: string; bzKey?: string } | null;
+  const key = state?.__TSR_key ?? state?.key ?? state?.bzKey;
+  if (key) return key;
+  // 1.4.96: the very first screen (opened straight from a link or the home screen) has no router key yet, so its
+  // scroll could not be remembered and back from a jump landed at the top. Give that entry a key of its own.
+  try {
+    const made = `bz${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    window.history.replaceState({ ...(state ?? {}), bzKey: made }, "", window.location.href);
+    return made;
+  } catch {
+    return "";
+  }
 }
 
 /** Remember which screen opened the manual, for the "Volver a …" chip. */
@@ -59,7 +69,19 @@ export function readOrigin(): string | null {
 }
 
 /** Ask the next screen to open, scroll to and glow one thing: a topic's (?) or an element id. */
-export function requestFocus(target: { topic?: string; id?: string; path: string }) {
+export type FocusWant = {
+  topic?: string;
+  id?: string;
+  /** 1.4.96 link refs: exact element (CSS), what to light when it is not there, and the lines to show near it. */
+  sel?: string;
+  alt?: string;
+  note?: string;
+  missing?: string;
+  /** Same-screen jump: give it a back step (markJump). Cross-screen: back returns to where the link was. */
+  same?: boolean;
+};
+
+export function requestFocus(target: FocusWant & { path: string }) {
   try {
     sessionStorage.setItem(FOCUS_KEY, JSON.stringify({ ...target, at: Date.now() }));
   } catch {
@@ -68,11 +90,11 @@ export function requestFocus(target: { topic?: string; id?: string; path: string
 }
 
 /** The pending focus for this screen, if any (taken once). */
-export function takeFocus(path: string): { topic?: string; id?: string } | null {
+export function takeFocus(path: string): FocusWant | null {
   try {
     const raw = sessionStorage.getItem(FOCUS_KEY);
     if (!raw) return null;
-    const f = JSON.parse(raw) as { topic?: string; id?: string; path: string; at: number };
+    const f = JSON.parse(raw) as FocusWant & { path: string; at: number };
     if (Date.now() - f.at > 15000) {
       sessionStorage.removeItem(FOCUS_KEY);
       return null;

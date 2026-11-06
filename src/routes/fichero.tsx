@@ -564,6 +564,7 @@ function ViewTools({
           <button
             type="button"
             aria-expanded={open}
+            data-ref="fichero-filtros"
             onClick={() => setOpen((value) => !value)}
             className="inline-flex h-12 shrink-0 items-center gap-2 rounded-full bg-surface px-4 text-sm font-semibold shadow-card"
           >

@@ -108,16 +108,16 @@ export function ConfirmDialog({
         <div className="bz-dialog-actions">
           {stack ? (
             <>
-              <Button type="button" onClick={onConfirm} disabled={pending} className="btn-hecho-paid">
+              <Button type="button" onClick={onConfirm} disabled={pending} className="btn-hecho-paid bz-hb">
                 {pending ? "…" : yes}
               </Button>
               {extraLabel && onExtra ? (
-                <Button type="button" onClick={onExtra} disabled={pending} className="btn-hecho-owe">
+                <Button type="button" onClick={onExtra} disabled={pending} className="btn-hecho-owe bz-hb">
                   {extraLabel}
                 </Button>
               ) : null}
               {altLabel && onAlt ? (
-                <Button type="button" onClick={onAlt} disabled={pending} className="btn-hecho-abono">
+                <Button type="button" onClick={onAlt} disabled={pending} className="btn-hecho-abono bz-hb">
                   {altLabel}
                 </Button>
               ) : null}
@@ -148,9 +148,9 @@ export function ConfirmDialog({
                   disabled={pending}
                   className={cn(
                     danger && "bg-late",
-                    confirmTone === "paid" && "btn-hecho-paid",
-                    confirmTone === "owe" && "btn-hecho-owe",
-                    confirmTone === "abono" && "btn-hecho-abono",
+                    confirmTone === "paid" && "btn-hecho-paid bz-hb",
+                    confirmTone === "owe" && "btn-hecho-owe bz-hb",
+                    confirmTone === "abono" && "btn-hecho-abono bz-hb",
                   )}
                 >
                   {pending ? t("common.wait") : yes}

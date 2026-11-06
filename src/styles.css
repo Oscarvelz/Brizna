@@ -2989,3 +2989,180 @@ html.theme-amoled:not(#z) .bz-vista.is-on {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 42%, var(--color-border)), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 2px 8px -2px rgb(0 0 0 / 0.8);
 }
 html.theme-dark:not(#z) .bz-vistas { background: color-mix(in srgb, var(--nv-top), #000000 46%); }
+
+/* 1.4.96 link refs: the note beside a lit button, and the "not a button" popover. Solid, short, subtle motion. */
+.bz-callout {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 96;
+  max-width: min(20rem, calc(100vw - 24px));
+  padding: 0.6rem 0.8rem;
+  border-radius: 14px;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.28), 0 2px 6px rgb(0 0 0 / 0.18);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-wrap: pretty;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+}
+.bz-callout.is-in { opacity: 1; }
+.bz-callout.is-out { opacity: 0; transition-duration: 0.18s; }
+.bz-callout-t { display: block; }
+.bz-callout-arrow {
+  position: absolute;
+  top: -6px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: inherit;
+  border-left: inherit;
+  border-top: inherit;
+  transform: rotate(45deg);
+}
+.bz-callout.is-above .bz-callout-arrow { top: auto; bottom: -6px; transform: rotate(225deg); }
+.bz-callout.is-free .bz-callout-arrow { display: none; }
+
+.name-ref.is-trait { text-decoration-style: dashed; }
+
+.bz-refpop {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: min(20rem, calc(100vw - 24px));
+  padding: 0.8rem 0.9rem 0.75rem;
+  border-radius: 16px;
+  background: var(--color-surface);
+  color: var(--color-fg);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 14px 36px rgb(0 0 0 / 0.32), 0 2px 6px rgb(0 0 0 / 0.18);
+  animation: bz-refpop-in 0.18s ease-out;
+}
+@keyframes bz-refpop-in {
+  from { opacity: 0; translate: 0 3px; }
+  to { opacity: 1; translate: 0 0; }
+}
+.bz-refpop-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+.bz-refpop-head svg { width: 16px; height: 16px; flex: none; }
+.bz-refpop-t { margin: 0; font-size: 0.9375rem; line-height: 1.4; text-wrap: pretty; }
+.bz-refpop-foot { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+.bz-refpop-where {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  text-wrap: pretty;
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+}
+.bz-refpop-where svg { width: 15px; height: 15px; flex: none; }
+.bz-refpop-ok {
+  flex: none;
+  display: block;
+  margin: 0;
+  min-height: 40px;
+  padding: 0 1rem;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  color: var(--color-fg);
+  font-weight: 600;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bz-refpop { animation: none; }
+  .bz-callout { transition: none; }
+}
+
+/* 1.4.96 (Oscar: loves the Notas del cliente charcoal): at night every card of the client page takes that same main
+   background. AMOLED = the notes pad's L1 #0c0b09; the other night palettes the same step down (60% card over page).
+   Only the card itself: inner chips, rows, boxes and buttons keep their own fills. Toned cards (Fiabilidad, Deuda)
+   keep their tint, rebased by the same step. Day themes untouched. */
+/* 20:54–20:55 (Oscar, from a reference he likes, "bájale un poquito al violeta"): same darkness as the notes pad,
+   with only a very faint cool lean (#0c0c0e, was warm #0c0b09), and a defined neutral-cool hairline (#28282b). */
+html.theme-amoled main:has(.bz-cl-card) { --bz-cl-bg: #0c0c0e; --bz-cl-edge: #28282b; }
+html.theme-amoled main:has(.bz-cl-card) :is(.bz-cl-card, #movimientos, #cambios-hechos, .bz-pad, .bz-cl-job) {
+  box-shadow: inset 0 0 0 1px var(--bz-cl-edge), var(--bz-bevel) !important;
+}
+html.theme-dark main:has(.bz-cl-card) { --bz-cl-bg: color-mix(in oklab, var(--color-surface) 60%, var(--color-bg)); }
+html:is(.theme-dark, .theme-amoled) main:has(.bz-cl-card) :is(.bz-cl-card, #movimientos, #cambios-hechos, .bz-pad, .bz-cl-job) {
+  background-color: var(--bz-cl-bg);
+}
+html:is(.theme-dark, .theme-amoled) main:has(.bz-cl-card) .bz-cl-tone { background-color: color-mix(in oklab, var(--color-hold-bg) 60%, var(--color-bg)); }
+html:is(.theme-dark, .theme-amoled) main:has(.bz-cl-card) .bz-debt { background-color: color-mix(in oklab, var(--color-money-bg) 60%, var(--color-bg)); }
+
+
+/* 1.4.96 Horas de trabajo (Oscar: "un poquito más definido"): outer hairline +7% white at night, neutral, every night
+   theme. The Entrada/Salida boxes are untouched. */
+html.theme-dark .bz-wd.bz-wd { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 0 0 1px rgb(255 255 255 / 0.13), 0 18px 36px -20px rgb(0 0 0 / 0.85); }
+html.theme-amoled .bz-wd.bz-wd { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03), 0 0 0 1px rgb(255 255 255 / 0.155), 0 10px 24px -16px rgb(0 0 0 / 0.9); }
+
+/* 1.4.96 dialogs at night (AMOLED and Grafito, the neutral nights): the near-neutral charcoal from Oscar's reference,
+   card #111113, hairline #262629, inner fields #1c1c1f. Other night palettes keep their own surface. */
+html.theme-amoled .bz-dialog.bz-dialog,
+html.theme-dark[data-palette="grafito"] .bz-dialog.bz-dialog {
+  background-color: #111113;
+  box-shadow:
+    inset 0 0 0 1px #262629,
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 2px 6px rgb(0 0 0 / 0.35),
+    0 30px 64px -26px rgb(0 0 0 / 0.88) !important;
+}
+/* Fields inside a dialog (Propina…): a visible hairline and a readable placeholder at night. */
+html:is(.theme-dark, .theme-amoled) .bz-dialog :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea) {
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14);
+}
+html.theme-amoled .bz-dialog :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea),
+html.theme-dark[data-palette="grafito"] .bz-dialog :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea) { background-color: #1c1c1f; }
+html:is(.theme-dark, .theme-amoled) .bz-dialog :is(input, textarea):focus-visible { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-primary) 60%, transparent); }
+html:is(.theme-dark, .theme-amoled) .bz-dialog :is(input, textarea)::placeholder { color: color-mix(in srgb, var(--color-fg) 58%, transparent); opacity: 1; }
+
+/* 1.4.96 the three Hecho buttons (Oscar: all three looked the same bright green with white text; red and gold outer
+   borders looked bad). Now one family, three tones, same height, one line, a 1px edge drawn inside (no outer border):
+   cobrado = solid green with dark text (the main answer); pendiente = rose tint; abonado = gold tint. */
+.bz-dialog-actions button:is(.btn-hecho-paid, .btn-hecho-owe, .btn-hecho-abono).bz-hb {
+  border: 0 !important;
+  background-image: none !important;
+  font-weight: 650;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+.bz-dialog-actions button:is(.btn-hecho-paid, .btn-hecho-owe, .btn-hecho-abono).bz-hb:active:not(:disabled) { transform: translateY(1px); }
+.bz-dialog-actions button.btn-hecho-paid.bz-hb { --hb: var(--color-done); background-color: var(--color-primary) !important; color: var(--color-primary-fg) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 1px 2px rgb(0 0 0 / 0.12) !important; }
+.bz-dialog-actions button.btn-hecho-paid.bz-hb:hover { background-color: color-mix(in oklab, var(--color-primary) 90%, black) !important; }
+.bz-dialog-actions button.btn-hecho-owe.bz-hb { --hb: var(--color-late); }
+.bz-dialog-actions button.btn-hecho-abono.bz-hb { --hb: var(--color-pending); }
+.bz-dialog-actions button:is(.btn-hecho-owe, .btn-hecho-abono).bz-hb {
+  background-color: color-mix(in oklab, var(--hb) 11%, var(--color-surface)) !important;
+  color: color-mix(in oklab, var(--hb) 88%, black) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--hb) 42%, transparent) !important;
+}
+.bz-dialog-actions button:is(.btn-hecho-owe, .btn-hecho-abono).bz-hb:hover { background-color: color-mix(in oklab, var(--hb) 17%, var(--color-surface)) !important; }
+html:is(.theme-dark, .theme-amoled) .bz-dialog-actions button.btn-hecho-paid.bz-hb {
+  background-color: var(--color-done) !important;
+  color: #04140a !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 1px 3px rgb(0 0 0 / 0.4) !important;
+}
+html:is(.theme-dark, .theme-amoled) .bz-dialog-actions button.btn-hecho-paid.bz-hb:hover { background-color: color-mix(in oklab, var(--color-done) 88%, black) !important; }
+html:is(.theme-dark, .theme-amoled) .bz-dialog-actions button:is(.btn-hecho-owe, .btn-hecho-abono).bz-hb {
+  background-color: color-mix(in oklab, var(--hb) 22%, #111113) !important;
+  color: color-mix(in oklab, var(--hb) 72%, white) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--hb) 48%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.05) !important;
+}
+html:is(.theme-dark, .theme-amoled) .bz-dialog-actions button:is(.btn-hecho-owe, .btn-hecho-abono).bz-hb:hover { background-color: color-mix(in oklab, var(--hb) 28%, #111113) !important; }

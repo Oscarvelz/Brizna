@@ -382,6 +382,7 @@ function ClientesPage() {
           <Link
             to="/clientes"
             search={{ filter: "regular" }}
+            data-ref="inv-regular"
             className="bz-inv-tile is-today rounded-sm bg-today-bg px-1.5 py-1.5 text-center"
           >
             <p className="font-display text-lg font-semibold tabular-nums text-today">
@@ -392,6 +393,7 @@ function ClientesPage() {
           <Link
             to="/clientes"
             search={{ filter: "one_time" }}
+            data-ref="inv-once"
             className="bz-inv-tile is-pending rounded-sm bg-pending-bg px-1.5 py-1.5 text-center"
           >
             <p className="font-display text-lg font-semibold tabular-nums text-pending">
@@ -402,6 +404,7 @@ function ClientesPage() {
           <Link
             to="/clientes"
             search={{ filter: "active" }}
+            data-ref="inv-all"
             className="bz-inv-tile is-sun rounded-sm bg-sun px-1.5 py-1.5 text-center"
           >
             <p className="font-display text-lg font-semibold tabular-nums">{inventory.data?.total ?? "—"}</p>
@@ -410,6 +413,7 @@ function ClientesPage() {
           <Link
             to="/clientes"
             search={{ filter: "inactive" }}
+            data-ref="inv-archive"
             className="bz-inv-tile is-soil rounded-sm bg-soil-bg px-1.5 py-1.5 text-center"
           >
             <p className="font-display text-lg font-semibold tabular-nums text-soil">

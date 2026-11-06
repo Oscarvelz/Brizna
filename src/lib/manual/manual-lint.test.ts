@@ -88,3 +88,67 @@ test("every <Hint topic> in the app has a bubble and a manual page", () => {
     assert.ok(h.topic, `<Hint topic="${id}"> has no manual page`);
   }
 });
+
+// 1.4.96: every dotted link names something real, with a class (screen / flow / trait) and a target that exists.
+test("every link reference resolves to a class and a real target", async () => {
+  const { REFS, findRef, refCopy } = await import("./refs.ts");
+  const root = join(import.meta.dirname, "..", "..");
+  const files: string[] = [];
+  const walk = (dir: string) => {
+    for (const f of readdirSync(dir)) {
+      const p = join(dir, f);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (p.endsWith(".tsx")) files.push(p);
+    }
+  };
+  walk(root);
+  const src = files.map((f) => readFileSync(f, "utf8")).join("\n");
+  const errs: string[] = [];
+  const ok = (c: unknown, m: string) => { if (!c) errs.push(m); };
+  const exists = (s: string) => {
+    if (s.startsWith("@")) {
+      const t = s.slice(1);
+      return new RegExp(`data-(?:spot|spot-alt|ref)=["{][^\\n]*\\b${t}\\b`).test(src) || new RegExp(`spot(?:Alt)?=\\{?[^\\n]*"[^"]*\\b${t}\\b`).test(src) || new RegExp(`spot="${t}"`).test(src);
+    }
+    if (s.startsWith("#")) return src.includes(`id="${s.slice(1)}"`);
+    return s.split(/[\s,>]+/).filter((x) => x.startsWith(".")).every((c) => c.split(".").filter(Boolean).every((k) => src.includes(k)));
+  };
+  // 1) the words the app turns into links: emphasis list terms with a destination, NameLink terms, [[...]] in texts
+  const i18n = readFileSync(join(root, "lib", "i18n.tsx"), "utf8");
+  const emph = i18n.slice(i18n.indexOf("const EMPHASIS = ["), i18n.indexOf("];", i18n.indexOf("const EMPHASIS = [")));
+  const linked = new Set<string>();
+  const topicsSrc = readFileSync(join(import.meta.dirname, "topics.ts"), "utf8").replace(/^\s*\*.*$/gm, "");
+  for (const m of topicsSrc.matchAll(/\[\[([^\]"]+)\]\]/g)) {
+    linked.add(m[1]!);
+    ok(findRef(m[1]!), `[[${m[1]}]] in topics.ts has no reference (it would not be a link)`);
+  }
+  for (const m of src.matchAll(/<NameLink term=\{tx\("([^"]+)", "([^"]+)"\)\}/g)) for (const t of [m[1]!, m[2]!]) { linked.add(t); ok(findRef(t), `<NameLink term="${t}"> has no reference`); }
+  for (const m of emph.matchAll(/"([^"]+)"/g)) if (findRef(m[1]!)) linked.add(m[1]!);
+  ok(linked.size > 40, `found only ${linked.size} linked terms`);
+  // 2) every reference: class, target, copy
+  for (const [terms, r] of REFS) {
+    const id = terms.join("/");
+    ok(["screen", "flow", "trait"].includes(r.kind), `${id}: no class`);
+    if (r.kind === "trait") {
+      ok(r.trait && r.where, `${id}: a trait needs what it is and where it happens`);
+      ok(!r.to, `${id}: a trait never opens anything`);
+      continue;
+    }
+    ok(r.to && r.spot && r.go, `${id}: needs a screen, a spot and natural "¿Ir …?" words`);
+    if (r.spot) ok(exists(r.spot), `${id}: spot ${r.spot} not found in the app`);
+    if (r.alt) ok(exists(r.alt), `${id}: alt ${r.alt} not found in the app`);
+    if (r.fold) ok(src.includes(`id="${r.fold}"`), `${id}: fold ${r.fold} not found`);
+    if (r.kind === "flow") ok(r.note || r.desc, `${id}: a flow says what to tap`);
+    if (r.alt) ok(r.missing || r.note, `${id}: a stand-in target needs a line saying why`);
+    for (const en of [false, true]) {
+      const c = refCopy(terms[0]!, r, en);
+      ok(!/^¿Abrir|^Open /.test(c.title), `${id}: dialog says "${c.title}"`);
+      ok(!c.title.includes("…") && !c.desc.includes("…"), `${id}: dialog uses "…"`);
+      ok(c.yes.length <= 12, `${id}: button "${c.yes}" too long for one line`);
+      ok(c.desc.length <= 90, `${id}: dialog line too long (${c.desc.length})`);
+    }
+  }
+  // 3) "Ver en la app" targets exist
+  for (const t of MANUAL_TOPICS) if (t.go?.focus) ok(src.includes(`id="${t.go.focus}"`) || src.includes(`"${t.go.focus}"`), `${t.id}: Ver en la app focus ${t.go.focus} not found`);
+  assert.deepEqual(errs, []);
+});

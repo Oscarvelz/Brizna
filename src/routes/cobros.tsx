@@ -237,6 +237,7 @@ function CobrosPage() {
             </p>
             <Link
               to="/cobros"
+              data-ref="abonos"
               search={{ view: "abonos" }}
               resetScroll={false}
               className={cn("-mx-1 block rounded-lg px-2 py-1.5 touch-manipulation", view === "abonos" && "bz-due-on bg-surface/70")}

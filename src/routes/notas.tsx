@@ -465,6 +465,7 @@ function PadBody({
               if (!leave()) void navigate({ to: "/fichero" });
             }}
             aria-label={tx("Abrir bloc", "Open pad")}
+            data-ref="abrir-bloc"
             className="inline-flex h-10 shrink-0 items-center gap-0.5 rounded-full pr-1 font-display text-sm font-semibold text-fg"
           >
             <ChevronLeft className="size-5 shrink-0" />

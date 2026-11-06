@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { canGoBack, historyKey, scrollMemory, takeFocus } from "@/lib/manual/nav";
 import { clearRing, showRing } from "@/lib/manual/ring";
 import { markJump } from "@/lib/jump-back";
+import { clearCallout, showCallout } from "@/lib/manual/callout";
 
 const OPEN_LAYER =
   '.bz-hint, [role="dialog"], [role="alertdialog"], [role="menu"], [data-mention-open], [data-radix-popper-content-wrapper]';
@@ -125,6 +126,7 @@ export function NavHost() {
   useEffect(() => {
     prevPath.current = pathname;
     clearRing(); // a screen change always ends the highlight
+    clearCallout();
   }, [pathname]);
 
   /* ----------------------------------------------- "Ver en la app" focus */
@@ -147,9 +149,30 @@ export function NavHost() {
         const elapsed = Date.now() - started;
         if (want.id && document.getElementById(want.id)) openFold(want.id);
         const t = want.topic ? CSS.escape(want.topic) : "";
+        // 1.4.96 link refs: the exact element, else (after a moment for data) its stand-in, else a free note.
+        let note = want.note ?? "";
+        let refBox: Element | null = null;
+        if (want.sel) {
+          refBox = firstVisible(want.sel);
+          if (!refBox) {
+            const hidden = document.querySelector(want.sel);
+            const fold = hidden?.closest("section[id], details[id]");
+            if (fold instanceof HTMLDetailsElement) fold.open = true;
+            else if (fold?.id) openFold(fold.id);
+          }
+          if (!refBox && want.alt && elapsed > 2200) {
+            refBox = firstVisible(want.alt);
+            if (refBox) note = want.missing ?? want.note ?? "";
+          }
+          if (!refBox) {
+            if (elapsed < 7000) timer = window.setTimeout(step, 120);
+            else if (want.missing || want.note) showCallout(want.missing ?? want.note ?? "", null);
+            return;
+          }
+        }
         // 1) the exact element the topic talks about (data-spot), 2) its fallback (data-spot-alt),
         // 3) the fold/section id, 4) the topic's own (?) and its card.
-        let box: Element | null = t ? firstVisible(`[data-spot~="${t}"]`) : null;
+        let box: Element | null = refBox ?? (t ? firstVisible(`[data-spot~="${t}"]`) : null);
         // a spot can sit inside a closed fold: open the fold it lives in
         if (!box && t) {
           const hidden = document.querySelector(`[data-spot~="${t}"]`);
@@ -183,6 +206,7 @@ export function NavHost() {
         const target = box as HTMLElement;
         const mark = dot;
         const refind = (): Element | null =>
+          (want.sel ? firstVisible(want.sel) ?? (want.alt ? firstVisible(want.alt) : null) : null) ??
           (t ? firstVisible(`[data-spot~="${t}"]`) ?? firstVisible(`[data-spot-alt~="${t}"]`) : null) ??
           (want.id ? document.getElementById(want.id) : null);
         // Wait until the screen stops filling in (Estudio's columns, Hoy's data), then glide there once,
@@ -213,11 +237,12 @@ export function NavHost() {
           const inView = Boolean(target.closest(".pod-header")) || (r.top >= head + 8 && r.bottom <= window.innerHeight - 8);
           if (inView) {
             showRing(target, mark, 300, refind);
+            if (note) showCallout(note, target);
             return;
           }
           // phone back returns to where this screen opened. The router answers that history step with
           // its own scroll-to-top a moment later, so the glide starts after it, never under it.
-          markJump();
+          if (!want.sel || want.same) markJump();
           timer = window.setTimeout(() => go(r.height > window.innerHeight - head - 32, head), 140);
         };
         const go = (tall: boolean, head: number) => {
@@ -241,6 +266,7 @@ export function NavHost() {
               return;
             }
             showRing(target, mark, 400, refind);
+            if (note) showCallout(note, target);
           };
           timer = window.setTimeout(waitLand, 60);
         };
@@ -249,9 +275,16 @@ export function NavHost() {
       timer = window.setTimeout(step, 80);
     };
     run();
+    // 1.4.96: a link to something on the screen you are already on (no route change to wake this effect)
+    const again = () => {
+      window.clearTimeout(timer);
+      run();
+    };
+    window.addEventListener("bz-focus-run", again);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      window.removeEventListener("bz-focus-run", again);
     };
   }, [pathname]);
 
