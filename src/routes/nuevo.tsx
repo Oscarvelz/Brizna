@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, CircleCheck, Users } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import {
@@ -12,6 +12,7 @@ import {
   type ClientFormValue,
 } from "@/components/client-form";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { DupCompare, afterDialogClose, afterMerge } from "@/components/dup-compare";
 import { Hint } from "@/components/hint";
 import { ScrollTop } from "@/components/scroll-top";
 import { invalidateLawn } from "@/components/job-card";
@@ -19,7 +20,9 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, NativeSelect } from "@/components/ui/input";
 import { todayISO } from "@/lib/dates";
 import { frequencyLabel, money, weekdayLabel } from "@/lib/format";
-import { createClient, createClientsBulk, findDuplicateClients, addClientPhoto, getSettings } from "@/lib/server/lawn";
+import { createClient, createClientsBulk, addClientPhoto, getSettings } from "@/lib/server/lawn";
+import { checkClientDupes, checkClientDupesBatch, markNotDuplicate, mergeClients, undoMerge, type DupClient, type DupMatch } from "@/lib/server/dups";
+import { nameMatch, phoneTail } from "@/lib/dup-match";
 import { DEFAULT_DEBT_PRESETS, DEFAULT_PRICE_PRESETS } from "@/lib/types";
 import { useTx } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -35,14 +38,31 @@ type BulkRow = {
   startDate: string;
   paySameDay: boolean;
   openingBalance: string;
+  /** 1.5.02: existing clients that look like this row, and what you decided ("other" = a different person). */
+  dups?: DupMatch[];
+  dupState?: "other" | { merge: number; name: string };
 };
+
+/** 1.5.02: the earlier row in the same list this one repeats (same name, almost the same, or same phone). */
+function repeatOf(rows: BulkRow[], i: number): number {
+  const r = rows[i];
+  for (let j = 0; j < i; j++) {
+    const o = rows[j];
+    if (nameMatch(r.name, o.name) || (phoneTail(r.phone) && phoneTail(r.phone) === phoneTail(o.phone))) return j;
+  }
+  return -1;
+}
 
 function NuevoPage() {
   const tx = useTx();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [pendingValue, setPendingValue] = useState<ClientFormValue | null>(null);
-  const [dupes, setDupes] = useState<{ id: number; name: string; phone: string | null }[]>([]);
+  const [dupes, setDupes] = useState<DupMatch[]>([]);
+  // 1.5.02: look-alikes you said are someone else; once saved, the scan stops pairing them.
+  const [notSame, setNotSame] = useState<number[]>([]);
+  const [rowCompare, setRowCompare] = useState<number | null>(null);
+  const [merging, setMerging] = useState(false);
   const [bulk, setBulk] = useState<BulkRow[] | null>(null);
   const [owing, setOwing] = useState<number[]>([]);
   const [sharedDebt, setSharedDebt] = useState("");
@@ -66,12 +86,36 @@ function NuevoPage() {
         await addClientPhoto({ data: { clientId: res.id, data } }).catch(() => undefined);
       }
       toast.success(tx("Cliente guardado", "Client saved"));
+      for (const other of notSame) void markNotDuplicate({ data: { a: res.id, b: other } }).catch(() => undefined);
+      setNotSame([]);
       setPendingValue(null);
       await invalidateLawn(qc);
       await navigate({ to: "/clientes/$id", params: { id: String(res.id) } });
     },
     onError: () => toast.error(tx("No se pudo guardar el cliente", "Could not save the client")),
   });
+
+  // 1.5.02 Unir from "¿Es el mismo cliente?" on a new client: it is saved, then merged into the one that exists
+  // (phone, address, photos and earlier debt go there; the new card goes to Archivos and the undo brings it back).
+  async function mergeNewInto(other: DupClient) {
+    if (!pendingValue || merging) return;
+    setMerging(true);
+    try {
+      const made = await createClient({ data: payloadFromForm(pendingValue) });
+      for (const data of pendingValue.pendingPhotos) {
+        await addClientPhoto({ data: { clientId: made.id, data } }).catch(() => undefined);
+      }
+      const res = await mergeClients({ data: { keepId: other.id, dropId: made.id } });
+      await afterMerge(qc, tx, res, other.name, pendingValue.name);
+      setDupes([]);
+      setPendingValue(null);
+      if (res.ok) afterDialogClose(() => void navigate({ to: "/clientes/$id", params: { id: String(other.id) } }));
+    } catch {
+      toast.error(tx("No se pudo unir", "Could not merge"));
+    } finally {
+      setMerging(false);
+    }
+  }
 
   const bulkMut = useMutation({
     mutationFn: (rows: BulkRow[]) =>
@@ -89,9 +133,45 @@ function NuevoPage() {
           })),
         },
       }),
-    onSuccess: async (res) => {
-      toast.success(tx(`${res.count} clientes añadidos`, `${res.count} clients added`));
+    onSuccess: async (res, rows) => {
+      // 1.5.02: rows you chose to Unir are merged into the client that exists, one by one, each with its undo.
+      const mergeIds: string[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const st = rows[i].dupState;
+        const id = res.ids[i];
+        if (st === "other" && id) {
+          for (const d of rows[i].dups ?? []) await markNotDuplicate({ data: { a: id, b: d.id } }).catch(() => undefined);
+          continue;
+        }
+        if (!id || typeof st !== "object") continue;
+        const m = await mergeClients({ data: { keepId: st.merge, dropId: id } }).catch(() => null);
+        if (m?.ok) mergeIds.push(m.mergeId);
+      }
+      const merged = mergeIds.length;
+      const added = res.count - merged;
+      toast.success(
+        merged
+          ? tx(`${added} ${added === 1 ? "cliente añadido" : "clientes añadidos"} · ${merged} ${merged === 1 ? "unido" : "unidos"}`, `${added} added · ${merged} merged`)
+          : tx(`${res.count} ${res.count === 1 ? "cliente añadido" : "clientes añadidos"}`, `${res.count} ${res.count === 1 ? "client" : "clients"} added`),
+        merged
+          ? {
+              duration: 10000,
+              action: {
+                label: tx("Deshacer unión", "Undo merge"),
+                onClick: () => {
+                  void Promise.all(mergeIds.map((mergeId) => undoMerge({ data: { mergeId } }).catch(() => null))).then((all) => {
+                    const ok = all.filter((r) => r?.ok).length;
+                    toast.success(tx(`${ok} ${ok === 1 ? "unión deshecha" : "uniones deshechas"}`, `${ok} ${ok === 1 ? "merge" : "merges"} undone`));
+                    void qc.invalidateQueries({ queryKey: ["dup-scan"] });
+                    void invalidateLawn(qc);
+                  });
+                },
+              },
+            }
+          : undefined,
+      );
       closeBulk();
+      void qc.invalidateQueries({ queryKey: ["dup-scan"] });
       await invalidateLawn(qc);
       await navigate({ to: "/clientes" });
     },
@@ -143,6 +223,9 @@ function NuevoPage() {
         skipPop.current = false;
         return;
       }
+      // 1.5.02: back that only closed a dialog on top (¿Es el mismo cliente?, ¿Salir sin guardar?) lands on the
+      // sheet's own step: stay in the sheet, ask nothing.
+      if ((window.history.state as { olsBulk?: number } | null)?.olsBulk) return;
       window.history.pushState({ ...(window.history.state ?? {}), olsBulk: 1 }, "");
       const draft = nameDraftRef.current;
       if (draft != null && !draft.trim() && !bulkRef.current) {
@@ -181,6 +264,43 @@ function NuevoPage() {
     bulkMut.mutate(rows);
   }
 
+  // 1.5.02: every row is checked against your clients as soon as the list opens (and again when its phone changes).
+  function openBulk(rows: BulkRow[]) {
+    setBulk(rows);
+    void checkClientDupesBatch({ data: { rows: rows.map((r) => ({ name: r.name, phone: r.phone, address: r.address })) } })
+      .then((res) => {
+        setBulk((prev) =>
+          prev && prev.length === rows.length && prev.every((r, i) => r.name === rows[i].name)
+            ? prev.map((row, i) => ({ ...row, dups: res.rows[i] ?? [] }))
+            : prev,
+        );
+      })
+      .catch(() => undefined);
+  }
+
+  function recheckRow(index: number) {
+    const row = bulkRef.current?.[index];
+    if (!row) return;
+    void checkClientDupes({ data: { name: row.name, phone: row.phone, address: row.address } })
+      .then((res) => {
+        setBulk((prev) =>
+          prev?.map((r, i) =>
+            i === index ? { ...r, dups: res.matches, dupState: r.dupState && res.matches.length ? r.dupState : undefined } : r,
+          ) ?? null,
+        );
+      })
+      .catch(() => undefined);
+  }
+
+  function removeRow(index: number) {
+    setBulk((prev) => {
+      if (!prev) return prev;
+      const next = prev.filter((_, i) => i !== index);
+      return next.length ? next : null;
+    });
+    setOwing((cur) => cur.filter((n) => n !== index).map((n) => (n > index ? n - 1 : n)));
+  }
+
   function applyDebt(amount: string, indexes: number[]) {
     setBulk((prev) => prev?.map((row, idx) => (indexes.includes(idx) ? { ...row, openingBalance: amount } : row)) ?? null);
   }
@@ -208,7 +328,8 @@ function NuevoPage() {
         submitLabel={tx("Guardar cliente", "Save client")}
         pending={mutation.isPending}
         onSubmit={(v) => {
-          void findDuplicateClients({ data: { name: v.name, phone: v.phone } })
+          setNotSame([]);
+          void checkClientDupes({ data: { name: v.name, phone: v.phone, address: v.address } })
             .then((res) => {
               setDupes(res.matches);
               setPendingValue(v);
@@ -219,7 +340,7 @@ function NuevoPage() {
             });
         }}
         onPickMany={(contacts) =>
-          setBulk(
+          openBulk(
             contacts.map((c) => ({
               name: c.name,
               phone: c.phone,
@@ -234,34 +355,31 @@ function NuevoPage() {
         }
         onAddSeveral={() => setNameDraft("")}
       />
-      <ConfirmDialog
+      <DupCompare
         open={Boolean(pendingValue) && dupes.length > 0}
-        title={tx("¿Este contacto ya existe?", "Does this contact already exist?")}
-        description={
-          <div className="grid gap-2">
-            <p>
-              {tx(
-                "Hay alguien con el mismo nombre o el mismo teléfono. Revisa antes de guardar otro.",
-                "Someone has the same name or the same phone. Check before saving another.",
-              )}
-            </p>
-            <ul className="grid gap-1">
-              {dupes.map((d) => (
-                <li key={d.id}>
-                  <Link to="/clientes/$id" params={{ id: String(d.id) }} className="font-semibold text-primary">
-                    {d.name}
-                    {d.phone ? ` · ${d.phone}` : ""}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        }
-        confirmLabel={tx("Guardar igual", "Save anyway")}
-        cancelLabel={tx("Revisar", "Review")}
-        onConfirm={() => setDupes([])}
-        onCancel={() => {
+        mode="new"
+        mine={{
+          name: pendingValue?.name ?? "",
+          phone: pendingValue?.phone,
+          address: pendingValue?.address,
+          price: Number(pendingValue?.pricePerCut) || null,
+          balance: Number(pendingValue?.openingBalance) || 0,
+        }}
+        matches={dupes}
+        pending={merging}
+        onUse={(other) => {
           setDupes([]);
+          setPendingValue(null);
+          afterDialogClose(() => void navigate({ to: "/clientes/$id", params: { id: String(other.id) } }));
+        }}
+        onOther={() => {
+          setNotSame(dupes.map((d) => d.id));
+          setDupes([]);
+        }}
+        onMerge={(_keep, other) => void mergeNewInto(other)}
+        onClose={() => {
+          setDupes([]);
+          setNotSame([]);
           setPendingValue(null);
         }}
       />
@@ -274,23 +392,34 @@ function NuevoPage() {
         onConfirm={() => pendingValue && mutation.mutate(pendingValue)}
         onCancel={() => setPendingValue(null)}
       />
-      {bulk ? (
-        <div className="fixed inset-0 z-[70] grid place-items-end p-4 sm:place-items-center">
+      {bulk ? (() => {
+        const merges = bulk.filter((r) => r.dupState && r.dupState !== "other").length;
+        const adds = bulk.length - merges;
+        const saveLabel = tx(
+          `Añadir ${adds}${merges ? ` · ${merges} ${merges === 1 ? "se une" : "se unen"}` : ""}${owing.length ? ` · ${owing.length} con deuda` : ""}`,
+          `Add ${adds}${merges ? ` · ${merges} merge` : ""}${owing.length ? ` · ${owing.length} with debt` : ""}`,
+        );
+        const cmp = rowCompare != null ? bulk[rowCompare] : null;
+        return (
+        <div className="fixed inset-0 z-[70] grid place-items-end p-3 sm:place-items-center sm:p-4">
           <button
             type="button"
             className="absolute inset-0 bz-scrim"
             aria-label={tx("Cerrar", "Close")}
             onClick={requestLeaveBulk}
           />
-          <div className="relative max-h-[90dvh] w-full max-w-md overflow-auto rounded-xl bg-surface p-5 shadow-card">
-            <h2 className="font-display text-xl font-semibold">{tx("Revisar contactos", "Review contacts")}</h2>
-            <p className="mt-1 text-sm text-muted">
+          <div role="dialog" aria-modal="true" aria-label={tx("Revisar clientes", "Review clients")} className={cn("bz-dialog bz-bulk relative w-full min-w-0 bg-surface", bulk.length > 1 && "is-wide")}>
+            <h2 className="bz-dialog-title font-display">
+              <span className="min-w-0 flex-1">{tx("Revisar clientes", "Review clients")}</span>
+              <span className="bz-dialog-aside tabular-nums">{bulk.length}</span>
+            </h2>
+            <p className="mt-2 text-sm text-muted">
               {tx(
                 "Ajusta precio y fecha. Si alguno ya te debía, márcalo en su tarjeta: ese monto entra en Por cobrar.",
                 "Adjust the price and date. If someone already owed you, mark it on their card: that amount goes to To collect.",
               )}
             </p>
-            <div className="mt-3 rounded-lg bg-bg p-3">
+            <div className="bz-bulk-box mt-3">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-sm font-semibold">{tx("Deuda de antes", "Earlier debt")}</p>
                 <p className="text-xs text-muted">
@@ -304,10 +433,10 @@ function NuevoPage() {
                 presets={debtPresets}
                 onPick={(amount) => pickSharedDebt(String(amount))}
               />
-              <div className="mt-2 flex gap-3 text-xs font-semibold">
+              <div className="mt-1 flex items-center gap-1 text-xs font-semibold">
                 <button
                   type="button"
-                  className="text-primary"
+                  className="min-h-10 px-1 text-primary"
                   onClick={() => {
                     if (!bulk) return;
                     const amount = sharedDebt.trim() || String(debtPresets[0] ?? "");
@@ -324,7 +453,7 @@ function NuevoPage() {
                 </button>
                 <button
                   type="button"
-                  className="text-muted"
+                  className="min-h-10 px-1 text-muted"
                   onClick={() => {
                     if (!bulk) return;
                     setOwing([]);
@@ -335,40 +464,74 @@ function NuevoPage() {
                 </button>
               </div>
             </div>
-            {bulk.length > 1 ? (
-              <button
-                type="button"
-                className="mt-2 text-xs font-semibold text-primary"
-                onClick={() =>
-                  setBulk((prev) => {
-                    if (!prev || prev.length < 2) return prev;
-                    const first = prev[0];
-                    return prev.map((row, idx) =>
-                      idx === 0
-                        ? row
-                        : {
-                            ...row,
-                            pricePerCut: first.pricePerCut,
-                            cutsPerMonth: first.cutsPerMonth,
-                            startDate: first.startDate,
-                            paySameDay: first.paySameDay,
-                          },
-                    );
-                  })
-                }
-              >
-                {tx("Copiar el primero en todos", "Copy the first onto all")}
-              </button>
-            ) : null}
-            <ul className="mt-3 grid gap-3">
-              {bulk.map((row, i) => (
-                <li key={`${row.name}-${i}`} className="rounded-md bg-bg p-3">
-                  <p className="font-semibold">{row.name}</p>
-                  <p className="text-xs text-muted">{row.phone || row.address || tx("Sin teléfono", "No phone")}</p>
+            <ul className="bz-bulk-list mt-3 grid gap-3">
+              {bulk.map((row, i) => {
+                const rep = repeatOf(bulk, i);
+                const like = row.dups?.[0];
+                return (
+                <li key={`${row.name}-${i}`} className="bz-bulk-row">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className={cn("min-w-0 font-semibold leading-tight", i === 0 && bulk.length > 1 && "pt-2.5")}>{row.name}</p>
+                    {i === 0 && bulk.length > 1 ? (
+                      <button
+                        type="button"
+                        className="min-h-10 shrink-0 px-1 text-xs font-semibold text-primary"
+                        onClick={() =>
+                          setBulk((prev) => {
+                            if (!prev || prev.length < 2) return prev;
+                            const first = prev[0];
+                            return prev.map((r, idx) =>
+                              idx === 0
+                                ? r
+                                : { ...r, pricePerCut: first.pricePerCut, cutsPerMonth: first.cutsPerMonth, startDate: first.startDate, paySameDay: first.paySameDay },
+                            );
+                          })
+                        }
+                      >
+                        {tx("Copiar a todos", "Copy to all")}
+                      </button>
+                    ) : null}
+                  </div>
+                  {row.address ? <p className="mt-0.5 text-xs text-muted">{row.address}</p> : null}
+                  {rep >= 0 ? (
+                    <div className="bz-bulk-dup">
+                      <Users aria-hidden />
+                      <span className="min-w-0">{tx("Repetido en esta lista:", "Repeated in this list:")} <b>{bulk[rep].name}</b></span>
+                      <button type="button" className="bz-bulk-dup-go" onClick={() => removeRow(i)}>{tx("Quitar", "Remove")}</button>
+                    </div>
+                  ) : like && !row.dupState ? (
+                    <button type="button" className="bz-bulk-dup" onClick={() => setRowCompare(i)}>
+                      <Users aria-hidden />
+                      <span className="min-w-0">
+                        {tx("Se parece a", "Looks like")} <b>{like.name}</b>
+                        {like.phone ? <span className="tabular-nums"> · {like.phone}</span> : null}
+                        {row.dups && row.dups.length > 1 ? tx(` y ${row.dups.length - 1} más`, ` and ${row.dups.length - 1} more`) : ""}
+                      </span>
+                      <span className="bz-bulk-dup-go">{tx("Comparar", "Compare")}</span>
+                    </button>
+                  ) : row.dupState && row.dupState !== "other" ? (
+                    <button type="button" className="bz-bulk-dup is-ok" onClick={() => setRowCompare(i)}>
+                      <CircleCheck aria-hidden />
+                      <span className="min-w-0">{tx("Se une a", "Merges into")} <b>{row.dupState.name}</b></span>
+                      <span className="bz-bulk-dup-go">{tx("Cambiar", "Change")}</span>
+                    </button>
+                  ) : null}
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    className="mt-2"
+                    aria-label={tx("Teléfono", "Phone")}
+                    placeholder={tx("Teléfono (opcional)", "Phone (optional)")}
+                    value={row.phone}
+                    onChange={(e) =>
+                      setBulk((prev) => prev?.map((r, idx) => (idx === i ? { ...r, phone: e.target.value } : r)) ?? null)
+                    }
+                    onBlur={() => recheckRow(i)}
+                  />
                   <button
                     type="button"
                     onClick={() => toggleOwing(i, !owing.includes(i))}
-                    className="mt-2 flex h-9 w-full items-center gap-2 rounded-full bg-surface px-2 text-left"
+                    className="mt-2 flex h-10 w-full items-center gap-2 rounded-full bg-surface px-2 text-left"
                   >
                     <span
                       className={cn(
@@ -448,7 +611,7 @@ function NuevoPage() {
                         }
                       />
                     </div>
-                    <div>
+                    <div className="col-span-2">
                       <Label>{tx("Día de inicio", "Start day")}</Label>
                       <Input
                         type="date"
@@ -462,7 +625,7 @@ function NuevoPage() {
                         }
                       />
                     </div>
-                    <label className="mt-6 flex min-h-11 items-center gap-1.5 text-xs font-medium">
+                    <label className="col-span-2 flex min-h-11 items-center gap-2 text-sm font-medium">
                       <input
                         type="checkbox"
                         checked={row.paySameDay}
@@ -475,38 +638,61 @@ function NuevoPage() {
                         }
                         className="size-5 shrink-0 accent-primary"
                       />
-                      <span className="min-w-0 flex-1 whitespace-nowrap leading-tight">{tx("Paga el mismo día", "Same day")}</span>
+                      <span className="min-w-0 flex-1 whitespace-nowrap leading-tight">{tx("Paga el mismo día", "Pays the same day")}</span>
                       <Hint compact topic="paga-mismo-dia" />
                     </label>
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ul>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <Button variant="secondary" onClick={requestLeaveBulk}>
-                {tx("Cancelar", "Cancel")}
-              </Button>
-              <Button
-                disabled={bulkMut.isPending}
-                onClick={() => {
-                  if (owing.some((index) => !(Number(bulk[index]?.openingBalance) > 0))) {
-                    toast.error(tx("Escribe el monto de cada nombre marcado.", "Write the amount for each marked name."));
-                    return;
-                  }
-                  saveBulk(bulk.map((row, index) => (owing.includes(index) ? row : { ...row, openingBalance: "" })));
-                }}
-              >
-                {bulkMut.isPending
-                  ? tx("Guardando…", "Saving…")
-                  : tx(
-                      `Añadir ${bulk.length}${owing.length ? ` · ${owing.length} con deuda` : ""}`,
-                      `Add ${bulk.length}${owing.length ? ` · ${owing.length} with debt` : ""}`,
-                    )}
-              </Button>
+            <div className="bz-dialog-actions">
+              <div className={cn("bz-dialog-pair", saveLabel.length > 16 && "bz-dialog-pair-col")}>
+                <Button variant="secondary" className="bz-dialog-quiet" onClick={requestLeaveBulk}>
+                  {tx("Cancelar", "Cancel")}
+                </Button>
+                <Button
+                  disabled={bulkMut.isPending}
+                  onClick={() => {
+                    if (owing.some((index) => !(Number(bulk[index]?.openingBalance) > 0))) {
+                      toast.error(tx("Escribe el monto de cada nombre marcado.", "Write the amount for each marked name."));
+                      return;
+                    }
+                    saveBulk(bulk.map((row, index) => (owing.includes(index) ? row : { ...row, openingBalance: "" })));
+                  }}
+                >
+                  {bulkMut.isPending ? tx("Guardando", "Saving") : saveLabel}
+                </Button>
+              </div>
             </div>
           </div>
+          <DupCompare
+            open={cmp != null && Boolean(cmp.dups?.length)}
+            mode="new"
+            mine={{ name: cmp?.name ?? "", phone: cmp?.phone, address: cmp?.address, price: Number(cmp?.pricePerCut) || null, balance: owing.includes(rowCompare ?? -1) ? Number(cmp?.openingBalance) || 0 : 0 }}
+            matches={cmp?.dups ?? []}
+            onUse={(other) => {
+              const at = rowCompare;
+              setRowCompare(null);
+              if (at == null) return;
+              removeRow(at);
+              toast(tx(`${other.name} ya existe: no se añade otra vez.`, `${other.name} already exists: not added again.`));
+            }}
+            onOther={() => {
+              const at = rowCompare;
+              setRowCompare(null);
+              setBulk((prev) => prev?.map((r, idx) => (idx === at ? { ...r, dupState: "other" } : r)) ?? null);
+            }}
+            onMerge={(_keep, other) => {
+              const at = rowCompare;
+              setRowCompare(null);
+              setBulk((prev) => prev?.map((r, idx) => (idx === at ? { ...r, dupState: { merge: other.id, name: other.name } } : r)) ?? null);
+            }}
+            onClose={() => setRowCompare(null)}
+          />
         </div>
-      ) : null}
+        );
+      })() : null}
       <ConfirmDialog
         open={leaveAsk}
         front
@@ -568,7 +754,7 @@ function NuevoPage() {
                   if (typed > 40) toast.error(tx("Solo entran 40 a la vez. El resto se quedó fuera.", "Only 40 go in at a time. The rest were left out."));
                   setNameDraft(null);
                   setOwing([]);
-                  setBulk(rows);
+                  openBulk(rows);
                 }}
               >
                 {tx("Continuar", "Continue")}

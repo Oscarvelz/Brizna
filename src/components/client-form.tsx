@@ -510,7 +510,7 @@ export function ClientForm({
             }}
           >
             <Navigation className="size-4" />
-            {locating ? tx("Buscando…", "Searching…") : tx("Usar dirección actual", "Use current address")}
+            {locating ? tx("Buscando", "Searching") : tx("Usar dirección actual", "Use current address")}
           </Button>
           <Button
             type="button"
@@ -579,7 +579,7 @@ export function ClientForm({
               <option value="3">{tx("3 veces al mes", "3 times a month")}</option>
               <option value="4">{tx("Cada semana", "Every week")}</option>
               <option value="5">{tx("2 veces por semana", "Twice a week")}</option>
-              <option value="custom">{tx("Personalizada…", "Custom…")}</option>
+              <option value="custom">{tx("Personalizada", "Custom")}</option>
             </NativeSelect>
             <FrequencyPresets
               mode={value.frequencyMode}
@@ -773,7 +773,7 @@ export function ClientForm({
             <Input
               value={value.oneTimeTitle}
               onChange={(e) => set("oneTimeTitle", e.target.value)}
-              placeholder={tx("Limpieza, poda, fertilizante…", "Cleanup, trim, fertilizer…")}
+              placeholder={tx("Limpieza, poda, fertilizante", "Cleanup, trim, fertilizer")}
               required
             />
             <TaskPresets
@@ -846,12 +846,12 @@ export function ClientForm({
             notesRef.current = html;
             set("richNotes", html);
           }}
-          placeholder={tx("Portón al lado, perro, llave debajo de la maceta…", "Gate on the side, dog, key under the pot…")}
+          placeholder={tx("Portón al lado, perro, llave debajo de la maceta", "Gate on the side, dog, key under the pot")}
         />
       </Field>
 
       <Button type="submit" size="lg" disabled={pending} className="mt-1 w-full">
-        {pending ? tx("Guardando…", "Saving…") : submitLabel}
+        {pending ? tx("Guardando", "Saving") : submitLabel}
       </Button>
       <OffDayDialog
         iso={rareAsk?.iso ?? null}

@@ -7,6 +7,7 @@ import type React from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { DupScanLine } from "@/components/dup-compare";
 import { ConfirmLink } from "@/components/confirm-link";
 import { ContactIcons } from "@/components/contact-icons";
 import { CueChip } from "@/components/cue-chip";
@@ -423,6 +424,7 @@ function ClientesPage() {
             <p className="text-xs text-muted">{tx("Archivos", "Archive")}</p>
           </Link>
         </div>
+        {!inArchive ? <DupScanLine /> : null}
       </details>
       <ConfirmDialog
         open={askUnpin}

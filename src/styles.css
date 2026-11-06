@@ -3182,3 +3182,72 @@ html:is(.theme-dark, .theme-amoled) .bz-dialog-actions button:is(.btn-hecho-owe,
 .aj-link { font-weight: 700; color: var(--color-primary); text-decoration: underline; text-underline-offset: 2px; }
 .aj-notif-foot { display: flex; align-items: center; gap: .75rem; }
 @media (max-width: 380px) { .aj-notif .aj-act { min-width: 0; padding: 0 .8rem; font-size: .88rem; } .aj-notif .aj-num { gap: .5rem; } }
+
+/* 1.5.02 ¿Es el mismo cliente?: two columns side by side (yours, the one that exists), rows aligned, the matching
+   fields tinted with a check. Same dialog frame; cells use the dialog's inner-field tone (night #1c1c1f). */
+.bz-dup, .bz-dup-scan { max-width: 34rem; }
+.bz-dup-pick { display: flex; gap: 0.375rem; margin-top: 0.875rem; overflow-x: auto; scrollbar-width: none; }
+.bz-dup-pick::-webkit-scrollbar { display: none; }
+.bz-dup-tab { flex: 0 0 auto; height: 2.25rem; padding: 0 0.85rem; border-radius: 9999px; font-size: 0.8125rem; font-weight: 650; white-space: nowrap;
+  color: var(--color-muted); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 12%, transparent); }
+.bz-dup-tab.is-on { color: var(--color-primary); background: color-mix(in oklab, var(--color-primary) 12%, var(--color-surface)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-primary) 40%, transparent); }
+.bz-dup-grid { --dup-panel: color-mix(in srgb, var(--color-surface-2) 55%, var(--color-surface)); --dup-line: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 0.5rem; row-gap: 0; margin-top: 1rem; }
+/* Each side reads as ONE panel (no box per field): same ground down the column, hairlines between rows. */
+.bz-dup-head { display: grid; gap: 0.125rem; padding: 0.65rem 0.7rem 0.55rem; border-radius: var(--radius-md) var(--radius-md) 0 0; background: var(--dup-panel); }
+.bz-dup-label { display: flex; align-items: center; justify-content: space-between; gap: 0.375rem; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted); }
+.bz-dup-stays { display: inline-flex; align-items: center; gap: 0.2rem; letter-spacing: 0; text-transform: none; font-size: 0.72rem; color: var(--color-primary); }
+.bz-dup-stays svg { width: 0.8rem; height: 0.8rem; stroke-width: 3; }
+.bz-dup-name { font-family: var(--font-display); font-size: 1.02rem; font-weight: 650; line-height: 1.25; color: var(--color-fg); overflow-wrap: anywhere; }
+.bz-dup-cell { position: relative; display: flex; align-items: flex-start; gap: 0.45rem; min-height: 2.5rem; padding: 0.6rem 0.7rem; background: var(--dup-panel);
+  font-size: 0.84rem; line-height: 1.3; color: var(--color-fg); box-shadow: inset 0 1px 0 var(--dup-line); }
+.bz-dup-grid > .bz-dup-cell:nth-last-child(-n+2) { border-radius: 0 0 var(--radius-md) var(--radius-md); }
+.bz-dup-cell.is-on { padding-right: 1.6rem; }
+.bz-dup-cell.is-empty { color: var(--color-subtle); }
+.bz-dup-ic { display: grid; flex-shrink: 0; place-items: center; height: 1.1rem; color: var(--color-subtle); }
+.bz-dup-ic svg { width: 0.95rem; height: 0.95rem; }
+.bz-dup-val { min-width: 0; overflow-wrap: anywhere; }
+.bz-dup-eq { position: absolute; top: 0.66rem; right: 0.55rem; width: 0.95rem; height: 0.95rem; stroke-width: 3; color: var(--color-primary); }
+.bz-dup-head.is-on .bz-dup-name { color: var(--color-primary); }
+.bz-dup-cell.is-on { background: color-mix(in oklab, var(--color-primary) 11%, var(--color-surface)); }
+.bz-dup-cell.is-on .bz-dup-ic { color: var(--color-primary); }
+.bz-dup-note { display: flex; align-items: flex-start; gap: 0.5rem; margin-top: 0.875rem; font-size: 0.86rem; line-height: 1.45; color: var(--color-muted); text-wrap: pretty; }
+.bz-dup-swap { display: inline-flex; flex-shrink: 0; align-items: center; gap: 0.3rem; height: 2rem; margin-left: auto; padding: 0 0.7rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-primary) 35%, transparent); }
+.bz-dup-swap svg { width: 0.9rem; height: 0.9rem; }
+.bz-dialog-actions button.bz-dup-merge { color: var(--color-primary); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-primary) 40%, transparent); }
+html.theme-amoled .bz-dup-grid, html.theme-dark[data-palette="grafito"] .bz-dup-grid { --dup-panel: #1c1c1f; --dup-line: #29292d; }
+html:is(.theme-dark, .theme-amoled) .bz-dup-grid { --dup-line: rgb(255 255 255 / 0.07); }
+html.theme-amoled .bz-dup-cell.is-on, html.theme-dark[data-palette="grafito"] .bz-dup-cell.is-on { background: color-mix(in oklab, var(--color-primary) 14%, #1c1c1f); }
+html.theme-amoled .bz-dup-tab:not(.is-on) { box-shadow: inset 0 0 0 1px #2c2c30; }
+
+/* 1.5.02 Añadir varios / contactos: the review sheet is a dialog (same frame and night charcoal), each client a row
+   card; on tablet the sheet widens and the rows sit two by two. */
+.bz-bulk { max-width: 28rem; max-height: 90dvh; overflow: auto; overscroll-behavior: contain; }
+@media (min-width: 768px) { [role="dialog"].bz-bulk.is-wide { max-width: min(52rem, 100%); } .bz-bulk.is-wide .bz-bulk-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bz-bulk-row { border-radius: var(--radius-md); padding: 0.75rem; background: color-mix(in srgb, var(--color-surface-2) 55%, var(--color-surface)); }
+.bz-bulk-box { border-radius: var(--radius-md); padding: 0.75rem; background: color-mix(in srgb, var(--color-surface-2) 55%, var(--color-surface)); }
+html.theme-amoled :is(.bz-bulk-row, .bz-bulk-box), html.theme-dark[data-palette="grafito"] :is(.bz-bulk-row, .bz-bulk-box) { background: #18181b; box-shadow: inset 0 0 0 1px #262629; }
+.bz-bulk-dup { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 2.75rem; margin-top: 0.5rem; padding: 0.4rem 0.4rem 0.4rem 0.65rem; border-radius: var(--radius-sm); text-align: left;
+  font-size: 0.8rem; line-height: 1.3; color: var(--color-fg);
+  background: color-mix(in oklab, var(--color-hold) 12%, var(--color-surface)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-hold) 38%, transparent); }
+.bz-bulk-dup svg { width: 1rem; height: 1rem; flex-shrink: 0; color: var(--color-hold); }
+.bz-bulk-dup .bz-bulk-dup-go { flex-shrink: 0; margin-left: auto; height: 2rem; padding: 0 0.7rem; border-radius: 9999px; display: inline-flex; align-items: center; font-weight: 700; color: var(--color-primary);
+  background: var(--color-surface); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-primary) 30%, transparent); }
+.bz-bulk-dup.is-ok { background: color-mix(in oklab, var(--color-primary) 9%, var(--color-surface)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-primary) 26%, transparent); }
+.bz-bulk-dup.is-ok svg { color: var(--color-primary); }
+html.theme-amoled .bz-bulk-dup .bz-bulk-dup-go { background: #111113; }
+
+/* 1.5.02 Clientes, Inventario: "Posibles repetidos" line under the four tiles (only when there are some). */
+.bz-inv-dups { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 2.75rem; margin-top: 0.375rem; padding: 0 0.4rem 0 0.65rem; border-radius: var(--radius-sm);
+  font-size: 0.84rem; font-weight: 600; text-align: left; color: var(--color-fg); background: color-mix(in oklab, var(--color-hold) 11%, var(--color-surface)); }
+.bz-inv-dups > svg:first-child { width: 1rem; height: 1rem; color: var(--color-hold); flex-shrink: 0; }
+.bz-inv-dups .bz-inv-dups-go { margin-left: auto; display: inline-flex; align-items: center; gap: 0.15rem; font-size: 0.8rem; font-weight: 700; color: var(--color-primary); }
+.bz-inv-dups .bz-inv-dups-go svg { width: 1rem; height: 1rem; }
+.bz-dup-list { display: grid; gap: 0.5rem; margin-top: 1rem; }
+.bz-dup-group { display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: 3.25rem; padding: 0.55rem 0.5rem 0.55rem 0.75rem; border-radius: var(--radius-md); text-align: left;
+  background: color-mix(in srgb, var(--color-surface-2) 55%, var(--color-surface)); }
+html.theme-amoled .bz-dup-group, html.theme-dark[data-palette="grafito"] .bz-dup-group { background: #1c1c1f; box-shadow: inset 0 0 0 1px #262629; }
+.bz-dup-group-names { min-width: 0; flex: 1; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }
+.bz-dup-group-why { display: block; font-size: 0.78rem; font-weight: 500; color: var(--color-muted); }
+.bz-dup-group > svg { width: 1.1rem; height: 1.1rem; flex-shrink: 0; color: var(--color-subtle); }

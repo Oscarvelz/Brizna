@@ -370,6 +370,38 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         terms: [["Activos", "Active"], ["Embudo", "Funnel"], ["Inventario", "Inventory"], ["Permanentes", "Regular"], ["Juntos", "Together"], ["Casos especiales", "Special cases"], ["Lista negra", "Blacklist"], ["Con saldo", "With a balance"]],
       },
       {
+        id: "clientes-repetidos",
+        title: ["Clientes repetidos", "Duplicate clients"],
+        sum: ["Antes de guardar a alguien que ya tienes, Brizna te los muestra lado a lado.", "Before you save someone you already have, Brizna shows both side by side."],
+        what: [
+          "Se parecen en el nombre, el teléfono o la dirección. Compara y elige Usar existente, Es otro cliente o Unir; nada se une solo.",
+          "They look alike in name, phone or address. Compare and choose Use existing, Another client or Merge; nothing merges by itself.",
+        ],
+        how: [
+          "Al guardar un cliente nuevo, al editar el nombre, el teléfono o la dirección, al importar contactos y en cada fila de Añadir varios, Brizna busca parecidos entre todos tus clientes, también los de Archivos.\nSi hay uno, sale ¿Es el mismo cliente?: el tuyo a la izquierda y el que ya existe a la derecha, con teléfono, dirección, precio, cortes y deuda; lo que coincide va marcado con un visto.\nToca Usar existente para no crear otro, Es otro cliente para seguir, o Unir para juntar los dos.\nEn Clientes, abre Inventario de clientes: si hay posibles repetidos sale una línea; toca Revisar para verlos por parejas.",
+          "When you save a new client, edit the name, phone or address, import contacts, and on each row of Add several, Brizna looks for look-alikes among all your clients, archived ones too.\nIf there is one, Is it the same client? opens: yours on the left and the existing one on the right, with phone, address, price, cuts and debt; what matches carries a check.\nTap Use existing to not make another, Another client to go on, or Merge to join both.\nIn Clients, open Client inventory: if there are possible duplicates a line shows; tap Review to see them in pairs.",
+        ],
+        calc: [
+          "Nombre: igual sin contar acentos, mayúsculas, espacios ni signos; o casi igual (las mismas palabras en otro orden, o una letra distinta en nombres largos).\nTeléfono: los últimos 10 dígitos.\nDirección: el número y la calle, con St, Ave, SW y demás abreviaturas igualadas.\nUnir: antes se guarda una copia de seguridad. Cortes hechos, pagos, fotos y notas enlazadas pasan al que queda; los cortes pendientes del otro se quitan como al archivar; si los dos tienen un corte el mismo día, ese queda con el archivado. Su deuda y su crédito se suman al que queda, y el teléfono o la dirección que faltaban se copian.\nDeshacer: en el aviso o en Cambios hechos de cualquiera de los dos; todo vuelve a su cliente por su número.",
+          "Name: equal ignoring accents, capitals, spaces and signs; or almost equal (the same words in another order, or one letter off on long names).\nPhone: the last 10 digits.\nAddress: the number and the street, with St, Ave, SW and other abbreviations matched.\nMerge: a backup is saved first. Done cuts, payments, photos and linked notes move to the one that stays; the other's pending cuts are cleared as archiving does; if both have a cut on the same day, that one stays with the archived client. Its debt and credit are added to the one that stays, and a missing phone or address is copied.\nUndo: in the notice or in Changes made of either one; everything goes back to its client by its number.",
+        ],
+        example: [
+          "Escribes Jose Perez para un patio nuevo. Ya tienes a José Pérez con el (305) 555-0142 y 40 cortes. Sale ¿Es el mismo cliente? con los dos teléfonos lado a lado; es él, tocas Usar existente y se abre su ficha.",
+          "You type Jose Perez for a new yard. You already have José Pérez at (305) 555-0142 with 40 cuts. Is it the same client? shows both phones side by side; it is him, you tap Use existing and his file opens.",
+        ],
+        cases: [
+          "Dos patios del mismo dueño (mismo teléfono): toca Es otro cliente; la revisión ya no los vuelve a juntar.\nUniste por error: toca Deshacer en el aviso, o Deshacer unión en Cambios hechos.\nEn Añadir varios un nombre sale dos veces: la fila repetida dice Repetido en esta lista y Quitar la saca.",
+          "Two yards of the same owner (same phone): tap Another client; the review no longer pairs them.\nYou merged by mistake: tap Undo in the notice, or Undo merge in Changes made.\nIn Add several a name shows twice: the repeated row says Repeated in this list and Remove takes it out.",
+        ],
+        mistake: [
+          "Unir dos patios distintos de un mismo dueño: sus cortes quedan en una sola ficha. Si cada patio tiene su precio y su día, son dos clientes.",
+          "Merging two different yards of one owner: their cuts end up in one file. If each yard has its own price and day, they are two clients.",
+        ],
+        related: ["lista-clientes", "archivo", "cambios-hechos"],
+        go: { to: "/clientes", focus: "inventario", where: ["Clientes, Inventario de clientes", "Clients, Client inventory"] },
+        terms: [["Repetidos", "Duplicates"], ["Unir", "Merge"], ["Usar existente", "Use existing"], ["Es otro cliente", "Another client"]],
+      },
+      {
         id: "lista-clientes",
         title: ["La lista de clientes", "The client list"],
         sum: ["Llamar, escribir o ir con un toque.", "Call, text, or go there in one tap."],

@@ -518,7 +518,7 @@ export async function snapshotBackup(userId: string, force = false): Promise<voi
 
 let ensureMemo: { key: string; run: Promise<void> } | null = null;
 
-async function ensureScheduleForUser(userId: string): Promise<void> {
+export async function ensureScheduleForUser(userId: string): Promise<void> {
   // On the device, screens read the schedule many times; top it up once per day and
   // again only after something was saved (or synced in). Writes always run it fresh.
   const G = globalThis as { __bzWriteEpoch?: number; __bzInPost?: number; __bzDbKey?: string };

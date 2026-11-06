@@ -109,7 +109,7 @@ export function ConfirmDialog({
           {stack ? (
             <>
               <Button type="button" onClick={onConfirm} disabled={pending} className="btn-hecho-paid bz-hb">
-                {pending ? "…" : yes}
+                {pending ? t("common.wait") : yes}
               </Button>
               {extraLabel && onExtra ? (
                 <Button type="button" onClick={onExtra} disabled={pending} className="btn-hecho-owe bz-hb">

@@ -19,6 +19,8 @@ import {
   type ClientFormValue,
 } from "@/components/client-form";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { DupCompare, afterDialogClose, afterMerge } from "@/components/dup-compare";
+import { checkClientDupes, markNotDuplicate, mergeClients, undoMerge, type DupClient, type DupMatch } from "@/lib/server/dups";
 import { ConfirmLink } from "@/components/confirm-link";
 import { Hint } from "@/components/hint";
 import { OffDayDialog, shiftToMonday, useRareDay } from "@/components/off-day-ask";
@@ -94,6 +96,9 @@ function ClientDetailPage() {
   const [askOff, setAskOff] = useState(false);
   const [askOn, setAskOn] = useState(false);
   const [pendingEdit, setPendingEdit] = useState<ClientFormValue | null>(null);
+  // 1.5.02: an edit that makes this client look like another one asks first (side by side, with phones).
+  const [editDupes, setEditDupes] = useState<{ matches: DupMatch[]; self: DupClient | null } | null>(null);
+  const [mergingEdit, setMergingEdit] = useState(false);
   const [draftAmount, setDraftAmount] = useState("");
   const [payAsk, setPayAsk] = useState(false);
   const settingsQ = useQuery({ queryKey: ["settings"], queryFn: () => getSettings() });
@@ -191,13 +196,79 @@ function ClientDetailPage() {
             initial={formFromClient(client)}
             submitLabel={tx("Guardar cambios", "Save changes")}
             pending={save.isPending}
-            onSubmit={(v) => setPendingEdit(v)}
+            onSubmit={(v) => {
+              const changed =
+                v.name.trim() !== client.name.trim() ||
+                (v.phone ?? "").trim() !== (client.phone ?? "").trim() ||
+                (v.address ?? "").trim() !== (client.address ?? "").trim();
+              if (!changed) {
+                setPendingEdit(v);
+                return;
+              }
+              void checkClientDupes({ data: { name: v.name, phone: v.phone, address: v.address, excludeId: numericId } })
+                .then((res) => {
+                  if (res.matches.length) {
+                    setEditDupes(res);
+                    setPendingEdit(v);
+                  } else setPendingEdit(v);
+                })
+                .catch(() => setPendingEdit(v));
+            }}
+          />
+          <DupCompare
+            open={Boolean(editDupes && pendingEdit)}
+            mode="edit"
+            mine={{
+              id: numericId,
+              name: pendingEdit?.name ?? client.name,
+              phone: pendingEdit?.phone,
+              address: pendingEdit?.address,
+              existing: editDupes?.self ?? undefined,
+            }}
+            matches={editDupes?.matches ?? []}
+            pending={mergingEdit}
+            onUse={(other) => {
+              setEditDupes(null);
+              setPendingEdit(null);
+              setEditing(false);
+              afterDialogClose(() => void navigate({ to: "/clientes/$id", params: { id: String(other.id) } }));
+            }}
+            onOther={(other) => {
+              setEditDupes(null);
+              void markNotDuplicate({ data: { a: numericId, b: other.id } }).catch(() => undefined);
+            }}
+            onMerge={(keepId, other) => {
+              if (!pendingEdit || mergingEdit) return;
+              setMergingEdit(true);
+              const dropId = keepId === numericId ? other.id : numericId;
+              void (async () => {
+                try {
+                  await updateClient({ data: { id: numericId, ...payloadFromForm(pendingEdit) } });
+                  const res = await mergeClients({ data: { keepId, dropId } });
+                  const keepName = keepId === numericId ? pendingEdit.name : other.name;
+                  const dropName = keepId === numericId ? other.name : pendingEdit.name;
+                  await afterMerge(qc, tx, res, keepName, dropName);
+                  setEditDupes(null);
+                  setPendingEdit(null);
+                  setEditing(false);
+                  if (res.ok && keepId !== numericId) afterDialogClose(() => void navigate({ to: "/clientes/$id", params: { id: String(keepId) } }));
+                } catch {
+                  toast.error(tx("No se pudo unir", "Could not merge"));
+                } finally {
+                  setMergingEdit(false);
+                }
+              })();
+            }}
+            onClose={() => {
+              setEditDupes(null);
+              setPendingEdit(null);
+            }}
           />
           <Button variant="ghost" className="mt-2 w-full" onClick={() => setEditing(false)}>
             {tx("Cancelar", "Cancel")}
           </Button>
           <ConfirmDialog
-            open={Boolean(pendingEdit)}
+            open={Boolean(pendingEdit) && !editDupes}
             title={tx("¿Guardar cambios?", "Save changes?")}
             description={tx(
               "Se actualiza el cliente y, si cambió el horario, la agenda.",
@@ -607,6 +678,8 @@ function ChangeHistory({ clientId }: { clientId: number }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [restoreId, setRestoreId] = useState<number | null>(null);
+  const [undoId, setUndoId] = useState<string | null>(null);
+  const [undoing, setUndoing] = useState(false);
   const q = useQuery({
     queryKey: ["client-changes", clientId],
     queryFn: () => listClientChanges({ data: { clientId } }),
@@ -642,9 +715,17 @@ function ChangeHistory({ clientId }: { clientId: number }) {
                   <span className="bz-mov-kind is-plain">{c.summary}</span>
                   <span className="bz-mov-sub">{formatDay(stampDay(c.createdAt), "d MMM")}</span>
                 </span>
-                <Button variant="ghost" size="sm" onClick={() => setRestoreId(c.id)}>
-                  {tx("Restaurar", "Restore")}
-                </Button>
+                {c.snapshot.includes('"bzMerge"') ? (
+                  mergeOpen(c, q.data ?? []) ? (
+                    <Button variant="ghost" size="sm" disabled={undoing} onClick={() => setUndoId(mergeIdOf(c))}>
+                      {tx("Deshacer unión", "Undo merge")}
+                    </Button>
+                  ) : null
+                ) : c.snapshot.includes('"bzNotDup"') || c.snapshot.includes('"bzMergeUndone"') ? null : (
+                  <Button variant="ghost" size="sm" onClick={() => setRestoreId(c.id)}>
+                    {tx("Restaurar", "Restore")}
+                  </Button>
+                )}
               </li>
             ))
           )}
@@ -662,8 +743,48 @@ function ChangeHistory({ clientId }: { clientId: number }) {
         onConfirm={() => restoreId != null && restore.mutate(restoreId)}
         onCancel={() => setRestoreId(null)}
       />
+      <ConfirmDialog
+        open={undoId != null}
+        title={tx("¿Deshacer la unión?", "Undo the merge?")}
+        description={tx(
+          "Los cortes, pagos, fotos y notas que pasaron vuelven a su cliente, y ese cliente sale de Archivos como estaba.",
+          "The cuts, payments, photos and notes that moved go back to their client, and that client leaves the archive as it was.",
+        )}
+        confirmLabel={tx("Sí, deshacer", "Yes, undo")}
+        pending={undoing}
+        onConfirm={() => {
+          if (!undoId) return;
+          setUndoing(true);
+          void undoMerge({ data: { mergeId: undoId } })
+            .then(async (r) => {
+              toast[r.ok ? "success" : "message"](r.ok ? tx("Unión deshecha", "Merge undone") : tx("Esa unión ya estaba deshecha", "That merge was already undone"));
+              await invalidateLawn(qc);
+              await qc.invalidateQueries({ queryKey: ["client-changes"] });
+              await qc.invalidateQueries({ queryKey: ["dup-scan"] });
+            })
+            .catch(() => toast.error(tx("No se pudo deshacer", "Could not undo")))
+            .finally(() => {
+              setUndoing(false);
+              setUndoId(null);
+            });
+        }}
+        onCancel={() => setUndoId(null)}
+      />
     </section>
   );
+}
+
+/** 1.5.02: the merge a "Unido con" record belongs to, and whether it is still standing (not undone). */
+function mergeIdOf(c: { snapshot: string }): string {
+  try {
+    return (JSON.parse(c.snapshot) as { bzMerge?: { mergeId?: string } }).bzMerge?.mergeId ?? "";
+  } catch {
+    return "";
+  }
+}
+function mergeOpen(c: { snapshot: string }, all: { snapshot: string }[]): boolean {
+  const id = mergeIdOf(c);
+  return Boolean(id) && !all.some((x) => x.snapshot.includes('"bzMergeUndone"') && x.snapshot.includes(id));
 }
 
 /** 1.4.91: the tone each movement reads in (dot + word). */
