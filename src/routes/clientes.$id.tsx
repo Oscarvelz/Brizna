@@ -66,6 +66,8 @@ import {
 } from "@/lib/server/lawn";
 import type { ClientPhoto, JobRow, PaymentRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { clientKey, rowFromLists } from "@/lib/client-warm";
+import { whenIdle } from "@/lib/study-warm";
 
 export const Route = createFileRoute("/clientes/$id")({
   component: function ClientRoute() {
@@ -97,15 +99,23 @@ function ClientDetailPage() {
   const settingsQ = useQuery({ queryKey: ["settings"], queryFn: () => getSettings() });
   const presets = settingsQ.data?.abonoPresets;
 
+  // 1.4.95 (Oscar: the file opened as one empty box): the row the Clientes list already holds paints the card at
+  // once; cuts, movements and photos arrive from the file's own reading a moment later.
   const q = useQuery({
-    queryKey: ["client", numericId],
+    queryKey: clientKey(numericId),
     queryFn: () => getClient({ data: { id: numericId } }),
     enabled: Number.isFinite(numericId),
     refetchOnWindowFocus: false,
+    placeholderData: () => {
+      const row = rowFromLists(qc, numericId);
+      return row ? { client: row, jobs: [] as JobRow[], payments: [] as PaymentRow[], photos: [] as ClientPhoto[] } : undefined;
+    },
   });
 
   const data = q.data;
   const client = data?.client;
+  const seeded = q.isPlaceholderData;
+  const painted = useAfterPaint();
 
   const save = useMutation({
     mutationFn: (value: ClientFormValue) =>
@@ -145,7 +155,7 @@ function ClientDetailPage() {
   if (q.isLoading) {
     return (
       <AppShell title={tx("Cliente", "Client")}>
-        <div className="h-40 animate-pulse rounded-xl bg-surface-2" />
+        <ClientCardShimmer />
       </AppShell>
     );
   }
@@ -204,7 +214,7 @@ function ClientDetailPage() {
           <WideSplit
             sideFirst={false}
             side={
-              <>
+              painted ? <>
           <section className="mt-4 rounded-xl border-l-4 border-hold bg-hold-bg p-4 shadow-card">
             <h2 className="font-display text-lg font-semibold text-hold">{tx("Fiabilidad", "Reliability")}</h2>
             <p className="mt-1 text-sm">
@@ -242,7 +252,7 @@ function ClientDetailPage() {
             </p>
           </section>
 
-          {PHOTOS_ENABLED ? <ClientPhotos clientId={client.id} photos={data?.photos ?? []} /> : null}
+          {PHOTOS_ENABLED && !seeded ? <ClientPhotos clientId={client.id} photos={data?.photos ?? []} /> : null}
 
           <section className="mt-8">
             <h2 className="mb-1 font-display text-lg font-semibold">{tx("Próximos cortes", "Upcoming cuts")}</h2>
@@ -252,7 +262,7 @@ function ClientDetailPage() {
                 "The rule stays on the file. If you move a date, it does not go back to the old day.",
               )}
             </p>
-            <UpcomingCuts jobs={(data?.jobs ?? []).filter((j) => j.status === "pending")} />
+            {seeded ? <ShimmerCards n={2} /> : <UpcomingCuts jobs={(data?.jobs ?? []).filter((j) => j.status === "pending")} />}
           </section>
 
           <section id="historial" data-spot="historial" className="mt-8">
@@ -261,6 +271,7 @@ function ClientDetailPage() {
               since={client.startDate || client.createdAt}
               paid={client.collectedTotal}
               jobs={(data?.jobs ?? []).filter((j) => j.status !== "pending")}
+              loading={seeded}
             />
           </section>
 
@@ -287,7 +298,7 @@ function ClientDetailPage() {
             </Button>
           </div>
 
-              </>
+              </> : null
             }
           >
           <section className="bz-cl-card min-w-0 max-w-full overflow-hidden rounded-xl bg-surface p-4 shadow-card">
@@ -504,7 +515,9 @@ function ClientDetailPage() {
             />
           )}
 
-          {(data?.payments ?? []).length > 0 ? <MovesBlock clientId={client.id} payments={data?.payments ?? []} /> : null}
+          {seeded ? (
+            client.collectedTotal > 0 || client.lastPaidDate ? <MovesBlock clientId={client.id} payments={[]} loading /> : null
+          ) : (data?.payments ?? []).length > 0 ? <MovesBlock clientId={client.id} payments={data?.payments ?? []} /> : null}
 
           <ChangeHistory clientId={client.id} />
 
@@ -679,8 +692,10 @@ function FoldHead({
   title,
   icon,
   chip,
+  chipLoading = false,
   topic,
 }: {
+  chipLoading?: boolean;
   open: boolean;
   onToggle: () => void;
   title: string;
@@ -694,7 +709,7 @@ function FoldHead({
         <ChevronDown className={cn("bz-fh-chev", !open && "-rotate-90")} aria-hidden />
         {icon ? <span className="bz-fold-ic">{icon}</span> : null}
         <h2 className="bz-fh-title font-display">{title}</h2>
-        {chip != null && chip !== "" ? <span className="bz-fold-chip">{chip}</span> : null}
+        {chipLoading ? <span className="bz-shim is-chip is-fold" aria-hidden /> : chip != null && chip !== "" ? <span className="bz-fold-chip">{chip}</span> : null}
       </button>
       <Hint topic={topic} />
     </div>
@@ -722,7 +737,7 @@ function useFoldMemory(key: string) {
 }
 
 /** Movimientos (1.4.75): every money movement on this client, closed by default and remembered per client. */
-function MovesBlock({ clientId, payments }: { clientId: number; payments: PaymentRow[] }) {
+function MovesBlock({ clientId, payments, loading = false }: { clientId: number; payments: PaymentRow[]; loading?: boolean }) {
   const tx = useTx();
   const [open, toggle] = useFoldMemory(`ols-mov-${clientId}`);
   const cashIn = payments
@@ -735,6 +750,7 @@ function MovesBlock({ clientId, payments }: { clientId: number; payments: Paymen
         onToggle={toggle}
         title={tx("Movimientos", "Activity")}
         icon={<Wallet aria-hidden />}
+        chipLoading={loading}
         chip={
           <>
             {payments.length}
@@ -744,7 +760,9 @@ function MovesBlock({ clientId, payments }: { clientId: number; payments: Paymen
         }
         topic="movimientos"
       />
-      {open ? (
+      {open && loading ? (
+        <ShimmerRows n={3} />
+      ) : open ? (
         <ul className="bz-fold-list">
           {payments.map((p) => {
             const tipOnly = p.amount <= 0 && (p.tip ?? 0) > 0;
@@ -825,16 +843,27 @@ function ClientNotes({
     setSaved(next === initial);
     setFind("");
   }
+  // 1.4.95: linked pages and @-mention names read once the file has painted and the phone is idle.
+  const [later, setLater] = useState(false);
+  useEffect(() => {
+    let live = true;
+    whenIdle(() => live && setLater(true), 900);
+    return () => {
+      live = false;
+    };
+  }, []);
   const linked = useQuery({
     queryKey: ["pad-client", clientId],
     queryFn: () => listPadForClient({ data: { clientId } }),
     refetchOnWindowFocus: false,
+    enabled: later,
   });
   const people = useQuery({
     queryKey: ["clients", "mentions"],
     queryFn: () => listClients({ data: {} }),
     staleTime: 60_000,
     refetchOnWindowFocus: false,
+    enabled: later,
   });
 
   useEffect(() => {
@@ -1146,6 +1175,69 @@ function ExtraForm({ clientId, onDone }: { clientId: number; onDone: () => void 
   );
 }
 
+const UPCOMING_FIRST = 4;
+const UPCOMING_STEP = 8;
+
+/** 1.4.95: false on the first frame, true once the browser has painted it (two frames later). */
+function useAfterPaint() {
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    let b = 0;
+    const a = requestAnimationFrame(() => {
+      b = requestAnimationFrame(() => setDone(true));
+    });
+    return () => {
+      cancelAnimationFrame(a);
+      cancelAnimationFrame(b);
+    };
+  }, []);
+  return done;
+}
+
+/** 1.4.95: a direct open with nothing cached yet shows the client card's own shape, never a blank box. */
+function ClientCardShimmer() {
+  return (
+    <section className="bz-cl-card bz-shim-card min-w-0 max-w-full overflow-hidden rounded-xl bg-surface p-4 shadow-card" aria-busy="true">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <span className="bz-shim is-chip is-wide" aria-hidden />
+        <span className="bz-shim is-price" aria-hidden />
+      </div>
+      <div className="mt-3 flex min-w-0 flex-wrap gap-2">
+        <span className="bz-shim is-chip" aria-hidden />
+        <span className="bz-shim is-chip" aria-hidden />
+        <span className="bz-shim is-chip is-wide" aria-hidden />
+      </div>
+      <div className="mt-3 grid gap-2">
+        <span className="bz-shim is-bar" aria-hidden />
+        <span className="bz-shim is-bar" aria-hidden />
+      </div>
+    </section>
+  );
+}
+
+function ShimmerRows({ n }: { n: number }) {
+  return (
+    <div className="bz-shim-rows" aria-busy="true">
+      {Array.from({ length: n }, (_, i) => (
+        <span key={i} className="bz-shim is-row" aria-hidden />
+      ))}
+    </div>
+  );
+}
+
+function ShimmerCards({ n }: { n: number }) {
+  return (
+    <div className="grid gap-2" aria-busy="true">
+      {Array.from({ length: n }, (_, i) => (
+        <div key={i} className="bz-shim-job grid min-w-0 gap-2 rounded-xl bg-surface p-3 shadow-card">
+          <span className="bz-shim is-line" aria-hidden />
+          <span className="bz-shim is-bar" aria-hidden />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function UpcomingCuts({ jobs }: { jobs: JobRow[] }) {
   const tx = useTx();
   const qc = useQueryClient();
@@ -1162,11 +1254,22 @@ function UpcomingCuts({ jobs }: { jobs: JobRow[] }) {
       await invalidateLawn(qc);
     },
   });
+  // 1.4.95: a regular client can have 50+ cuts ahead; the first few draw with the page, the rest join in batches
+  // while the phone is idle, so opening the file never waits on all of them.
+  const [shown, setShown] = useState(UPCOMING_FIRST);
+  useEffect(() => {
+    if (shown >= jobs.length) return;
+    let live = true;
+    whenIdle(() => live && setShown((n) => n + UPCOMING_STEP), 400);
+    return () => {
+      live = false;
+    };
+  }, [shown, jobs.length]);
   if (jobs.length === 0) return <p className="text-sm text-muted">{tx("No hay cortes pendientes.", "There are no pending cuts.")}</p>;
   return (
     <>
     <div className="grid gap-2">
-      {jobs.map((job) => (
+      {jobs.slice(0, shown).map((job) => (
         <div key={job.id} className="grid min-w-0 gap-2 rounded-xl bg-surface p-3 shadow-card">
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="min-w-0 break-words text-sm font-semibold">{jobKindLabel(job.kind, job.title)}</p>
@@ -1228,11 +1331,14 @@ function HistoryBlock({
   since,
   paid,
   jobs,
+  loading = false,
 }: {
   clientId: number;
   since: string | null;
   paid: number;
   jobs: JobRow[];
+  /** 1.4.95: the file's own reading is still on its way (the card painted from the Clientes row). */
+  loading?: boolean;
 }) {
   const tx = useTx();
   const [open, toggle] = useFoldMemory(`ols-hist-${clientId}`);
@@ -1247,13 +1353,21 @@ function HistoryBlock({
   return (
     <>
       <FoldHead open={open} onToggle={toggle} title={tx("Historial", "History")} icon={<Scissors aria-hidden />} topic="historial" />
+      {loading ? (
+        <span className="bz-shim is-line mt-2" aria-hidden />
+      ) : (
       <p className="mt-1 text-sm tabular-nums text-muted">
         {tx(
           `${done} ${done === 1 ? "patio hecho" : "patios hechos"} · Pagado ${money(paid)} · ${yearLabel}`,
           `${done} ${done === 1 ? "yard done" : "yards done"} · Paid ${money(paid)} · ${yearLabel}`,
         )}
       </p>
-      {open ? (
+      )}
+      {open && loading ? (
+        <div className="mt-2">
+          <ShimmerRows n={3} />
+        </div>
+      ) : open ? (
         <>
           <div className="mt-2">
             <DensityToggle />

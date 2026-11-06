@@ -2961,3 +2961,31 @@ html:is(.theme-dark, .theme-amoled) .bz-pf-trigger {
    colour in other nights) and the same quiet hairline, so top and bottom read as one frame. */
 html.theme-amoled .pod-dock { background-color: var(--color-bg) !important; border-top-color: color-mix(in srgb, var(--color-border) 70%, transparent) !important; }
 html.theme-dark .pod-dock { background-color: var(--nv-top) !important; border-top-color: color-mix(in srgb, var(--color-border) 70%, transparent) !important; }
+
+/* 1.4.95 client file: content-shaped shimmer while the file's own reading arrives (never a blank box).
+   Charcoal on night themes (surface-2), soft sand by day; a slow sweep, still under reduced motion. */
+.bz-shim { display: block; border-radius: 999px; background: linear-gradient(90deg, var(--color-surface-2) 0%, color-mix(in srgb, var(--color-surface-2) 82%, var(--color-fg) 18%) 50%, var(--color-surface-2) 100%); background-size: 220% 100%; animation: bz-shim 1.5s ease-in-out infinite; }
+.bz-shim.is-chip { width: 6.5rem; height: 1.75rem; }
+.bz-shim.is-chip.is-wide { width: 10.5rem; }
+.bz-shim.is-chip.is-fold { flex: none; width: 4.25rem; height: 1.375rem; }
+.bz-shim.is-price { width: 4.75rem; height: 2rem; border-radius: 0.6rem; }
+.bz-shim.is-bar { width: 100%; height: 2.75rem; border-radius: var(--radius-md, 0.75rem); }
+.bz-shim.is-line { width: 62%; height: 0.875rem; }
+.bz-shim.is-row { width: 100%; height: 2.75rem; border-radius: 0.75rem; }
+.bz-shim-rows { display: grid; gap: 0.5rem; margin-top: 0.75rem; }
+@keyframes bz-shim { from { background-position: 100% 0; } to { background-position: -120% 0; } }
+@media (prefers-reduced-motion: reduce) { .bz-shim { animation: none; } }
+
+/* 1.4.95 (Oscar): the view-mode bar (Grande · Media · Lista · Malla) sits on a near-black charcoal track,
+   everywhere it appears. AMOLED #0e0e10 (was surface-2 #18191d); other night themes take their recessed well
+   about as much darker. Green frame kept; the chosen pill rises out of it in a lighter charcoal with a primary
+   wash, ring and drop shadow. Only the view bar; other surface-2 boxes keep their tone. */
+html.theme-amoled:not(#z) .bz-vistas {
+  background: #0e0e10;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 22%, var(--color-border)), inset 0 1px 3px rgb(0 0 0 / 0.6);
+}
+html.theme-amoled:not(#z) .bz-vista.is-on {
+  background: color-mix(in oklab, var(--color-primary) 13%, #1d1e22);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 42%, var(--color-border)), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 2px 8px -2px rgb(0 0 0 / 0.8);
+}
+html.theme-dark:not(#z) .bz-vistas { background: color-mix(in srgb, var(--nv-top), #000000 46%); }

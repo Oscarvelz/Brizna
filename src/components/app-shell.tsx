@@ -40,6 +40,7 @@ import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { DEFAULT_BUSINESS_NAME, PRODUCT_NAME } from "@/lib/format";
 import { getSettings, saveBackupNow, updateSettings } from "@/lib/server/lawn";
 import { warmStudy } from "@/lib/study-warm";
+import { installClientPrefetch } from "@/lib/client-warm";
 import { useI18n, useTx } from "@/lib/i18n";
 import {
   applyLocale,
@@ -193,6 +194,8 @@ export function AppShell({
   const shellQc = useQueryClient();
   // 1.4.84: Estudio/Asesor code and readings load ahead once the app is idle, so their cards open at once.
   useEffect(() => warmStudy(shellQc), [shellQc]);
+  // 1.4.95: pressing a link to a client file starts its reading before the page changes.
+  useEffect(() => installClientPrefetch(shellQc), [shellQc]);
   const { t, locale, setLocale } = useI18n();
   const tx = useTx();
   const businessName = settingsQ.data?.businessName || readStoredBusinessName(DEFAULT_BUSINESS_NAME);

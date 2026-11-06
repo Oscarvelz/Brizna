@@ -34,6 +34,21 @@ function rescueOf(full: string): string[] {
   return parts.length > 1 ? [`${parts[0]} ${parts[parts.length - 1]!.charAt(0)}.`, parts[0]!] : [];
 }
 
+/**
+ * 1.4.95 (Oscar: a client's file sat as one empty box for seconds): the Próximos cortes list on a file has
+ * dozens of cards with the SAME name, and each one cloned a hidden twin and read its width, so every card
+ * forced a full page layout. Widths are now kept per font and text: the first card measures, the rest read
+ * the answer without touching the page. Cleared whenever a web font finishes loading.
+ */
+type NameWidths = { widest: number[]; one: number[] };
+const widthCache = new Map<string, NameWidths>();
+let cacheHooked = false;
+function hookCache() {
+  if (cacheHooked || typeof document === "undefined") return;
+  cacheHooked = true;
+  document.fonts?.addEventListener?.("loadingdone", () => widthCache.clear());
+}
+
 /** 1.4.79: one shared name scale per view; each MeshNameUniform reports what it needs, the view takes the smallest. */
 const viewNeeds = new WeakMap<Element, Map<Element, number>>();
 function viewScale(view: Element, el: Element, need: number | null) {
@@ -83,41 +98,50 @@ export function MeshNameUniform({ name, cols, className, size, fit }: { name: st
       const inner = host.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
       return Math.floor(inner - others - gap * Math.max(0, kids.length - 1));
     };
+    hookCache();
     const check = () => {
       const room = roomOf();
       if (!room || room < 0) return;
-      el.style.fontSize = "";
-      const twin = el.cloneNode(false) as HTMLSpanElement;
-      twin.style.cssText = `position:absolute;visibility:hidden;left:-9999px;top:0;width:${room}px`;
-      twin.classList.remove("is-2l", "is-fit"); // its spans must measure inline, whatever state the name is in
-      el.parentElement?.appendChild(twin);
-      const widest = (k: number) => {
-        twin.innerHTML = "";
-        for (const t of forms[k]!) {
-          if (!t) continue;
-          const sp = document.createElement("span");
-          sp.textContent = t;
-          sp.style.whiteSpace = "nowrap";
-          twin.appendChild(sp);
-          twin.appendChild(document.createTextNode(" "));
-        }
-        return Math.max(...[...twin.children].map((c) => (c as HTMLElement).getBoundingClientRect().width));
-      };
+      if (el.style.fontSize) el.style.fontSize = "";
       const view = el.closest("main") ?? el.parentElement ?? document.body;
       const s = parseFloat(getComputedStyle(view).getPropertyValue("--bz-mn-s")) || 1;
-      let i = 0;
-      while (i < forms.length - 1 && widest(i) / s > room + 0.5) i += 1;
-      const w = widest(i) / s;
-      let oneLine = 0;
-      if (fit) {
-        twin.innerHTML = "";
-        const sp = document.createElement("span");
-        sp.textContent = forms[i]!.filter(Boolean).join(" ");
-        sp.style.whiteSpace = "nowrap";
-        twin.appendChild(sp);
-        oneLine = sp.getBoundingClientRect().width;
+      const cs = getComputedStyle(el);
+      const key = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}|${cs.letterSpacing}|${cs.wordSpacing}|${cs.fontStretch}|${cs.fontFeatureSettings}|${s}|${fit ? 1 : 0}|${full}`;
+      let widths = widthCache.get(key);
+      if (!widths) {
+        const twin = el.cloneNode(false) as HTMLSpanElement;
+        twin.style.cssText = `position:absolute;visibility:hidden;left:-9999px;top:0;width:${room}px`;
+        twin.classList.remove("is-2l", "is-fit"); // its spans must measure inline, whatever state the name is in
+        el.parentElement?.appendChild(twin);
+        const widest = (k: number) => {
+          twin.innerHTML = "";
+          for (const t of forms[k]!) {
+            if (!t) continue;
+            const sp = document.createElement("span");
+            sp.textContent = t;
+            sp.style.whiteSpace = "nowrap";
+            twin.appendChild(sp);
+            twin.appendChild(document.createTextNode(" "));
+          }
+          return Math.max(...[...twin.children].map((c) => (c as HTMLElement).getBoundingClientRect().width));
+        };
+        const oneOf = (k: number) => {
+          twin.innerHTML = "";
+          const sp = document.createElement("span");
+          sp.textContent = forms[k]!.filter(Boolean).join(" ");
+          sp.style.whiteSpace = "nowrap";
+          twin.appendChild(sp);
+          return sp.getBoundingClientRect().width;
+        };
+        widths = { widest: forms.map((_, k) => widest(k)), one: fit ? forms.map((_, k) => oneOf(k)) : [] };
+        twin.remove();
+        if (widthCache.size > 400) widthCache.clear();
+        widthCache.set(key, widths);
       }
-      twin.remove();
+      let i = 0;
+      while (i < forms.length - 1 && widths.widest[i]! / s > room + 0.5) i += 1;
+      const w = widths.widest[i]! / s;
+      const oneLine = fit ? widths.one[i]! : 0;
       // 1.4.79 standing rule (Oscar): never shrink one card. A word that cannot fit even on its own line scales
       // EVERY name in the view by the same factor (CSS var on <main>), so all cards keep one identical size.
       viewScale(view, el, w > room + 0.5 ? Math.max(0.6, Math.floor(((room - 1) / w) * 100) / 100) : 1);
