@@ -22,9 +22,14 @@ Web releases arrive on their own (the page is loaded live; the service worker ke
   pages may also get getUserMedia audio through `onPermissionRequest`).
 - APK: arm64-v8a only, native libraries compressed (android-3 with 4 ABIs was 70.8 MB).
 - Build: `.github/workflows/android.yml` on the `source` branch (only when `android/` changes). versionCode = `android/version.txt`.
-- Signing: the key is private and never committed. CI uploads `brizna-unsigned-N`; the APK is signed privately
-  (apksigner, alias `brizna`) and pushed to the orphan branch `android-signed` (`Brizna.apk`, `VERSION`=N, `NOTES.md`),
-  whose workflow publishes release `android-N`. All updates must use the same key
+- Signing: the key is private and never committed. `android.yml` has two jobs: `build` (no secrets; always uploads
+  `brizna-unsigned-N`) and `release`, which runs inside the GitHub environment `release`. That environment holds
+  `BRIZNA_KS_B64` + `BRIZNA_KS_PASS` as environment secrets (Settings → Environments → release; loaded by Oscar
+  only, never through chat) and requires Oscarvelz's review with admin bypass off: each run waits for his approval,
+  then CI signs the artifact (apksigner, alias `brizna`), verifies the certificate SHA-256 starts `7eae31f1` and
+  ends `dc0232`, and publishes release `android-N`. Without the environment secrets the release job no-ops and the
+  manual route stands: the APK is signed privately and pushed to the orphan branch `android-signed` (`Brizna.apk`,
+  `VERSION`=N, `NOTES.md`), whose workflow publishes `android-N`. All updates must use the same key
   (certificate SHA-256 7e:ae:31:f1:…:dc:02:32).
 - Download: https://github.com/Oscarvelz/Brizna/releases/latest/download/Brizna.apk
 - Storage is separate from Chrome: sign in once (Nube) or restore a backup.
