@@ -194,7 +194,10 @@ const WEIGHT: Record<AdvisorPillarKey, number> = { cobro: 0.3, clientes: 0.25, p
 /** The check that hurts most: worst status first, then the most points lost from the score. */
 function worstPillar(r: AdvisorReading): AdvisorPillar {
   const lost = (p: AdvisorPillar) => (1 - p.score) * WEIGHT[p.key];
-  return [...r.pillars].sort((a, b) => RANK[b.status] - RANK[a.status] || lost(b) - lost(a))[0];
+  // 1.5.08: an agenda with no measurable week (capacity 0) has no verdict to give —
+  // it used to win "worst pillar" and announce a week 0% full with room for 0 more yards.
+  const pool = r.pillars.filter((p) => !(p.key === "agenda" && p.c <= 0));
+  return [...(pool.length ? pool : r.pillars)].sort((a, b) => RANK[b.status] - RANK[a.status] || lost(b) - lost(a))[0];
 }
 
 /** "hace 3 días", "hace 4 meses", "hace más de un año". */
@@ -916,6 +919,13 @@ export function pillarWords(p: AdvisorPillar, r: AdvisorReading, tx: Tx): { line
         ),
       };
     case "agenda":
+      // 1.5.08: no goals and nothing proven = no measure, said plainly instead of "0 of 0 yards".
+      if (p.c <= 0) {
+        return {
+          line: tx("Aún no puedo medir tu semana.", "I can't measure your week yet."),
+          more: tx("Sin metas de patios ni días probados no hay medida. Pon tu meta de patios por día en Esfuerzo de la semana, o marca cortes como Hecho, y la mido.", "With no yard goals and no proven days there is nothing to measure against. Set your daily yard goal in Week effort, or mark cuts Done, and I'll measure it."),
+        };
+      }
       return {
         line: tx(`Llena al ${p.a}%: ${p.b} de ${p.c} patios por semana.`, `${p.a}% full: ${p.b} of ${p.c} yards a week.`),
         more: r.hasGoals
@@ -1056,6 +1066,16 @@ export function AsesorPanel() {
       <div className="as-skel" aria-busy>
         <span /><span /><span />
       </div>
+    );
+  }
+  if (q.isError) {
+    return (
+      <section data-spot-alt="asesor" className="as-card as-empty bz-frame">
+        <Sprout aria-hidden className="as-empty-sprout" />
+        <p className="as-verdict">{tx("No pude leer tus datos.", "I couldn't read your data.")}</p>
+        <p className="as-sub">{tx("Algo falló al preparar tus consejos. Tus datos están a salvo: intenta de nuevo.", "Something failed while preparing your advice. Your data is safe: try again.")}</p>
+        <button type="button" className="as-btn as-btn-solid mt-3" onClick={() => void q.refetch()}>{tx("Reintentar", "Retry")}</button>
+      </section>
     );
   }
   const r = q.data;

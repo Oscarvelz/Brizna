@@ -6350,6 +6350,11 @@ export const getAdvisor = createServerFn({ method: "GET" })
     const activeRegular = people.filter((p) => p.kind === "regular" && !lostIds.has(p.id));
     const vals = activeRegular.filter((p) => p.value12 > 0).map((p) => p.value12).sort((a, b) => a - b);
     const q75 = vals.length ? vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.75))] : Infinity;
+    // 1.5.08: with flat prices, a tie at the quartile cut can crown the whole book "stars" and
+    // empty the faithful group. Cap stars at the top third of the regulars (value, then monthly, then name).
+    const starPool = activeRegular.filter((p) => !isLate(p) && !p.reason && p.value12 >= q75 && p.value12 > 0);
+    const starCap = Math.max(1, Math.ceil(activeRegular.length / 3));
+    const starIds = new Set([...starPool].sort((a, b) => b.value12 - a.value12 || b.monthly - a.monthly || a.name.localeCompare(b.name)).slice(0, starCap).map((p) => p.id));
     const groups = new Map<AdvisorGroupKey, AdvisorPerson[]>(
       (["estrellas", "fieles", "riesgo", "morosos", "ocasionales"] as const).map((k) => [k, []]),
     );
@@ -6357,7 +6362,7 @@ export const getAdvisor = createServerFn({ method: "GET" })
       if (isLate(p)) { p.tip = "collect"; groups.get("morosos")!.push(p); continue; }
       if (p.reason) { p.tip = "call"; groups.get("riesgo")!.push(p); continue; }
       if (p.kind === "one_time") { p.tip = "plan"; groups.get("ocasionales")!.push(p); continue; }
-      if (p.value12 >= q75 && p.value12 > 0) { p.tip = p.suggested ? "raise" : "thank"; groups.get("estrellas")!.push(p); continue; }
+      if (starIds.has(p.id)) { p.tip = p.suggested ? "raise" : "thank"; groups.get("estrellas")!.push(p); continue; }
       p.tip = p.suggested ? "raise" : "keep";
       groups.get("fieles")!.push(p);
     }
@@ -6413,11 +6418,15 @@ export const getAdvisor = createServerFn({ method: "GET" })
     const week: AdvisorWeekday[] = weekDays.map((d) => ({
       dow: d,
       load: Math.round((loads.get(d) ?? 0) * 10) / 10,
+      // 1.5.08: once the week has goals, a day with no goal of its own has no room to fill
+      // (it used to inherit the busiest day's capacity and become the recommended fill day).
       capacity: Number(goals[String(d)]) > 0
         ? Number(goals[String(d)])
-        : hasProven
-          ? provenBy.get(d) ?? 0
-          : Math.round(busiest),
+        : hasGoals
+          ? 0
+          : hasProven
+            ? provenBy.get(d) ?? 0
+            : Math.round(busiest),
       seen: !hasGoals && hasProven ? provenSeen.get(d) ?? 0 : undefined,
     }));
     const weekLoad = week.reduce((t, w) => t + w.load, 0);
@@ -6429,7 +6438,9 @@ export const getAdvisor = createServerFn({ method: "GET" })
     // ---- actions
     const actions: AdvisorAction[] = [];
     const morosos = groupList.find((g) => g.key === "morosos")!;
-    const owed = r2(clients.reduce((t, c) => t + (c.balance > 0 ? c.balance : 0), 0));
+    // 1.5.08: the hero's "owed" counts the same people as the rest of the screen — a blacklisted
+    // balance is written off, not money owed (it used to sit in the total next to "all current").
+    const owed = r2(clients.reduce((t, c) => t + (c.balance > 0 && !c.blacklisted ? c.balance : 0), 0));
     const owedLate = r2(morosos.people.reduce((t, p) => t + p.balance, 0));
     if (morosos.count > 0 && owedLate >= 20) {
       // Biggest first, nudged up by age (capped at 6 months so an old $50 never beats a fresh $2,000).
@@ -6467,7 +6478,9 @@ export const getAdvisor = createServerFn({ method: "GET" })
       const emptyOnly = lightDays.length === 0;
       const perDay = median(dayRows.map((r) => intId(r.n))) || 1;
       const impact = emptyOnly ? Math.round(empty.length * perDay * avgCut) : perYear;
-      if (light) actions.push({ kind: "fill", impact, per: emptyOnly ? "now" : "year", weight: emptyOnly ? impact * 0.8 : perYear * 0.2 + empty.length * avgCut * 2, people: [], count: Math.round(room), week, light, heavy, avgPrice: Math.round(avgCut), empty, roomFrom, emptyOnly });
+      // 1.5.08: an "empty days" card built only from booked room (no goals, nothing proven) invents
+      // workdays — with a single cut on the books it offered a dozen days to fill. It needs a base.
+      if (light && !(emptyOnly && roomFrom === "booked")) actions.push({ kind: "fill", impact, per: emptyOnly ? "now" : "year", weight: emptyOnly ? impact * 0.8 : perYear * 0.2 + empty.length * avgCut * 2, people: [], count: Math.round(room), week, light, heavy, avgPrice: Math.round(avgCut), empty, roomFrom, emptyOnly });
     }
     // 1.5.01: regular clients with no visit booked in the next 4 weeks (they drop out of the route without a sound).
     const unbooked = people
@@ -6536,11 +6549,13 @@ export const getAdvisor = createServerFn({ method: "GET" })
     const winterVals = monthVals.filter((r) => isWinter(r.m));
     const restVals = monthVals.filter((r) => !isWinter(r.m));
     const monthNow = Number(today.slice(5, 7));
-    if (winterVals.length >= 2 && restVals.length >= 3 && (monthNow >= 9 || monthNow <= 1)) {
+    if (winterVals.length >= 2 && restVals.length >= 3 && (monthNow >= 9 || monthNow <= 2)) {
       const winterAvg = winterVals.reduce((t, r) => t + r.value, 0) / winterVals.length;
       const restAvg = restVals.reduce((t, r) => t + r.value, 0) / restVals.length;
       const drop = restAvg > 0 ? 1 - winterAvg / restAvg : 0;
-      const monthsLeft = monthNow >= 9 && monthNow <= 10 ? 4 : monthNow === 11 ? 4 : monthNow === 12 ? 3 : 2;
+      // 1.5.08: the card can also appear in February, the last winter month (monthsLeft 1) —
+      // the gate used to stop in January while the app's own winter runs Nov–Feb.
+      const monthsLeft = monthNow === 2 ? 1 : monthNow >= 9 && monthNow <= 10 ? 4 : monthNow === 11 ? 4 : monthNow === 12 ? 3 : 2;
       if (drop >= 0.12) {
         const lost = Math.round((restAvg - winterAvg) * monthsLeft);
         const byMonth = Array.from({ length: 12 }, (_, i) => {
