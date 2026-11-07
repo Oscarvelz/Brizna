@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { createContext, Fragment, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useBackClose } from "@/lib/back-close";
+import { installPageSwipe, playPendingSlide } from "@/lib/page-swipe";
 import { BrandMark } from "@/components/brand-mark";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ExportSheet, useExportLaunch } from "@/components/export-center";
@@ -170,7 +171,6 @@ export function AppShell({
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const swipe = useRef<{ x: number; y: number } | null>(null);
   const pane = usePane();
   const embedded = pane !== null;
   const [float, saveFloat] = useFloatState();
@@ -415,38 +415,44 @@ export function AppShell({
     return () => ro.disconnect();
   }, [mainEl]);
 
+  // 1.5.06: the screen-to-screen swipe follows the finger and starts anywhere (lib/page-swipe.ts). Phone: always (not in a
+  // split); tablet/computer: one screen only, touch and pen only (a mouse never swipes). Hoy · Agenda · Clientes · Cobros ·
+  // Estudio wrap around; on Estudio a swipe flips Estudio <-> Asesor and never leaves the tab (1.4.83).
+  const [columnEl, setColumnEl] = useState<HTMLElement | null>(null);
+  const swipeOn = !embedded && !split;
+  const swipeLive = useRef({ pathname, navigate });
+  swipeLive.current = { pathname, navigate };
+  useEffect(() => {
+    if (!columnEl || !swipeOn) return;
+    const kindOf = () => {
+      const here = swipeLive.current.pathname;
+      if (here === "/estadisticas") return "flip" as const;
+      return (tabs as readonly string[]).includes(here) ? ("route" as const) : null;
+    };
+    return installPageSwipe(columnEl, {
+      canStart: () => kindOf() !== null,
+      kind: kindOf,
+      commit: (dir) => {
+        const { pathname: here, navigate: go } = swipeLive.current;
+        if (here === "/estadisticas") { window.dispatchEvent(new CustomEvent("bz-study-swipe")); return; }
+        const index = tabs.indexOf(here as (typeof tabs)[number]);
+        if (index < 0) return;
+        void go({ to: tabs[(index + dir + tabs.length) % tabs.length] });
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columnEl, swipeOn]);
+  useLayoutEffect(() => playPendingSlide(columnEl), [columnEl, pathname]);
+
   const column = (index: number) => (
         <div
           key="live"
+          ref={setColumnEl}
           className={cn(
             "flex min-w-0 flex-col",
+            swipeOn && "bz-swipe-host",
             embedded ? "min-h-full pb-0" : split ? "min-h-0 flex-1 overflow-hidden" : keyboard ? "min-h-dvh pb-2 md:pb-0" : "min-h-dvh pb-[calc(4.75rem+var(--bz-chin))] md:pb-0",
           )}
-          onTouchStart={(e) => {
-            // Tablets and computers switch tabs from the rail; a sideways drag there is scrolling, never a tab change.
-            if (wide) return;
-            const target = e.target as HTMLElement;
-            if (target.closest("input, textarea, select, [contenteditable='true'], [data-no-swipe], [data-swipe-own], .bz-swipe")) return;
-            const touch = e.changedTouches[0];
-            if (!touch) return;
-            swipe.current = { x: touch.clientX, y: touch.clientY };
-          }}
-          onTouchEnd={(e) => {
-            if (!swipe.current) return;
-            const touch = e.changedTouches[0];
-            const start = swipe.current;
-            swipe.current = null;
-            if (!touch) return;
-            const dx = touch.clientX - start.x;
-            const dy = touch.clientY - start.y;
-            if (Math.abs(dx) < 72 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
-            // 1.4.83 (Oscar): on Estudio, a swipe flips Estudio <-> Asesor forever; leaving needs a tap on the dock.
-            if (pathname === "/estadisticas") { window.dispatchEvent(new CustomEvent("bz-study-swipe")); return; }
-            const index = tabs.indexOf(pathname as (typeof tabs)[number]);
-            if (index < 0) return;
-            const next = dx < 0 ? (index + 1) % tabs.length : (index - 1 + tabs.length) % tabs.length;
-            void navigate({ to: tabs[next] });
-          }}
         >
           <header
             ref={setHeaderEl}

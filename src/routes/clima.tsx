@@ -17,6 +17,7 @@ import { getDashboard, shiftForRain } from "@/lib/server/lawn";
 import { STOP_REASONS } from "@/lib/types";
 import { askGps, findPlace, gpsAlreadyAllowed, readWeatherPlace, saveWeatherPlace, type WeatherPlace } from "@/lib/weather-place";
 import { cn } from "@/lib/utils";
+import { inAndroidApp } from "@/spa/native";
 import { CountUp } from "@/components/cifras-visuals";
 import { DayStrip, DropGauge, GrassEdge, HumidRing, WindSock, WxArt, WxIcon, heroKind, type Slot } from "@/components/clima-visuals";
 
@@ -102,10 +103,15 @@ function ClimaPage() {
       setEditPlace(true);
       setGpsNote(
         got.error === 1
-          ? tx(
-              "Chrome tiene la ubicación bloqueada para Brizna. Escribe tu código postal abajo y listo. (Para desbloquearla: Ajustes de Android › Apps › Chrome › Permisos › Ubicación, y en Chrome › Configuración de sitios › Ubicación › oscarvelz.github.io.)",
-              "Chrome has location blocked for Brizna. Type your ZIP code below and you're set. (To unblock: Android Settings › Apps › Chrome › Permissions › Location, and Chrome › Site settings › Location › oscarvelz.github.io.)",
-            )
+          ? inAndroidApp()
+            ? tx(
+                "Brizna no tiene permiso de ubicación. Escribe tu código postal abajo y listo. (Para darlo: Ajustes del teléfono › Apps › Brizna › Permisos › Ubicación › Permitir.)",
+                "Brizna has no location permission. Type your ZIP code below and you're set. (To allow it: phone Settings › Apps › Brizna › Permissions › Location › Allow.)",
+              )
+            : tx(
+                "El navegador tiene la ubicación bloqueada para Brizna. Escribe tu código postal abajo y listo. (Para desbloquearla: toca el candado junto a la dirección › Permisos › Ubicación › Permitir.)",
+                "The browser has location blocked for Brizna. Type your ZIP code below and you're set. (To unblock it: tap the lock beside the address › Permissions › Location › Allow.)",
+              )
           : got.error === 2
             ? tx("El teléfono no da la ubicación ahora (¿GPS apagado?). Escribe tu código postal.", "The phone can't give a location now (GPS off?). Type your ZIP code.")
             : tx("La ubicación tardó demasiado. Escribe tu código postal.", "Location took too long. Type your ZIP code."),
@@ -131,7 +137,7 @@ function ClimaPage() {
   const [playing, setPlaying] = useState(true);
 
   useEffect(() => {
-    // Refresh GPS silently only when Chrome already allowed it; never pop the prompt on open.
+    // Refresh GPS silently only when location is already allowed; never pop the prompt on open.
     if (place.source !== "gps") return;
     void gpsAlreadyAllowed().then((ok) => {
       if (!ok) return;

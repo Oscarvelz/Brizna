@@ -17,6 +17,7 @@ import { getSettings, listClients, updateSettings } from "@/lib/server/lawn";
 import { useUndo } from "@/lib/undo";
 import { cuePresetsFor, DEFAULT_ARRIVAL_PRESETS, DEFAULT_DEBT_PRESETS, DEFAULT_PRICE_PRESETS, DEFAULT_TASK_PRESETS, DEFAULT_VISIT_PRESETS, type ClientKind, type ClientRow, type CutsPerMonth } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { inAndroidApp } from "@/spa/native";
 
 export type FrequencyMode = "1" | "2" | "3" | "4" | "5" | "custom";
 
@@ -249,10 +250,9 @@ export function ClientForm({
       const msg = err instanceof Error ? err.message : "";
       if (msg === "contacts-unavailable") {
         toast.error(
-          tx(
-            "Abre la app en Chrome del teléfono para leer Contactos.",
-            "Open the app in phone Chrome to read Contacts.",
-          ),
+          inAndroidApp()
+            ? tx("La app Brizna aún no lee Contactos. Escribe el nombre y el teléfono.", "The Brizna app can't read Contacts yet. Type the name and phone.")
+            : tx("Este navegador no lee Contactos. Escribe el nombre y el teléfono.", "This browser can't read Contacts. Type the name and phone."),
         );
       } else {
         toast(tx("No se eligió ningún contacto", "No contact was chosen"));
