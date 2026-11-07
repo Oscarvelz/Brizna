@@ -2,4 +2,5 @@
 <resources>
     <string name="widget_desc">Cortes de hoy, el próximo cliente y lo que hay por cobrar.</string>
     <string name="panel_desc">El día con su lista de clientes, la semana de un vistazo y lo que hay por cobrar.</string>
+    <string name="semana_desc">Los próximos siete días de un vistazo, con el próximo cliente de hoy.</string>
 </resources>

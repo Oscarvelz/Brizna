@@ -155,7 +155,7 @@ object Notify {
 
     /** The widget turns to the next day at midnight and follows the day/night look at 6:30 and 18:30. */
     fun armWidgetTick(ctx: Context) {
-        if (!HoyWidget.hasWidgets(ctx) && !PanelWidget.hasWidgets(ctx)) return
+        if (!HoyWidget.hasWidgets(ctx) && !PanelWidget.hasWidgets(ctx) && !SemanaWidget.hasWidgets(ctx)) return
         val am = ctx.getSystemService(AlarmManager::class.java) ?: return
         val pi = PendingIntent.getBroadcast(ctx, 200, Intent(ctx, AlarmReceiver::class.java).setAction(ACTION_WIDGET),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
@@ -174,12 +174,13 @@ class AlarmReceiver : BroadcastReceiver() {
             Notify.ACTION_FIRE -> Notify.fireDue(ctx)
             Notify.ACTION_TEST -> Notify.show(ctx, Notify.Item("prueba-" + System.currentTimeMillis(), System.currentTimeMillis(), "prueba",
                 intent.getStringExtra("title") ?: "Brizna", intent.getStringExtra("body") ?: "", "/ajustes"))
-            Notify.ACTION_WIDGET -> { HoyWidget.refresh(ctx); PanelWidget.refresh(ctx); Notify.armWidgetTick(ctx) }
+            Notify.ACTION_WIDGET -> { HoyWidget.refresh(ctx); PanelWidget.refresh(ctx); SemanaWidget.refresh(ctx); Notify.armWidgetTick(ctx) }
             else -> { // boot, app update, clock or time zone change, exact-alarm permission change
                 Notify.channels(ctx)
                 Notify.fireDue(ctx)
                 HoyWidget.refresh(ctx)
                 PanelWidget.refresh(ctx)
+                SemanaWidget.refresh(ctx)
                 Notify.armWidgetTick(ctx)
             }
         }

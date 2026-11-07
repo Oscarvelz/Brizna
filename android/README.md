@@ -9,7 +9,11 @@ Web releases arrive on their own (the page is loaded live; the service worker ke
   the battery exemption, the "Hoy" home-screen widget (`HoyWidget.kt`) and the "Panel" tablet widget
   (`PanelWidget.kt`, android-5: the day with its client list, the week at a glance and Por cobrar with its top
   debtors, fed by the same setWidget snapshot — its panel fields added by the page in web 1.5.09 — and refreshed
-  by the same save/tick/boot machinery), update offer from GitHub releases
+  by the same save/tick/boot machinery), and (android-6) the phone widgets grow up: "Hoy" gains a tall 4x4 size
+  with the day's client list and per-zone taps (Por cobrar goes to Cobros), a third widget "Semana"
+  (`SemanaWidget.kt`: the next seven days at a glance plus today's next client, tap the strip for Agenda), and
+  every widget gets placement options (`WidgetConfigActivity` + `WidgetLook`: follow the app / always day /
+  always night, and Por cobrar on/off, per widget id), update offer from GitHub releases
   `android-N` (asset `Brizna.apk`), renderer-crash recovery, and (android-3) "A inglés" on the phone with
   Google ML Kit (`Translate.kt`, `translate`/`translateState`; the Spanish model downloads once on any network and stays),
   and (android-4) "Dictar" with the phone's speech recognizer (`Dictate.kt`, `dictate`/`dictateStop`/`dictateCancel`/

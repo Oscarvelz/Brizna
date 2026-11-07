@@ -11,7 +11,6 @@ import android.view.View
 import android.widget.RemoteViews
 import org.json.JSONObject
 import java.time.LocalDate
-import java.time.LocalTime
 
 /**
  * "Panel" home-screen widget for tablets (2026-11-07): the day with its client list on the left, the week and
@@ -23,11 +22,13 @@ import java.time.LocalTime
  */
 class PanelWidget : AppWidgetProvider() {
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
-        for (id in ids) mgr.updateAppWidget(id, render(ctx))
+        for (id in ids) mgr.updateAppWidget(id, render(ctx, id))
         Notify.armWidgetTick(ctx)
     }
 
     override fun onEnabled(ctx: Context) { Notify.armWidgetTick(ctx) }
+
+    override fun onDeleted(ctx: Context, ids: IntArray) { for (id in ids) WidgetLook.forget(ctx, id) }
 
     companion object {
         private const val PREFS = "brizna-widget"
@@ -35,20 +36,11 @@ class PanelWidget : AppWidgetProvider() {
         fun refresh(ctx: Context) {
             val mgr = AppWidgetManager.getInstance(ctx)
             val ids = mgr.getAppWidgetIds(ComponentName(ctx, PanelWidget::class.java))
-            if (ids.isEmpty()) return
-            val v = render(ctx)
-            for (id in ids) mgr.updateAppWidget(id, v)
+            for (id in ids) mgr.updateAppWidget(id, render(ctx, id))
         }
 
         fun hasWidgets(ctx: Context): Boolean =
             AppWidgetManager.getInstance(ctx).getAppWidgetIds(ComponentName(ctx, PanelWidget::class.java)).isNotEmpty()
-
-        private fun isNight(look: String, sysNight: Boolean): Boolean = when (look) {
-            "night" -> true
-            "day" -> false
-            "auto" -> { val t = LocalTime.now(); t.isBefore(LocalTime.of(6, 30)) || !t.isBefore(LocalTime.of(18, 30)) }
-            else -> sysNight
-        }
 
         private val ROWS = arrayOf(
             intArrayOf(R.id.pr0, R.id.pr0n, R.id.pr0t), intArrayOf(R.id.pr1, R.id.pr1n, R.id.pr1t),
@@ -72,13 +64,13 @@ class PanelWidget : AppWidgetProvider() {
             return PendingIntent.getActivity(ctx, code, i, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
 
-        fun render(ctx: Context): RemoteViews {
+        fun render(ctx: Context, widgetId: Int): RemoteViews {
             val v = RemoteViews(ctx.packageName, R.layout.widget_panel)
             val raw = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("data", null)
             val data = raw?.let { runCatching { JSONObject(it) }.getOrNull() }
             val sysNight = (ctx.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
                 android.content.res.Configuration.UI_MODE_NIGHT_YES
-            val night = isNight(data?.optString("look") ?: "", sysNight)
+            val night = WidgetLook.night(ctx, widgetId, data?.optString("look") ?: "", sysNight)
             val fg = if (night) Color.parseColor("#F5F5F5") else Color.parseColor("#1A261C")
             val muted = if (night) Color.parseColor("#B4B4B9") else Color.parseColor("#536056")
             val accent = if (night) Color.parseColor("#4ADE80") else Color.parseColor("#1F6A3A")
@@ -104,6 +96,7 @@ class PanelWidget : AppWidgetProvider() {
             v.setTextViewText(R.id.wk_k, data?.optString("weekLabel")?.ifBlank { null } ?: "Semana")
             v.setTextViewText(R.id.owedLabel, data?.optString("owedLabel")?.ifBlank { null } ?: "Por cobrar")
             v.setTextViewText(R.id.owed, data?.optString("owed")?.ifBlank { null } ?: "$0")
+            if (!WidgetLook.showOwed(ctx, widgetId)) v.setViewVisibility(R.id.owed_zone, View.GONE)
             v.setTextViewText(R.id.alert, data?.optString("alertLine") ?: "")
             v.setViewVisibility(R.id.alert, if (data?.optString("alertLine").isNullOrBlank()) View.GONE else View.VISIBLE)
 

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Brizna "Semana" widget (android-6): the next seven days at a glance, today first and highlighted, with
+     today's next client underneath. Colours are set in SemanaWidget.kt. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg_night"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+        <TextView android:id="@+id/stitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="14sp" android:textStyle="bold" android:letterSpacing="0.04" android:fontFamily="sans-serif-medium" />
+        <TextView android:id="@+id/sdate" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="end" android:maxLines="1" android:textSize="12sp" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/strip" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="6dp">
+            <LinearLayout android:id="@+id/w0" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center_horizontal" android:paddingTop="4dp" android:paddingBottom="4dp">
+                <TextView android:id="@+id/w0dow" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="10sp" />
+                <TextView android:id="@+id/w0dom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:textSize="17sp" />
+                <TextView android:id="@+id/w0cnt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="11sp" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/w1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center_horizontal" android:paddingTop="4dp" android:paddingBottom="4dp">
+                <TextView android:id="@+id/w1dow" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="10sp" />
+                <TextView android:id="@+id/w1dom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:textSize="17sp" />
+                <TextView android:id="@+id/w1cnt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="11sp" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/w2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center_horizontal" android:paddingTop="4dp" android:paddingBottom="4dp">
+                <TextView android:id="@+id/w2dow" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="10sp" />
+                <TextView android:id="@+id/w2dom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:textSize="17sp" />
+                <TextView android:id="@+id/w2cnt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="11sp" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/w3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center_horizontal" android:paddingTop="4dp" android:paddingBottom="4dp">
+                <TextView android:id="@+id/w3dow" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="10sp" />
+                <TextView android:id="@+id/w3dom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:textSize="17sp" />
+                <TextView android:id="@+id/w3cnt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="11sp" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/w4" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center_horizontal" android:paddingTop="4dp" android:paddingBottom="4dp">
+                <TextView android:id="@+id/w4dow" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="10sp" />
+                <TextView android:id="@+id/w4dom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:textSize="17sp" />
+                <TextView android:id="@+id/w4cnt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="11sp" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/w5" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center_horizontal" android:paddingTop="4dp" android:paddingBottom="4dp">
+                <TextView android:id="@+id/w5dow" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="10sp" />
+                <TextView android:id="@+id/w5dom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:textSize="17sp" />
+                <TextView android:id="@+id/w5cnt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="11sp" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/w6" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:gravity="center_horizontal" android:paddingTop="4dp" android:paddingBottom="4dp">
+                <TextView android:id="@+id/w6dow" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="10sp" />
+                <TextView android:id="@+id/w6dom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:textSize="17sp" />
+                <TextView android:id="@+id/w6cnt" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="11sp" />
+            </LinearLayout>
+    </LinearLayout>
+    <View android:id="@+id/hline" android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="10dp" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="8dp">
+        <TextView android:id="@+id/snextLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="11sp" android:letterSpacing="0.03" />
+        <TextView android:id="@+id/snext1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="8dp" android:maxLines="1" android:ellipsize="end" android:textSize="14sp" android:fontFamily="sans-serif-medium" />
+    </LinearLayout>
+</LinearLayout>
