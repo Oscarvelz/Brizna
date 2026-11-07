@@ -1,3 +1,5 @@
+import { afterSplash } from "@/spa/splash-ready";
+
 /** Current weather drives the animated sky behind the app (html[data-sky]). */
 export type SkyKind = "despejado" | "nubes" | "lluvia" | "tormenta" | "niebla" | "nieve";
 
@@ -14,7 +16,10 @@ export function skyKind(code: number): SkyKind {
 
 export function applySky(code: number) {
   const kind = skyKind(code);
-  if (typeof document !== "undefined") document.documentElement.dataset.sky = kind;
+  // 1.5.03: a new sky restyles the whole page and starts its layers; never during the launch splash's fade.
+  if (typeof document !== "undefined" && document.documentElement.dataset.sky !== kind) {
+    afterSplash(() => { document.documentElement.dataset.sky = kind; }, 120);
+  }
   try { localStorage.setItem(KEY, JSON.stringify({ at: Date.now(), kind })); } catch { /* ignore */ }
 }
 

@@ -3,6 +3,7 @@
 import { exclusive } from "@/lib/db";
 import { withChecksum } from "@/lib/backup-plan";
 import { supabase, getUser } from "./cloud";
+import { afterSplash } from "./splash-ready";
 import { HASH_V, SCHEMA, hashView, snapshotMeta } from "./sync-logic";
 
 const TABLES = [
@@ -390,7 +391,8 @@ export function startSync(userId: string) {
   }
   // A device that already has its data lets the first screen load before syncing.
   if (load(userId).rev === 0) void syncNow();
-  else window.setTimeout(() => void syncNow(), 2500);
+  // 1.5.03: and never during the launch splash fade: at least 2.5 s in and 1.2 s after the splash has gone.
+  else window.setTimeout(() => afterSplash(() => void syncNow(), 1200), 2500);
 }
 export function stopSync() { uid = null; setStatus("off"); }
 export function hasPending(): boolean { return Boolean(uid && load(uid).dirty); }

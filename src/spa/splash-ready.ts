@@ -16,6 +16,23 @@ export function splashGone(): boolean {
   return !w || w.__bzSplashGone !== false;
 }
 
+/** 1.5.03: run non-urgent work (a sync, a weather reading that restyles the page) only after the launch splash has
+ *  faded out, so it never lands on the fade's frames. Runs after `delay` ms (and an idle moment) once it is gone. */
+export function afterSplash(fn: () => void, delay = 0): () => void {
+  let dead = false, t = 0;
+  const run = () => {
+    if (dead) return;
+    t = window.setTimeout(() => {
+      if (dead) return;
+      const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+      if (ric) ric(() => { if (!dead) fn(); }, { timeout: 400 }); else fn();
+    }, delay);
+  };
+  if (!w || splashGone()) run();
+  else w.addEventListener("brizna:splash-gone", run, { once: true });
+  return () => { dead = true; window.clearTimeout(t); w?.removeEventListener("brizna:splash-gone", run); };
+}
+
 /** True once the launch splash has gone (or there was none). */
 export function useSplashGone(): boolean {
   const [gone, setGone] = useState(splashGone);

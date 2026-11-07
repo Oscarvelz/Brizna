@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { useTx } from "@/lib/i18n";
 import { PLACE_EVENT, readWeatherPlace } from "@/lib/weather-place";
 import { applySky } from "@/lib/weather-sky";
+import { afterSplash } from "@/spa/splash-ready";
 
 const CACHE = "ols-weather";
 
@@ -47,13 +48,18 @@ export function WeatherChip({ className }: { className?: string } = {}) {
       .then((data: { current?: { temperature_2m?: number; weather_code?: number } }) => {
         const c = data.current?.temperature_2m;
         if (typeof c !== "number") return;
-        const f = Math.round((c * 9) / 5 + 32);
-        const code = Number(data.current?.weather_code ?? -1);
-        if (code >= 0) applySky(code);
-        const sky = skyLabel(code);
-        remember(`${Math.round(c)}°C · ${f}°F${sky ? ` · ${sky}` : ""}`);
+        // 1.5.03: the header changes only after the launch splash has faded (not on its frames).
+        afterSplash(() => show(c, data), 0);
       })
       .catch(() => undefined);
+  }
+
+  function show(c: number, data: { current?: { temperature_2m?: number; weather_code?: number } }) {
+    const f = Math.round((c * 9) / 5 + 32);
+    const code = Number(data.current?.weather_code ?? -1);
+    if (code >= 0) applySky(code);
+    const sky = skyLabel(code);
+    remember(`${Math.round(c)}°C · ${f}°F${sky ? ` · ${sky}` : ""}`);
   }
 
   useEffect(() => {
