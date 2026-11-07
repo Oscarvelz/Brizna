@@ -68,6 +68,7 @@ meta.setAttribute("content",bar);
       #bz-splash.is-day { --ink: #173c25; --sub: #55695a; --glow: rgba(244, 196, 92, 0.34); --m1: rgba(47, 125, 73, 0.34); --m2: rgba(31, 106, 58, 0.42); --m3: rgba(63, 138, 85, 0.26); }
       #bz-splash.is-leaving { opacity: 0; transform: scale(1.025); pointer-events: none; }
       #bz-splash.is-quick { transition-duration: 0.22s; }
+      #bz-splash.is-leaving .bzs-fly, #bz-splash.is-leaving .bzs-aura::before { animation-play-state: paused; }
       #bz-splash * { box-sizing: border-box; }
       .bzs-lock { position: relative; display: grid; justify-items: center; text-align: center; padding: 0 24px calc(6vh + env(safe-area-inset-bottom)); max-width: 100%; }
       .bzs-glow { position: absolute; left: 50%; top: calc(var(--t) * 0.3); width: calc(var(--t) * 4.6); height: calc(var(--t) * 4.6); margin: calc(var(--t) * -2.3) 0 0 calc(var(--t) * -2.3); border-radius: 50%; background: radial-gradient(circle, var(--glow) 0%, transparent 62%); opacity: 0; transform: scale(0.7); animation: bzs-glow 1.6s 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; pointer-events: none; }
@@ -134,7 +135,7 @@ meta.setAttribute("content",bar);
       #bz-splash.is-still * { will-change: auto; }
       #bz-splash.is-still.is-leaving { transform: none; }
     </style>
-    <script type="module" crossorigin src="./index-b2zKuPxH.js"></script>
+    <script type="module" crossorigin src="./index-lZfhaMMv.js"></script>
     <link rel="modulepreload" crossorigin href="./rolldown-runtime-hePW80VL.js">
   </head>
   <body>
@@ -244,33 +245,75 @@ meta.setAttribute("content",bar);
         };
         var mo = W.MutationObserver ? new MutationObserver(guard) : null;
         if (mo) mo.observe(d.head, { attributes: true, childList: true, subtree: true, attributeFilter: ["content"] });
+        // 1.5.03 exit: the fade stalled at its start (~0.3 s at opacity 1, then a jump) because the app under the splash
+        // was first shown (rastered) in the same frame the fade began, and a compositor fade cannot start until that
+        // raster is done. Now the app is shown under the (opaque) splash first, the splash waits until frames flow again
+        // (the raster is finished), and only then fades; the endless aura/firefly loops freeze for the fade, the
+        // status bar colour changes after it, and the app holds its own non-urgent work until the splash is gone.
+        var reveal = function () {
+          r.classList.remove("bzs-hold"); r.classList.remove("bzs-on");
+        };
+        var settling = 0, settled = 0, settleCbs = [];
+        var settle = function (cb) {
+          if (settled) { cb(); return; }
+          settleCbs.push(cb);
+          if (settling) return;
+          settling = performance.now(); reveal();
+          var last = 0, calm = 0, n = 0;
+          var finish = function () {
+            if (settled) return;
+            settled = performance.now(); st.settle = Math.round(settled - settling);
+            var c = settleCbs; settleCbs = []; for (var j = 0; j < c.length; j++) c[j]();
+          };
+          var tick = function (t) {
+            if (settled) return;
+            n++;
+            if (last) calm = t - last < 50 ? calm + 1 : 0;
+            last = t;
+            // 3 smooth frames in a row after the reveal (its raster has landed), or at most 0.7 s
+            if ((n > 2 && calm >= 3) || t - settling > 700) {
+              if (W.requestIdleCallback) W.requestIdleCallback(finish, { timeout: 90 }); else setTimeout(finish, 0);
+              return;
+            }
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+          setTimeout(finish, 900);
+        };
         var leave = function (why, quick) {
           if (st.leave) return;
           st.leave = performance.now(); st.reason = why;
-          if (mo) mo.disconnect();
-          var mm = d.querySelector('meta[name="theme-color"]');
-          if (mm && appColor) mm.setAttribute("content", appColor);
-          r.classList.remove("bzs-on"); r.classList.remove("bzs-hold");
+          reveal();
           if (quick || still) s.classList.add("is-quick");
           s.classList.add("is-leaving");
           W.dispatchEvent(new Event("brizna:splash-leaving"));
-          setTimeout(function () {
+          var end = function () {
+            if (st.gone) return;
             if (s.parentNode) s.parentNode.removeChild(s);
             st.gone = performance.now(); W.__bzSplashGone = true;
+            if (mo) mo.disconnect();
+            var mm = d.querySelector('meta[name="theme-color"]');
+            if (mm && appColor) mm.setAttribute("content", appColor);
             W.dispatchEvent(new Event("brizna:splash-gone"));
-          }, quick || still ? 240 : 480);
+          };
+          s.addEventListener("transitionend", function (e) { if (e.target === s && e.propertyName === "opacity") end(); });
+          setTimeout(end, quick || still ? 300 : 560);
         };
         var minAt = st.t0 + MIN;
         var onReady = function () {
           if (st.ready) return;
           st.ready = performance.now();
-          r.classList.remove("bzs-hold");
-          // at least ~3 frames between the app's first paint and the fade, so the fade never starts on a raster spike
-          var wait = Math.max(minAt - st.ready, 50);
-          setTimeout(function () { leave("ready"); }, wait);
+          settle(function () {
+            setTimeout(function () {
+              // start the fade on an idle main thread (a fade cannot begin while a long task holds the frame)
+              if (W.requestIdleCallback) W.requestIdleCallback(function () { leave("ready"); }, { timeout: 120 }); else leave("ready");
+            }, Math.max(minAt - performance.now(), 0));
+          });
         };
         W.addEventListener("brizna:shell-ready", onReady);
         if (W.__bzShellReady) onReady();
+        // not ready near MAX: show what the app has under the splash early, so the fade at MAX is not a raster stall
+        setTimeout(function () { settle(function () {}); }, MAX - 550);
         setTimeout(function () { leave("max"); }, MAX);
         s.addEventListener("pointerdown", function () { leave("tap", true); });
       })();
