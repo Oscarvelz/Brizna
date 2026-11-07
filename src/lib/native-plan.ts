@@ -154,12 +154,20 @@ export function buildSchedule(plan: NativePlan, prefs: NotifyPrefs, now = Date.n
 
 export function buildWidget(plan: NativePlan) {
   const look = readAppearance().mode;
+  // Panel extras (1.5.09): per-day rows/dow/dom/done for the tablet "Panel" widget, the top debtors and one
+  // alert line. Additive only: the "Hoy" widget reads the fields it always read and ignores the rest.
+  const alertParts: string[] = [];
+  if (plan.overdue.length) alertParts.push(tx(plural(plan.overdue.length, "corte atrasado", "cortes atrasados"), plural(plan.overdue.length, "late cut", "late cuts")));
+  if (plan.risk.length) alertParts.push(tx(`${plan.risk.length} en Alto riesgo`, `${plan.risk.length} at high risk`));
   return {
     v: 1,
     look,
     title: tx("Hoy", "Today"),
+    weekLabel: tx("Semana", "Week"),
     owedLabel: tx("Por cobrar", "To collect"),
     owed: money(plan.outstanding),
+    debtors: plan.debtors.map((x) => ({ name: x.name, amt: money(x.balance) })),
+    alertLine: alertParts.join(" · "),
     at: Date.now(),
     days: plan.days.slice(0, 8).map((d) => {
       const n = d.cuts.length;
@@ -170,6 +178,11 @@ export function buildWidget(plan: NativePlan) {
       return {
         date: d.date,
         label: formatDay(d.date, en() ? "EEEE, MMM d" : "EEEE d MMM"),
+        dow: formatDay(d.date, "EEE"),
+        dom: String(Number(d.date.slice(8, 10))),
+        done: d.done,
+        rows: d.cuts.slice(0, 6).map((c) => ({ n: c.name, t: formatTime(c.time) ?? "", rain: c.rain })),
+        more: d.cuts.length > 6 ? tx(`y ${d.cuts.length - 6} más`, `and ${d.cuts.length - 6} more`) : "",
         count: n,
         countLabel: (n === 1 ? tx("corte hoy", "cut today") : tx("cortes hoy", "cuts today")) + doneLine,
         nextLabel: n ? (n === 1 ? tx("Próximo", "Next") : tx("Próximos", "Next")) : "",

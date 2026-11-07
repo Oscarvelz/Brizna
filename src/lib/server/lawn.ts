@@ -6862,6 +6862,8 @@ export type NativePlan = {
   overdue: string[];
   risk: string[];
   outstanding: number;
+  /** Top balances owed (active, not blacklisted), for the tablet Panel widget's Por cobrar list. */
+  debtors: { name: string; balance: number }[];
 };
 
 /** What the Android app needs to schedule its reminders and fill its widget: the next 8 days of open cuts (route
@@ -6903,6 +6905,13 @@ export const getNativePlan = createServerFn({ method: "GET" })
         ])
       : [];
     const owed = await sql.query<{ total: unknown }>(`select coalesce(sum(balance),0) as total from clients where user_id = $1`, [context.userId]);
+    const debtorRows = await sql.query<{ name: string; balance: unknown }>(
+      `select name, balance from clients
+        where user_id = $1 and is_active = true and blacklisted = false and balance > 0
+        order by balance desc, name
+        limit 4`,
+      [context.userId],
+    );
     return {
       today,
       days,
@@ -6910,5 +6919,6 @@ export const getNativePlan = createServerFn({ method: "GET" })
       overdue,
       risk: riskRows.map((r) => r.name),
       outstanding: money(owed[0]?.total),
+      debtors: debtorRows.map((r) => ({ name: r.name, balance: money(r.balance) })),
     };
   });
