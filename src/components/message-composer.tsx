@@ -9,29 +9,10 @@ import { smsHref, waHref } from "@/lib/format";
 import { useTx, useI18n } from "@/lib/i18n";
 import { getPad, getSettings, polishYardText, updateSettings } from "@/lib/server/lawn";
 import { translateToEnglish } from "@/lib/translate";
+import { dictMessage, openDictationSettings, startDictation, type DictSession } from "@/lib/dictate";
 import { DEFAULT_MESSAGE_PRESETS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { chipsetStyle } from "@/lib/chipset";
-
-type SpeechRec = {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  onresult: ((ev: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  onerror: ((ev: { error?: string }) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-};
-
-function speechCtor(): (new () => SpeechRec) | null {
-  if (typeof window === "undefined") return null;
-  const w = window as Window & {
-    SpeechRecognition?: new () => SpeechRec;
-    webkitSpeechRecognition?: new () => SpeechRec;
-  };
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
-}
 
 function punctuate(raw: string): string {
   let t = raw.trim().replace(/\s+/g, " ");
@@ -85,73 +66,75 @@ export function MessageComposer({
   const [translating, setTranslating] = useState(false);
   // 1.5.04: the first translation on the phone downloads its translator once (one line under the text)
   const [trDownload, setTrDownload] = useState(false);
-  const recRef = useRef<SpeechRec | null>(null);
+  // 1.5.05: the first time in the Android app, one line says why the microphone is asked for
+  const [micWhy, setMicWhy] = useState(false);
+  const recRef = useRef<DictSession | null>(null);
+  const textRef = useRef(text);
+  textRef.current = text;
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
-    return () => recRef.current?.stop();
+    return () => recRef.current?.cancel();
   }, []);
 
   function listen(translate: boolean) {
-    const Ctor = speechCtor();
-    if (!Ctor) {
-      toast.error(tx("Este teléfono no permite dictar. Escribe el mensaje.", "This phone cannot dictate. Type the message."));
-      setMode("type");
-      window.setTimeout(() => areaRef.current?.focus(), 30);
-      return;
-    }
-    recRef.current?.stop();
-    const rec = new Ctor();
-    rec.lang = locale === "en" ? "en-US" : "es-US";
-    rec.continuous = false;
-    rec.interimResults = false;
-    rec.onresult = (ev) => {
-      const piece = ev.results[0]?.[0]?.transcript ?? "";
-      if (!piece) return;
-      if (translate) {
-        setTranslating(true);
-        void translateToEnglish(piece, (st) => { if (st === "download") setTrDownload(true); })
-          .then((res) => {
-            if (res.ok) setText((prev) => (prev ? `${prev} ${res.text}` : res.text).trim());
-            else toast.error(res.error);
-          })
-          .catch(() => toast.error(tx("No se pudo traducir", "Could not translate")))
-          .finally(() => { setTranslating(false); setTrDownload(false); });
-        return;
-      }
-      const local = punctuate(piece);
-      setText((prev) => (prev ? `${prev} ${local}` : local).trim());
-      void polishYardText({ data: { text: local, lang: locale } }).then((res) => {
-        if (!res.ok || !res.text) return;
-        setText((prev) => (prev.endsWith(local) ? `${prev.slice(0, -local.length)}${res.text}` : prev));
-      });
-    };
-    rec.onerror = (ev) => {
-      setListening(false);
-      const code = ev?.error ?? "";
-      if (code === "not-allowed" || code === "service-not-allowed") {
-        toast.error(
-          tx(
-            "Chrome bloqueó el micrófono. Toca el candado, Micrófono, Permitir, y vuelve a Dictar. Puedes escribir igual.",
-            "Chrome blocked the microphone. Tap the lock, Microphone, Allow, then tap Dictate again. You can still type.",
-          ),
-        );
-        return;
-      }
-      if (code === "no-speech") {
-        toast.error(tx("No se oyó nada. Acerca el teléfono y toca Dictar otra vez.", "Nothing was heard. Bring the phone closer and tap Dictate again."));
-        return;
-      }
-      toast.error(tx("No se pudo dictar. Escribe el mensaje.", "Could not dictate. Type the message."));
-    };
-    rec.onend = () => setListening(false);
-    recRef.current = rec;
+    recRef.current?.cancel();
+    const join = (a: string, b: string) => (a && b ? `${a} ${b}` : a || b).trim();
+    const base = textRef.current.trim();
     setListening(true);
-    rec.start();
+    let session: DictSession | null = null;
+    session = startDictation(locale === "en" ? "en-US" : "es-US", {
+      onState: (st) => setMicWhy(st === "asking"),
+      onPartial: (piece) => { setMicWhy(false); setText(join(base, piece)); },
+      onFinal: (piece) => {
+        setMicWhy(false);
+        if (translate) {
+          setText(base);
+          setTranslating(true);
+          void translateToEnglish(piece, (st) => { if (st === "download") setTrDownload(true); })
+            .then((res) => {
+              if (res.ok) setText((prev) => join(prev, res.text));
+              else toast.error(res.error);
+            })
+            .catch(() => toast.error(tx("No se pudo traducir", "Could not translate")))
+            .finally(() => { setTranslating(false); setTrDownload(false); });
+          return;
+        }
+        const local = punctuate(piece);
+        setText(join(base, local));
+        void polishYardText({ data: { text: local, lang: locale } }).then((res) => {
+          if (!res.ok || !res.text) return;
+          setText((prev) => (prev.endsWith(local) ? `${prev.slice(0, -local.length)}${res.text}` : prev));
+        });
+      },
+      onError: (e) => {
+        setMicWhy(false);
+        const m = dictMessage(e);
+        if (e === "none" || e === "update") {
+          setMode("type");
+          window.setTimeout(() => areaRef.current?.focus(), 30);
+        }
+        toast.error(m.text, m.action
+          ? {
+              duration: 8000,
+              action: {
+                label: m.action === "settings" ? tx("Abrir ajustes", "Open settings") : tx("Permitir", "Allow"),
+                onClick: () => (m.action === "settings" ? openDictationSettings() : listen(translate)),
+              },
+            }
+          : undefined);
+      },
+      onEnd: () => {
+        setMicWhy(false);
+        setListening(false);
+        if (recRef.current === session) recRef.current = null;
+      },
+    });
+    recRef.current = session;
   }
 
   function translateText() {
-    recRef.current?.stop();
+    recRef.current?.cancel();
     setListening(false);
     const current = text.trim();
     if (!current) {
@@ -197,10 +180,11 @@ export function MessageComposer({
       listening={listening}
       translating={translating}
       trDownload={trDownload}
+      micWhy={micWhy}
       areaRef={areaRef}
       channel={channel}
       onType={() => {
-        recRef.current?.stop();
+        recRef.current?.cancel();
         setMode("type");
         setListening(false);
         window.requestAnimationFrame(() => {
@@ -212,12 +196,14 @@ export function MessageComposer({
         });
       }}
       onListen={() => {
+        // a second tap while listening ends the line (what was said is kept)
+        if (listening && mode === "dict" && recRef.current) { recRef.current.stop(); return; }
         setMode("dict");
         listen(false);
       }}
       onTranslate={translateText}
       onClose={() => {
-        recRef.current?.stop();
+        recRef.current?.cancel();
         setOpen(false);
         setListening(false);
       }}
@@ -301,6 +287,7 @@ function ComposerSheet({
   listening,
   translating,
   trDownload,
+  micWhy,
   areaRef,
   onType,
   onListen,
@@ -316,6 +303,7 @@ function ComposerSheet({
   listening: boolean;
   translating: boolean;
   trDownload: boolean;
+  micWhy: boolean;
   areaRef: RefObject<HTMLTextAreaElement | null>;
   onType: () => void;
   onListen: () => void;
@@ -360,9 +348,11 @@ function ComposerSheet({
           className="mt-3 w-full rounded-md bg-bg px-3 py-2 text-sm shadow-card focus:outline-none"
         />
         <div className="mt-2 flex items-center justify-end gap-2">
-          {trDownload ? (
+          {trDownload || micWhy ? (
             <p role="status" className="mr-auto min-w-0 text-xs font-semibold text-muted">
-              {tx("Descargando el traductor", "Downloading the translator")}
+              {trDownload
+                ? tx("Descargando el traductor", "Downloading the translator")
+                : tx("El micrófono se usa solo mientras dictas", "The microphone is used only while you dictate")}
             </p>
           ) : null}
           <button

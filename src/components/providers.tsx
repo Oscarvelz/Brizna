@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Toaster } from "sonner";
 import { I18nProvider, useI18n } from "@/lib/i18n";
 import { NameJumpHost } from "@/components/name-jump-host";
@@ -147,15 +148,28 @@ function RootProviders({ children }: { children: ReactNode }) {
         <NameJumpHost />
         <NoteLeaveGuard />
         {children}
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            className:
-              "!bg-surface !text-fg !shadow-card !border-0 !rounded-[14px] !font-sans",
-          }}
-        />
+        <ToastLayer />
       </I18nProvider>
     </QueryClientProvider>
     </Nested.Provider>
   );
+}
+
+/**
+ * 1.5.05: toasts live on <body>, above every sheet. Inside #root (position:relative; z-index:1) they sat under the
+ * sheets that portal to <body> (z-70 scrim): dimmed, and a toast's button (Permitir) could not be tapped.
+ */
+function ToastLayer() {
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  useEffect(() => setHost(document.body), []);
+  const t = (
+    <Toaster
+      position="top-center"
+      toastOptions={{
+        className:
+          "!bg-surface !text-fg !shadow-card !border-0 !rounded-[14px] !font-sans",
+      }}
+    />
+  );
+  return host ? createPortal(t, host) : null;
 }

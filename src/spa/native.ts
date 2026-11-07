@@ -12,6 +12,8 @@
  * - Share: navigator.share with files goes to the Android share sheet. Printing goes to Android's print dialog.
  * - Fingerprint: WebAuthn does not work in a plain WebView, so device-lock.ts asks the phone's BiometricPrompt.
  * - "A inglés" (android-3): lib/translate.ts asks translate(); ML Kit translates on the phone (model downloaded once).
+ * - "Dictar" (android-4): lib/dictate.ts asks dictate(); the phone's speech recognizer listens (on-device first) and
+ *   streams partial text; Android's microphone permission is asked the first time.
  * - Reminders and the "Hoy" widget: lib/native-plan.ts works out the schedule and hands it over (setSchedule/setWidget).
  */
 
@@ -42,6 +44,11 @@ export type BriznaNativeBridge = {
   /** android-3: Spanish → English with ML Kit on the phone; replies with CustomEvent "briznanative-translate". */
   translate?(id: string, text: string): void;
   translateState?(): string;
+  /** android-4: "Dictar" with the phone's speech recognizer; replies with CustomEvent "briznanative-dictate". */
+  dictate?(id: string, lang: string): void;
+  dictateStop?(id: string): void;
+  dictateCancel?(): void;
+  dictateState?(): string;
 };
 
 type W = Window & { BriznaNative?: BriznaNativeBridge; BriznaBack?: () => string; __bzNativeOn?: boolean };
