@@ -31,6 +31,7 @@ class HoyWidget : AppWidgetProvider() {
         fun save(ctx: Context, json: String) {
             ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("data", json).apply()
             refresh(ctx)
+            PanelWidget.refresh(ctx)
         }
 
         fun refresh(ctx: Context) {

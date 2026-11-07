@@ -6,7 +6,10 @@ Web releases arrive on their own (the page is loaded live; the service worker ke
 - Bridge: `window.BriznaNative` (see `src/spa/native.ts`, feature-detected; the browser/PWA never see it):
   Back (`BriznaBack` → `atRoot`), bar colours, downloads into Downloads/Brizna, the share sheet, printing,
   BiometricPrompt for the fingerprint lock, local reminders (`Notify.kt`: AlarmManager, re-armed after reboot),
-  the battery exemption, the "Hoy" home-screen widget (`HoyWidget.kt`), update offer from GitHub releases
+  the battery exemption, the "Hoy" home-screen widget (`HoyWidget.kt`) and the "Panel" tablet widget
+  (`PanelWidget.kt`, android-5: the day with its client list, the week at a glance and Por cobrar with its top
+  debtors, fed by the same setWidget snapshot — its panel fields added by the page in web 1.5.09 — and refreshed
+  by the same save/tick/boot machinery), update offer from GitHub releases
   `android-N` (asset `Brizna.apk`), renderer-crash recovery, and (android-3) "A inglés" on the phone with
   Google ML Kit (`Translate.kt`, `translate`/`translateState`; the Spanish model downloads once on any network and stays),
   and (android-4) "Dictar" with the phone's speech recognizer (`Dictate.kt`, `dictate`/`dictateStop`/`dictateCancel`/

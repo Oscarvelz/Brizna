@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_desc">Cortes de hoy, el próximo cliente y lo que hay por cobrar.</string>
+    <string name="panel_desc">El día con su lista de clientes, la semana de un vistazo y lo que hay por cobrar.</string>
 </resources>

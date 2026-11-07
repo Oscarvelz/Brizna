@@ -623,6 +623,7 @@ class MainActivity : Activity() {
                 .put("battery", pm?.isIgnoringBatteryOptimizations(packageName) == true)
                 .put("samsung", Build.MANUFACTURER.equals("samsung", true))
                 .put("widget", HoyWidget.hasWidgets(this@MainActivity))
+                .put("panel", PanelWidget.hasWidgets(this@MainActivity))
                 .put("next", next)
                 .put("count", Notify.read(this@MainActivity).size)
                 .toString()
