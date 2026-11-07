@@ -42,4 +42,6 @@ android {
 }
 dependencies {
     implementation("androidx.core:core:1.13.1")
+    // android-3: on-device Spanish → English for "A inglés" (model downloaded once, kept on the phone)
+    implementation("com.google.mlkit:translate:17.0.3")
 }

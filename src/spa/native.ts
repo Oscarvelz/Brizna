@@ -11,6 +11,7 @@
  * - Downloads (PDF, hoja, copia JSON): a blob link is handed to the app and saved in Downloads/Brizna.
  * - Share: navigator.share with files goes to the Android share sheet. Printing goes to Android's print dialog.
  * - Fingerprint: WebAuthn does not work in a plain WebView, so device-lock.ts asks the phone's BiometricPrompt.
+ * - "A inglés" (android-3): lib/translate.ts asks translate(); ML Kit translates on the phone (model downloaded once).
  * - Reminders and the "Hoy" widget: lib/native-plan.ts works out the schedule and hands it over (setSchedule/setWidget).
  */
 
@@ -38,6 +39,9 @@ export type BriznaNativeBridge = {
   openAppSettings?(): void;
   testNotify?(delayMs: number, title: string, body: string): void;
   setWidget?(json: string): string;
+  /** android-3: Spanish → English with ML Kit on the phone; replies with CustomEvent "briznanative-translate". */
+  translate?(id: string, text: string): void;
+  translateState?(): string;
 };
 
 type W = Window & { BriznaNative?: BriznaNativeBridge; BriznaBack?: () => string; __bzNativeOn?: boolean };

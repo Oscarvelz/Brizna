@@ -7,7 +7,8 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { smsHref, waHref } from "@/lib/format";
 import { useTx, useI18n } from "@/lib/i18n";
-import { getPad, getSettings, polishYardText, translateYardSms, updateSettings } from "@/lib/server/lawn";
+import { getPad, getSettings, polishYardText, updateSettings } from "@/lib/server/lawn";
+import { translateToEnglish } from "@/lib/translate";
 import { DEFAULT_MESSAGE_PRESETS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { chipsetStyle } from "@/lib/chipset";
@@ -82,6 +83,8 @@ export function MessageComposer({
   const [mode, setMode] = useState<"type" | "dict" | "tr">("type");
   const [listening, setListening] = useState(false);
   const [translating, setTranslating] = useState(false);
+  // 1.5.04: the first translation on the phone downloads its translator once (one line under the text)
+  const [trDownload, setTrDownload] = useState(false);
   const recRef = useRef<SpeechRec | null>(null);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -107,13 +110,13 @@ export function MessageComposer({
       if (!piece) return;
       if (translate) {
         setTranslating(true);
-        void translateYardSms({ data: { text: piece } })
+        void translateToEnglish(piece, (st) => { if (st === "download") setTrDownload(true); })
           .then((res) => {
             if (res.ok) setText((prev) => (prev ? `${prev} ${res.text}` : res.text).trim());
             else toast.error(res.error);
           })
           .catch(() => toast.error(tx("No se pudo traducir", "Could not translate")))
-          .finally(() => setTranslating(false));
+          .finally(() => { setTranslating(false); setTrDownload(false); });
         return;
       }
       const local = punctuate(piece);
@@ -158,13 +161,13 @@ export function MessageComposer({
     }
     setMode("tr");
     setTranslating(true);
-    void translateYardSms({ data: { text: current } })
+    void translateToEnglish(current, (st) => { if (st === "download") setTrDownload(true); })
       .then((res) => {
         if (res.ok) setText(res.text);
         else toast.error(res.error);
       })
       .catch(() => toast.error(tx("No se pudo traducir", "Could not translate")))
-      .finally(() => setTranslating(false));
+      .finally(() => { setTranslating(false); setTrDownload(false); });
   }
 
   function send() {
@@ -193,6 +196,7 @@ export function MessageComposer({
       mode={mode}
       listening={listening}
       translating={translating}
+      trDownload={trDownload}
       areaRef={areaRef}
       channel={channel}
       onType={() => {
@@ -296,6 +300,7 @@ function ComposerSheet({
   mode,
   listening,
   translating,
+  trDownload,
   areaRef,
   onType,
   onListen,
@@ -310,6 +315,7 @@ function ComposerSheet({
   mode: "type" | "dict" | "tr";
   listening: boolean;
   translating: boolean;
+  trDownload: boolean;
   areaRef: RefObject<HTMLTextAreaElement | null>;
   onType: () => void;
   onListen: () => void;
@@ -353,7 +359,12 @@ function ComposerSheet({
           placeholder={tx("Hoy llego a las 10. El corte queda en 40.", "I arrive at 10 today. The cut is 40.")}
           className="mt-3 w-full rounded-md bg-bg px-3 py-2 text-sm shadow-card focus:outline-none"
         />
-        <div className="mt-2 flex justify-end">
+        <div className="mt-2 flex items-center justify-end gap-2">
+          {trDownload ? (
+            <p role="status" className="mr-auto min-w-0 text-xs font-semibold text-muted">
+              {tx("Descargando el traductor", "Downloading the translator")}
+            </p>
+          ) : null}
           <button
             type="button"
             className="h-9 px-2 text-xs font-semibold text-soil"
@@ -368,7 +379,7 @@ function ComposerSheet({
                 .finally(() => setFixing(false));
             }}
           >
-            {fixing || translating ? tx("Corrigiendo…", "Fixing…") : tx("Corregir", "Fix")}
+            {fixing ? tx("Corrigiendo…", "Fixing…") : tx("Corregir", "Fix")}
           </button>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">

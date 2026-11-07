@@ -7,7 +7,8 @@ Web releases arrive on their own (the page is loaded live; the service worker ke
   Back (`BriznaBack` → `atRoot`), bar colours, downloads into Downloads/Brizna, the share sheet, printing,
   BiometricPrompt for the fingerprint lock, local reminders (`Notify.kt`: AlarmManager, re-armed after reboot),
   the battery exemption, the "Hoy" home-screen widget (`HoyWidget.kt`), update offer from GitHub releases
-  `android-N` (asset `Brizna.apk`), renderer-crash recovery.
+  `android-N` (asset `Brizna.apk`), renderer-crash recovery, and (android-3) "A inglés" on the phone with
+  Google ML Kit (`Translate.kt`, `translate`/`translateState`; the Spanish model downloads once on any network and stays).
 - Build: `.github/workflows/android.yml` on the `source` branch (only when `android/` changes). versionCode = `android/version.txt`.
 - Signing: the key is private and never committed. CI uploads `brizna-unsigned-N`; the APK is signed privately
   (apksigner, alias `brizna`) and pushed to the orphan branch `android-signed` (`Brizna.apk`, `VERSION`=N, `NOTES.md`),

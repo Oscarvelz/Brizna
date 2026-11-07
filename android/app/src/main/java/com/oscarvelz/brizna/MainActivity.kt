@@ -78,6 +78,8 @@ class MainActivity : Activity() {
     private val saves = ConcurrentHashMap<String, Save>()
     private val shares = ConcurrentHashMap<String, Share>()
     private val main = Handler(Looper.getMainLooper())
+    // android-3: "A inglés" on the phone (ML Kit)
+    private val translator by lazy { Translate(this) { d -> event("briznanative-translate", d) } }
 
     private class Save(val uri: Uri, val out: OutputStream, val name: String)
     private class Share(val files: MutableList<Pair<File, String>>, var cur: OutputStream?)
@@ -395,6 +397,14 @@ class MainActivity : Activity() {
             val r = pendingRoute ?: return ""
             pendingRoute = null
             return r
+        }
+
+        /* translation (android-3) */
+
+        @JavascriptInterface fun translateState(): String = translator.state()
+        @JavascriptInterface fun translate(id: String, text: String) {
+            if (!trusted) { event("briznanative-translate", JSONObject().put("id", id).put("ok", false).put("error", "failed")); return }
+            runOnUiThread { translator.run(id, text) }
         }
 
         /* fingerprint */
@@ -725,6 +735,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         for (id in saves.keys.toList()) drop(id)
+        translator.close()
         super.onDestroy()
     }
 }
