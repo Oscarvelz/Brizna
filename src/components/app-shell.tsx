@@ -416,7 +416,7 @@ export function AppShell({
   }, [mainEl]);
 
   // 1.5.06: the screen-to-screen swipe follows the finger and starts anywhere (lib/page-swipe.ts). Phone: always (not in a
-  // split); tablet/computer: one screen only, touch and pen only (a mouse never swipes). Hoy · Agenda · Clientes · Cobros ·
+  // split); tablet/computer: one screen only; touch, pen and (1.5.07) a mouse drag with the primary button. Hoy · Agenda · Clientes · Cobros ·
   // Estudio wrap around; on Estudio a swipe flips Estudio <-> Asesor and never leaves the tab (1.4.83).
   const [columnEl, setColumnEl] = useState<HTMLElement | null>(null);
   const swipeOn = !embedded && !split;

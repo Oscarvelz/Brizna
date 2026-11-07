@@ -9,7 +9,13 @@
  * - Vertical scroll is untouched: the host is touch-action: pan-y pinch-zoom, the axis locks after 10 px
  *   (sideways only when |dx| >= 1.3 |dy|, about 37°), and a vertical lock, a scroll (pointercancel) or a second finger ends it.
  * - Reduced motion: no following and no slides; the release switches at once.
- * Only touch and pen; a mouse never swipes. Sections holding position: fixed elements (FABs, scrims) are not moved
+ * 1.5.07 (Oscar: "haz que funcione con el ratón"): a mouse drag (primary button only) swipes the same way: same follow,
+ *   thresholds, flick and exceptions, plus: no edge strips (no back gesture on a mouse), text that is selectable on purpose
+ *   (user-select: text, the Bloc editor) keeps selecting, the native image/link drag ghost never starts, nothing is selected
+ *   once the drag locks sideways (any selection made by those first px is cleared, user-select off until release), the
+ *   pointer is captured so releasing outside the window still ends it (lost capture / blur = spring back), and the click of
+ *   the release is swallowed (0.4 s) like a touch. A vertical lock ends it and leaves the normal mouse text selection alone.
+ * Sections holding position: fixed elements (FABs, scrims) are not moved
  * themselves (a moved parent would drag them along); their other children are. */
 
 export type SwipeDir = 1 | -1; // 1 = next (finger to the left), -1 = previous
@@ -32,11 +38,14 @@ export function reducedMotion() {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 }
 
-export function swipeBlocked(host: HTMLElement, target: Element | null): boolean {
+export function swipeBlocked(host: HTMLElement, target: Element | null, mouse = false): boolean {
+  if (target instanceof Text) target = target.parentElement;
   if (!target || !host.contains(target)) return true;
   if (target.closest(NO_SWIPE)) return true;
+  if (mouse && target.closest("[data-note-editor], [data-selectable], option, label[for]")) return true;
   for (let el: Element | null = target; el && el !== host; el = el.parentElement) {
     const cs = getComputedStyle(el);
+    if (mouse && (cs.userSelect === "text" || cs.getPropertyValue("-webkit-user-select") === "text")) return true;
     if (cs.touchAction === "none") return true;
     if ((cs.overflowX === "auto" || cs.overflowX === "scroll") && el.scrollWidth > el.clientWidth + 1) return true;
   }
@@ -91,6 +100,7 @@ export function playPendingSlide(host: HTMLElement | null) {
 
 type Gesture = {
   id: number;
+  mouse: boolean;
   x: number;
   y: number;
   t: number;
@@ -136,12 +146,43 @@ export function installPageSwipe(
     window.removeEventListener("pointermove", onMove, true);
     window.removeEventListener("pointerup", onUp, true);
     window.removeEventListener("pointercancel", onCancel, true);
+    host.removeEventListener("lostpointercapture", onCancel, true);
+    window.removeEventListener("blur", onBlur);
+    if (g?.mouse && g.axis === "x") {
+      host.style.userSelect = "";
+      host.style.cursor = "";
+      try { if (host.hasPointerCapture(g.id)) host.releasePointerCapture(g.id); } catch { /* already gone */ }
+    }
     if (g?.frame) cancelAnimationFrame(g.frame);
     g = null;
   };
 
+  const onBlur = () => {
+    if (!g) return;
+    const els = g.els;
+    const was = g.axis === "x";
+    end();
+    if (was) suppressUntil = performance.now() + 400;
+    if (els.length) springBack(els);
+  };
+
+  // A mouse press on an image or a link would start the browser's own drag (a ghost) a few px in: never while ours may run.
+  const onDragStart = (e: DragEvent) => {
+    if (g?.mouse) e.preventDefault();
+  };
+  // Once the drag is sideways, no text gets selected (the class sets user-select: none; this catches what starts anyway).
+  const onSelectStart = (e: Event) => {
+    if (g?.mouse && g.axis === "x") e.preventDefault();
+  };
+
   const onDown = (e: PointerEvent) => {
-    if (e.pointerType === "mouse") return;
+    const mouse = e.pointerType === "mouse";
+    if (mouse && (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey)) return; // right/middle/modified: not a swipe
+    if (g && (mouse || g.mouse)) { // a mouse has one pointer: a new press means the last release was missed; drop it, start fresh
+      const els = g.axis === "x" ? g.els : [];
+      end();
+      if (els.length) springBack(els);
+    }
     if (g) { // a second finger: pinch, never a swipe
       const els = g.axis === "x" ? g.els : [];
       end();
@@ -149,17 +190,19 @@ export function installPageSwipe(
       return;
     }
     if (!e.isPrimary || !opts.canStart()) return;
-    if (e.clientX < EDGE_PX || e.clientX > window.innerWidth - EDGE_PX) return;
-    if (swipeBlocked(host, e.target as Element)) return;
+    if (!mouse && (e.clientX < EDGE_PX || e.clientX > window.innerWidth - EDGE_PX)) return;
+    if (swipeBlocked(host, e.target as Element, mouse)) return;
     const main = host.querySelector<HTMLElement>("main");
-    g = { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp, axis: null, els: [], width: main?.clientWidth || window.innerWidth, samples: [{ x: e.clientX, t: e.timeStamp }], dx: 0, frame: 0 };
+    g = { id: e.pointerId, mouse, x: e.clientX, y: e.clientY, t: e.timeStamp, axis: null, els: [], width: main?.clientWidth || window.innerWidth, samples: [{ x: e.clientX, t: e.timeStamp }], dx: 0, frame: 0 };
     window.addEventListener("pointermove", onMove, true);
     window.addEventListener("pointerup", onUp, true);
     window.addEventListener("pointercancel", onCancel, true);
+    if (mouse) window.addEventListener("blur", onBlur);
   };
 
   const onMove = (e: PointerEvent) => {
     if (!g || e.pointerId !== g.id) return;
+    if (g.mouse && (e.buttons & 1) === 0) { onCancel(e); return; } // the button was let go where we could not see it
     const dx = e.clientX - g.x;
     const dy = e.clientY - g.y;
     if (!g.axis) {
@@ -171,7 +214,16 @@ export function installPageSwipe(
         g.els = movers(host);
         for (const el of g.els) { el.style.transition = "none"; el.style.willChange = "translate, opacity"; }
       }
+      if (g.mouse) {
+        // After movers() read the layout: an inline style on the host only (a class on <html> re-matched every rule and cost
+        // a 30-95 ms frame right at the lock, which also ate the flick).
+        host.style.userSelect = "none";
+        host.style.cursor = "grabbing";
+        window.getSelection()?.removeAllRanges();
+        try { host.setPointerCapture(g.id); host.addEventListener("lostpointercapture", onCancel, true); } catch { /* pointer gone */ }
+      }
     }
+    if (g.mouse) e.preventDefault();
     g.dx = dx;
     g.samples.push({ x: e.clientX, t: e.timeStamp });
     while (g.samples.length > 2 && e.timeStamp - g.samples[1]!.t > 90) g.samples.shift();
@@ -181,6 +233,7 @@ export function installPageSwipe(
   const onCancel = (e: PointerEvent) => {
     if (!g || e.pointerId !== g.id) return;
     const els = g.els;
+    if (g.axis === "x") suppressUntil = performance.now() + 400;
     end();
     if (els.length) springBack(els);
   };
@@ -241,11 +294,15 @@ export function installPageSwipe(
 
   host.addEventListener("pointerdown", onDown, true);
   host.addEventListener("click", onClick, true);
+  host.addEventListener("dragstart", onDragStart, true);
+  document.addEventListener("selectstart", onSelectStart, true);
   return () => {
     const els = g?.els ?? [];
     end();
     clear(els);
     host.removeEventListener("pointerdown", onDown, true);
     host.removeEventListener("click", onClick, true);
+    host.removeEventListener("dragstart", onDragStart, true);
+    document.removeEventListener("selectstart", onSelectStart, true);
   };
 }
