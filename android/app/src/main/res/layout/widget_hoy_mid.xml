@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Brizna "Hoy" at 4x3 (android-6, added at Oscar's word the same day): the middle size between the classic
+     4x2 and the tall 4x4 — the count, the day's first three clients with their times, the alert line when
+     there is one, and Por cobrar. Rows share the big/Panel layout's ids on purpose. No "+N más" line here:
+     the count at the top already says how many cuts the day holds, and the page's own "more" text is counted
+     from six rows, so reusing it under three would state the wrong number. Colours are set in HoyWidget.kt. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg_night"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+        <TextView android:id="@+id/title" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Hoy" android:textSize="14sp" android:textStyle="bold" android:letterSpacing="0.04" android:fontFamily="sans-serif-medium" />
+        <TextView android:id="@+id/date" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="end" android:maxLines="1" android:textSize="12sp" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="6dp">
+        <TextView android:id="@+id/count" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:textSize="30sp" />
+        <TextView android:id="@+id/countLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:textSize="13sp" />
+    </LinearLayout>
+    <View android:id="@+id/hline" android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="9dp" />
+        <LinearLayout android:id="@+id/pr0" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="7dp">
+            <TextView android:id="@+id/pr0n" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:maxLines="1" android:ellipsize="end" android:textSize="15sp" />
+            <TextView android:id="@+id/pr0t" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textSize="13sp" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/pr1" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="7dp">
+            <TextView android:id="@+id/pr1n" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:maxLines="1" android:ellipsize="end" android:textSize="15sp" />
+            <TextView android:id="@+id/pr1t" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textSize="13sp" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/pr2" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="7dp">
+            <TextView android:id="@+id/pr2n" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:maxLines="1" android:ellipsize="end" android:textSize="15sp" />
+            <TextView android:id="@+id/pr2t" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textSize="13sp" />
+        </LinearLayout>
+    <TextView android:id="@+id/alert" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:textSize="13sp" android:fontFamily="sans-serif-medium" />
+    <View android:id="@+id/hline2" android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="9dp" />
+    <LinearLayout android:id="@+id/owed_box" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="8dp">
+        <TextView android:id="@+id/owedLabel" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textSize="12sp" />
+        <TextView android:id="@+id/owed" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="17sp" android:textStyle="bold" />
+    </LinearLayout>
+</LinearLayout>
