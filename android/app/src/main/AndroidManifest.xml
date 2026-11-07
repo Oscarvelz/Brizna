@@ -14,7 +14,11 @@
     <!-- "Usar mi ubicación" for the weather and a client's address (asked only when tapped). -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- android-4: "Dictar" (asked only when tapped; the microphone is open only while Brizna listens). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <queries>
+        <!-- Android 11+ hides other apps' services: the phone's speech recognizer must be declared to be reachable. -->
+        <intent><action android:name="android.speech.RecognitionService" /></intent>
         <intent><action android:name="android.media.action.IMAGE_CAPTURE" /></intent>
         <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="https" /></intent>
         <intent><action android:name="android.intent.action.DIAL" /></intent>

@@ -17,7 +17,12 @@ android {
         targetSdk = 34
         versionCode = code
         versionName = "1.$code"
+        // android-4: only 64-bit ARM phones (every Android 11+ phone Brizna targets, the S24 Ultra included).
+        // android-3 shipped ML Kit's translator libraries for 4 CPU types (70.8 MB); one is enough.
+        ndk { abiFilters += listOf("arm64-v8a") }
     }
+    // Native libraries compressed inside the APK (smaller download; Android unpacks them once at install).
+    packaging { jniLibs { useLegacyPackaging = true } }
     if (!ksFile.isNullOrBlank() && !ksPass.isNullOrBlank()) {
         signingConfigs {
             create("rel") {

@@ -8,7 +8,11 @@ Web releases arrive on their own (the page is loaded live; the service worker ke
   BiometricPrompt for the fingerprint lock, local reminders (`Notify.kt`: AlarmManager, re-armed after reboot),
   the battery exemption, the "Hoy" home-screen widget (`HoyWidget.kt`), update offer from GitHub releases
   `android-N` (asset `Brizna.apk`), renderer-crash recovery, and (android-3) "A inglés" on the phone with
-  Google ML Kit (`Translate.kt`, `translate`/`translateState`; the Spanish model downloads once on any network and stays).
+  Google ML Kit (`Translate.kt`, `translate`/`translateState`; the Spanish model downloads once on any network and stays),
+  and (android-4) "Dictar" with the phone's speech recognizer (`Dictate.kt`, `dictate`/`dictateStop`/`dictateCancel`/
+  `dictateState`; on-device recognizer first, partial text streamed; RECORD_AUDIO asked on the first tap; Brizna's own
+  pages may also get getUserMedia audio through `onPermissionRequest`).
+- APK: arm64-v8a only, native libraries compressed (android-3 with 4 ABIs was 70.8 MB).
 - Build: `.github/workflows/android.yml` on the `source` branch (only when `android/` changes). versionCode = `android/version.txt`.
 - Signing: the key is private and never committed. CI uploads `brizna-unsigned-N`; the APK is signed privately
   (apksigner, alias `brizna`) and pushed to the orphan branch `android-signed` (`Brizna.apk`, `VERSION`=N, `NOTES.md`),

@@ -80,6 +80,11 @@ class MainActivity : Activity() {
     private val main = Handler(Looper.getMainLooper())
     // android-3: "A inglés" on the phone (ML Kit)
     private val translator by lazy { Translate(this) { d -> event("briznanative-translate", d) } }
+    // android-4: "Dictar" with the phone's speech recognizer (a WebView has no Web Speech recognition)
+    private val dictation by lazy { Dictate(this) { d -> event("briznanative-dictate", d) } }
+    private var micAsk: Pair<String, String>? = null
+    private var dictId: String? = null
+    private var webMicAsk: PermissionRequest? = null
 
     private class Save(val uri: Uri, val out: OutputStream, val name: String)
     private class Share(val files: MutableList<Pair<File, String>>, var cur: OutputStream?)
@@ -89,6 +94,9 @@ class MainActivity : Activity() {
         private const val RQ_CAMERA = 8
         private const val RQ_NOTIFY = 9
         private const val RQ_GEO = 10
+        private const val RQ_MIC = 11
+        private const val RQ_WEBMIC = 12
+        private const val HOST = "oscarvelz.github.io"
         private const val AUTH = BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL
         private const val REPO_RELEASES = "https://api.github.com/repos/Oscarvelz/Brizna/releases?per_page=30"
     }
@@ -188,6 +196,20 @@ class MainActivity : Activity() {
                 geoAsk = origin to cb
                 requestPermissions(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION), RQ_GEO)
             }
+            // android-4, second path: getUserMedia({audio}) from Brizna's own pages only, once Android's microphone
+            // permission is granted (asked here if not). Every other origin and every other resource is refused.
+            override fun onPermissionRequest(req: PermissionRequest) {
+                runOnUiThread {
+                    val own = req.origin?.scheme == "https" && req.origin?.host == HOST
+                    val wantsAudio = req.resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)
+                    if (!own || !wantsAudio) { req.deny(); return@runOnUiThread }
+                    if (micGranted()) { req.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE)); return@runOnUiThread }
+                    webMicAsk?.deny(); webMicAsk = req
+                    prefs.edit().putBoolean("askedMic", true).apply()
+                    requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), RQ_WEBMIC)
+                }
+            }
+            override fun onPermissionRequestCanceled(req: PermissionRequest) { if (webMicAsk === req) webMicAsk = null }
             // target=_blank / window.open: Brizna pages stay here, everything else opens in its own app or the browser.
             override fun onCreateWindow(v: WebView, dialog: Boolean, gesture: Boolean, msg: Message): Boolean {
                 val probe = WebView(this@MainActivity)
@@ -358,6 +380,20 @@ class MainActivity : Activity() {
                 val ask = geoAsk; geoAsk = null
                 ask?.second?.invoke(ask.first, granted, false)
             }
+            RQ_MIC -> {
+                val ask = micAsk; micAsk = null
+                if (ask == null) return
+                if (granted) { dictId = ask.first; dictation.start(ask.first, ask.second) }
+                else {
+                    val why = micRefusal()
+                    prefs.edit().putBoolean("micRefused", why == "blocked").apply()
+                    event("briznanative-dictate", JSONObject().put("id", ask.first).put("ok", false).put("error", why))
+                }
+            }
+            RQ_WEBMIC -> {
+                val r = webMicAsk; webMicAsk = null
+                if (granted) r?.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) else r?.deny()
+            }
         }
     }
 
@@ -406,6 +442,36 @@ class MainActivity : Activity() {
             if (!trusted) { event("briznanative-translate", JSONObject().put("id", id).put("ok", false).put("error", "failed")); return }
             runOnUiThread { translator.run(id, text) }
         }
+
+        /* dictation (android-4) */
+
+        /** "ready" (allowed), "ask" (Android will ask), "blocked" (refused for good: only app settings can allow it), "none" (no recognizer). */
+        @JavascriptInterface fun dictateState(): String = when {
+            !dictation.available() -> "none"
+            micGranted() -> "ready"
+            prefs.getBoolean("micRefused", false) && !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) -> "blocked"
+            else -> "ask"
+        }
+
+        @JavascriptInterface fun dictate(id: String, lang: String) {
+            if (!trusted) { event("briznanative-dictate", JSONObject().put("id", id).put("ok", false).put("error", "failed")); return }
+            val l = if (Regex("^[a-z]{2}(-[A-Z]{2})?$").matches(lang)) lang else "es-US"
+            runOnUiThread {
+                if (!dictation.available()) { event("briznanative-dictate", JSONObject().put("id", id).put("ok", false).put("error", "none")); return@runOnUiThread }
+                if (micGranted()) { dictId = id; dictation.start(id, l); return@runOnUiThread }
+                // refused for good earlier: Android would answer "no" at once without asking, so say so straight away
+                if (prefs.getBoolean("askedMic", false) && !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) && prefs.getBoolean("micRefused", false)) {
+                    event("briznanative-dictate", JSONObject().put("id", id).put("ok", false).put("error", "blocked")); return@runOnUiThread
+                }
+                micAsk = id to l
+                prefs.edit().putBoolean("askedMic", true).apply()
+                event("briznanative-dictate", JSONObject().put("id", id).put("state", "asking"))
+                requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), RQ_MIC)
+            }
+        }
+
+        @JavascriptInterface fun dictateStop(id: String) { runOnUiThread { dictation.stop(id) } }
+        @JavascriptInterface fun dictateCancel() { runOnUiThread { micAsk = null; dictId = null; dictation.cancel() } }
 
         /* fingerprint */
 
@@ -609,6 +675,11 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun micGranted() = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    /** After a refusal: "denied" when Android will ask again next time, "blocked" when only the app's settings can allow it. */
+    private fun micRefusal() = if (shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) "denied" else "blocked"
+
     private fun open(i: Intent): Boolean = try { startActivity(i); true } catch (_: Exception) { false }
 
     private fun cleanName(name: String) = name.replace(Regex("[\\\\/:*?\"<>|\\n\\r]"), "_").trim().ifBlank { "Brizna" }.take(120)
@@ -728,6 +799,8 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         super.onPause()
+        // leaving the app ends a dictation (what was heard so far is kept)
+        dictId?.let { id -> dictation.stop(id) }
         CookieManager.getInstance().flush()
     }
 
@@ -736,6 +809,7 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         for (id in saves.keys.toList()) drop(id)
         translator.close()
+        dictation.cancel()
         super.onDestroy()
     }
 }
