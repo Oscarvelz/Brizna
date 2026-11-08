@@ -718,7 +718,7 @@ export function JobCard({
               params={{ id: String(job.clientId) }}
               className={cn(
                 "min-w-0 font-display font-semibold hover:underline",
-                media ? "text-[1.1875rem] leading-none" : "text-[1.3rem] leading-snug",
+                media ? "text-[1.25rem] leading-none" : "text-[1.3rem] leading-snug",
               )}
             >
               <MeshNameUniform name={job.clientName} cols={2} size={media ? "jmedia" : "jgrande"} fit />
