@@ -634,11 +634,13 @@ export function JobCard({
             aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
             onClick={onPin}
             className={cn(
-              "bz-tone bz-tone-pin grid size-8 shrink-0 place-items-center rounded-sm",
+              // 1.5.17 (Oscar): in Lista the pin reads oversized against the slim row — box 32→24, icon 12→10.
+              // Only the dense row changes; the Grande/Media card pin keeps its spec size and place.
+              "bz-tone bz-tone-pin grid size-6 shrink-0 place-items-center rounded-sm",
               job.pinned && "bz-tone-on",
             )}
           >
-            <Pin className="size-3" />
+            <Pin className="size-2.5" />
           </button>
           <Link
             to="/clientes/$id"
