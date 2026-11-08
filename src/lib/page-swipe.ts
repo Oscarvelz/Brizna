@@ -94,7 +94,9 @@ export function playPendingSlide(host: HTMLElement | null) {
   const els = movers(host);
   const from = `${p.dir * 44}px 0`;
   for (const el of els) {
-    el.animate([{ translate: from, opacity: 0.35 }, { translate: "0 0", opacity: 1 }], { duration: 240, easing: EASE });
+    // 1.5.13: translate only, no opacity. Fading every section from .35 forced a full-page repaint of the
+    // biggest screens (Estudio) on each frame the slide produced; a pure translate is composited instead.
+    el.animate([{ translate: from }, { translate: "0 0" }], { duration: 240, easing: EASE });
   }
 }
 
@@ -260,7 +262,7 @@ export function installPageSwipe(
       opts.commit(dir);
       return;
     }
-    // The page leaves the way the finger went; a new screen is switched to at once, the other Estudio view after the exit.
+    // The page leaves the way the finger went; the switch (route or Estudio view) lands once the exit has played.
     const now = parseFloat(els[0]!.style.translate) || 0;
     const out = `${(now - dir * Math.max(60, st.width * 0.18)).toFixed(1)}px 0`;
     for (const el of els) {
@@ -270,7 +272,17 @@ export function installPageSwipe(
     }
     pending = { dir, at: Date.now() };
     if (kind === "route") {
-      opts.commit(dir);
+      // 1.5.13 (Oscar: a "pegón" froze the page mid-slide as it settled into Estudio): the switch waits for
+      // the exit to play, exactly as the Estudio flip below already did. Committing inside the release task
+      // put the new screen's mount burst (render + database readings, one long task) ahead of the next
+      // frame, so the screen froze on the last follow frame — page displaced, ambient strip showing — and
+      // the entrance slide could only start once the burst ended. Now the exit paints first, the burst runs
+      // against a clean screen, and the entrance (created in the shell's layout effect, its clock starting
+      // at the first frame produced after the mount) plays whole.
+      window.setTimeout(() => {
+        pending = { dir, at: Date.now() };
+        opts.commit(dir);
+      }, 120);
       // The old screen is unmounted by the switch; if it stays (something kept it), it comes back.
       window.setTimeout(() => {
         const left = els.filter((el) => el.isConnected);
