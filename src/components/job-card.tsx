@@ -301,10 +301,11 @@ export function JobCard({
       type="button"
       aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
       onClick={onPin}
-      className="grid size-8 shrink-0 place-items-center text-[color:var(--tone-pin)] -mr-2"
+      className="grid size-8 shrink-0 place-items-center text-[color:var(--tone-pin)] -mr-2 -translate-y-0.5"
     >
       {/* 1.5.20 (Oscar, fine-tuning): the whole button leans 8 px right (-mr-2 above) so the pin glyph
-          sits almost on the map button's right-edge line below it. */}
+          sits almost on the map button's right-edge line below it.
+          1.5.22 (Oscar): it also rises 2 px with the name and the price, onto the grip dots' center line. */}
       <Pin className={cn(media ? "size-4" : "size-[18px]", job.pinned && "fill-current")} />
     </button>
   );
@@ -704,15 +705,18 @@ export function JobCard({
         <div className={cn("flex min-w-0 items-center", media ? "gap-2" : "gap-3")}>
           {dragHandle && pending ? (
             <span
-              className={cn("grid size-8 shrink-0 touch-none place-items-center rounded-sm text-muted", !media && "bz-grip-lg")}
+              className={cn("grid size-8 shrink-0 touch-none place-items-center rounded-sm text-muted -ml-2", !media && "bz-grip-lg")}
               data-drag-handle
               aria-hidden
             >
+              {/* 1.5.22 (Oscar): same logic as the pin's -mr-2 — the grip leans 8 px left (-ml-2 above) so
+                  its six dots sit on the message button's left-edge line below. */}
               <GripVertical className="size-4" />
             </span>
           ) : null}
-          {/* 1.5.20 (Oscar, fine-tuning): gap 12→14 px — the price breathes "un poquito" more off the name. */}
-          <div className="flex min-w-0 flex-1 items-center gap-3.5" data-name-room>
+          {/* 1.5.20 (Oscar, fine-tuning): gap 12→14 px — the price breathes "un poquito" more off the name.
+              1.5.22 (Oscar): name + price rise 2 px (-translate-y-0.5) to level with the grip dots' center line. */}
+          <div className="flex min-w-0 flex-1 items-center gap-3.5 -translate-y-0.5" data-name-room>
             <Link
               to="/clientes/$id"
               params={{ id: String(job.clientId) }}
