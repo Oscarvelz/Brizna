@@ -144,12 +144,25 @@ export function applyAppearance(patch?: Partial<Appearance>) {
   const palette = useNight ? next.night : next.day;
   const root = document.documentElement;
   const amoled = useNight && palette === "amoled";
+  // 1.5.16 (Oscar — Ventory's day/night lesson, ported at his word): at the flip NO color transitions.
+  // Brizna's component rules carry .15–.28 s color transitions for press/hover; left alone at the flip,
+  // each piece drifts to the new palette on its own clock while the background snaps — the change
+  // arrives "in parts" and reads as lag, exactly the disease Ventory 1.0.4 cured by letting data-theme
+  // swap the variables with the whole palette falling in the SAME frame (1.0.5 added: the status-bar
+  // fringe and the page background land in that frame too — paintStatusBar below is already
+  // synchronous and html/body carry no background transition). So: kill transitions for this frame,
+  // swap, flush so the new palette commits as current style, then lift the kill two frames later.
+  // Interactions keep their transitions at every other moment; the flip itself never gets a fade —
+  // in Ventory the coordinated fade WAS the delay, gray veil and all (Oscar's verdict: «muchísimo mejor»).
+  root.classList.add("bz-flip");
   root.classList.toggle("theme-amoled", amoled);
   root.classList.toggle("theme-dark", useNight && !amoled);
   if ((useNight && palette === "amoled") || (!useNight && palette === "jardin")) delete root.dataset.palette;
   else root.dataset.palette = palette;
   root.style.colorScheme = useNight ? "dark" : "light";
   paintStatusBar(statusBarColor(useNight, palette));
+  void root.offsetWidth;
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("bz-flip")));
   try {
     window.localStorage.setItem(THEME_KEY, useNight && palette === "amoled" ? "amoled" : "light");
     if ((PALETTES as readonly string[]).includes(next.day)) {

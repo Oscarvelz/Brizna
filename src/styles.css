@@ -86,6 +86,16 @@ html {
   background-color: var(--color-bg);
 }
 
+/* 1.5.16 (Oscar — the Ventory rule): while the applyAppearance flip lands (.bz-flip, one frame), no element
+   transitions color: the whole palette falls in the same frame. Do not give the day/night flip a
+   fade — in Ventory the coordinated fade WAS the delay Oscar rejected three times. Press/hover
+   transitions are untouched at every other moment. */
+html.bz-flip *,
+html.bz-flip *::before,
+html.bz-flip *::after {
+  transition: none !important;
+}
+
 body {
   background-color: var(--color-bg);
 }
