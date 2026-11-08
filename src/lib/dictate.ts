@@ -26,7 +26,9 @@ export type DictHandlers = {
   onState?: (s: DictState) => void;
   onPartial?: (text: string) => void;
   onFinal: (text: string) => void;
-  onError: (e: DictError) => void;
+  /** 1.5.19 (android-7): the shell also reports the recognizer's own error code when it has one, so a
+   *  failure can be told apart (server, client, language…) instead of one bare "failed". */
+  onError: (e: DictError, code?: number) => void;
   /** Called once when listening is over, whatever the outcome. */
   onEnd?: () => void;
 };
@@ -74,7 +76,7 @@ export function openDictationSettings() {
 
 /* ---------- 1. Android app ---------- */
 
-type Detail = { id: string; state?: string; partial?: string; ok?: boolean; text?: string; error?: string };
+type Detail = { id: string; state?: string; partial?: string; ok?: boolean; text?: string; error?: string; code?: number };
 const NATIVE_ERRORS: DictError[] = ["no-speech", "denied", "blocked", "offline", "busy", "none", "failed"];
 
 function viaNative(lang: string, h: DictHandlers): DictSession {
@@ -93,7 +95,7 @@ function viaNative(lang: string, h: DictHandlers): DictSession {
     if (d.state === "asking" || d.state === "listening" || d.state === "processing") { h.onState?.(d.state); return; }
     if (typeof d.partial === "string") { h.onPartial?.(d.partial); return; }
     if (d.ok && d.text) h.onFinal(d.text);
-    else h.onError(NATIVE_ERRORS.includes(d.error as DictError) ? (d.error as DictError) : "failed");
+    else h.onError(NATIVE_ERRORS.includes(d.error as DictError) ? (d.error as DictError) : "failed", typeof d.code === "number" ? d.code : undefined);
     end();
   };
   window.addEventListener("briznanative-dictate", on);

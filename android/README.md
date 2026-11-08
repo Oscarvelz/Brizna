@@ -19,7 +19,10 @@ Web releases arrive on their own (the page is loaded live; the service worker ke
   Google ML Kit (`Translate.kt`, `translate`/`translateState`; the Spanish model downloads once on any network and stays),
   and (android-4) "Dictar" with the phone's speech recognizer (`Dictate.kt`, `dictate`/`dictateStop`/`dictateCancel`/
   `dictateState`; on-device recognizer first, partial text streamed; RECORD_AUDIO asked on the first tap; Brizna's own
-  pages may also get getUserMedia audio through `onPermissionRequest`).
+  pages may also get getUserMedia audio through `onPermissionRequest`), and (android-7) dictation names its
+  service: the installed recognition services are enumerated and Google's is bound explicitly ahead of the
+  phone's default (on Samsung phones the default is Samsung's service, which fails third-party callers and
+  silently absorbed the old plan's three steps); the failure reply also carries the recognizer's error code.
 - APK: arm64-v8a only, native libraries compressed (android-3 with 4 ABIs was 70.8 MB).
 - Build: `.github/workflows/android.yml` on the `source` branch (only when `android/` changes). versionCode = `android/version.txt`.
 - Signing: the key is private and never committed. `android.yml` has two jobs: `build` (no secrets; always uploads

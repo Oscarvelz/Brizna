@@ -110,14 +110,17 @@ export function MessageComposer({
           setText((prev) => (prev.endsWith(local) ? `${prev.slice(0, -local.length)}${res.text}` : prev));
         });
       },
-      onError: (e) => {
+      onError: (e, code) => {
         setMicWhy(false);
         const m = dictMessage(e);
         if (e === "none" || e === "update") {
           setMode("type");
           window.setTimeout(() => areaRef.current?.focus(), 30);
         }
-        toast.error(m.text, m.action
+        // 1.5.19 (android-7): when the phone's recognizer reports its own error code, the notice carries it —
+        // a bare "No se pudo dictar" taught us nothing about which service failed or why.
+        if (code) { try { window.localStorage.setItem("bz-dict-error", `${e}:${code}`); } catch { /* ignore */ } }
+        toast.error(code ? `${m.text} (código ${code})` : m.text, m.action
           ? {
               duration: 8000,
               action: {
