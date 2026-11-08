@@ -59,6 +59,7 @@ export function JobCard({
   const [askPin, setAskPin] = useState(false);
   // 1.5.18 (Oscar): the address stays hidden on the card; a long-press on the map button reveals it.
   const [showAddr, setShowAddr] = useState(false);
+  const [showStatus, setShowStatus] = useState(false);
   const [postDate, setPostDate] = useState(addDaysISO(job.scheduledDate, 1));
   const [reason, setReason] = useState("");
   const [method, setMethod] = useState("");
@@ -703,17 +704,19 @@ export function JobCard({
         {/* 1.5.20 (Oscar): the header row centers its children — the six grip dots, the name and the pin
             share one optical line (before, items-start left the dots riding off the name's line). */}
         <div className={cn("flex min-w-0 items-center", media ? "gap-2" : "gap-3")}>
-          {dragHandle && pending ? (
-            <span
-              className={cn("grid size-8 shrink-0 touch-none place-items-center rounded-sm text-muted -ml-2", !media && "bz-grip-lg")}
-              data-drag-handle
-              aria-hidden
-            >
-              {/* 1.5.22 (Oscar): same logic as the pin's -mr-2 — the grip leans 8 px left (-ml-2 above) so
-                  its six dots sit on the message button's left-edge line below. */}
-              <GripVertical className="size-4" />
-            </span>
-          ) : null}
+          {/* 1.5.23 (Oscar): the six dots are ALWAYS here, right where the name would begin — «no los
+              remueva, solamente quería que se nivelaran». When this card cannot be dragged (Fijados,
+              Agenda, a done yard) the dots are a still anchor with no handle in them; the name follows
+              after them on the same line, a poquito to the right, and every card's name shares one line. */}
+          <span
+            className={cn("grid size-8 shrink-0 place-items-center rounded-sm text-muted -ml-2", dragHandle && pending && "touch-none", !media && "bz-grip-lg")}
+            {...(dragHandle && pending ? { "data-drag-handle": true } : {})}
+            aria-hidden
+          >
+            {/* 1.5.22 (Oscar): same logic as the pin's -mr-2 — the grip leans 8 px left (-ml-2 above) so
+                its six dots sit on the message button's left-edge line below. */}
+            <GripVertical className="size-4" />
+          </span>
           {/* 1.5.20 (Oscar, fine-tuning): gap 12→14 px — the price breathes "un poquito" more off the name.
               1.5.22 (Oscar): name + price rise 2 px (-translate-y-0.5) to level with the grip dots' center line. */}
           <div className="flex min-w-0 flex-1 items-center gap-3.5 -translate-y-0.5" data-name-room>
@@ -807,9 +810,18 @@ export function JobCard({
         <AddressLine address={job.clientAddress} name={job.clientName} compact oneLine className={media ? "mt-2" : "mt-3"} />
       )}
 
-      {/* 1.5.12: the state closes the card as a full-width band, right above Hecho / Posponer. */}
+      {/* 1.5.12: the state closes the card as a full-width band, right above Hecho / Posponer.
+          1.5.23 (Oscar): the band is a button now — tapping it opens a small, well-made card with what
+          the state means for THIS yard: when it was due, how many days late, or how far away it is. */}
       <div className={media ? "mt-2" : "mt-3"}>
-        <StatusBadge status={live.computedStatus} band compact={media} />
+        <button
+          type="button"
+          className="block w-full cursor-pointer transition active:scale-[0.99]"
+          onClick={() => setShowStatus(true)}
+          aria-label={tx(`Detalles del estado de ${job.clientName}`, `${job.clientName}: status details`)}
+        >
+          <StatusBadge status={live.computedStatus} band compact={media} />
+        </button>
       </div>
 
       {pending && !compact && (
@@ -847,7 +859,74 @@ export function JobCard({
           top corner (header), whatever its state. */}
     </article>
     {dialogs}
+    {showStatus ? <StatusInfoCard job={job} today={today} onClose={() => setShowStatus(false)} /> : null}
     </>
+  );
+}
+
+/** 1.5.23 (Oscar): the little card behind the status band — designed, not loose: the client's name,
+ *  the state as its own pill, and a few truthful rows (due date, days late or days away, price). */
+function StatusInfoCard({ job, today, onClose }: { job: JobRow; today: string; onClose: () => void }) {
+  const tx = useTx();
+  const diff = Math.round((Date.parse(job.scheduledDate) - Date.parse(today)) / 86400000);
+  const rows: Array<[string, string]> = [];
+  let headline: string | null = null;
+  if (job.computedStatus === "late") {
+    const n = -diff;
+    headline = n === 1 ? tx("Lleva 1 día de retraso", "1 day overdue") : tx(`Lleva ${n} días de retraso`, `${n} days overdue`);
+    rows.push([tx("Debió hacerse", "Was due"), formatDay(job.scheduledDate, "EEEE d 'de' MMMM")]);
+    if (job.originDate && job.originDate !== job.scheduledDate) {
+      rows.push([tx("Día original", "Original day"), formatDay(job.originDate, "EEE d 'de' MMM")]);
+    }
+    if (job.postponeReason) rows.push([tx("Razón", "Reason"), job.postponeReason]);
+  } else if (job.computedStatus === "pending") {
+    headline =
+      diff === 0
+        ? tx("Es para hoy", "It's for today")
+        : diff === 1
+          ? tx("Es mañana", "It's tomorrow")
+          : tx(`Faltan ${diff} días`, `${diff} days away`);
+    rows.push([tx("Programado", "Scheduled"), formatDay(job.scheduledDate, "EEEE d 'de' MMMM")]);
+  } else if (job.computedStatus === "done") {
+    rows.push([
+      tx("Se hizo", "Done on"),
+      formatDay(job.completedAt ? stampDay(job.completedAt) : job.scheduledDate, "EEEE d 'de' MMMM"),
+    ]);
+  } else {
+    rows.push([tx("Programado", "Scheduled"), formatDay(job.scheduledDate, "EEEE d 'de' MMMM")]);
+  }
+  rows.push([tx("Precio", "Price"), money(job.amount)]);
+  return (
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/45 p-6" onClick={onClose} role="presentation">
+      <div
+        className="w-full max-w-xs rounded-2xl bg-surface p-4 shadow-xl ring-1 ring-border"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={job.clientName}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <p className="min-w-0 font-display text-base font-semibold leading-tight">{job.clientName}</p>
+          <StatusBadge status={job.computedStatus} />
+        </div>
+        {headline ? <p className="mt-2 text-sm font-medium">{headline}</p> : null}
+        <dl className="mt-3 divide-y divide-border/70">
+          {rows.map(([label, value]) => (
+            <div key={label} className="flex items-baseline justify-between gap-4 py-1.5">
+              <dt className="shrink-0 text-xs text-muted">{label}</dt>
+              <dd className="min-w-0 text-right text-sm font-medium">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-3 h-9 w-full rounded-lg bg-surface-2 text-sm font-semibold ring-1 ring-border transition active:scale-[0.99]"
+        >
+          {tx("Cerrar", "Close")}
+        </button>
+      </div>
+    </div>
   );
 }
 

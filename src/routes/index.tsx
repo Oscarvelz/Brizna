@@ -565,7 +565,9 @@ function DayBoard({
 
       {pinned.length > 0 ? (
         <section id="en-la-mira" className="bz-pinned rounded-xl p-2">
-          {/* 1.4.69: kicker and its note share one line (wrap as one paragraph on a phone), no extra row. */}
+          {/* 1.4.69: kicker and its note share one line, no extra row. 1.5.23 (Oscar): the note flows in a
+              column AFTER the chip (flex in .bz-pinned-head) — both of its lines live after the bubble,
+              never below it, so the section stands one line shorter. */}
           <p className="bz-pinned-head">
             <span className="bz-pinned-kicker">
               <Pin aria-hidden />
