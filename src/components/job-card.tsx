@@ -301,8 +301,10 @@ export function JobCard({
       type="button"
       aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
       onClick={onPin}
-      className="grid size-8 shrink-0 place-items-center self-start text-[color:var(--tone-pin)]"
+      className="grid size-8 shrink-0 place-items-center text-[color:var(--tone-pin)] -mr-2"
     >
+      {/* 1.5.20 (Oscar, fine-tuning): the whole button leans 8 px right (-mr-2 above) so the pin glyph
+          sits almost on the map button's right-edge line below it. */}
       <Pin className={cn(media ? "size-4" : "size-[18px]", job.pinned && "fill-current")} />
     </button>
   );
@@ -629,11 +631,8 @@ export function JobCard({
             late && "bg-late-bg bz-late-card bz-late-glow",
           )}
         >
-          {dragHandle && pending ? (
-            <span className="grid size-8 shrink-0 touch-none place-items-center text-muted" data-drag-handle aria-hidden>
-              <GripVertical className="size-3.5" />
-            </span>
-          ) : null}
+          {/* 1.5.20 (Oscar): Lista has NO six-dot grip — the bare pin takes the left edge where the grip
+              stood. (Route order is still dragged in Grande/Media and via Agenda's Mover.) */}
           <button
             type="button"
             aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
@@ -650,7 +649,8 @@ export function JobCard({
           >
             {job.clientName}
           </Link>
-          {job.clientCue ? <CueChip text={job.clientCue} className="max-w-24 shrink" /> : null}
+          {/* 1.5.20 (Oscar): never write the cue in a Lista row — a bubble that only says «Pista»; a tap opens it. */}
+          {job.clientCue ? <CueChip bubble name={job.clientName} text={job.clientCue} /> : null}
           {/* 1.4.68 (Oscar): WA, Mensaje, Llamar - Mensaje sits next to the phone */}
           {job.clientPhone ? <WhatsAppButton phone={job.clientPhone} name={job.clientName} tight /> : null}
           {job.clientPhone ? (
@@ -699,7 +699,9 @@ export function JobCard({
           of contact buttons, and the status band. The address now hides behind a long-press on the map
           button, and Hecho/Posponer own their whole row (the pin left it). Spec doc updated the same day. */}
       <div className="min-w-0">
-        <div className={cn("flex min-w-0 items-start", media ? "gap-2" : "gap-3")}>
+        {/* 1.5.20 (Oscar): the header row centers its children — the six grip dots, the name and the pin
+            share one optical line (before, items-start left the dots riding off the name's line). */}
+        <div className={cn("flex min-w-0 items-center", media ? "gap-2" : "gap-3")}>
           {dragHandle && pending ? (
             <span
               className={cn("grid size-8 shrink-0 touch-none place-items-center rounded-sm text-muted", !media && "bz-grip-lg")}
@@ -709,13 +711,14 @@ export function JobCard({
               <GripVertical className="size-4" />
             </span>
           ) : null}
-          <div className="flex min-w-0 flex-1 items-center gap-3" data-name-room>
+          {/* 1.5.20 (Oscar, fine-tuning): gap 12→14 px — the price breathes "un poquito" more off the name. */}
+          <div className="flex min-w-0 flex-1 items-center gap-3.5" data-name-room>
             <Link
               to="/clientes/$id"
               params={{ id: String(job.clientId) }}
               className={cn(
                 "min-w-0 font-display font-semibold hover:underline",
-                media ? "text-[1.0625rem] leading-none" : "text-[1.3rem] leading-snug",
+                media ? "text-[1.1875rem] leading-none" : "text-[1.3rem] leading-snug",
               )}
             >
               <MeshNameUniform name={job.clientName} cols={2} size={media ? "jmedia" : "jgrande"} fit />
@@ -723,8 +726,10 @@ export function JobCard({
             <span
               data-price
               className={cn(
+                // 1.5.20 (Oscar, fine-tuning): the price rides a touch high next to the bigger serif name;
+                // 2 px down (1 px on Media) and its optical center meets the name's and the pin's line.
                 "shrink-0 font-display font-semibold leading-none tabular-nums text-fg/70",
-                media ? "text-sm" : "text-[1.1875rem]",
+                media ? "text-sm translate-y-px" : "text-[1.1875rem] translate-y-0.5",
               )}
             >
               {money(job.amount)}

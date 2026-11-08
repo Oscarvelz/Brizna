@@ -2645,7 +2645,8 @@ html:is(.theme-dark, .theme-amoled) .bz-dialog-name.is-heather { --dlg-name: var
 .bz-dialog-title .bz-dialog-tblock { text-wrap: balance; }
 .bz-dialog-who { display: inline; }
 /* 1.4.79 standing rule: list names at one size per view (no per-card fit). */
-.bz-mname-u.is-jmedia { font-family: var(--font-display); font-size: 1.0625rem; line-height: 1.15; }
+/* 1.5.20 (Oscar): the Media name grows a step (17→19 px) — it had room and read small next to Grande. */
+.bz-mname-u.is-jmedia { font-family: var(--font-display); font-size: 1.1875rem; line-height: 1.15; }
 .bz-mname-u.is-jgrande { font-family: var(--font-display); font-size: 1.375rem; line-height: 1.15; letter-spacing: -0.012em; }
 .bz-mname-u.is-cmedia { font-size: 1.125rem; line-height: 1.2; }
 /* 1.4.79: shared per-view name scale (set by MeshNameUniform on <main> only when one word cannot fit). */
