@@ -28,6 +28,7 @@ import android.print.PrintJob
 import android.print.PrintManager
 import android.provider.MediaStore
 import android.provider.Settings
+import android.speech.RecognizerIntent
 import android.util.Base64
 import android.view.Gravity
 import android.view.View
@@ -81,7 +82,27 @@ class MainActivity : Activity() {
     // android-3: "A inglés" on the phone (ML Kit)
     private val translator by lazy { Translate(this) { d -> event("briznanative-translate", d) } }
     // android-4: "Dictar" with the phone's speech recognizer (a WebView has no Web Speech recognition)
-    private val dictation by lazy { Dictate(this) { d -> event("briznanative-dictate", d) } }
+    // android-8: when every bound service disconnects, Dictate asks for the system's own speech screen.
+    private val dictation by lazy {
+        Dictate(this) { d -> event("briznanative-dictate", d) }.also { dc ->
+            dc.systemFallback = { id, lang -> launchSpeechUi(id, lang) }
+        }
+    }
+    /** The dictation id waiting on the system's speech screen (RQ_SPEECH), or null. */
+    private var speechAsk: String? = null
+
+    /** android-8: open the system's speech screen (the one the keyboard's microphone opens). False when none exists. */
+    private fun launchSpeechUi(id: String, lang: String): Boolean {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+        }
+        if (intent.resolveActivity(packageManager) == null) return false
+        speechAsk = id
+        return try { startActivityForResult(intent, RQ_SPEECH); true }
+        catch (e: ActivityNotFoundException) { speechAsk = null; false }
+    }
     private var micAsk: Pair<String, String>? = null
     private var dictId: String? = null
     private var webMicAsk: PermissionRequest? = null
@@ -96,6 +117,7 @@ class MainActivity : Activity() {
         private const val RQ_GEO = 10
         private const val RQ_MIC = 11
         private const val RQ_WEBMIC = 12
+        private const val RQ_SPEECH = 13
         private const val HOST = "oscarvelz.github.io"
         private const val AUTH = BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL
         private const val REPO_RELEASES = "https://api.github.com/repos/Oscarvelz/Brizna/releases?per_page=30"
@@ -367,6 +389,14 @@ class MainActivity : Activity() {
                     else d?.data?.let { arrayOf(it) }
                 fileCb?.onReceiveValue(res); fileCb = null
             }
+            RQ_SPEECH -> {
+                // android-8: the system's speech screen closed — hand what it heard back to Dictate.
+                val ask = speechAsk; speechAsk = null
+                if (ask != null) {
+                    val text = if (rc == RESULT_OK) d?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull() else null
+                    dictation.deliverSystem(ask, text)
+                }
+            }
             else -> super.onActivityResult(rq, rc, d)
         }
     }
@@ -471,7 +501,7 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun dictateStop(id: String) { runOnUiThread { dictation.stop(id) } }
-        @JavascriptInterface fun dictateCancel() { runOnUiThread { micAsk = null; dictId = null; dictation.cancel() } }
+        @JavascriptInterface fun dictateCancel() { runOnUiThread { micAsk = null; dictId = null; speechAsk = null; dictation.cancel() } }
 
         /* fingerprint */
 

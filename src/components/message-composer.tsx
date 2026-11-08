@@ -110,7 +110,7 @@ export function MessageComposer({
           setText((prev) => (prev.endsWith(local) ? `${prev.slice(0, -local.length)}${res.text}` : prev));
         });
       },
-      onError: (e, code) => {
+      onError: (e, code, attempts) => {
         setMicWhy(false);
         const m = dictMessage(e);
         if (e === "none" || e === "update") {
@@ -119,8 +119,12 @@ export function MessageComposer({
         }
         // 1.5.19 (android-7): when the phone's recognizer reports its own error code, the notice carries it —
         // a bare "No se pudo dictar" taught us nothing about which service failed or why.
-        if (code) { try { window.localStorage.setItem("bz-dict-error", `${e}:${code}`); } catch { /* ignore */ } }
-        toast.error(code ? `${m.text} (código ${code})` : m.text, m.action
+        // 1.5.24 (android-8): the whole chain rides along — every service tried, in order, with its code.
+        const codes = attempts
+          ? attempts.split(",").map((a) => a.split(":")[1]).filter(Boolean).join(" · ")
+          : "";
+        if (attempts || code) { try { window.localStorage.setItem("bz-dict-error", attempts ?? `${e}:${code}`); } catch { /* ignore */ } }
+        toast.error(codes ? `${m.text} (códigos ${codes})` : code ? `${m.text} (código ${code})` : m.text, m.action
           ? {
               duration: 8000,
               action: {
