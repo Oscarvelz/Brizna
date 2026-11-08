@@ -1916,6 +1916,9 @@ html.theme-dark .bz-pinned, html.theme-amoled .bz-pinned {
 /* ───────── 1.4.69 ───────── */
 /* Address lines wrap (never "…"): street on line 1, "City, ST zip" together on line 2 when it does not fit. */
 .bz-addr-text { line-height: 1.25rem; text-wrap: pretty; overflow-wrap: anywhere; }
+/* 1.5.12 (spec 2026-11-04): the work card's address stays on ONE line — no wrap; an address that
+   cannot fit truncates with an ellipsis (this unlayered rule must beat text-wrap: pretty above). */
+.bz-addr.is-oneline .bz-addr-text { white-space: nowrap; text-wrap-mode: nowrap; overflow-wrap: normal; overflow: hidden; text-overflow: ellipsis; }
 /* Dialog icon chip inline with the title (1.4.69): 30px chip, centered on the first title line. */
 .bz-dialog-title.has-chip { align-items: flex-start; gap: 0.625rem; }
 .bz-dialog-title .bz-dialog-chip { width: 1.875rem; height: 1.875rem; margin: calc((1.25rem * 1.25 - 1.875rem) / 2) 0 0; border-radius: 0.625rem; flex: none; }

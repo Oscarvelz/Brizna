@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Check, Clock, GripVertical, Phone, Pin, RotateCcw } from "lucide-react";
+import { Check, Clock, GripVertical, MapPin, Phone, Pin, RotateCcw } from "lucide-react";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AddressLine, hasAddress } from "@/components/address-line";
@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MeshNameUniform } from "@/components/mesh-name";
 import { addDaysISO, stampDay, todayISO } from "@/lib/dates";
-import { FREQ_SEP, formatDay, formatTime, jobKindLabel, money, telHref } from "@/lib/format";
+import { FREQ_SEP, formatDay, formatTime, jobKindLabel, mapsHref, money, telHref } from "@/lib/format";
 import { isHechoConfirmSkipped, subscribeHechoConfirm } from "@/lib/hecho-confirm";
 import { useI18n, useTx } from "@/lib/i18n";
 import { applyOutboxJob, enqueue, isOfflineError, useOutbox } from "@/lib/offline-queue";
@@ -689,167 +689,149 @@ export function JobCard({
         !late && job.kind === "cut" && "border-l-4 border-today",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        {dragHandle && pending && !media ? (
-          <span
-            className="bz-grip-lg grid size-8 shrink-0 touch-none place-items-center rounded-sm text-muted"
-            data-drag-handle
-            aria-hidden
+      {/* 1.5.12 (Oscar): the settled card spec (2026-11-04) governs Grande and Media alike, in its fixed
+          order: name first; the price as large as the name at the top-right, in garden green; the
+          service - date line under the name with more air; ONE wide row of message / WhatsApp / call /
+          map as horizontal band-shaped buttons; the address on one line; the state as a full-width
+          band; Hecho and Posponer below with the pink pin at the bottom-right corner of their row.
+          The 1.4.64/1.4.80 layout (price beside the name, pin top-right, status chip) is superseded. */}
+      <div className="min-w-0">
+        <div className={cn("flex min-w-0 items-start", media ? "gap-2" : "gap-3")} data-name-room>
+          {dragHandle && pending ? (
+            <span
+              className={cn("grid size-8 shrink-0 touch-none place-items-center rounded-sm text-muted", !media && "bz-grip-lg")}
+              data-drag-handle
+              aria-hidden
+            >
+              <GripVertical className="size-4" />
+            </span>
+          ) : null}
+          <Link
+            to="/clientes/$id"
+            params={{ id: String(job.clientId) }}
+            className={cn(
+              "min-w-0 flex-1 font-display font-semibold hover:underline",
+              media ? "text-[1.0625rem] leading-none" : "text-[1.3rem] leading-snug",
+            )}
           >
-            <GripVertical className="size-4" />
+            <MeshNameUniform name={job.clientName} cols={2} size={media ? "jmedia" : "jgrande"} fit />
+          </Link>
+          <span
+            data-price
+            className={cn(
+              "shrink-0 font-display font-semibold leading-none tabular-nums text-primary",
+              media ? "text-[1.0625rem]" : "text-[1.375rem]",
+            )}
+          >
+            {money(job.amount)}
           </span>
-        ) : null}
-        <div className="min-w-0 flex-1">
-          {media ? (
-          <>
-          <div className="flex min-w-0 items-center gap-1.5">
-            {dragHandle && pending ? (
-              <span
-                className="grid size-8 shrink-0 touch-none place-items-center rounded-sm text-muted"
-                data-drag-handle
-                aria-hidden
-              >
-                <GripVertical className="size-4" />
-              </span>
-            ) : null}
-            {/* 1.4.64 (Oscar): price sits right after the name; contact chips grouped; pin last, top-right */}
-            {/* 1.4.80 (Oscar): the name shrink-wraps to its text (even on 2 lines), the price follows it ~10px later and
-                sits on the same centre line as the WA / Mensaje / Llamar / Pin chips. */}
-            <div className="flex min-w-0 flex-1 items-center gap-2.5" data-name-room>
-              <Link
-                to="/clientes/$id"
-                params={{ id: String(job.clientId) }}
-                className="min-w-0 font-display text-[1.0625rem] font-semibold leading-none hover:underline"
-              >
-                <MeshNameUniform name={job.clientName} cols={2} size="jmedia" fit />
-              </Link>
-              <span data-price className="shrink-0 font-display text-sm font-semibold leading-none tabular-nums text-fg/70">{money(job.amount)}</span>
-            </div>
-            {/* 1.4.68 (Oscar): WA, Mensaje, Llamar - Mensaje sits next to the phone */}
-            {job.clientPhone ? <WhatsAppButton phone={job.clientPhone} name={job.clientName} tight /> : null}
-            {job.clientPhone ? (
-              <MessageComposer phone={job.clientPhone} name={job.clientName} compact tight />
-            ) : null}
-            {job.clientPhone ? (
-              <ConfirmLink
-                href={telHref(job.clientPhone)}
-                kind="call"
-                name={job.clientName}
-                className="bz-tone bz-tone-call grid size-8 shrink-0 place-items-center rounded-sm"
-              >
-                <Phone className="size-3.5" />
-                <span className="sr-only">{tx("Llamar", "Call")}</span>
-              </ConfirmLink>
-            ) : null}
-            {pinButton("size-8", "size-3.5")}
-          </div>
-          <p className={cn("mt-1 truncate text-xs leading-none text-muted", dragHandle && pending && "pl-10")}>
-            {jobKindLabel(job.kind, job.title)}
-            {timeLabel ? ` · ${timeLabel}` : ""}
-          </p>
-          </>
-          ) : (
-          <>
-          {/* 1.4.64 (Oscar): name + price on one line, pin in the top-right corner */}
-          <div className="flex min-w-0 items-center gap-3">
-            {/* 1.4.80 (Oscar): shrink-wrapped name, price right after it and centred on the name block; price 19px
-                (was 16px) so it balances the 22px name while staying the grey secondary token. */}
-            <div className="flex min-w-0 flex-1 items-center gap-3" data-name-room>
-              <Link
-                to="/clientes/$id"
-                params={{ id: String(job.clientId) }}
-                className="min-w-0 font-display text-[1.3rem] font-semibold leading-snug hover:underline"
-              >
-                <MeshNameUniform name={job.clientName} cols={2} size="jgrande" fit />
-              </Link>
-              <span data-price className="shrink-0 font-display text-[1.1875rem] font-semibold leading-none tabular-nums text-fg/70">{money(job.amount)}</span>
-            </div>
-            {pinButton("size-8", "size-3.5")}
-          </div>
-          {/* 1.4.65 (Oscar): service – date – time on one line; contact chips with the status badge
-              right-aligned on the same row, vertically centered */}
-          <FitLine
-            underName
-            className="mt-1.5 min-w-0 text-sm font-medium leading-tight text-fg/75"
-            forms={[
-              [jobKindLabel(job.kind, job.title), capFirst(formatDay(job.scheduledDate, "EEE d MMM")), timeLabel].filter(Boolean).join(" – "),
-              [jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM"), timeLabel].filter(Boolean).join(" – "),
-            ]}
-            lastResort={[jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM")].join(" – ")}
-          />
-          <div className="mt-2 flex min-w-0 items-center gap-1.5" data-contact-chips>
+        </div>
+        <FitLine
+          underName
+          className={cn("min-w-0 font-medium leading-tight text-fg/75", media ? "mt-1 text-xs" : "mt-2 text-sm")}
+          sizes={media ? [0.6875] : undefined}
+          forms={[
+            [jobKindLabel(job.kind, job.title), capFirst(formatDay(job.scheduledDate, "EEE d MMM")), timeLabel].filter(Boolean).join(" - "),
+            [jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM"), timeLabel].filter(Boolean).join(" - "),
+          ]}
+          lastResort={[jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM")].join(" - ")}
+        />
+        {job.clientPhone || hasAddress(job.clientAddress) ? (
+          <div className={cn("flex min-w-0", media ? "mt-2 gap-1.5" : "mt-3 gap-2")} data-contact-row>
             {job.clientPhone ? (
               <>
-                <WhatsAppButton phone={job.clientPhone} name={job.clientName} />
-                <MessageComposer phone={job.clientPhone} name={job.clientName} compact />
+                <MessageComposer phone={job.clientPhone} name={job.clientName} compact tight={media} wide />
+                <WhatsAppButton phone={job.clientPhone} name={job.clientName} tight={media} wide />
                 <ConfirmLink
                   href={telHref(job.clientPhone)}
                   kind="call"
                   name={job.clientName}
-                  className="bz-tone bz-tone-call grid size-11 shrink-0 place-items-center rounded-sm"
+                  className={cn("bz-tone bz-tone-call flex min-w-0 flex-1 items-center justify-center rounded-md", media ? "h-9" : "h-11")}
                 >
-                  <Phone className="size-[18px]" />
+                  <Phone className={media ? "size-4" : "size-[18px]"} />
                   <span className="sr-only">{tx("Llamar", "Call")}</span>
                 </ConfirmLink>
               </>
             ) : null}
-            <span className="ml-auto shrink-0" data-status-col>
-              <StatusBadge status={live.computedStatus} />
-            </span>
+            {hasAddress(job.clientAddress) ? (
+              <ConfirmLink
+                href={mapsHref(job.clientAddress)}
+                kind="maps"
+                name={job.clientName}
+                className={cn("bz-tone bz-tone-map flex min-w-0 flex-1 items-center justify-center rounded-md", media ? "h-9" : "h-11")}
+              >
+                <MapPin className={media ? "size-4" : "size-[18px]"} />
+                <span className="sr-only">{tx("Mapa", "Map")}</span>
+              </ConfirmLink>
+            ) : null}
           </div>
-          </>
-          )}
-          {job.clientCue ? <CueChip text={job.clientCue} className="mt-1" /> : null}
-          {job.standingExtras.length > 0 ? (
-            <p className="mt-1 text-xs font-semibold text-soil">
-              {tx("Siempre", "Always")}: {job.standingExtras.join(" · ")}
-            </p>
-          ) : null}
-          {queued ? <p className="mt-1 text-xs font-semibold text-hold">{tx("Sin red, guardado aquí", "No signal, saved here")}</p> : null}
-          {!media && (isOnce || isExtra) && (
-            <span
-              className={cn(
-                "mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                isOnce ? "bg-pending text-primary-fg" : "bg-money-bg text-money",
-              )}
-            >
-              {isOnce ? tx("Una vez", "One-time") : tx("Extra", "Extra")}
-            </span>
-          )}
-        </div>
+        ) : null}
+        {job.clientCue ? <CueChip text={job.clientCue} className="mt-1.5" /> : null}
+        {job.standingExtras.length > 0 ? (
+          <p className="mt-1 text-xs font-semibold text-soil">
+            {tx("Siempre", "Always")}: {job.standingExtras.join(" · ")}
+          </p>
+        ) : null}
+        {queued ? <p className="mt-1 text-xs font-semibold text-hold">{tx("Sin red, guardado aquí", "No signal, saved here")}</p> : null}
+        {!media && (isOnce || isExtra) && (
+          <span
+            className={cn(
+              "mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold",
+              isOnce ? "bg-pending text-primary-fg" : "bg-money-bg text-money",
+            )}
+          >
+            {isOnce ? tx("Una vez", "One-time") : tx("Extra", "Extra")}
+          </span>
+        )}
       </div>
 
-      {hasAddress(job.clientAddress) && !media && (
-        <AddressLine address={job.clientAddress} name={job.clientName} compact className="mt-3" />
+      {hasAddress(job.clientAddress) && (
+        <AddressLine address={job.clientAddress} name={job.clientName} compact oneLine className={media ? "mt-2" : "mt-3"} />
       )}
 
+      {/* 1.5.12: the state closes the card as a full-width band, right above Hecho / Posponer. */}
+      <div className={media ? "mt-2" : "mt-3"}>
+        <StatusBadge status={live.computedStatus} band compact={media} />
+      </div>
+
       {pending && !compact && (
-        <div className={cn("grid grid-cols-2 items-center", media ? "mt-2 gap-2" : "mt-4 gap-2.5")}>
-          <Button data-spot="hecho propina" onClick={onHecho} disabled={complete.isPending} className={cn("w-full", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
+        <div className={cn("flex items-center", media ? "mt-2 gap-1.5" : "mt-2 gap-2")}>
+          <Button data-spot="hecho propina" onClick={onHecho} disabled={complete.isPending} className={cn("min-w-0 flex-1", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
             <Check />
             {tx("Hecho", "Done")}
           </Button>
           {/* 1.4.61 (Oscar): Posponer is a real button in the action row, not a loose line under it */}
-          <Button variant="outline" onClick={() => setAskPost(true)} className={cn("bz-tone bz-tone-post w-full whitespace-nowrap", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
+          <Button variant="outline" onClick={() => setAskPost(true)} className={cn("bz-tone bz-tone-post min-w-0 flex-1 whitespace-nowrap", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
             <Clock />
             {tx("Posponer", "Postpone")}
           </Button>
+          {/* 1.5.12: the pin sits at the bottom-right corner of this row (spec) — same tap, same confirm. */}
+          {pinButton(media ? "size-10" : "size-12", media ? "size-4" : "size-5")}
         </div>
       )}
 
       {postponed && !compact && (
-        <Button variant="outline" className="mt-1 h-9 w-full" size="sm" onClick={() => setAskReturn(true)}>
+        <Button variant="outline" className="mt-1.5 h-9 w-full" size="sm" onClick={() => setAskReturn(true)}>
           <RotateCcw />
           {tx("Deshacer pospuesto", "Undo postpone")}
         </Button>
       )}
 
       {completedToday && !compact && (
-        <div className="mt-2">
-          <Button variant="ghost" className="h-9 w-full text-muted" size="sm" onClick={() => setAskUndo(true)}>
+        <div className={cn("flex items-center", media ? "mt-2 gap-1.5" : "mt-2 gap-2")}>
+          <Button variant="ghost" className="h-9 min-w-0 flex-1 text-muted" size="sm" onClick={() => setAskUndo(true)}>
             <RotateCcw />
             {tx("Deshacer Hecho", "Undo Done")}
           </Button>
+          {pinButton("size-9", "size-4")}
+        </div>
+      )}
+
+      {/* Cards with no action row (compact lists, done another day, cancelled) keep their pin at the
+          bottom-right too, so fijar/desfijar never loses its place. */}
+      {!((pending || completedToday) && !compact) && (
+        <div className={cn("flex justify-end", media ? "mt-1.5" : "mt-2")}>
+          {pinButton(media ? "size-9" : "size-10", media ? "size-4" : "size-[18px]")}
         </div>
       )}
     </article>

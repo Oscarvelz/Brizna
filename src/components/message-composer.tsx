@@ -41,6 +41,7 @@ export function MessageComposer({
   name,
   compact,
   tight,
+  wide,
   channel = "sms",
   initialText,
   label,
@@ -50,6 +51,8 @@ export function MessageComposer({
   name: string;
   compact?: boolean;
   tight?: boolean;
+  /** 1.5.12 (spec 2026-11-04): a wide band-shaped button that shares a row with call/map (work card). */
+  wide?: boolean;
   channel?: "sms" | "whatsapp";
   initialText?: string;
   /** Text on the full-width button (default: Mensaje / WhatsApp). */
@@ -254,12 +257,16 @@ export function MessageComposer({
           }
           onClick={(e) => openSheet(e)}
           className={cn(
-            "grid shrink-0 place-items-center rounded-sm font-bold tracking-tight",
+            "grid place-items-center font-bold tracking-tight",
             channel === "whatsapp" ? "bz-tone bz-tone-wa" : "bz-tone bz-tone-msg",
-            tight ? "size-8 text-[10px]" : "size-11 text-[11px]",
+            wide
+              ? tight
+                ? "h-9 min-w-0 flex-1 rounded-md text-[11px]"
+                : "h-11 min-w-0 flex-1 rounded-md text-xs"
+              : cn("shrink-0 rounded-sm", tight ? "size-8 text-[10px]" : "size-11 text-[11px]"),
           )}
         >
-          {channel === "whatsapp" ? "WA" : <MessageSquare className={tight ? "size-3.5" : "size-4"} />}
+          {channel === "whatsapp" ? "WA" : <MessageSquare className={wide && !tight ? "size-[18px]" : tight ? "size-3.5" : "size-4"} />}
         </button>
         {sheet}
         {confirm}
@@ -475,11 +482,13 @@ export function WhatsAppButton({
   phone,
   name,
   tight,
+  wide,
   initialText,
 }: {
   phone: string;
   name: string;
   tight?: boolean;
+  wide?: boolean;
   initialText?: string;
 }) {
   return (
@@ -488,6 +497,7 @@ export function WhatsAppButton({
       name={name}
       compact
       tight={tight}
+      wide={wide}
       channel="whatsapp"
       initialText={initialText}
     />
