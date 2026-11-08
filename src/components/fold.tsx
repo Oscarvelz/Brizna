@@ -255,8 +255,9 @@ export function Fold({
           aria-label={pinned ? tx("Dejar de mantener abierto", "Stop keeping this open") : tx("Mantener abierto", "Keep open")}
           onClick={togglePin}
           className={cn(
-            "bz-fold-pin bz-pin-fine grid size-9 shrink-0 place-items-center rounded-full",
-            pinned ? "bz-pick bz-pick-icon" : "text-muted",
+            // 1.5.18 (Oscar): bare pin — no circle, no box; rose and filled when pinned, muted when not.
+            "bz-fold-pin grid size-9 shrink-0 place-items-center",
+            pinned ? "text-[color:var(--tone-pin)]" : "text-muted",
           )}
         >
           <Pin className={cn("size-3.5", pinned && "fill-current")} />

@@ -370,7 +370,7 @@ function ClientesPage() {
               type="button"
               aria-pressed={invPin}
               aria-label={invPin ? tx("Dejar de fijar el inventario", "Unpin the inventory") : tx("Fijar el inventario", "Pin the inventory")}
-              className={cn("bz-pin-fine grid size-9 place-items-center rounded-full", invPin ? "bz-pick bz-pick-icon" : "text-muted")}
+              className={cn("grid size-9 place-items-center", invPin ? "text-[color:var(--tone-pin)]" : "text-muted")}
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();

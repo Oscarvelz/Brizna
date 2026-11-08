@@ -536,8 +536,9 @@ function PadBody({
               else void togglePin(true);
             }}
             className={cn(
-              "grid size-10 shrink-0 place-items-center rounded-full",
-              page?.pinned ? "bg-soil-bg text-soil" : "text-muted",
+              // 1.5.18 (Oscar): bare pin — no tinted circle; rose and filled when pinned.
+              "grid size-10 shrink-0 place-items-center",
+              page?.pinned ? "text-[color:var(--tone-pin)]" : "text-muted",
             )}
           >
             <Pin className={cn("size-5", page?.pinned && "fill-current")} />

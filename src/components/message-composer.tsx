@@ -344,27 +344,24 @@ function ComposerSheet({
               )}
         </p>
         <PresetRow onPick={setText} />
-        <textarea
-          ref={areaRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={4}
-          spellCheck
-          lang={locale}
-          placeholder={tx("Hoy llego a las 10. El corte queda en 40.", "I arrive at 10 today. The cut is 40.")}
-          className="mt-3 w-full rounded-md bg-bg px-3 py-2 text-sm shadow-card focus:outline-none"
-        />
-        <div className="mt-2 flex items-center justify-end gap-2">
-          {trDownload || micWhy ? (
-            <p role="status" className="mr-auto min-w-0 text-xs font-semibold text-muted">
-              {trDownload
-                ? tx("Descargando el traductor", "Downloading the translator")
-                : tx("El micrófono se usa solo mientras dictas", "The microphone is used only while you dictate")}
-            </p>
-          ) : null}
+        {/* 1.5.18 (Oscar): no dead band under the text. Corregir used to own a whole right-aligned row —
+            a tall empty gap between the box and Escribir/Dictar/A inglés. Now Corregir sits small at the
+            text box's own bottom-right corner, and the translator/microphone status line takes room only
+            while it has something to say. */}
+        <div className="relative mt-3">
+          <textarea
+            ref={areaRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={4}
+            spellCheck
+            lang={locale}
+            placeholder={tx("Hoy llego a las 10. El corte queda en 40.", "I arrive at 10 today. The cut is 40.")}
+            className="w-full rounded-md bg-bg px-3 py-2 pb-9 text-sm shadow-card focus:outline-none"
+          />
           <button
             type="button"
-            className="h-9 px-2 text-xs font-semibold text-soil"
+            className="absolute right-2 bottom-2 px-1 py-0.5 text-xs font-semibold text-soil"
             onClick={() => {
               const current = text.trim();
               if (!current) return;
@@ -379,6 +376,13 @@ function ComposerSheet({
             {fixing ? tx("Corrigiendo…", "Fixing…") : tx("Corregir", "Fix")}
           </button>
         </div>
+        {trDownload || micWhy ? (
+          <p role="status" className="mt-2 min-w-0 text-xs font-semibold text-muted">
+            {trDownload
+              ? tx("Descargando el traductor", "Downloading the translator")
+              : tx("El micrófono se usa solo mientras dictas", "The microphone is used only while you dictate")}
+          </p>
+        ) : null}
         <div className="mt-3 grid grid-cols-3 gap-2">
           <button
             type="button"

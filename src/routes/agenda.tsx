@@ -469,7 +469,7 @@ function AgendaPage() {
               }
               if (next) setOffOpen(true);
             }}
-            className={cn("grid size-9 shrink-0 place-items-center rounded-full", pinnedOff ? "bz-pick bz-pick-icon" : "text-muted")}
+            className={cn("grid size-9 shrink-0 place-items-center", pinnedOff ? "text-[color:var(--tone-pin)]" : "text-muted")}
           >
             <Pin className={cn("size-3.5", pinnedOff && "fill-current")} />
           </button>

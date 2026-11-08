@@ -1,5 +1,5 @@
 // Brizna service worker: the app opens with no internet. VERSION is written by build.sh from package.json "version".
-const VERSION = "brizna-1.5.17";
+const VERSION = "brizna-1.5.18";
 const CORE = ["./", "./index.html", "./icon-192.png", "./icon-512.png", "./icon-180.png", "./precache.json"];
 
 self.addEventListener("install", (event) => {

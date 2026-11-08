@@ -983,9 +983,10 @@ function NoteList({
                 data-swipe-ignore=""
                 onClick={() => onPin(page)}
                 className={cn(
-                  "grid shrink-0 place-items-center rounded-full",
+                  // 1.5.18 (Oscar): bare pin — no circle, no border box; rose and filled when pinned.
+                  "grid shrink-0 place-items-center",
                   density === "quad" || density === "dense" ? "size-8" : "size-10",
-                  page.pinned ? "bz-pick bz-pick-icon" : "bg-bg text-fg border border-border",
+                  page.pinned ? "text-[color:var(--tone-pin)]" : "text-muted",
                 )}
               >
                 <Pin className={cn("size-4", page.pinned && "fill-current")} />

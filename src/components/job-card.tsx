@@ -57,6 +57,8 @@ export function JobCard({
   const [askPost, setAskPost] = useState(false);
   const [askReturn, setAskReturn] = useState(false);
   const [askPin, setAskPin] = useState(false);
+  // 1.5.18 (Oscar): the address stays hidden on the card; a long-press on the map button reveals it.
+  const [showAddr, setShowAddr] = useState(false);
   const [postDate, setPostDate] = useState(addDaysISO(job.scheduledDate, 1));
   const [reason, setReason] = useState("");
   const [method, setMethod] = useState("");
@@ -291,14 +293,17 @@ export function JobCard({
     !queued &&
     (live.scheduledDate === today || (live.completedAt ? stampDay(live.completedAt) === today : false));
 
-  const pinButton = (box: string, icon: string) => (
+  // 1.5.18 (Oscar): the pin is BARE — no tone box anywhere, just the pin in its rose color, filled when
+  // pinned. On Grande/Media it lives tucked into the card's top corner (see the header); Hecho and
+  // Posponer own their whole row again. Same tap, same confirm dialog.
+  const pinButton = (
     <button
       type="button"
       aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
       onClick={onPin}
-      className={cn("bz-tone bz-tone-pin grid shrink-0 place-items-center rounded-sm", box, job.pinned && "bz-tone-on")}
+      className="grid size-8 shrink-0 place-items-center self-start text-[color:var(--tone-pin)]"
     >
-      <Pin className={icon} />
+      <Pin className={cn(media ? "size-4" : "size-[18px]", job.pinned && "fill-current")} />
     </button>
   );
 
@@ -633,14 +638,10 @@ export function JobCard({
             type="button"
             aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
             onClick={onPin}
-            className={cn(
-              // 1.5.17 (Oscar): in Lista the pin reads oversized against the slim row — box 32→24, icon 12→10.
-              // Only the dense row changes; the Grande/Media card pin keeps its spec size and place.
-              "bz-tone bz-tone-pin grid size-6 shrink-0 place-items-center rounded-sm",
-              job.pinned && "bz-tone-on",
-            )}
+            // 1.5.18 (Oscar): no box at all — the bare pin in its rose color (1.5.17's smaller hit area stays).
+            className="grid size-6 shrink-0 place-items-center text-[color:var(--tone-pin)]"
           >
-            <Pin className="size-2.5" />
+            <Pin className={cn("size-3", job.pinned && "fill-current")} />
           </button>
           <Link
             to="/clientes/$id"
@@ -691,14 +692,14 @@ export function JobCard({
         !late && job.kind === "cut" && "border-l-4 border-today",
       )}
     >
-      {/* 1.5.12 (Oscar): the settled card spec (2026-11-04) governs Grande and Media alike, in its fixed
-          order: name first; the price as large as the name at the top-right, in garden green; the
-          service - date line under the name with more air; ONE wide row of message / WhatsApp / call /
-          map as horizontal band-shaped buttons; the address on one line; the state as a full-width
-          band; Hecho and Posponer below with the pink pin at the bottom-right corner of their row.
-          The 1.4.64/1.4.80 layout (price beside the name, pin top-right, status chip) is superseded. */}
+      {/* 1.5.18 (Oscar, correcting 1.5.12 from his phone): the header is his 1.4.64/1.4.80 arrangement
+          again — the name at its original size, shrink-wrapped; the price right after it in the neutral
+          grey (text-fg/70), 19px Grande / 14px Media — not large green at the far corner; and the BARE
+          pin tucked into the top corner. What 1.5.12 keeps: the service - date line, the ONE wide row
+          of contact buttons, and the status band. The address now hides behind a long-press on the map
+          button, and Hecho/Posponer own their whole row (the pin left it). Spec doc updated the same day. */}
       <div className="min-w-0">
-        <div className={cn("flex min-w-0 items-start", media ? "gap-2" : "gap-3")} data-name-room>
+        <div className={cn("flex min-w-0 items-start", media ? "gap-2" : "gap-3")}>
           {dragHandle && pending ? (
             <span
               className={cn("grid size-8 shrink-0 touch-none place-items-center rounded-sm text-muted", !media && "bz-grip-lg")}
@@ -708,25 +709,28 @@ export function JobCard({
               <GripVertical className="size-4" />
             </span>
           ) : null}
-          <Link
-            to="/clientes/$id"
-            params={{ id: String(job.clientId) }}
-            className={cn(
-              "min-w-0 flex-1 font-display font-semibold hover:underline",
-              media ? "text-[1.0625rem] leading-none" : "text-[1.3rem] leading-snug",
-            )}
-          >
-            <MeshNameUniform name={job.clientName} cols={2} size={media ? "jmedia" : "jgrande"} fit />
-          </Link>
-          <span
-            data-price
-            className={cn(
-              "shrink-0 font-display font-semibold leading-none tabular-nums text-primary",
-              media ? "text-[1.0625rem]" : "text-[1.375rem]",
-            )}
-          >
-            {money(job.amount)}
-          </span>
+          <div className="flex min-w-0 flex-1 items-center gap-3" data-name-room>
+            <Link
+              to="/clientes/$id"
+              params={{ id: String(job.clientId) }}
+              className={cn(
+                "min-w-0 font-display font-semibold hover:underline",
+                media ? "text-[1.0625rem] leading-none" : "text-[1.3rem] leading-snug",
+              )}
+            >
+              <MeshNameUniform name={job.clientName} cols={2} size={media ? "jmedia" : "jgrande"} fit />
+            </Link>
+            <span
+              data-price
+              className={cn(
+                "shrink-0 font-display font-semibold leading-none tabular-nums text-fg/70",
+                media ? "text-sm" : "text-[1.1875rem]",
+              )}
+            >
+              {money(job.amount)}
+            </span>
+          </div>
+          {pinButton}
         </div>
         <FitLine
           underName
@@ -760,6 +764,7 @@ export function JobCard({
                 href={mapsHref(job.clientAddress)}
                 kind="maps"
                 name={job.clientName}
+                onLongPress={() => setShowAddr((v) => !v)}
                 className={cn("bz-tone bz-tone-map flex min-w-0 flex-1 items-center justify-center rounded-md", media ? "h-9" : "h-11")}
               >
                 <MapPin className={media ? "size-4" : "size-[18px]"} />
@@ -787,7 +792,9 @@ export function JobCard({
         )}
       </div>
 
-      {hasAddress(job.clientAddress) && (
+      {/* 1.5.18 (Oscar): no address line by default — the map button is enough. It appears, whole and
+          on one line as before, only while revealed by a long-press on the map button. */}
+      {showAddr && hasAddress(job.clientAddress) && (
         <AddressLine address={job.clientAddress} name={job.clientName} compact oneLine className={media ? "mt-2" : "mt-3"} />
       )}
 
@@ -807,8 +814,7 @@ export function JobCard({
             <Clock />
             {tx("Posponer", "Postpone")}
           </Button>
-          {/* 1.5.12: the pin sits at the bottom-right corner of this row (spec) — same tap, same confirm. */}
-          {pinButton(media ? "size-10" : "size-12", media ? "size-4" : "size-5")}
+          {/* 1.5.18: no pin in this row — Hecho and Posponer split the whole width equally, as before. */}
         </div>
       )}
 
@@ -825,17 +831,11 @@ export function JobCard({
             <RotateCcw />
             {tx("Deshacer Hecho", "Undo Done")}
           </Button>
-          {pinButton("size-9", "size-4")}
         </div>
       )}
 
-      {/* Cards with no action row (compact lists, done another day, cancelled) keep their pin at the
-          bottom-right too, so fijar/desfijar never loses its place. */}
-      {!((pending || completedToday) && !compact) && (
-        <div className={cn("flex justify-end", media ? "mt-1.5" : "mt-2")}>
-          {pinButton(media ? "size-9" : "size-10", media ? "size-4" : "size-[18px]")}
-        </div>
-      )}
+      {/* 1.5.18: no bottom pin row anymore — every Grande/Media card carries its one bare pin in the
+          top corner (header), whatever its state. */}
     </article>
     {dialogs}
     </>
