@@ -36,6 +36,7 @@ import {
   clearVacation,
   exportBackup,
   exportReport,
+  getBackupWeight,
   getSettings,
   importBackupJson,
   listBackups,
@@ -195,6 +196,7 @@ function AjustesPage() {
   const qc = useQueryClient();
   const settingsQ = useQuery({ queryKey: ["settings"], queryFn: () => getSettings() });
   const backupsQ = useQuery({ queryKey: ["backups"], queryFn: () => listBackups() });
+  const backupWeightQ = useQuery({ queryKey: ["backup-weight"], queryFn: () => getBackupWeight() });
   const settings = settingsQ.data;
   const [name, setName] = useState<string | null>(null);
   const businessName = name ?? settings?.businessName ?? "Oscar's Lawn Service";
@@ -654,8 +656,8 @@ function AjustesPage() {
           <p className="text-sm text-muted">
             {emphasize(
               tx(
-                "El dinero sin pagar se queda en Por cobrar. En espera es alguien que se atrasa y va a pagar. Si pasa estos límites, el caso se pone naranja y entra en Clientes, Alto riesgo.",
-                "Unpaid money stays in To collect. Waiting is someone who is late and will pay. If they pass these limits, the case turns orange and shows in Clients, High risk.",
+                "El dinero sin pagar se queda en Por cobrar. En espera es alguien que se atrasa y va a pagar. Si pasa estos límites, el caso se pone naranja y entra en Clientes, Alto riesgo. Estos límites se aplican a todos AL INSTANTE: cambiarlos reclasifica a cada cliente en el acto. Y un caso en serio (alto riesgo) deja de recibir visitas nuevas hasta que pague, se le perdone o marques «Seguir atendiendo» en su ficha.",
+                "Unpaid money stays in To collect. Waiting is someone who is late and will pay. If they pass these limits, the case turns orange and shows in Clients, High risk. These limits apply to everyone INSTANTLY: changing them reclassifies every client right away. And a serious (high-risk) case stops getting new visits until they pay, are forgiven, or you mark \"Keep serving\" on their file.",
               ),
             )}
           </p>
@@ -865,8 +867,8 @@ function AjustesPage() {
         >
           <p className="text-sm text-muted">
             {tx(
-              "Se guarda en la cuenta al cambiar datos, al salir y cada pocos minutos. Un archivo dañado no reemplaza uno bueno.",
-              "It saves to the account when data changes, when you leave, and every few minutes. A damaged file does not replace a good one.",
+              "Se guarda en la cuenta al cambiar datos, al salir y cada pocos minutos. Si nada cambió, no se guarda otra copia igual. Un archivo dañado no reemplaza uno bueno. Si este equipo y la nube chocan, la versión de la nube queda aquí marcada «Nube · conflicto» y también se puede restaurar.",
+              "It saves to the account when data changes, when you leave, and every few minutes. If nothing changed, no identical copy is saved. A damaged file does not replace a good one. If this device and the cloud clash, the cloud version stays here labelled “Cloud · conflict” and can be restored too.",
             )}
           </p>
           <p className="mt-3 text-sm">
@@ -875,6 +877,14 @@ function AjustesPage() {
               : tx("Todavía no hay una copia extra.", "There is no extra copy yet.")}{" "}
             · {settings?.clientCount ?? 0} {tx("clientes", "clients")} · {settings?.jobCount ?? 0} {tx("trabajos", "jobs")}
           </p>
+          {backupWeightQ.data ? (
+            <p className="mt-1 text-sm text-muted">
+              {tx(
+                `Tus respaldos pesan ${(backupWeightQ.data.bytes / 1048576).toFixed(1)} MB · ${backupWeightQ.data.count} ${backupWeightQ.data.count === 1 ? "copia guardada" : "copias guardadas"}`,
+                `Your backups weigh ${(backupWeightQ.data.bytes / 1048576).toFixed(1)} MB · ${backupWeightQ.data.count} ${backupWeightQ.data.count === 1 ? "saved copy" : "saved copies"}`,
+              )}
+            </p>
+          ) : null}
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <Button onClick={() => backupNow.mutate()} disabled={backupNow.isPending}>
               {tx("Guardar copia ahora", "Save a copy now")}
@@ -938,6 +948,11 @@ function AjustesPage() {
                       `${formatStamp(b.createdAt)} · ${b.clientCount} clientes · ${b.jobCount} trabajos`,
                       `${formatStamp(b.createdAt)} · ${b.clientCount} clients · ${b.jobCount} jobs`,
                     )}
+                    {b.source === "cloud" ? (
+                      <span className="ml-2 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold text-fg">
+                        {tx("Nube · conflicto", "Cloud · conflict")}
+                      </span>
+                    ) : null}
                   </p>
                   <Button variant="ghost" size="sm" onClick={() => setRestoreTarget(b)}>
                     <RotateCcw />
@@ -1221,13 +1236,17 @@ function SeasonBlock({ settings, query }: { settings?: AppSettings; query: strin
       </div>
       <p className="aj-fine mt-2">
         {tx(
-          "Un cliente puede tener su propia temporada. Los patios que ya moviste se quedan donde están.",
-          "A client can have their own season. Yards you already moved stay where they are.",
+          "Un cliente puede tener su propia temporada. Los patios que ya moviste se quedan donde están. La temporada necesita las fechas Y el ritmo (cada cuántos días): sin ritmo, las fechas solas no cambian nada. Guardar — también si solo cambias el fin — regenera la agenda.",
+          "A client can have their own season. Yards you already moved stay where they are. A season needs the dates AND the pace (every how many days): dates alone change nothing. Saving — even if you only change the end — rebuilds the schedule.",
         )}
       </p>
       <Button
         className="mt-3 w-full"
         onClick={() => {
+          if (on && (!start || !end || !(Number(every) > 0))) {
+            toast.error(tx("La temporada necesita fecha de inicio, fecha de fin y ritmo (cada cuántos días).", "A season needs a start date, an end date and a pace (every how many days)."));
+            return;
+          }
           const months = Number(horizon);
           void updateSettings({
             data: {

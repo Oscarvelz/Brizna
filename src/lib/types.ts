@@ -41,6 +41,8 @@ export type ClientRow = {
   pinned: boolean;
   blacklisted: boolean;
   servicePaused: boolean;
+  /** Hallazgo 2: override «seguir atendiendo» — genera visitas aunque esté en serio. */
+  keepServing: boolean;
   highRisk: boolean;
   hasExtra: boolean;
   deactivatedAt: string | null;
@@ -239,6 +241,25 @@ export type BackupSummary = {
   createdAt: string;
   clientCount: number;
   jobCount: number;
+  /** "cloud" when this copy is the cloud version saved during a sync conflict (hallazgo 16). */
+  source?: "cloud" | null;
+};
+
+/** Movimiento 3 (hallazgo 13): cuánto pesan TODAS las copias guardadas de la cuenta. */
+export type BackupWeight = {
+  /** Copias guardadas (todas, no solo las 12 que lista listBackups). */
+  count: number;
+  /** Peso total en bytes (pg_column_size de cada payload). */
+  bytes: number;
+};
+
+/** Movimiento 3 (hallazgo 12): reconciliación del saldo de UN cliente. Solo se
+ *  expone cuando hay deriva; drift = (balance − credit) guardado − el neto que
+ *  el libro deriva. Nunca reescribe el saldo. */
+export type ClientReconcile = {
+  drift: number;
+  storedNet: number;
+  expectedNet: number;
 };
 
 export type MoneyPoint = {

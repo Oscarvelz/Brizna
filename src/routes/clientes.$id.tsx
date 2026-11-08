@@ -44,6 +44,8 @@ import { methodLabel } from "@/components/method-field";
 import { PhotoPicker } from "@/components/photo-picker";
 import { PHOTOS_ENABLED } from "@/lib/photos-flag";
 import { ServicePause } from "@/components/service-pause";
+import { KeepServing } from "@/components/keep-serving";
+import { useUndo } from "@/lib/undo";
 import {
   addClientPhoto,
   addExtraJob,
@@ -52,6 +54,8 @@ import {
   deleteClient,
   deleteClientPhoto,
   getClient,
+  getClientDeleteSummary,
+  getClientReconcile,
   getJobPhoto,
   getSettings,
   listClientChanges,
@@ -59,6 +63,7 @@ import {
   listPadForClient,
   recordPayment,
   rescheduleJob,
+  undoPayment,
   restoreClientChange,
   saveClientNotes,
   setBlacklist,
@@ -113,13 +118,21 @@ function ClientDetailPage() {
     refetchOnWindowFocus: false,
     placeholderData: () => {
       const row = rowFromLists(qc, numericId);
-      return row ? { client: row, jobs: [] as JobRow[], payments: [] as PaymentRow[], photos: [] as ClientPhoto[] } : undefined;
+      return row ? { client: row, jobs: [] as JobRow[], payments: [] as PaymentRow[], paymentsTotal: 0, photos: [] as ClientPhoto[] } : undefined;
     },
   });
 
   const data = q.data;
   const client = data?.client;
   const seeded = q.isPlaceholderData;
+  // Movimiento 3 (hallazgo 12): comprobación silenciosa del saldo — la query solo
+  // devuelve algo cuando el neto guardado no cuadra con el libro (deriva ≠ 0).
+  const reconcileQ = useQuery({
+    queryKey: ["client-reconcile", numericId],
+    queryFn: () => getClientReconcile({ data: { id: numericId } }),
+    enabled: Number.isFinite(numericId) && !seeded,
+    refetchOnWindowFocus: false,
+  });
   const painted = useAfterPaint();
 
   const save = useMutation({
@@ -149,12 +162,18 @@ function ClientDetailPage() {
   });
 
   const remove = useMutation({
-    mutationFn: () => deleteClient({ data: { id: numericId } }),
+    mutationFn: () => deleteClient({ data: { id: numericId, confirmMoney: true } }),
     onSuccess: async () => {
       toast(tx("Cliente eliminado", "Client deleted"));
       await invalidateLawn(qc);
       await navigate({ to: "/clientes" });
     },
+  });
+  // Hallazgo 3: el diálogo de borrado enseña el desglose en voz alta antes de confirmar.
+  const deleteSummaryQ = useQuery({
+    queryKey: ["client-delete-summary", numericId],
+    queryFn: () => getClientDeleteSummary({ data: { id: numericId } }),
+    enabled: askDelete,
   });
 
   if (q.isLoading) {
@@ -558,6 +577,9 @@ function ClientDetailPage() {
                 <span className="bz-short">{tx("Extra", "Extra")}</span>
               </button>
               <ServicePause id={client.id} name={client.name} paused={client.servicePaused} labeled />
+              {client.highRisk ? (
+                <KeepServing id={client.id} name={client.name} keepServing={client.keepServing} />
+              ) : null}
             </div>
             {showExtra ? <ExtraForm clientId={client.id} onDone={() => setShowExtra(false)} /> : null}
             {client.servicePaused ? (
@@ -586,9 +608,18 @@ function ClientDetailPage() {
             />
           )}
 
+          {!seeded && reconcileQ.data ? (
+            <p className="mt-4 rounded-xl bg-sun px-4 py-3 text-sm text-muted" role="status">
+              {tx(
+                `El saldo guardado no cuadra con sus movimientos por ${money(Math.abs(reconcileQ.data.drift))}. No se cambió nada: revísalo en Movimientos y en sus cortes hechos.`,
+                `The saved balance is off from its activity by ${money(Math.abs(reconcileQ.data.drift))}. Nothing was changed: check it in Activity and in its completed cuts.`,
+              )}
+            </p>
+          ) : null}
+
           {seeded ? (
             client.collectedTotal > 0 || client.lastPaidDate ? <MovesBlock clientId={client.id} payments={[]} loading /> : null
-          ) : (data?.payments ?? []).length > 0 ? <MovesBlock clientId={client.id} payments={data?.payments ?? []} /> : null}
+          ) : (data?.payments ?? []).length > 0 ? <MovesBlock clientId={client.id} payments={data?.payments ?? []} paymentsTotal={data?.paymentsTotal ?? 0} /> : null}
 
           <ChangeHistory clientId={client.id} />
 
@@ -634,8 +665,8 @@ function ClientDetailPage() {
             open={askOff}
             title={<>{tx("¿Pasar a archivos a ", "Move ")}<span className="bz-dialog-who"><span className="bz-dialog-name">{client.name}</span>{tx("?", " to the archive?")}</span></>}
             description={tx(
-              "Sale de la agenda. Queda guardado en Archivos con todos sus datos.",
-              "They leave the schedule. They stay saved in Archive with all their data.",
+              "Sale de la agenda. Queda guardado en Archivos con todos sus datos. Sus extras y trabajos de una vez pendientes se cancelan a la vista (quedan en el historial, no se borran).",
+              "They leave the schedule. They stay saved in Archive with all their data. Their pending extras and one-time jobs are cancelled in plain sight (they stay in the history, not deleted).",
             )}
             confirmLabel={tx("Mover a archivos", "Move to archive")}
             pending={toggleActive.isPending}
@@ -657,10 +688,17 @@ function ClientDetailPage() {
           <ConfirmDialog
             open={askDelete}
             title={<>{tx("¿Eliminar a ", "Delete ")}<span className="bz-dialog-who"><span className="bz-dialog-name is-late">{client.name}</span>?</span></>}
-            description={tx(
-              "Se borra el cliente y todo su historial. Esta acción no se puede deshacer.",
-              "The client and their whole history are deleted. This cannot be undone.",
-            )}
+            description={
+              deleteSummaryQ.data
+                ? tx(
+                    `Se borra el cliente y todo su historial. Esta acción no se puede deshacer. Debe ${money(deleteSummaryQ.data.balance)} · Tiene ${money(deleteSummaryQ.data.credit)} a favor · ${deleteSummaryQ.data.payments} pagos y ${deleteSummaryQ.data.jobs} visitas se borrarán.`,
+                    `The client and their whole history are deleted. This cannot be undone. Owes ${money(deleteSummaryQ.data.balance)} · Has ${money(deleteSummaryQ.data.credit)} in advance · ${deleteSummaryQ.data.payments} payments and ${deleteSummaryQ.data.jobs} visits will be deleted.`,
+                  )
+                : tx(
+                    "Se borra el cliente y todo su historial. Esta acción no se puede deshacer.",
+                    "The client and their whole history are deleted. This cannot be undone.",
+                  )
+            }
             confirmLabel={tx("Eliminar", "Delete")}
             danger
             pending={remove.isPending}
@@ -858,7 +896,7 @@ function useFoldMemory(key: string) {
 }
 
 /** Movimientos (1.4.75): every money movement on this client, closed by default and remembered per client. */
-function MovesBlock({ clientId, payments, loading = false }: { clientId: number; payments: PaymentRow[]; loading?: boolean }) {
+function MovesBlock({ clientId, payments, paymentsTotal = 0, loading = false }: { clientId: number; payments: PaymentRow[]; paymentsTotal?: number; loading?: boolean }) {
   const tx = useTx();
   const [open, toggle] = useFoldMemory(`ols-mov-${clientId}`);
   const cashIn = payments
@@ -913,6 +951,11 @@ function MovesBlock({ clientId, payments, loading = false }: { clientId: number;
               </li>
             );
           })}
+          {paymentsTotal > payments.length ? (
+            <li className="px-1 py-1 text-sm text-muted">
+              {tx(`y ${paymentsTotal - payments.length} más antiguos`, `and ${paymentsTotal - payments.length} older ones`)}
+            </li>
+          ) : null}
         </ul>
       ) : null}
     </section>
@@ -1100,11 +1143,32 @@ function RiskBanner({ days }: { days: number | null }) {
 function WaiveButton({ clientId, balance, name }: { clientId: number; balance: number; name?: string }) {
   const tx = useTx();
   const qc = useQueryClient();
+  const push = useUndo((s) => s.push);
   const [open, setOpen] = useState(false);
+  // Hallazgo 1: perdón parcial + Deshacer, igual que en Cobros.
+  const [amount, setAmount] = useState("");
+  const amt = Math.min(balance, Math.max(0, Number(amount) || 0));
   const mut = useMutation({
-    mutationFn: () => recordPayment({ data: { clientId, kind: "waived" } }),
-    onSuccess: async () => {
-      toast(tx("Saldo perdonado. La cuenta vuelve a cero.", "Balance forgiven. The account goes back to zero."));
+    mutationFn: () =>
+      recordPayment({ data: { clientId, kind: "waived", amount: amt > 0 ? amt : undefined } }),
+    onSuccess: async (res) => {
+      const ids = res.paymentIds ?? [];
+      if (ids.length > 0) {
+        push({
+          label: tx(`Perdón a ${name ?? ""}`.trim(), `Forgiveness for ${name ?? ""}`.trim()),
+          undo: async () => {
+            await undoPayment({ data: { ids } });
+            await invalidateLawn(qc);
+          },
+          redo: async () => {
+            await recordPayment({
+              data: { clientId, kind: "waived", amount: amt > 0 ? amt : undefined },
+            });
+            await invalidateLawn(qc);
+          },
+        });
+      }
+      toast(tx("Perdón guardado. Puedes deshacerlo arriba.", "Forgiveness saved. You can undo it above."));
       setOpen(false);
       await invalidateLawn(qc);
     },
@@ -1140,10 +1204,35 @@ function WaiveButton({ clientId, balance, name }: { clientId: number; balance: n
             </>
           ) : undefined
         }
-        description={tx(
-          "No se cuenta como cobrado. El dinero deja de estar por cobrar y la cuenta vuelve a cero.",
-          "It does not count as collected. The money leaves To collect and the account goes back to zero.",
-        )}
+        description={
+          <div className="grid gap-2">
+            <p>
+              {tx(
+                "No se cuenta como cobrado. Lo perdonado deja de estar por cobrar.",
+                "It does not count as collected. What is forgiven leaves To collect.",
+              )}
+            </p>
+            <div>
+              <label className="text-sm font-medium text-fg" htmlFor="waive-amt-ficha">{tx("Cantidad a perdonar", "Amount to forgive")}</label>
+              <input
+                id="waive-amt-ficha"
+                type="number"
+                min={0}
+                step="0.01"
+                inputMode="decimal"
+                className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-fg"
+                placeholder={String(balance)}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-muted">
+                {amt > 0 && amt < balance
+                  ? tx(`Perdón parcial: quedan debiendo ${money(balance - amt)}. Vacío = todo el saldo.`, `Partial forgiveness: ${money(balance - amt)} stays owed. Empty = the whole balance.`)
+                  : tx("Vacío = todo el saldo.", "Empty = the whole balance.")}
+              </p>
+            </div>
+          </div>
+        }
         confirmLabel={tx("Perdonar saldo", "Forgive balance")}
         danger
         pending={mut.isPending}

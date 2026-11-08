@@ -2,6 +2,7 @@
 // Photos and the on-device backup copies never leave the phone.
 import { exclusive } from "@/lib/db";
 import { withChecksum } from "@/lib/backup-plan";
+import { PHOTOS_ENABLED } from "@/lib/photos-flag";
 import { supabase, getUser } from "./cloud";
 import { afterSplash } from "./splash-ready";
 import { HASH_V, SCHEMA, hashView, snapshotMeta } from "./sync-logic";
@@ -62,9 +63,9 @@ async function readTables(pg: Pg): Promise<Record<string, unknown[]>> {
   for (const t of TABLES) {
     const r = await pg.query<{ j: unknown[] | null }>(`select json_agg(x) as j from ${t} x`);
     const rows = (r.rows[0]?.j ?? []) as Record<string, unknown>[];
-    // TODO(F4, photos are off: PHOTOS_ENABLED=false): the snapshot drops job photos, and a pull replaces
-    // whole tables, so turning photos back on would wipe every device's photos on the next pull.
-    // Before enabling photos: sync them separately (own table/storage) or keep local photos on pull.
+    // Photos decision (hallazgo 19, see lib/photos-flag.ts): the snapshot drops job photos, and a pull
+    // replaces whole tables. Photos stay out of sync until they get their own channel; apply() below
+    // refuses to pull over local photos if the flag is ever enabled before that channel exists.
     if (t === "jobs") for (const row of rows) if ("photo" in row) row.photo = null;
     out[t] = rows;
   }
@@ -103,6 +104,16 @@ async function apply(json: string, guard?: () => boolean): Promise<Dump> {
   if (snapshotMeta(json).schema > SCHEMA) throw new Error("newer snapshot");
   const after = await exclusive(async (pg) => {
     if (guard && !guard()) throw new EditedDuringPull("edited");
+    // Hallazgo 19 guard (see lib/photos-flag.ts): snapshots carry no photos, and the
+    // pull below replaces whole tables — with photos enabled and any photo stored on
+    // this device, applying would silently delete them all. Refuse loudly instead;
+    // the sync loop surfaces this as an error status, never as a silent wipe.
+    if (PHOTOS_ENABLED) {
+      const ph = await pg.query<{ n: number }>(
+        "select (select count(*) from client_photos) + (select count(*) from pad_photos) + (select count(*) from jobs where photo is not null) as n",
+      );
+      if (Number(ph.rows[0]?.n ?? 0) > 0) throw new Error("photos would be lost by this sync");
+    }
     await pg.transaction(async (tx) => {
       for (const t of [...TABLES].reverse()) if (!PARENTS.has(t)) await tx.query(`delete from ${t}`);
       await tx.query("delete from pad_pages");

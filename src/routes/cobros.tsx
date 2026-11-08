@@ -33,7 +33,8 @@ import { FitLine } from "@/components/job-card";
 import { viewGrid } from "@/lib/density";
 import type { QuadCols } from "@/lib/density";
 import { emphasize, useTx } from "@/lib/i18n";
-import { listBalances, recordPayment, recordPaymentsBulk } from "@/lib/server/lawn";
+import { useUndo } from "@/lib/undo";
+import { listBalances, recordPayment, recordPaymentsBulk, undoPayment } from "@/lib/server/lawn";
 import type { ClientRow, JobRow, PaymentRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Banknote, BadgeCheck, Check, ReceiptText, Smartphone, Coins, HandCoins, HandHeart, ShieldAlert, Hourglass, CircleAlert, Wallet } from "lucide-react";
@@ -150,9 +151,32 @@ function CobrosPage() {
   }, [data?.clients, sort, today]);
 
   const qc = useQueryClient();
+  const push = useUndo((s) => s.push);
   const bulk = useMutation({
     mutationFn: (kind: "paid" | "waived") => recordPaymentsBulk({ data: { clientIds: picked, kind } }),
     onSuccess: async (res, kind) => {
+      // Hallazgo 1 (grupo): el cobro/perdón en grupo también se puede deshacer,
+      // por tandas de 8 ids (el límite de undoPayment).
+      const ids = res.paymentIds ?? [];
+      const idsSnapshot = [...picked];
+      if (ids.length > 0) {
+        push({
+          label:
+            kind === "waived"
+              ? tx(`Perdón en grupo (${res.count})`, `Group forgiveness (${res.count})`)
+              : tx(`Cobro en grupo (${res.count})`, `Group collection (${res.count})`),
+          undo: async () => {
+            for (let i = 0; i < ids.length; i += 8) {
+              await undoPayment({ data: { ids: ids.slice(i, i + 8) } });
+            }
+            await invalidateLawn(qc);
+          },
+          redo: async () => {
+            await recordPaymentsBulk({ data: { clientIds: idsSnapshot, kind } });
+            await invalidateLawn(qc);
+          },
+        });
+      }
       toast.success(
         kind === "paid"
           ? tx(`${res.count} cobros · ${money(res.total)}`, `${res.count} payments · ${money(res.total)}`)
@@ -495,13 +519,13 @@ function CobrosPage() {
           <PayList payments={paidMonth} empty={tx("Todavía no hay cobros este mes.", "There are no payments this month yet.")} dense={dense} media={media} quad={quad} cols={cols} />
         )}
         {view === "collectedYear" && (
-          <PayList payments={paid} empty={tx("Todavía no hay cobros este año.", "There are no payments this year yet.")} dense={dense} media={media} quad={quad} cols={cols} />
+          <PayList payments={paid} more={Math.max(0, (data?.counts.paidYear ?? 0) - paid.length)} empty={tx("Todavía no hay cobros este año.", "There are no payments this year yet.")} dense={dense} media={media} quad={quad} cols={cols} />
         )}
         {view === "abonos" && (
           <AbonoFollow clients={abonoClients} payments={abonoPays} dense={dense} media={media} quad={quad} cols={cols} />
         )}
         {view === "waived" && (
-          <PayList payments={waivedMonth} empty={tx("No hay saldos perdonados este mes.", "There are no forgiven balances this month.")} dense={dense} media={media} quad={quad} cols={cols} />
+          <PayList payments={waivedMonth} more={Math.max(0, (data?.counts.waivedMonth ?? 0) - waivedMonth.length)} empty={tx("No hay saldos perdonados este mes.", "There are no forgiven balances this month.")} dense={dense} media={media} quad={quad} cols={cols} />
         )}
         {view === "espera" && (
           <WaitList
@@ -519,7 +543,7 @@ function CobrosPage() {
           <DoneList jobs={data?.doneMonth ?? []} empty={tx("Todavía no hay cortes hechos este mes.", "There are no completed cuts this month yet.")} dense={dense} media={media} quad={quad} cols={cols} />
         )}
         {view === "doneYear" && (
-          <DoneList jobs={data?.doneYear ?? []} empty={tx("Todavía no hay cortes hechos este año.", "There are no completed cuts this year yet.")} dense={dense} media={media} quad={quad} cols={cols} />
+          <DoneList jobs={data?.doneYear ?? []} more={Math.max(0, (data?.totals.cutsYear ?? 0) - (data?.doneYear.length ?? 0))} empty={tx("Todavía no hay cortes hechos este año.", "There are no completed cuts this year yet.")} dense={dense} media={media} quad={quad} cols={cols} />
         )}
       </div>
       </WideSplit>
@@ -807,6 +831,7 @@ function PayList({
   quad,
   cols,
   grouped,
+  more = 0,
 }: {
   payments: PaymentRow[];
   empty: string;
@@ -815,6 +840,8 @@ function PayList({
   quad?: boolean;
   cols?: 2 | 3 | 4;
   grouped?: boolean;
+  /** Movimiento 3 (hallazgo 20): filas reales que la lista no trae (corte en 2500/año). */
+  more?: number;
 }) {
   const tx = useTx();
   const rows = grouped
@@ -841,6 +868,7 @@ function PayList({
   // Grande = icon chip + big serif name + price beside it + long date + method chip; Media = one compact row
   // (name · price) over a short subline; Lista = one line; Malla x2 one subline, x3 date over method, x4 date.
   return (
+    <>
     <ul className={viewGrid(quad ? "quad" : dense ? "dense" : media ? "compact" : "full", c, dense ? "gap-1" : "gap-2")}>
       {rows.map((p) => {
         const name = p.clientName ?? tx("Cliente", "Client");
@@ -916,6 +944,10 @@ function PayList({
         );
       })}
     </ul>
+    {more > 0 ? (
+      <p className="mt-2 px-1 text-sm text-muted">{tx(`+${more} más`, `+${more} more`)}</p>
+    ) : null}
+    </>
   );
 }
 
@@ -1024,6 +1056,7 @@ function DoneList({
   media,
   quad,
   cols,
+  more = 0,
 }: {
   jobs: JobRow[];
   empty: string;
@@ -1031,12 +1064,15 @@ function DoneList({
   media?: boolean;
   quad?: boolean;
   cols?: 2 | 3 | 4;
+  /** Movimiento 3 (hallazgo 20): hechos reales que la lista no trae (corte en 2500/año). */
+  more?: number;
 }) {
   const tx = useTx();
   if (jobs.length === 0) {
     return <p className="rounded-xl bg-sun px-4 py-5 text-sm text-muted">{empty}</p>;
   }
   return (
+    <>
     <ul className={viewGrid(quad ? "quad" : dense ? "dense" : media ? "compact" : "full", cols ?? 2, dense ? "gap-1" : "gap-2")}>
       {jobs.map((j) => {
         const kind = j.kind === "extra" ? tx("Extra", "Extra") : j.kind === "one_time" ? tx("Una vez", "One time") : tx("Corte", "Cut");
@@ -1083,17 +1119,45 @@ function DoneList({
         );
       })}
     </ul>
+    {more > 0 ? (
+      <p className="mt-2 px-1 text-sm text-muted">{tx(`+${more} más`, `+${more} more`)}</p>
+    ) : null}
+    </>
   );
 }
 
 function Waive({ client, icon }: { client: ClientRow; icon?: boolean }) {
   const tx = useTx();
   const qc = useQueryClient();
+  const push = useUndo((s) => s.push);
   const [open, setOpen] = useState(false);
+  // Hallazgo 1: perdón PARCIAL — por defecto el saldo completo; lo que no se
+  // perdona se queda debiendo. Y el perdón entra en Deshacer como un pago.
+  const [amount, setAmount] = useState("");
+  const amt = Math.min(client.balance, Math.max(0, Number(amount) || 0));
   const mut = useMutation({
-    mutationFn: () => recordPayment({ data: { clientId: client.id, kind: "waived" } }),
-    onSuccess: async () => {
-      toast(tx("Saldo perdonado. Ya no está por cobrar.", "Balance forgiven. It is no longer in To collect."));
+    mutationFn: () =>
+      recordPayment({
+        data: { clientId: client.id, kind: "waived", amount: amt > 0 ? amt : undefined },
+      }),
+    onSuccess: async (res) => {
+      const ids = res.paymentIds ?? [];
+      if (ids.length > 0) {
+        push({
+          label: tx(`Perdón a ${client.name}`, `Forgiveness for ${client.name}`),
+          undo: async () => {
+            await undoPayment({ data: { ids } });
+            await invalidateLawn(qc);
+          },
+          redo: async () => {
+            await recordPayment({
+              data: { clientId: client.id, kind: "waived", amount: amt > 0 ? amt : undefined },
+            });
+            await invalidateLawn(qc);
+          },
+        });
+      }
+      toast(tx("Saldo perdonado. Puedes deshacerlo arriba.", "Balance forgiven. You can undo it above."));
       setOpen(false);
       await invalidateLawn(qc);
     },
@@ -1125,7 +1189,30 @@ function Waive({ client, icon }: { client: ClientRow; icon?: boolean }) {
             {tx("Debe", "Owes")} <b>{money(client.balance)}</b>
           </>
         }
-        description={tx("Esto sí sale de Por cobrar. No es una espera: es dinero que decides no cobrar.", "This does leave To collect. It is not a wait: it is money you decide not to collect.")}
+        description={
+          <div className="grid gap-2">
+            <p>{tx("Esto sí sale de Por cobrar. No es una espera: es dinero que decides no cobrar.", "This does leave To collect. It is not a wait: it is money you decide not to collect.")}</p>
+            <div>
+              <label className="text-sm font-medium text-fg" htmlFor={`waive-amt-${client.id}`}>{tx("Cantidad a perdonar", "Amount to forgive")}</label>
+              <input
+                id={`waive-amt-${client.id}`}
+                type="number"
+                min={0}
+                step="0.01"
+                inputMode="decimal"
+                className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-fg"
+                placeholder={String(client.balance)}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-muted">
+                {amt > 0 && amt < client.balance
+                  ? tx(`Perdón parcial: quedan debiendo ${money(client.balance - amt)}. Vacío = todo el saldo.`, `Partial forgiveness: ${money(client.balance - amt)} stays owed. Empty = the whole balance.`)
+                  : tx("Vacío = todo el saldo.", "Empty = the whole balance.")}
+              </p>
+            </div>
+          </div>
+        }
         confirmLabel={tx("Perdonar saldo", "Forgive balance")}
         danger
         pending={mut.isPending}

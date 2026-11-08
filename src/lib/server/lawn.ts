@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { getSql } from "@/lib/db";
+import { getSql, withTransaction, type Sql } from "@/lib/db";
 import {
   addDaysISO,
   addMonths,
@@ -22,12 +22,15 @@ import { DEFAULT_BUSINESS_NAME } from "@/lib/format";
 import { PHOTOS_ENABLED } from "@/lib/photos-flag";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { smartHit } from "@/lib/fuzzy";
-import { checksumMatches, idsToKeep, withChecksum } from "@/lib/backup-plan";
+import { backupContentChecksum, checksumMatches, idsToKeep, withChecksum } from "@/lib/backup-plan";
+import { reconcileBalance } from "@/lib/balance-reconcile";
 import { buildReportPdf } from "@/lib/report-pdf";
 import { buildReportXls, type WorkbookPack } from "@/lib/report-xls";
 import {
   AppSettings,
   BackupSummary,
+  BackupWeight,
+  ClientReconcile,
   ClientChange,
   ClientFilter,
   ClientFlowPoint,
@@ -128,6 +131,7 @@ type ClientDb = {
   pinned?: boolean;
   blacklisted?: boolean;
   service_paused?: boolean;
+  keep_serving?: boolean;
   standing_extras?: string | null;
   season_start?: string | null;
   season_end?: string | null;
@@ -267,6 +271,7 @@ function mapClient(row: ClientDb, today = todayISO(), risk: number | RiskOpts = 
     pinned: Boolean(row.pinned),
     blacklisted: Boolean(row.blacklisted),
     servicePaused: Boolean(row.service_paused),
+    keepServing: Boolean(row.keep_serving),
     highRisk: profile.highRisk,
     hasExtra: intId(row.extras_this_month) > 0,
     deactivatedAt: row.deactivated_at ? asIsoStamp(row.deactivated_at) : null,
@@ -311,11 +316,16 @@ function mapJob(row: JobDb, today: string): JobRow {
   };
 }
 
+// MOVIMIENTO 1 (auditoría 2026-11-08, hallazgo 9) — UNA SOLA REGLA para los totales por cobrar:
+// la deuda de un cliente cuenta en «Por cobrar» (panel, Cobros, Cifras y widgets) SOLO si el
+// cliente está ACTIVO y NO está en lista negra. Es la población que el Asesor ya usaba
+// (hallazgo: el widget sumaba el saldo de TODOS, incluida gente invisible en toda lista).
+// Toda suma de outstanding en este archivo debe llevar: is_active = true and blacklisted = false.
 const CLIENT_SELECT = `
   c.id, c.name, c.phone, c.address, c.notes, c.kind, c.price_per_cut,
   c.cuts_per_month, c.weekday, c.weekday_2, c.frequency_days, c.arrival_time,
   c.start_date, c.pay_same_day, c.pay_due_day, c.sort_order, c.balance, c.credit, c.rich_notes,
-  c.is_active, c.created_at, c.deactivated_at, c.cue, c.pinned, c.blacklisted, c.service_paused,
+  c.is_active, c.created_at, c.deactivated_at, c.cue, c.pinned, c.blacklisted, c.service_paused, c.keep_serving,
   c.standing_extras, c.season_start, c.season_end, c.season_every,
   (select min(j.scheduled_date) from jobs j
      where j.client_id = c.id and j.user_id = c.user_id
@@ -339,17 +349,31 @@ const CLIENT_SELECT = `
        and j.scheduled_date >= date_trunc('month', $2::date)
        and j.scheduled_date < date_trunc('month', $2::date) + interval '1 month') as extras_this_month,
   (select max(p.paid_at) from payments p
-     where p.client_id = c.id and p.user_id = c.user_id and p.kind in ('paid','prepaid')) as last_paid_at,
+     where p.client_id = c.id and p.user_id = c.user_id and p.kind in ('paid','prepaid','waived')) as last_paid_at,
   (select count(*) from (
-     select j.amount,
-            sum(j.amount) over (
-              order by coalesce(j.completed_at, j.scheduled_date::timestamptz) desc, j.id desc
-            ) as running
-       from jobs j
-      where j.client_id = c.id and j.user_id = c.user_id and j.status = 'done'
+     select u.amount,
+            sum(u.amount) over (order by u.ord desc, u.id desc) as running
+       from (
+         select j.amount, j.id,
+                coalesce(j.completed_at, j.scheduled_date::timestamptz) as ord
+           from jobs j
+          where j.client_id = c.id and j.user_id = c.user_id and j.status = 'done'
+          order by coalesce(j.completed_at, j.scheduled_date::timestamptz) desc, j.id desc
+          limit 64
+       ) u
    ) unpaid
    where unpaid.running - unpaid.amount < c.balance) as unpaid_jobs
 `;
+
+// MOVIMIENTO 2 (hallazgo 17): the unpaid count above is bounded to the newest 64 done jobs.
+// It only feeds payProfile's "late by cuts" test, whose threshold (riskCuts) riskPrefs
+// validates to 1..30 — so a count of 64+ answers every threshold exactly as the true count
+// would, and any count the bound can change is one no screen or tier can distinguish.
+// CLIENT_SELECT_LIST is the same select for LIST loads, without the rich notes (up to
+// 20 KB per client, read only by the client file and the export centre, which each use
+// their own full path: getClient / loadClients with fullNotes). mapClient already
+// defaults a missing rich_notes to "".
+const CLIENT_SELECT_LIST = CLIENT_SELECT.replace("c.rich_notes,", "''::text as rich_notes,");
 
 async function riskPrefs(userId: string): Promise<RiskOpts> {
   const sql = await getSql();
@@ -382,11 +406,14 @@ async function loadClients(
   userId: string,
   today: string,
   filter: ClientFilter | "all",
+  opts?: { fullNotes?: boolean },
 ): Promise<ClientRow[]> {
   const sql = await getSql();
   const risk = await riskPrefs(userId);
+  // Hallazgo 17: list loads skip the rich notes; only the export centre (which prints
+  // them) asks for the full select. The client file uses getClient, also full.
   const rows = await sql.query<ClientDb>(
-    `select ${CLIENT_SELECT} from clients c where c.user_id = $1`,
+    `select ${opts?.fullNotes ? CLIENT_SELECT : CLIENT_SELECT_LIST} from clients c where c.user_id = $1`,
     [userId, today],
   );
   let list = rows.map((row) => mapClient(row, today, risk));
@@ -395,7 +422,9 @@ async function loadClients(
   else if (filter === "regular") list = list.filter((c) => c.isActive && c.kind === "regular");
   else if (filter === "one_time") list = list.filter((c) => c.isActive && c.kind === "one_time");
   else if (filter === "inactive") list = list.filter((c) => !c.isActive);
-  else if (filter === "owing") list = list.filter((c) => c.balance > 0);
+  // Hallazgo 9: «owing» (Cobros) sigue la regla única: activo y no en lista negra —
+  // cada dólar del total tiene dueño visible en esta misma lista.
+  else if (filter === "owing") list = list.filter((c) => c.balance > 0 && c.isActive && !c.blacklisted);
   else if (filter === "triple") list = list.filter((c) => c.isActive && (c.tripleCut || c.hasExtra));
   else if (filter === "blacklist") list = list.filter((c) => c.blacklisted);
   else if (filter === "risk") list = list.filter((c) => c.isActive && c.highRisk && !c.blacklisted);
@@ -466,7 +495,7 @@ async function collectBackup(userId: string) {
   const dayNotes = await sql.query(`select * from day_notes where user_id = $1 order by note_date`, [userId]);
   const padLinks = await sql.query(`select * from pad_links where user_id = $1 order by id`, [userId]);
   const weekOff = await sql.query(`select * from week_off_dates where user_id = $1 order by off_date`, [userId]);
-  return withChecksum({
+  const body = {
     version: 5,
     savedAt: new Date().toISOString(),
     clients,
@@ -482,7 +511,10 @@ async function collectBackup(userId: string) {
     dayNotes,
     padLinks,
     weekOff,
-  });
+  };
+  // Hallazgo 13: the content checksum rides inside the copy so the snapshot path can
+  // recognise "same book as the newest copy" with one cheap payload->> lookup.
+  return withChecksum({ ...body, contentChecksum: backupContentChecksum(body) });
 }
 
 const BACKUP_GAP_MS = 10 * 60 * 1000;
@@ -490,12 +522,32 @@ let lastSnapshotAt = 0;
 
 // Automatic safety copies: at most one every 10 minutes during normal work (a full copy of
 // years of records on every tap made "Hecho" slow). Risky actions pass force = true.
+// MOVIMIENTO 2 (hallazgo 13): even a forced copy is skipped when the book's CONTENT is
+// identical to the newest stored copy — the 3-minute watcher then costs a read, not a
+// multi-megabyte insert + prune + flush, and the backups table stops churning. A safety
+// copy before a risky action is still guaranteed: if the content matches, that identical
+// copy is already stored. The last content checksum per user is remembered in memory so
+// the common no-change path does not even read the stored copy back.
+const lastContentChecksum = new Map<string, string>();
 export async function snapshotBackup(userId: string, force = false): Promise<void> {
   if (!force && Date.now() - lastSnapshotAt < BACKUP_GAP_MS) return;
   lastSnapshotAt = Date.now();
   const sql = await getSql();
   const payload = await collectBackup(userId);
+  const contentChecksum = (payload as { contentChecksum?: unknown }).contentChecksum;
+  if (typeof contentChecksum === "string" && contentChecksum) {
+    if (lastContentChecksum.get(userId) === contentChecksum) return;
+    const newest = await sql.query<{ cc: string | null }>(
+      `select payload->>'contentChecksum' as cc from backups where user_id = $1 order by created_at desc, id desc limit 1`,
+      [userId],
+    );
+    if (newest[0]?.cc && newest[0].cc === contentChecksum) {
+      lastContentChecksum.set(userId, contentChecksum);
+      return;
+    }
+  }
   await sql.query(`insert into backups (user_id, payload) values ($1, $2::jsonb)`, [userId, JSON.stringify(payload)]);
+  if (typeof contentChecksum === "string" && contentChecksum) lastContentChecksum.set(userId, contentChecksum);
   const rows = await sql.query<{ id: number; created_at: unknown }>(
     `select id, created_at from backups where user_id = $1 order by created_at desc, id desc`,
     [userId],
@@ -593,14 +645,19 @@ export async function ensureScheduleForUserInner(userId: string): Promise<void> 
     season_start: string | null;
     season_end: string | null;
     season_every: number | null;
+    keep_serving: boolean | null;
   }>(
     `select id, weekday, weekday_2, cuts_per_month, frequency_days, start_date,
-            arrival_time, price_per_cut, season_start, season_end, season_every
+            arrival_time, price_per_cut, season_start, season_end, season_every, keep_serving
        from clients
       where user_id = $1 and is_active = true and kind = 'regular' and blacklisted = false and service_paused = false`,
     [userId],
   );
 
+  // Hallazgo 2: un cliente en *serio* (alto riesgo) no recibe visitas NUEVAS: su agenda
+  // futura se congela (la próxima visita ya sembrada queda y Hoy la clava como aviso) hasta
+  // que pague, se le perdone, o el usuario marque «seguir atendiendo» (keep_serving).
+  const serioIds = await highRiskClientIds(userId, today);
   const horizon = prefs.horizonMonths;
   const untilPart = addMonths(year, month, Math.max(0, horizon - 1));
   const until = lastDayOfMonthISO(untilPart.year, untilPart.month);
@@ -628,6 +685,7 @@ export async function ensureScheduleForUserInner(userId: string): Promise<void> 
   const dropIds: number[] = [];
 
   for (const client of clients) {
+    if (serioIds.has(intId(client.id)) && !client.keep_serving) continue;
     const generated: string[] = [];
     for (let step = 0; step < horizon; step += 1) {
       const part = addMonths(year, month, step);
@@ -971,16 +1029,20 @@ async function highRiskClientIds(userId: string, today: string): Promise<Set<num
   }>(
     `select c.id, c.balance,
             (select max(p.paid_at)::date from payments p
-              where p.user_id = c.user_id and p.client_id = c.id and p.kind in ('paid','prepaid')) as last_paid,
+              where p.user_id = c.user_id and p.client_id = c.id and p.kind in ('paid','prepaid','waived')) as last_paid,
             (select max(j.scheduled_date) from jobs j
               where j.user_id = c.user_id and j.client_id = c.id and j.status = 'done') as last_cut,
             (select count(*) from (
-               select j.amount,
-                      sum(j.amount) over (
-                        order by coalesce(j.completed_at, j.scheduled_date::timestamptz) desc, j.id desc
-                      ) as running
-                 from jobs j
-                where j.client_id = c.id and j.user_id = c.user_id and j.status = 'done'
+               select u.amount,
+                      sum(u.amount) over (order by u.ord desc, u.id desc) as running
+                 from (
+                   select j.amount, j.id,
+                          coalesce(j.completed_at, j.scheduled_date::timestamptz) as ord
+                     from jobs j
+                    where j.client_id = c.id and j.user_id = c.user_id and j.status = 'done'
+                    order by coalesce(j.completed_at, j.scheduled_date::timestamptz) desc, j.id desc
+                    limit 64
+                 ) u
              ) unpaid
              where unpaid.running - unpaid.amount < c.balance) as unpaid_jobs
        from clients c
@@ -1034,7 +1096,7 @@ export const getDashboard = createServerFn({ method: "GET" })
          (select count(*) from clients where user_id = $1 and is_active = true) as active_clients,
          (select count(*) from clients where user_id = $1 and is_active = true and kind = 'regular') as regular_clients,
          (select count(*) from clients where user_id = $1 and is_active = true and kind = 'one_time') as onetime_clients,
-         (select coalesce(sum(balance),0) from clients where user_id = $1) as outstanding,
+         (select coalesce(sum(balance),0) from clients where user_id = $1 and is_active = true and blacklisted = false) as outstanding,
          (select coalesce(sum(amount),0) from payments
            where user_id = $1 and kind in ('paid','prepaid') and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')) as collected_month,
          (select coalesce(sum(amount),0) from jobs
@@ -1222,6 +1284,12 @@ export const getClient = createServerFn({ method: "GET" })
         limit 200`,
       [context.userId, data.id],
     );
+    // Movimiento 3 (hallazgo 20): el historial de arriba corta en 200 — el total
+    // real viaja con la ficha para que la UI diga «y N más» en vez de cortarlo en silencio.
+    const payCount = await sql.query<{ n: unknown }>(
+      `select count(*) as n from payments where user_id = $1 and client_id = $2`,
+      [context.userId, data.id],
+    );
     const photos = await sql.query<{
       id: number;
       caption: string | null;
@@ -1250,7 +1318,13 @@ export const getClient = createServerFn({ method: "GET" })
       data: p.data,
       createdAt: asIsoStamp(p.created_at),
     }));
-    return { client, jobs: jobs.map((j) => mapJob(j, today)), payments: paymentRows, photos: photoRows };
+    return {
+      client,
+      jobs: jobs.map((j) => mapJob(j, today)),
+      payments: paymentRows,
+      paymentsTotal: intId(payCount[0]?.n),
+      photos: photoRows,
+    };
   });
 
 function normalizeArrival(raw: string | undefined): string | null {
@@ -1513,6 +1587,7 @@ export const updateClient = createServerFn({ method: "POST" })
     );
 
     const prev = existing[0];
+    const kindChanged = prev.kind !== data.kind;
     const scheduleChanged =
       data.kind === "regular" &&
       (Number(prev.weekday) !== weekday ||
@@ -1534,10 +1609,48 @@ export const updateClient = createServerFn({ method: "POST" })
       );
     }
 
+    if (kindChanged) {
+      // Hallazgo 4: cambiar de tipo reconcilia los trabajos como archivar+crear.
+      const today = todayISO();
+      if (data.kind === "one_time") {
+        // Salir de regular: ningún corte recurrente pendiente sobrevive.
+        await sql.query(
+          `delete from jobs
+            where user_id = $1 and client_id = $2 and kind = 'cut' and status = 'pending'`,
+          [context.userId, data.id],
+        );
+        // Entrar a one_time: nace su único trabajo (si no tiene ya uno pendiente).
+        const otDate =
+          data.oneTimeDate && data.oneTimeDate.length >= 8 ? data.oneTimeDate : today;
+        const otTitle = data.oneTimeTitle?.trim() || "Trabajo único";
+        await sql.query(
+          `insert into jobs (user_id, client_id, scheduled_date, status, kind, title, amount, arrival_time)
+           select $1, $2, $3::date, 'pending', 'one_time', $4, $5, $6
+            where not exists (
+              select 1 from jobs
+               where user_id = $1 and client_id = $2 and kind = 'one_time' and status = 'pending'
+            )`,
+          [context.userId, data.id, otDate, otTitle, data.pricePerCut, arrival],
+        );
+      } else {
+        // Entrar a regular: el trabajo de una vez pendiente se cancela A LA VISTA
+        // (no se evapora) y la agenda se regenera abajo.
+        await sql.query(
+          `update jobs set status = 'cancelled',
+                  postpone_reason = coalesce(nullif(postpone_reason, ''), 'Pasó a cliente regular')
+            where user_id = $1 and client_id = $2 and kind = 'one_time' and status = 'pending'`,
+          [context.userId, data.id],
+        );
+      }
+    }
+
+    // Hallazgo 6: el precio nuevo solo repricea cortes de HOY en adelante; un corte
+    // vencido pendiente se acordó al precio viejo y se cobra al precio viejo.
     await sql.query(
       `update jobs set amount = $3, arrival_time = $4
-        where user_id = $1 and client_id = $2 and kind = 'cut' and status = 'pending'`,
-      [context.userId, data.id, data.pricePerCut, arrival],
+        where user_id = $1 and client_id = $2 and kind = 'cut' and status = 'pending'
+          and scheduled_date >= $5::date`,
+      [context.userId, data.id, data.pricePerCut, arrival, todayISO()],
     );
 
     if (data.kind === "regular") await ensureScheduleForUser(context.userId);
@@ -1557,6 +1670,33 @@ export const updateClient = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/**
+ * Hallazgo 8: un cliente de una vez TERMINADO (su trabajo done/cancelled, sin otros
+ * pendientes) y SIN dinero de por medio (balance = 0 y credit = 0) se auto-archiva:
+ * deja de contar como activo y de vivir en las listas. Reactivar sigue siendo el
+ * camino normal (setClientActive). Se llama tras completar/cancelar su trabajo y
+ * tras cualquier pago/perdón que deje la cuenta en cero.
+ */
+export async function maybeAutoArchiveOneTime(userId: string, clientId: number): Promise<void> {
+  const sql = await getSql();
+  await sql.query(
+    `update clients
+        set is_active = false, deactivated_at = now()
+      where user_id = $1 and id = $2 and kind = 'one_time' and is_active = true
+        and balance = 0 and credit = 0
+        and not exists (
+          select 1 from jobs j
+           where j.user_id = $1 and j.client_id = $2 and j.status = 'pending'
+        )
+        and exists (
+          select 1 from jobs j
+           where j.user_id = $1 and j.client_id = $2
+             and j.kind = 'one_time' and j.status in ('done', 'cancelled')
+        )`,
+    [userId, clientId],
+  );
+}
+
 export const setClientActive = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((data: unknown) =>
@@ -1572,9 +1712,17 @@ export const setClientActive = createServerFn({ method: "POST" })
       [context.userId, data.id, data.isActive],
     );
     if (!data.isActive) {
-      // An archived client gets no more visits: drop their open (pending) cuts.
+      // Hallazgo 5: archivar borra SOLO los cortes generados. Extras y trabajos de una
+      // vez pendientes se CANCELAN a la vista (quedan en el historial con su razón),
+      // nunca se evaporan; al reactivar no vuelven solos, y el diálogo ya no lo promete.
       await sql.query(
-        `delete from jobs where user_id = $1 and client_id = $2 and status = 'pending'`,
+        `delete from jobs where user_id = $1 and client_id = $2 and status = 'pending' and kind = 'cut'`,
+        [context.userId, data.id],
+      );
+      await sql.query(
+        `update jobs set status = 'cancelled',
+                postpone_reason = coalesce(nullif(postpone_reason, ''), 'Cliente archivado')
+          where user_id = $1 and client_id = $2 and status = 'pending' and kind <> 'cut'`,
         [context.userId, data.id],
       );
     }
@@ -1583,17 +1731,73 @@ export const setClientActive = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const deleteClient = createServerFn({ method: "POST" })
+export type ClientDeleteSummary = {
+  balance: number;
+  credit: number;
+  payments: number;
+  jobs: number;
+};
+
+export const getClientDeleteSummary = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((data: unknown) => z.object({ id: z.coerce.number().int() }).parse(data))
+  .handler(async ({ context, data }): Promise<ClientDeleteSummary | null> => {
+    const sql = await getSql();
+    const rows = await sql.query<{
+      balance: unknown;
+      credit: unknown;
+      payments: unknown;
+      jobs: unknown;
+    }>(
+      `select c.balance, c.credit,
+              (select count(*) from payments p where p.user_id = c.user_id and p.client_id = c.id) as payments,
+              (select count(*) from jobs j where j.user_id = c.user_id and j.client_id = c.id) as jobs
+         from clients c where c.user_id = $1 and c.id = $2`,
+      [context.userId, data.id],
+    );
+    if (!rows[0]) return null;
+    return {
+      balance: money(rows[0].balance),
+      credit: money(rows[0].credit),
+      payments: intId(rows[0].payments),
+      jobs: intId(rows[0].jobs),
+    };
+  });
+
+export const deleteClient = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((data: unknown) =>
+    z
+      .object({ id: z.coerce.number().int(), confirmMoney: z.boolean().optional().default(false) })
+      .parse(data),
+  )
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    // Hallazgo 3: borrar es cascada total (deuda, CRÉDITO del cliente e historial).
+    // Con dinero o historial de por medio, el servidor exige la confirmación reforzada
+    // que el diálogo muestra con el desglose en voz alta.
+    const guard = await sql.query<{ balance: unknown; credit: unknown; payments: unknown; jobs: unknown }>(
+      `select c.balance, c.credit,
+              (select count(*) from payments p where p.user_id = c.user_id and p.client_id = c.id) as payments,
+              (select count(*) from jobs j where j.user_id = c.user_id and j.client_id = c.id) as jobs
+         from clients c where c.user_id = $1 and c.id = $2`,
+      [context.userId, data.id],
+    );
+    if (!guard[0]) return { ok: false as const };
+    const hasMoneyOrHistory =
+      money(guard[0].balance) > 0 ||
+      money(guard[0].credit) > 0 ||
+      intId(guard[0].payments) > 0 ||
+      intId(guard[0].jobs) > 0;
+    if (hasMoneyOrHistory && !data.confirmMoney) {
+      return { ok: false as const, needsConfirm: true as const };
+    }
     await snapshotBackup(context.userId, true).catch(() => undefined);
     await sql.query(`delete from clients where user_id = $1 and id = $2`, [
       context.userId,
       data.id,
     ]);
-    return { ok: true };
+    return { ok: true as const };
   });
 
 export async function markJobDone(
@@ -1640,10 +1844,12 @@ export async function markJobDone(
   const mode = settlement === "auto" ? (job.pay_same_day ? "paid" : "owe") : settlement;
   if (mode === "paid") {
     if (amount > 0) {
+      // Movimiento 3 (hallazgo 12): el pago nace DE este trabajo — queda enlazado
+      // (job_id) para que reabrir/deshacer lo encuentre por su id, no por monto+nota.
       await sql.query(
-        `insert into payments (user_id, client_id, amount, kind, note, method)
-         values ($1,$2,$3,'paid','Pago de este corte',$4)`,
-        [userId, job.client_id, amount, payMethod],
+        `insert into payments (user_id, client_id, amount, kind, note, method, job_id)
+         values ($1,$2,$3,'paid','Pago de este corte',$4,$5)`,
+        [userId, job.client_id, amount, payMethod, jobId],
       );
     }
     await sql.query(`update jobs set notes = 'Hecho:paid' where user_id = $1 and id = $2`, [
@@ -1653,9 +1859,9 @@ export async function markJobDone(
     const paidTip = Math.round(Math.max(0, tip) * 100) / 100;
     if (paidTip > 0) {
       await sql.query(
-        `insert into payments (user_id, client_id, amount, kind, note, method, tip)
-         values ($1,$2,0,'paid','Propina',$3,$4)`,
-        [userId, job.client_id, payMethod, paidTip],
+        `insert into payments (user_id, client_id, amount, kind, note, method, tip, job_id)
+         values ($1,$2,0,'paid','Propina',$3,$4,$5)`,
+        [userId, job.client_id, payMethod, paidTip, jobId],
       );
     }
     return { ok: true, collected: true, skipped: false, usedCredit: 0 };
@@ -1700,16 +1906,16 @@ export async function markJobDone(
       const leftover = Math.round((pay - toDebt) * 100) / 100;
       if (toDebt > 0) {
         await sql.query(
-          `insert into payments (user_id, client_id, amount, kind, note, method)
-           values ($1,$2,$3,'paid','Abono al marcar hecho',$4)`,
-          [userId, job.client_id, toDebt, payMethod],
+          `insert into payments (user_id, client_id, amount, kind, note, method, job_id)
+           values ($1,$2,$3,'paid','Abono al marcar hecho',$4,$5)`,
+          [userId, job.client_id, toDebt, payMethod, jobId],
         );
       }
       if (leftover > 0) {
         await sql.query(
-          `insert into payments (user_id, client_id, amount, kind, note, method)
-           values ($1,$2,$3,'prepaid','Abono al marcar hecho',$4)`,
-          [userId, job.client_id, leftover, payMethod],
+          `insert into payments (user_id, client_id, amount, kind, note, method, job_id)
+           values ($1,$2,$3,'prepaid','Abono al marcar hecho',$4,$5)`,
+          [userId, job.client_id, leftover, payMethod, jobId],
         );
       }
       await sql.query(
@@ -1736,9 +1942,9 @@ export async function markJobDone(
   const extra = Math.round(Math.max(0, tip) * 100) / 100;
   if (extra > 0) {
     await sql.query(
-      `insert into payments (user_id, client_id, amount, kind, note, method, tip)
-       values ($1,$2,0,'paid','Propina',$3,$4)`,
-      [userId, job.client_id, payMethod, extra],
+      `insert into payments (user_id, client_id, amount, kind, note, method, tip, job_id)
+       values ($1,$2,0,'paid','Propina',$3,$4,$5)`,
+      [userId, job.client_id, payMethod, extra, jobId],
     );
   }
   return { ok: true, collected: usedCredit >= amount && amount > 0, skipped: false, usedCredit };
@@ -1760,6 +1966,7 @@ export const completeJob = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ context, data }) => {
+    const sql = await getSql();
     const settlement = data.settlement ?? (data.collectNow ? "paid" : "owe");
     const result = await markJobDone(
       context.userId,
@@ -1772,6 +1979,11 @@ export const completeJob = createServerFn({ method: "POST" })
     );
     if (!result.ok) return { ok: false as const };
     if (!result.skipped) {
+      const owner = await sql.query<{ client_id: number }>(
+        `select client_id from jobs where user_id = $1 and id = $2`,
+        [context.userId, data.id],
+      );
+      if (owner[0]) await maybeAutoArchiveOneTime(context.userId, intId(owner[0].client_id));
       await ensureScheduleForUser(context.userId);
       await snapshotBackup(context.userId).catch(() => undefined);
     }
@@ -1793,10 +2005,19 @@ export const completeTodayJobs = createServerFn({ method: "POST" })
       [context.userId, today],
     );
     let done = 0;
+    const touchedClients = new Set<number>();
     for (const row of rows) {
       const res = await markJobDone(context.userId, row.id, "auto");
-      if (res.ok && !res.skipped) done += 1;
+      if (res.ok && !res.skipped) {
+        done += 1;
+        const owner = await sql.query<{ client_id: number }>(
+          `select client_id from jobs where user_id = $1 and id = $2`,
+          [context.userId, row.id],
+        );
+        if (owner[0]) touchedClients.add(intId(owner[0].client_id));
+      }
     }
+    for (const cid of touchedClients) await maybeAutoArchiveOneTime(context.userId, cid);
     await ensureScheduleForUser(context.userId);
     await snapshotBackup(context.userId).catch(() => undefined);
     return { ok: true as const, count: done };
@@ -1811,10 +2032,11 @@ export const reopenJob = createServerFn({ method: "POST" })
       client_id: number;
       amount: unknown;
       status: string;
+      kind: string;
       completed_at: unknown;
       notes: string | null;
     }>(
-      `select client_id, amount, status, completed_at, notes from jobs
+      `select client_id, amount, status, kind, completed_at, notes from jobs
         where user_id = $1 and id = $2`,
       [context.userId, data.id],
     );
@@ -1822,93 +2044,146 @@ export const reopenJob = createServerFn({ method: "POST" })
     if (!job || job.status !== "done") return { ok: false as const };
     const amount = money(job.amount);
     const notes = job.notes ?? "";
-    const pays = await sql.query<{ id: number }>(
-      `select id from payments
-        where user_id = $1 and client_id = $2 and kind = 'paid'
-          and amount = $3 and note in ('Pago el mismo día', 'Pago de este corte')
-        order by paid_at desc, id desc
-        limit 1`,
-      [context.userId, job.client_id, amount],
+    // Movimiento 3 (hallazgo 12): primero el ENLACE. Si este trabajo tiene pagos
+    // con job_id (todo pago nacido de un trabajo desde la migración 0026), reabrir
+    // revierte ESOS pagos por su id — nunca otro del mismo monto. La caza vieja por
+    // monto+nota queda SOLO para pagos legacy sin job_id (historial anterior).
+    const linked = await sql.query<{ id: number; amount: unknown; kind: string; note: string | null }>(
+      `select id, amount, kind, note from payments
+        where user_id = $1 and client_id = $2 and job_id = $3
+        order by id asc`,
+      [context.userId, job.client_id, data.id],
     );
-    // Jobs carry a Hecho:* tag. Untagged (older) jobs count as paid only when a 'Pago de este corte'
-    // payment of the same amount was made at/after this job's completion on the same local day;
-    // a job that used credit (Adelanto:) never does, so its credit is given back below.
-    const tagged = notes.includes("Hecho:");
-    let legacyPay: { id: number } | undefined;
-    if (!tagged && !notes.includes("Adelanto:") && job.completed_at && amount > 0) {
-      const legacy = await sql.query<{ id: number }>(
-        `select p.id from payments p, jobs j
-          where p.user_id = $1 and p.client_id = $2 and p.kind = 'paid'
-            and p.amount = $3 and p.note in ('Pago el mismo día', 'Pago de este corte')
-            and j.user_id = $1 and j.id = $4 and j.completed_at is not null
-            and p.paid_at >= j.completed_at
-            and (p.paid_at at time zone $5)::date = (j.completed_at at time zone $5)::date
-          order by p.paid_at asc, p.id asc
-          limit 1`,
-        [context.userId, job.client_id, amount, data.id, APP_TZ],
-      );
-      legacyPay = legacy[0];
-    }
-    if (notes.includes("Hecho:paid") || legacyPay) {
-      const target = notes.includes("Hecho:paid") ? pays[0] : legacyPay;
-      if (target) {
-        await sql.query(`delete from payments where user_id = $1 and id = $2`, [
-          context.userId,
-          target.id,
-        ]);
-      }
+    const linkedPaidMain = linked.find(
+      (p) => p.kind === "paid" && (p.note === "Pago de este corte" || p.note === "Pago de este trabajo"),
+    );
+    const linkedAbonos = linked.filter(
+      (p) => p.note === "Abono al marcar hecho" && (p.kind === "paid" || p.kind === "prepaid"),
+    );
+    let paidReversed = false;
+    if (linkedPaidMain) {
+      // Cobrado al hacerse: borrar su pago enlazado basta — nunca entró a la deuda.
+      // (Una propina enlazada queda: sigue siendo de este trabajo si se rehace.)
+      await sql.query(`delete from payments where user_id = $1 and id = $2`, [
+        context.userId,
+        linkedPaidMain.id,
+      ]);
+      paidReversed = true;
     } else {
-      if (notes.includes("Hecho:abono")) {
-        const recent = await sql.query<{ id: number; amount: unknown; kind: string }>(
-          `select id, amount, kind from payments
-            where user_id = $1 and client_id = $2 and note = 'Abono al marcar hecho'
-            order by paid_at desc, id desc
-            limit 2`,
-          [context.userId, job.client_id],
-        );
-        // One abono is at most two rows (debt + credit) summing to the tagged amount; never take an older job's row.
-        const tag = /Hecho:abono:([\d.]+)/.exec(notes);
-        const target = tag ? money(tag[1]) : Infinity;
-        const abonos: typeof recent = [];
-        let sum = 0;
-        for (const p of recent) {
-          if (sum >= target - 0.001) break;
-          abonos.push(p);
-          sum = Math.round((sum + money(p.amount)) * 100) / 100;
-        }
-        for (const p of abonos) {
-          const paid = money(p.amount);
+      let abonoReversed = false;
+      if (linkedAbonos.length) {
+        for (const p of linkedAbonos) {
+          const paidAmt = money(p.amount);
           if (p.kind === "prepaid") {
             await sql.query(
               `update clients set credit = greatest(credit - $3, 0) where user_id = $1 and id = $2`,
-              [context.userId, job.client_id, paid],
+              [context.userId, job.client_id, paidAmt],
             );
-          } else if (p.kind === "paid") {
+          } else {
             await sql.query(`update clients set balance = balance + $3 where user_id = $1 and id = $2`, [
               context.userId,
               job.client_id,
-              paid,
+              paidAmt,
             ]);
           }
           await sql.query(`delete from payments where user_id = $1 and id = $2`, [context.userId, p.id]);
         }
+        abonoReversed = true;
       }
-      const m = /Adelanto:([\d.]+)/.exec(notes);
-      const used = m ? money(m[1]) : 0;
-      if (used > 0) {
-        const rest = Math.max(0, Math.round((amount - used) * 100) / 100);
-        await sql.query(
-          `update clients
-              set credit = credit + $3,
-                  balance = greatest(balance - $4, 0)
-            where user_id = $1 and id = $2`,
-          [context.userId, job.client_id, used, rest],
-        );
-      } else if (amount > 0) {
-        await sql.query(
-          `update clients set balance = greatest(balance - $3, 0) where user_id = $1 and id = $2`,
+      if (!abonoReversed) {
+        // — Caza legacy (sin job_id): el comportamiento anterior, intacto. —
+        const pays = await sql.query<{ id: number }>(
+          `select id from payments
+            where user_id = $1 and client_id = $2 and kind = 'paid' and job_id is null
+              and amount = $3 and note in ('Pago el mismo día', 'Pago de este corte')
+            order by paid_at desc, id desc
+            limit 1`,
           [context.userId, job.client_id, amount],
         );
+        // Jobs carry a Hecho:* tag. Untagged (older) jobs count as paid only when a 'Pago de este corte'
+        // payment of the same amount was made at/after this job's completion on the same local day;
+        // a job that used credit (Adelanto:) never does, so its credit is given back below.
+        // Un extra nacido-hecho en addExtraJob nunca pasa por esa caza: su dinero vive
+        // solo en balance/credit (o en su pago enlazado 'Pago de este trabajo').
+        const tagged = notes.includes("Hecho:");
+        let legacyPay: { id: number } | undefined;
+        if (job.kind !== "extra" && !tagged && !notes.includes("Adelanto:") && job.completed_at && amount > 0) {
+          const legacy = await sql.query<{ id: number }>(
+            `select p.id from payments p, jobs j
+              where p.user_id = $1 and p.client_id = $2 and p.kind = 'paid' and p.job_id is null
+                and p.amount = $3 and p.note in ('Pago el mismo día', 'Pago de este corte')
+                and j.user_id = $1 and j.id = $4 and j.completed_at is not null
+                and p.paid_at >= j.completed_at
+                and (p.paid_at at time zone $5)::date = (j.completed_at at time zone $5)::date
+              order by p.paid_at asc, p.id asc
+              limit 1`,
+            [context.userId, job.client_id, amount, data.id, APP_TZ],
+          );
+          legacyPay = legacy[0];
+        }
+        if (notes.includes("Hecho:paid") || legacyPay) {
+          const target = notes.includes("Hecho:paid") ? pays[0] : legacyPay;
+          if (target) {
+            await sql.query(`delete from payments where user_id = $1 and id = $2`, [
+              context.userId,
+              target.id,
+            ]);
+          }
+          paidReversed = true;
+        } else if (notes.includes("Hecho:abono")) {
+          const recent = await sql.query<{ id: number; amount: unknown; kind: string }>(
+            `select id, amount, kind from payments
+              where user_id = $1 and client_id = $2 and note = 'Abono al marcar hecho' and job_id is null
+              order by paid_at desc, id desc
+              limit 2`,
+            [context.userId, job.client_id],
+          );
+          // One abono is at most two rows (debt + credit) summing to the tagged amount; never take an older job's row.
+          const tag = /Hecho:abono:([\d.]+)/.exec(notes);
+          const target = tag ? money(tag[1]) : Infinity;
+          const abonos: typeof recent = [];
+          let sum = 0;
+          for (const p of recent) {
+            if (sum >= target - 0.001) break;
+            abonos.push(p);
+            sum = Math.round((sum + money(p.amount)) * 100) / 100;
+          }
+          for (const p of abonos) {
+            const paid = money(p.amount);
+            if (p.kind === "prepaid") {
+              await sql.query(
+                `update clients set credit = greatest(credit - $3, 0) where user_id = $1 and id = $2`,
+                [context.userId, job.client_id, paid],
+              );
+            } else if (p.kind === "paid") {
+              await sql.query(`update clients set balance = balance + $3 where user_id = $1 and id = $2`, [
+                context.userId,
+                job.client_id,
+                paid,
+              ]);
+            }
+            await sql.query(`delete from payments where user_id = $1 and id = $2`, [context.userId, p.id]);
+          }
+        }
+      }
+      if (!paidReversed) {
+        const m = /Adelanto:([\d.]+)/.exec(notes);
+        const used = m ? money(m[1]) : 0;
+        if (used > 0) {
+          const rest = Math.max(0, Math.round((amount - used) * 100) / 100);
+          await sql.query(
+            `update clients
+                set credit = credit + $3,
+                    balance = greatest(balance - $4, 0)
+              where user_id = $1 and id = $2`,
+            [context.userId, job.client_id, used, rest],
+          );
+        } else if (amount > 0) {
+          await sql.query(
+            `update clients set balance = greatest(balance - $3, 0) where user_id = $1 and id = $2`,
+            [context.userId, job.client_id, amount],
+          );
+        }
       }
     }
     await sql.query(
@@ -1928,12 +2203,17 @@ export const cancelJob = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     // 1.4.65: Posponer with the reason Cancelado lands here and keeps that reason
+    const owner = await sql.query<{ client_id: number }>(
+      `select client_id from jobs where user_id = $1 and id = $2`,
+      [context.userId, data.id],
+    );
     await sql.query(
       `update jobs set status = 'cancelled',
               postpone_reason = case when $3 = '' then postpone_reason else $3 end
         where user_id = $1 and id = $2 and status = 'pending'`,
       [context.userId, data.id, data.reason],
     );
+    if (owner[0]) await maybeAutoArchiveOneTime(context.userId, intId(owner[0].client_id));
     return { ok: true };
   });
 
@@ -1999,16 +2279,44 @@ export const addExtraJob = createServerFn({ method: "POST" })
         [context.userId, data.clientId],
       );
       const credit = money(cred[0]?.credit);
-      if (credit >= data.amount) {
+      // Hallazgo 7: un extra nacido-hecho respeta pay_same_day igual que markJobDone:
+      // si cobra el mismo día, nace cobrado (pago 'paid'), no deuda que daña su fiabilidad.
+      if (cred[0]?.pay_same_day && data.amount > 0) {
+        // Movimiento 3 (hallazgo 12): este pago también nace de un trabajo — enlazado.
+        await sql.query(
+          `insert into payments (user_id, client_id, amount, kind, note, method, job_id)
+           values ($1,$2,$3,'paid','Pago de este trabajo',null,$4)`,
+          [context.userId, data.clientId, data.amount, intId(inserted[0]?.id)],
+        );
+        await sql.query(`update jobs set notes = 'Hecho:paid' where user_id = $1 and id = $2`, [
+          context.userId,
+          intId(inserted[0]?.id),
+        ]);
+      } else if (credit >= data.amount) {
         await sql.query(`update clients set credit = credit - $3 where user_id = $1 and id = $2`, [
           context.userId,
           data.clientId,
           data.amount,
         ]);
+        // Movimiento 3: el crédito consumido por un extra nacido-hecho queda anotado
+        // (Adelanto:, tras la nota del usuario si la hay) igual que en markJobDone —
+        // sin esto, reabrirlo no sabía cuánto crédito devolver.
+        if (data.amount > 0) {
+          await sql.query(
+            `update jobs set notes = case when notes is null or notes = '' then $3 else notes || chr(10) || $3 end
+              where user_id = $1 and id = $2`,
+            [context.userId, intId(inserted[0]?.id), `Adelanto:${data.amount}`],
+          );
+        }
       } else if (credit > 0) {
         await sql.query(
           `update clients set credit = 0, balance = balance + $3 where user_id = $1 and id = $2`,
           [context.userId, data.clientId, Math.round((data.amount - credit) * 100) / 100],
+        );
+        await sql.query(
+          `update jobs set notes = case when notes is null or notes = '' then $3 else notes || chr(10) || $3 end
+            where user_id = $1 and id = $2`,
+          [context.userId, intId(inserted[0]?.id), `Adelanto:${credit}`],
         );
       } else {
         await sql.query(`update clients set balance = balance + $3 where user_id = $1 and id = $2`, [
@@ -2046,16 +2354,24 @@ export const recordPayment = createServerFn({ method: "POST" })
     const credit = money(client.credit);
     const payMethod = data.method.trim().slice(0, 40) || null;
     if (data.kind === "waived") {
-      await sql.query(
-        `insert into payments (user_id, client_id, amount, kind, note, method) values ($1,$2,$3,'waived',$4,$5)`,
-        [context.userId, data.clientId, balance, data.note.trim() || null, null],
+      // Hallazgo 1: el perdón acepta monto (parcial: el resto queda debiendo) y DEVUELVE
+      // el id del pago, para que Deshacer funcione igual que con un pago normal
+      // (undoPayment ya sabía revertir un 'waived'; solo faltaba poder alcanzarlo).
+      const waiveAmount =
+        data.amount != null ? Math.min(money(data.amount), balance) : balance;
+      if (waiveAmount <= 0) return { ok: false as const, paymentIds: [] as number[] };
+      const ins = await sql.query<{ id: number }>(
+        `insert into payments (user_id, client_id, amount, kind, note, method) values ($1,$2,$3,'waived',$4,$5) returning id`,
+        [context.userId, data.clientId, waiveAmount, data.note.trim() || null, null],
       );
-      await sql.query(`update clients set balance = 0 where user_id = $1 and id = $2`, [
+      await sql.query(`update clients set balance = $3 where user_id = $1 and id = $2`, [
         context.userId,
         data.clientId,
+        Math.round((balance - waiveAmount) * 100) / 100,
       ]);
+      await maybeAutoArchiveOneTime(context.userId, data.clientId);
       await snapshotBackup(context.userId).catch(() => undefined);
-      return { ok: true as const, paymentIds: [] as number[] };
+      return { ok: true as const, paymentIds: [intId(ins[0]?.id)] };
     }
     const amount = money(data.amount ?? (data.kind === "paid" ? balance : 0));
     const tip = money(data.tip ?? 0);
@@ -2105,6 +2421,7 @@ export const recordPayment = createServerFn({ method: "POST" })
         where user_id = $1 and id = $2`,
       [context.userId, data.clientId, Math.max(0, balance - toDebt), credit + leftover],
     );
+    await maybeAutoArchiveOneTime(context.userId, data.clientId);
     await snapshotBackup(context.userId).catch(() => undefined);
     return { ok: true as const, paymentIds: ids };
   });
@@ -2159,6 +2476,10 @@ export const recordPaymentsBulk = createServerFn({ method: "POST" })
     const sql = await getSql();
     let count = 0;
     let total = 0;
+    // Hallazgo 1 (grupo): también devuelve los ids creados (máx. 40 clientes × 1 pago);
+    // undoPayment acepta hasta 8 por llamada, así que el Deshacer del grupo se hace por
+    // tandas desde la UI con estos ids.
+    const paymentIds: number[] = [];
     for (const clientId of data.clientIds) {
       const rows = await sql.query<{ balance: unknown }>(
         `select balance from clients where user_id = $1 and id = $2`,
@@ -2168,19 +2489,21 @@ export const recordPaymentsBulk = createServerFn({ method: "POST" })
       if (!client) continue;
       const balance = money(client.balance);
       if (balance <= 0) continue;
-      await sql.query(
-        `insert into payments (user_id, client_id, amount, kind, note) values ($1,$2,$3,$4,$5)`,
+      const ins = await sql.query<{ id: number }>(
+        `insert into payments (user_id, client_id, amount, kind, note) values ($1,$2,$3,$4,$5) returning id`,
         [context.userId, clientId, balance, data.kind, null],
       );
+      paymentIds.push(intId(ins[0]?.id));
       await sql.query(`update clients set balance = 0 where user_id = $1 and id = $2`, [
         context.userId,
         clientId,
       ]);
+      if (data.kind === "waived") await maybeAutoArchiveOneTime(context.userId, clientId);
       count += 1;
       total += balance;
     }
     await snapshotBackup(context.userId).catch(() => undefined);
-    return { ok: true as const, count, total };
+    return { ok: true as const, count, total, paymentIds };
   });
 
 export const upsertDayGoal = createServerFn({ method: "POST" })
@@ -2341,9 +2664,16 @@ export const listBalances = createServerFn({ method: "GET" })
       cuts_week: unknown;
       cuts_month: unknown;
       cuts_year: unknown;
+      payments_paid_year: unknown;
+      waived_month_n: unknown;
     }>(
       `select
-         (select coalesce(sum(balance),0) from clients where user_id = $1) as outstanding,
+         (select count(*) from payments
+           where user_id = $1 and kind = 'paid' and not (coalesce(note,'') = 'Propina' and amount = 0)
+             and paid_at >= $6::date and paid_at < ($7::date + interval '1 day')) as payments_paid_year,
+         (select count(*) from payments
+           where user_id = $1 and kind = 'waived' and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')) as waived_month_n,
+         (select coalesce(sum(balance),0) from clients where user_id = $1 and is_active = true and blacklisted = false) as outstanding,
          (select coalesce(sum(amount),0) from payments
            where user_id = $1 and kind in ('paid','prepaid') and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')) as collected_month,
          (select coalesce(sum(amount),0) from payments
@@ -2441,6 +2771,13 @@ export const listBalances = createServerFn({ method: "GET" })
         cutsWeek: intId(t?.cuts_week),
         cutsMonth: intId(t?.cuts_month),
         cutsYear: intId(t?.cuts_year),
+      },
+      // Movimiento 3 (hallazgo 20): totales reales de las listas que cortan en
+      // 2500/año, para que Cobros enseñe «+N más» en vez de cortar en silencio.
+      // doneYear reutiliza totals.cutsYear (el conteo exacto de hechos del año).
+      counts: {
+        paidYear: intId(t?.payments_paid_year),
+        waivedMonth: intId(t?.waived_month_n),
       },
       payments: payments.map((p) => ({
         id: intId(p.id),
@@ -2756,7 +3093,9 @@ export const updateSettings = createServerFn({ method: "POST" })
       `update app_settings set ${sets.join(", ")} where user_id = $1`,
       params,
     );
-    if (data.excludedWeekdays !== undefined || data.horizonMonths !== undefined || data.seasonEvery !== undefined || data.seasonStart !== undefined) {
+    // Hallazgo 11: seasonEnd también dispara la regeneración (antes editar SOLO el fin
+    // de temporada no hacía nada hasta que otro cambio regenerara la agenda).
+    if (data.excludedWeekdays !== undefined || data.horizonMonths !== undefined || data.seasonEvery !== undefined || data.seasonStart !== undefined || data.seasonEnd !== undefined) {
       await ensureScheduleForUser(context.userId);
     }
     return { ok: true as const };
@@ -2780,10 +3119,12 @@ export const listBackups = createServerFn({ method: "GET" })
       created_at: unknown;
       client_count: unknown;
       job_count: unknown;
+      source: string | null;
     }>(
       `select id, created_at,
               case when jsonb_typeof(payload->'clients') = 'array' then jsonb_array_length(payload->'clients') else 0 end as client_count,
-              case when jsonb_typeof(payload->'jobs') = 'array' then jsonb_array_length(payload->'jobs') else 0 end as job_count
+              case when jsonb_typeof(payload->'jobs') = 'array' then jsonb_array_length(payload->'jobs') else 0 end as job_count,
+              payload->>'source' as source
          from backups where user_id = $1
         order by created_at desc, id desc limit 12`,
       [context.userId],
@@ -2793,6 +3134,11 @@ export const listBackups = createServerFn({ method: "GET" })
       createdAt: asIsoStamp(r.created_at),
       clientCount: intId(r.client_count),
       jobCount: intId(r.job_count),
+      // MOVIMIENTO 2 (hallazgo 16): a sync conflict already saves BOTH versions here —
+      // this device's via the snapshot path and the cloud's via keepCloudCopy, which
+      // stamps source:"cloud". Labelling it makes the losing version findable and
+      // restorable from this same list, instead of an anonymous row among copies.
+      source: r.source === "cloud" ? ("cloud" as const) : null,
     }));
   });
 
@@ -2801,6 +3147,71 @@ export const saveBackupNow = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await snapshotBackup(context.userId, true);
     return { ok: true as const, at: new Date().toISOString() };
+  });
+
+// MOVIMIENTO 3 (auditoría 2026-11-08, hallazgo 13) — EL NÚMERO: el peso total de la
+// tabla de respaldos del usuario, el indicador adelantado de los tres colapsos.
+// Una sola lectura agregada dentro de Postgres (sum de pg_column_size del payload
+// jsonb); con la tabla vacía devuelve 0 copias / 0 bytes, nunca un error.
+export const getBackupWeight = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<BackupWeight> => {
+    const sql = await getSql();
+    const rows = await sql.query<{ n: unknown; bytes: unknown }>(
+      `select count(*) as n, coalesce(sum(pg_column_size(payload)), 0) as bytes
+         from backups where user_id = $1`,
+      [context.userId],
+    );
+    return { count: intId(rows[0]?.n), bytes: Math.max(0, Math.round(Number(rows[0]?.bytes) || 0)) };
+  });
+
+// MOVIMIENTO 3 (hallazgo 12) — reconciliación del saldo de un cliente: recomputa
+// el NETO derivable (balance − credit) desde su libro con la fórmula de
+// src/lib/balance-reconcile.ts y lo compara con el neto guardado. El reparto
+// balance/credit por separado NO es derivable (depende del crédito usado en cada
+// visita) y se toma como base declarada. Esto SOLO LEE: nunca reescribe el saldo;
+// la deriva se muestra como aviso y la corrección queda en manos del usuario.
+async function reconcileClient(userId: string, clientId: number): Promise<ClientReconcile | null> {
+  const sql = await getSql();
+  const rows = await sql.query<{
+    balance: unknown;
+    credit: unknown;
+    opening: unknown;
+    done: unknown;
+    paid: unknown;
+    waived: unknown;
+    prepaid: unknown;
+  }>(
+    `select c.balance, c.credit,
+       (select coalesce(sum(p.amount),0) from payments p where p.user_id = $1 and p.client_id = $2 and p.kind = 'opening') as opening,
+       (select coalesce(sum(j.amount),0) from jobs j where j.user_id = $1 and j.client_id = $2 and j.status = 'done') as done,
+       (select coalesce(sum(p.amount),0) from payments p where p.user_id = $1 and p.client_id = $2 and p.kind = 'paid') as paid,
+       (select coalesce(sum(p.amount),0) from payments p where p.user_id = $1 and p.client_id = $2 and p.kind = 'waived') as waived,
+       (select coalesce(sum(p.amount),0) from payments p where p.user_id = $1 and p.client_id = $2 and p.kind = 'prepaid') as prepaid
+     from clients c where c.user_id = $1 and c.id = $2`,
+    [userId, clientId],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  const r = reconcileBalance({
+    balance: money(row.balance),
+    credit: money(row.credit),
+    opening: money(row.opening),
+    done: money(row.done),
+    paid: money(row.paid),
+    waived: money(row.waived),
+    prepaid: money(row.prepaid),
+  });
+  return { drift: r.drift, storedNet: r.storedNet, expectedNet: r.expectedNet };
+}
+
+/** La ficha pide esto junto a sus datos: null = sin deriva (o cliente inexistente). */
+export const getClientReconcile = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((data: unknown) => z.object({ id: z.coerce.number().int() }).parse(data))
+  .handler(async ({ context, data }): Promise<ClientReconcile | null> => {
+    const r = await reconcileClient(context.userId, data.id);
+    return r && r.drift !== 0 ? r : null;
   });
 
 type BackupPayload = {
@@ -2863,11 +3274,13 @@ function strField(row: Record<string, unknown>, ...keys: string[]): string | nul
 }
 
 // Restores rows exactly as the backup holds them (every column the table has), in bulk.
+// MOVIMIENTO 2 (hallazgo 18): every restore helper takes the transaction's Sql handle
+// when applyBackup runs inside withTransaction, so the whole restore is one transaction.
 const tableColsCache = new Map<string, string[]>();
-async function tableColumns(table: string): Promise<string[]> {
+async function tableColumns(table: string, txSql?: Sql): Promise<string[]> {
   const hit = tableColsCache.get(table);
   if (hit) return hit;
-  const sql = await getSql();
+  const sql = txSql ?? (await getSql());
   const rows = await sql.query<{ column_name: string }>(
     `select column_name from information_schema.columns where table_schema = 'public' and table_name = $1`,
     [table],
@@ -2877,10 +3290,10 @@ async function tableColumns(table: string): Promise<string[]> {
   return cols;
 }
 
-async function bulkRestore(table: "jobs" | "payments", rows: Record<string, unknown>[]): Promise<void> {
+async function bulkRestore(table: "jobs" | "payments", rows: Record<string, unknown>[], txSql?: Sql): Promise<void> {
   if (!rows.length) return;
-  const sql = await getSql();
-  const tableCols = new Set(await tableColumns(table));
+  const sql = txSql ?? (await getSql());
+  const tableCols = new Set(await tableColumns(table, txSql));
   const keys = new Set<string>();
   for (const row of rows) for (const k of Object.keys(row)) keys.add(k);
   const cols = [...keys].filter((k) => k !== "id" && k !== "photo" && tableCols.has(k));
@@ -2894,9 +3307,9 @@ async function bulkRestore(table: "jobs" | "payments", rows: Record<string, unkn
   }
 }
 
-async function restoreClientExtras(clientId: number, row: Record<string, unknown>): Promise<void> {
-  const sql = await getSql();
-  const tableCols = new Set(await tableColumns("clients"));
+async function restoreClientExtras(clientId: number, row: Record<string, unknown>, txSql?: Sql): Promise<void> {
+  const sql = txSql ?? (await getSql());
+  const tableCols = new Set(await tableColumns("clients", txSql));
   const skip = new Set(["id", "user_id", "name", "balance", "credit", "rich_notes"]);
   const cols = Object.keys(row).filter((k) => tableCols.has(k) && !skip.has(k));
   if (!cols.length) return;
@@ -2908,8 +3321,28 @@ async function restoreClientExtras(clientId: number, row: Record<string, unknown
 }
 
 async function applyBackup(userId: string, payload: BackupPayload): Promise<{ clients: number; jobs: number }> {
-  const sql = await getSql();
+  // MOVIMIENTO 2 (hallazgo 19): backups never carry photos (see photos-flag.ts). While
+  // photos are off this never fires; the day they are enabled, a restore must refuse —
+  // loudly — rather than replace the tables and silently take the device's photos with it.
+  if (PHOTOS_ENABLED) {
+    const guardSql = await getSql();
+    const photoRows = await guardSql.query<{ n: unknown }>(
+      `select (select count(*) from client_photos where user_id = $1)
+            + (select count(*) from pad_photos where user_id = $1)
+            + (select count(*) from jobs where user_id = $1 and photo is not null) as n`,
+      [userId],
+    );
+    if (intId(photoRows[0]?.n) > 0) {
+      throw new Error("Esta copia no incluye las fotos y restaurarla las borraría de este equipo.");
+    }
+  }
   await snapshotBackup(userId, true);
+  // MOVIMIENTO 2 (hallazgo 18): the whole restore — deletes, clients, jobs, payments,
+  // pad and the v5 tables — runs in ONE transaction under the database lane, so a crash
+  // or a bad row midway rolls everything back and the book is never left half-restored.
+  // The safety copy above stays outside (it must survive a rolled-back restore), and the
+  // schedule top-up moves after the commit: it is regenerable, not restored data.
+  const counts = await withTransaction(async (sql) => {
   await sql.query(`delete from payments where user_id = $1`, [userId]);
   await sql.query(`delete from jobs where user_id = $1`, [userId]);
   await sql.query(`delete from clients where user_id = $1`, [userId]);
@@ -2955,7 +3388,7 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
     const newId = intId(inserted[0]?.id);
     if (oldId && newId) idMap.set(oldId, newId);
     // Brizna's own backups carry every column: keep paused/blocked flags, season, cue, dates, etc.
-    if (newId && "user_id" in row) await restoreClientExtras(newId, row);
+    if (newId && "user_id" in row) await restoreClientExtras(newId, row, sql);
     if (newId && (row.service_paused === true || row.servicePaused === true)) {
       await sql.query(`update clients set service_paused = true where user_id = $1 and id = $2`, [
         userId,
@@ -2971,32 +3404,33 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
       fullJobs
         .map((row) => ({ ...row, user_id: userId, client_id: idMap.get(intId(row.client_id)) }))
         .filter((row) => row.client_id),
+      sql,
     );
   }
-  for (const row of (payload.jobs ?? []).filter((r) => !("user_id" in r && "client_id" in r))) {
-    const clientId = idMap.get(intId(row.client_id ?? row.clientId));
-    if (!clientId) continue;
-    const status = row.status === "done" || row.status === "cancelled" ? String(row.status) : "pending";
-    const kind = row.kind === "extra" || row.kind === "one_time" ? String(row.kind) : "cut";
-    await sql.query(
-      `insert into jobs
-         (user_id, client_id, scheduled_date, status, kind, title, amount, notes, completed_at, arrival_time, sort_order)
-       values ($1,$2,$3::date,$4,$5,$6,$7,$8,$9,$10,$11)`,
-      [
-        userId,
-        clientId,
-        asIsoDate(row.scheduled_date ?? row.scheduledDate) || todayISO(),
-        status,
-        kind,
-        strField(row, "title"),
-        money(row.amount),
-        strField(row, "notes"),
-        row.completed_at ?? row.completedAt ?? null,
-        strField(row, "arrival_time", "arrivalTime"),
-        Number(row.sort_order ?? row.sortOrder) || 0,
-      ],
-    );
-  }
+  // Hallazgo 18: legacy rows (no user_id/client_id pair) are normalised to the same
+  // DB-shaped rows and go through the SAME bulk path, with exactly the field mapping
+  // and defaults the old row-by-row insert applied — no more thousands of single inserts.
+  const legacyJobRows = (payload.jobs ?? [])
+    .filter((r) => !("user_id" in r && "client_id" in r))
+    .map((row) => {
+      const clientId = idMap.get(intId(row.client_id ?? row.clientId));
+      if (!clientId) return null;
+      return {
+        user_id: userId,
+        client_id: clientId,
+        scheduled_date: asIsoDate(row.scheduled_date ?? row.scheduledDate) || todayISO(),
+        status: row.status === "done" || row.status === "cancelled" ? String(row.status) : "pending",
+        kind: row.kind === "extra" || row.kind === "one_time" ? String(row.kind) : "cut",
+        title: strField(row, "title"),
+        amount: money(row.amount),
+        notes: strField(row, "notes"),
+        completed_at: row.completed_at ?? row.completedAt ?? null,
+        arrival_time: strField(row, "arrival_time", "arrivalTime"),
+        sort_order: Number(row.sort_order ?? row.sortOrder) || 0,
+      };
+    })
+    .filter((row) => row !== null);
+  if (legacyJobRows.length) await bulkRestore("jobs", legacyJobRows, sql);
 
   const fullPayments = (payload.payments ?? []).filter((row) => "user_id" in row && "client_id" in row);
   if (fullPayments.length) {
@@ -3006,26 +3440,28 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
       fullPayments
         .map((row) => ({ ...row, user_id: userId, client_id: idMap.get(intId(row.client_id)) }))
         .filter((row) => row.client_id),
+      sql,
     );
   }
-  for (const row of (payload.payments ?? []).filter((r) => !("user_id" in r && "client_id" in r))) {
-    const clientId = idMap.get(intId(row.client_id ?? row.clientId));
-    if (!clientId) continue;
-    await sql.query(
-      `insert into payments (user_id, client_id, amount, kind, note, paid_at)
-       values ($1,$2,$3,$4,$5,coalesce($6::timestamptz, now()))`,
-      [
-        userId,
-        clientId,
-        money(row.amount),
-        row.kind === "waived" ? "waived" : "paid",
-        strField(row, "note"),
-        row.paid_at ?? row.paidAt ?? null,
-      ],
-    );
-  }
+  const legacyPaymentRows = (payload.payments ?? [])
+    .filter((r) => !("user_id" in r && "client_id" in r))
+    .map((row) => {
+      const clientId = idMap.get(intId(row.client_id ?? row.clientId));
+      if (!clientId) return null;
+      return {
+        user_id: userId,
+        client_id: clientId,
+        amount: money(row.amount),
+        kind: row.kind === "waived" ? "waived" : "paid",
+        note: strField(row, "note"),
+        // The old insert used coalesce(paid_at, now()): a legacy row without a date
+        // is stamped at restore time, never left null in bulk.
+        paid_at: row.paid_at ?? row.paidAt ?? new Date().toISOString(),
+      };
+    })
+    .filter((row) => row !== null);
+  if (legacyPaymentRows.length) await bulkRestore("payments", legacyPaymentRows, sql);
 
-  await ensureScheduleForUser(userId);
   if (payload.padNotes != null) {
     await sql.query(
       `insert into pad_notes (user_id, body, updated_at) values ($1, $2, now())
@@ -3093,15 +3529,18 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
       );
     }
   }
-  await restoreV5Tables(userId, payload, idMap, pageMap);
+  await restoreV5Tables(userId, payload, idMap, pageMap, sql);
   return { clients: payload.clients?.length ?? 0, jobs: payload.jobs?.length ?? 0 };
+  });
+  await ensureScheduleForUser(userId);
+  return counts;
 }
 
 // Rows as the copy holds them, only the columns this table has (a missing column takes its default).
-async function insertRows(table: string, rows: Record<string, unknown>[], dropId: boolean): Promise<void> {
+async function insertRows(table: string, rows: Record<string, unknown>[], dropId: boolean, txSql?: Sql): Promise<void> {
   if (!rows.length) return;
-  const sql = await getSql();
-  const tableCols = new Set(await tableColumns(table));
+  const sql = txSql ?? (await getSql());
+  const tableCols = new Set(await tableColumns(table, txSql));
   const keys = new Set<string>();
   for (const row of rows) for (const k of Object.keys(row)) keys.add(k);
   const cols = [...keys].filter((k) => tableCols.has(k) && !(dropId && k === "id"));
@@ -3121,10 +3560,11 @@ async function restoreV5Tables(
   payload: BackupPayload,
   idMap: Map<number, number>,
   pageMap: Map<number, number>,
+  txSql?: Sql,
 ): Promise<void> {
-  const sql = await getSql();
+  const sql = txSql ?? (await getSql());
   if (payload.settings) {
-    const tableCols = new Set(await tableColumns("app_settings"));
+    const tableCols = new Set(await tableColumns("app_settings", txSql));
     const cols = Object.keys(payload.settings).filter((k) => tableCols.has(k) && k !== "user_id" && k !== "last_backup_at");
     if (cols.length) {
       await sql.query(`insert into app_settings (user_id) values ($1) on conflict (user_id) do nothing`, [userId]);
@@ -3138,29 +3578,29 @@ async function restoreV5Tables(
   const mine = (rows: Record<string, unknown>[]): Record<string, unknown>[] => rows.map((row) => ({ ...row, user_id: userId }));
   if (payload.dayGoals) {
     await sql.query(`delete from day_goals where user_id = $1`, [userId]);
-    await insertRows("day_goals", mine(payload.dayGoals), false);
+    await insertRows("day_goals", mine(payload.dayGoals), false, txSql);
   }
   if (payload.dayNotes) {
     await sql.query(`delete from day_notes where user_id = $1`, [userId]);
-    await insertRows("day_notes", mine(payload.dayNotes), false);
+    await insertRows("day_notes", mine(payload.dayNotes), false, txSql);
   }
   if (payload.weekOff) {
     await sql.query(`delete from week_off_dates where user_id = $1`, [userId]);
-    await insertRows("week_off_dates", mine(payload.weekOff), false);
+    await insertRows("week_off_dates", mine(payload.weekOff), false, txSql);
   }
   if (payload.clientChanges) {
     // Clients were re-created above (cascade removed their old history); point rows at the new ids.
     const rows = mine(payload.clientChanges)
       .map((row) => ({ ...row, client_id: idMap.get(intId(row.client_id)) }))
       .filter((row) => row.client_id);
-    await insertRows("client_changes", rows, true);
+    await insertRows("client_changes", rows, true, txSql);
   }
   if (payload.padLinks && payload.padPages) {
     await sql.query(`delete from pad_links where user_id = $1`, [userId]);
     const rows = mine(payload.padLinks)
       .map((row) => ({ ...row, page_id: pageMap.get(intId(row.page_id)), client_id: idMap.get(intId(row.client_id)) }))
       .filter((row) => row.page_id && row.client_id);
-    await insertRows("pad_links", rows, true);
+    await insertRows("pad_links", rows, true, txSql);
   }
 }
 
@@ -3585,11 +4025,27 @@ export const bulkClients = createServerFn({ method: "POST" })
       .object({
         ids: z.array(z.coerce.number().int()).min(1).max(400),
         action: z.enum(["reactivate", "archive", "delete"]),
+        confirmMoney: z.boolean().optional().default(false),
       })
       .parse(data),
   )
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    if (data.action === "delete") {
+      // Hallazgo 3 (grupo): mismo candado que el borrado individual — con dinero o
+      // historial en cualquiera de los elegidos, hace falta la confirmación reforzada.
+      const guard = await sql.query<{ n: unknown }>(
+        `select count(*) as n from clients c
+          where c.user_id = $1 and c.id = any($2::int[])
+            and (c.balance > 0 or c.credit > 0
+                 or exists (select 1 from payments p where p.user_id = c.user_id and p.client_id = c.id)
+                 or exists (select 1 from jobs j where j.user_id = c.user_id and j.client_id = c.id))`,
+        [context.userId, data.ids],
+      );
+      if (intId(guard[0]?.n) > 0 && !data.confirmMoney) {
+        return { ok: false as const, needsConfirm: true as const, count: 0 };
+      }
+    }
     await snapshotBackup(context.userId, true).catch(() => undefined);
     if (data.action === "delete") {
       await sql.query(`delete from clients where user_id = $1 and id = any($2::int[])`, [
@@ -3607,8 +4063,15 @@ export const bulkClients = createServerFn({ method: "POST" })
       [context.userId, data.ids, active],
     );
     if (!active) {
+      // Hallazgo 5 (grupo): archivar borra solo cortes; extras/únicos se cancelan a la vista.
       await sql.query(
-        `delete from jobs where user_id = $1 and client_id = any($2::int[]) and status = 'pending'`,
+        `delete from jobs where user_id = $1 and client_id = any($2::int[]) and status = 'pending' and kind = 'cut'`,
+        [context.userId, data.ids],
+      );
+      await sql.query(
+        `update jobs set status = 'cancelled',
+                postpone_reason = coalesce(nullif(postpone_reason, ''), 'Cliente archivado')
+          where user_id = $1 and client_id = any($2::int[]) and status = 'pending' and kind <> 'cut'`,
         [context.userId, data.ids],
       );
     }
@@ -4373,11 +4836,43 @@ export const restoreClientChange = createServerFn({ method: "POST" })
       sets.push(`${col} = $${i++}`);
       params.push(snap[key]);
     }
+    const kindBefore = await sql.query<{ kind: string }>(
+      `select kind from clients where user_id = $1 and id = $2`,
+      [context.userId, data.clientId],
+    );
     if (sets.length) {
       await sql.query(
         `update clients set ${sets.join(", ")} where user_id = $1 and id = $2`,
         params,
       );
+    }
+    // Hallazgo 4: restaurar un cambio de tipo reconcilia los trabajos igual que editar.
+    const restoredKind = typeof snap.kind === "string" ? snap.kind : null;
+    if (restoredKind && kindBefore[0] && kindBefore[0].kind !== restoredKind) {
+      if (restoredKind === "one_time") {
+        await sql.query(
+          `delete from jobs
+            where user_id = $1 and client_id = $2 and kind = 'cut' and status = 'pending'`,
+          [context.userId, data.clientId],
+        );
+        await sql.query(
+          `insert into jobs (user_id, client_id, scheduled_date, status, kind, title, amount)
+           select $1, $2, $3::date, 'pending', 'one_time', 'Trabajo único',
+                  (select price_per_cut from clients where user_id = $1 and id = $2)
+            where not exists (
+              select 1 from jobs
+               where user_id = $1 and client_id = $2 and kind = 'one_time' and status = 'pending'
+            )`,
+          [context.userId, data.clientId, todayISO()],
+        );
+      } else {
+        await sql.query(
+          `update jobs set status = 'cancelled',
+                  postpone_reason = coalesce(nullif(postpone_reason, ''), 'Pasó a cliente regular')
+            where user_id = $1 and client_id = $2 and kind = 'one_time' and status = 'pending'`,
+          [context.userId, data.clientId],
+        );
+      }
     }
     await logClientChange(context.userId, data.clientId, "Cambio restaurado", snap).catch(
       () => undefined,
@@ -4537,6 +5032,15 @@ export const setBlacklist = createServerFn({ method: "POST" })
           where user_id = $1 and client_id = $2 and status = 'pending' and scheduled_date >= $3::date`,
         [context.userId, data.id, todayISO()],
       );
+      // Hallazgo 9: los pendientes VENCIDOS también se resuelven — cancelados a la vista
+      // con su razón, para que no quede un trabajo zombi invisible que su ficha sigue
+      // contando como vencido mientras su deuda ya no entra en ningún total.
+      await sql.query(
+        `update jobs set status = 'cancelled',
+                postpone_reason = coalesce(nullif(postpone_reason, ''), 'Lista negra')
+          where user_id = $1 and client_id = $2 and status = 'pending' and scheduled_date < $3::date`,
+        [context.userId, data.id, todayISO()],
+      );
     } else {
       await ensureScheduleForUser(context.userId);
     }
@@ -4558,14 +5062,47 @@ export const setServicePaused = createServerFn({ method: "POST" })
     );
     if (!rows[0]) return { ok: false as const };
     if (data.paused) {
+      // Hallazgo 5: pausar borra solo los cortes generados; extras y trabajos de una
+      // vez se cancelan A LA VISTA (con razón), no se evaporan.
       await sql.query(
         `delete from jobs
-          where user_id = $1 and client_id = $2 and status = 'pending'`,
+          where user_id = $1 and client_id = $2 and status = 'pending' and kind = 'cut'`,
+        [context.userId, data.id],
+      );
+      await sql.query(
+        `update jobs set status = 'cancelled',
+                postpone_reason = coalesce(nullif(postpone_reason, ''), 'Servicio en pausa')
+          where user_id = $1 and client_id = $2 and status = 'pending' and kind <> 'cut'`,
         [context.userId, data.id],
       );
     } else {
       await ensureScheduleForUser(context.userId);
     }
+    await snapshotBackup(context.userId).catch(() => undefined);
+    return { ok: true as const };
+  });
+
+/**
+ * Hallazgo 2: «seguir atendiendo». Con keep_serving = true, la generación de agenda
+ * vuelve a sembrar visitas aunque el cliente esté en serio; al apagarlo, la próxima
+ * regeneración vuelve a congelarlo (las visitas ya sembradas no se borran: quedan
+ * como aviso en Hoy, como pide el informe).
+ */
+export const setKeepServing = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((data: unknown) =>
+    z.object({ id: z.coerce.number().int(), keepServing: z.boolean() }).parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const rows = await sql.query<{ id: number }>(
+      `update clients set keep_serving = $3
+        where user_id = $1 and id = $2
+        returning id`,
+      [context.userId, data.id, data.keepServing],
+    );
+    if (!rows[0]) return { ok: false as const };
+    if (data.keepServing) await ensureScheduleForUser(context.userId);
     await snapshotBackup(context.userId).catch(() => undefined);
     return { ok: true as const };
   });
@@ -5280,18 +5817,73 @@ export const adjustJobAmount = createServerFn({ method: "POST" })
       next,
     ]);
     if (job.status === "done" && delta !== 0) {
-      let balance = Math.round((money(job.balance) + delta) * 100) / 100;
-      let credit = money(job.credit);
-      if (balance < 0) {
-        credit = Math.round((credit + Math.abs(balance)) * 100) / 100;
-        balance = 0;
+      // Movimiento 3 (hallazgo 12) — DECISIÓN: si el trabajo ya se cobró el mismo
+      // día (tiene un pago 'paid' ENLAZADO por job_id, o su marca Hecho:paid con
+      // el pago legacy de su monto anterior), el delta ajusta ESE PAGO, no el
+      // saldo: subir el precio de un trabajo ya pagado no crea una deuda nueva
+      // de la nada, y bajarlo no fabrica crédito. Solo cuando el trabajo quedó
+      // en 'owe' (sin pago enlazado que lo cubra) el delta va al saldo, como
+      // antes. Sin pago identificable (legacy ambiguo) se mantiene el camino
+      // viejo del saldo, para no perder el ajuste.
+      const jobRow = await sql.query<{ notes: string | null }>(
+        `select notes from jobs where user_id = $1 and id = $2`,
+        [context.userId, data.id],
+      );
+      const notes = jobRow[0]?.notes ?? "";
+      let paidRow = (
+        await sql.query<{ id: number; amount: unknown }>(
+          `select id, amount from payments
+            where user_id = $1 and client_id = $2 and job_id = $3 and kind = 'paid'
+              and note in ('Pago de este corte', 'Pago de este trabajo')
+            order by id asc limit 1`,
+          [context.userId, job.client_id, data.id],
+        )
+      )[0];
+      if (!paidRow && notes.includes("Hecho:paid")) {
+        paidRow = (
+          await sql.query<{ id: number; amount: unknown }>(
+            `select id, amount from payments
+              where user_id = $1 and client_id = $2 and job_id is null and kind = 'paid'
+                and amount = $3 and note in ('Pago el mismo día', 'Pago de este corte', 'Pago de este trabajo')
+              order by paid_at desc, id desc limit 1`,
+            [context.userId, job.client_id, prev],
+          )
+        )[0];
       }
-      await sql.query(`update clients set balance = $3, credit = $4 where user_id = $1 and id = $2`, [
-        context.userId,
-        job.client_id,
-        balance,
-        credit,
-      ]);
+      if (paidRow) {
+        const paidNext = Math.round((money(paidRow.amount) + delta) * 100) / 100;
+        if (paidNext > 0) {
+          await sql.query(`update payments set amount = $3 where user_id = $1 and id = $2`, [
+            context.userId,
+            paidRow.id,
+            paidNext,
+          ]);
+        } else {
+          // El precio bajó a 0 (o el delta se comió el pago): el pago desaparece
+          // y el trabajo queda como hecho sin cobro, con su marca owe.
+          await sql.query(`delete from payments where user_id = $1 and id = $2`, [
+            context.userId,
+            paidRow.id,
+          ]);
+          await sql.query(
+            `update jobs set notes = 'Hecho:owe' where user_id = $1 and id = $2 and notes like '%Hecho:paid%'`,
+            [context.userId, data.id],
+          );
+        }
+      } else {
+        let balance = Math.round((money(job.balance) + delta) * 100) / 100;
+        let credit = money(job.credit);
+        if (balance < 0) {
+          credit = Math.round((credit + Math.abs(balance)) * 100) / 100;
+          balance = 0;
+        }
+        await sql.query(`update clients set balance = $3, credit = $4 where user_id = $1 and id = $2`, [
+          context.userId,
+          job.client_id,
+          balance,
+          credit,
+        ]);
+      }
     }
     return { ok: true as const };
   });
@@ -5785,7 +6377,7 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
     void owingIds;
     const outstandingRows = await sql.query<{ v: unknown; n: unknown }>(
       // Only what people owe: a negative balance (money ahead) must not shrink "Te deben".
-      `select coalesce(sum(balance) filter (where balance > 0),0) as v, count(*) filter (where balance > 0) as n from clients where user_id = $1`,
+      `select coalesce(sum(balance) filter (where balance > 0),0) as v, count(*) filter (where balance > 0) as n from clients where user_id = $1 and is_active = true and blacklisted = false`,
       [uid],
     );
 
@@ -6361,7 +6953,13 @@ export const getAdvisor = createServerFn({ method: "GET" })
     for (const p of people) {
       if (isLate(p)) { p.tip = "collect"; groups.get("morosos")!.push(p); continue; }
       if (p.reason) { p.tip = "call"; groups.get("riesgo")!.push(p); continue; }
-      if (p.kind === "one_time") { p.tip = "plan"; groups.get("ocasionales")!.push(p); continue; }
+      if (p.kind === "one_time") {
+        // Hallazgo 8: un one_time terminado hace más de 12 meses (sin trabajo en el
+        // último año y sin visita pendiente) ya no es un ocasional por convertir:
+        // el auto-archivo cubre los nuevos; esto cubre los datos viejos.
+        if (p.value12 <= 0 && !p.nextCut) continue;
+        p.tip = "plan"; groups.get("ocasionales")!.push(p); continue;
+      }
       if (starIds.has(p.id)) { p.tip = p.suggested ? "raise" : "thank"; groups.get("estrellas")!.push(p); continue; }
       p.tip = p.suggested ? "raise" : "keep";
       groups.get("fieles")!.push(p);
@@ -6697,7 +7295,7 @@ export const exportCenterData = createServerFn({ method: "GET" })
       `select business_name, vacation_start, vacation_end from app_settings where user_id = $1`,
       [uid],
     );
-    const clients = await loadClients(uid, today, "all");
+    const clients = await loadClients(uid, today, "all", { fullNotes: true });
     type JobSel = {
       id: unknown; client_id: unknown; scheduled_date: unknown; status: string; kind: string; title: string | null; amount: unknown;
       completed_at: unknown; postpone_reason: string | null; origin_date: unknown; arrival_time: string | null; notes: string | null; sort_order: unknown;
@@ -6904,7 +7502,8 @@ export const getNativePlan = createServerFn({ method: "GET" })
           [...riskIds],
         ])
       : [];
-    const owed = await sql.query<{ total: unknown }>(`select coalesce(sum(balance),0) as total from clients where user_id = $1`, [context.userId]);
+    // Hallazgo 9 (regla única): el widget suma solo clientes activos y no en lista negra.
+    const owed = await sql.query<{ total: unknown }>(`select coalesce(sum(balance),0) as total from clients where user_id = $1 and is_active = true and blacklisted = false`, [context.userId]);
     const debtorRows = await sql.query<{ name: string; balance: unknown }>(
       `select name, balance from clients
         where user_id = $1 and is_active = true and blacklisted = false and balance > 0

@@ -25,7 +25,7 @@ import { FREQ_SEP, formatDay, frequencyLabel, mapsHref, money, telHref, weekdayL
 import { MeshName, MeshNameUniform } from "@/components/mesh-name";
 import { meshFrame, viewGrid } from "@/lib/density";
 import { useTx } from "@/lib/i18n";
-import { bulkClients, deleteClient, getClientInventory, listClients, setClientActive } from "@/lib/server/lawn";
+import { bulkClients, deleteClient, getClientDeleteSummary, getClientInventory, listClients, setClientActive } from "@/lib/server/lawn";
 import type { ClientFilter, ClientRow, ClientSort } from "@/lib/types";
 import { useUndo } from "@/lib/undo";
 import { cn } from "@/lib/utils";
@@ -289,7 +289,8 @@ function ClientesPage() {
   }
 
   const bulk = useMutation({
-    mutationFn: (action: "reactivate" | "delete") => bulkClients({ data: { ids: picked, action } }),
+    mutationFn: (action: "reactivate" | "delete") =>
+      bulkClients({ data: { ids: picked, action, confirmMoney: action === "delete" } }),
     onSuccess: async (_, action) => {
       toast.success(
         action === "reactivate"
@@ -567,8 +568,8 @@ function ClientesPage() {
           `Delete ${picked.length} ${picked.length === 1 ? "client" : "clients"} forever?`,
         )}
         description={tx(
-          "Se borra el historial de cada uno. Esta acción no se puede deshacer. Antes se guarda una copia.",
-          "Each history is deleted. This cannot be undone. A copy is saved first.",
+          `Se borra el historial de cada uno — también lo que deben y lo que tengan a favor. Esta acción no se puede deshacer. Antes se guarda una copia.`,
+          `Each history is deleted — including what they owe and any advance they hold. This cannot be undone. A copy is saved first.`,
         )}
         confirmLabel={tx("Eliminar", "Delete")}
         danger
@@ -649,12 +650,18 @@ function ClientListCard({
     },
   });
   const remove = useMutation({
-    mutationFn: () => deleteClient({ data: { id: client.id } }),
+    mutationFn: () => deleteClient({ data: { id: client.id, confirmMoney: true } }),
     onSuccess: async () => {
       toast(tx("Cliente eliminado", "Client deleted"));
       setAskDel(false);
       await invalidateLawn(qc);
     },
+  });
+  // Hallazgo 3: desglose en voz alta en el diálogo de borrado.
+  const deleteSummaryQ = useQuery({
+    queryKey: ["client-delete-summary", client.id],
+    queryFn: () => getClientDeleteSummary({ data: { id: client.id } }),
+    enabled: askDel,
   });
 
   // 1.4.80 (Oscar): in Malla the late state is a bare tilted "!" sticker at the card's bottom-right corner, breaking
@@ -935,8 +942,8 @@ function ClientListCard({
         open={askOff}
         title={<>{tx("¿Pasar a archivos a ", "Move ")}<span className="bz-dialog-who"><span className="bz-dialog-name">{client.name}</span>{tx("?", " to the archive?")}</span></>}
         description={tx(
-          "Sale de la agenda. Queda guardado en Archivos con todos sus datos hasta que lo reactives o lo borres.",
-          "They leave the schedule. They stay saved in Archive with all their data until you bring them back or delete them.",
+          "Sale de la agenda. Queda guardado en Archivos con todos sus datos hasta que lo reactives o lo borres. Sus extras y trabajos de una vez pendientes se cancelan a la vista (quedan en el historial, no se borran).",
+          "They leave the schedule. They stay saved in Archive with all their data until you bring them back or delete them. Their pending extras and one-time jobs are cancelled in plain sight (they stay in the history, not deleted).",
         )}
         confirmLabel={tx("Mover a archivos", "Move to archive")}
         pending={deactivate.isPending}
@@ -955,10 +962,17 @@ function ClientListCard({
       <ConfirmDialog
         open={askDel}
         title={<>{tx("¿Eliminar a ", "Delete ")}<span className="bz-dialog-who"><span className="bz-dialog-name is-late">{client.name}</span>?</span></>}
-        description={tx(
-          "Se borra el cliente y todo su historial. Esta acción no se puede deshacer.",
-          "The client and their whole history are deleted. This cannot be undone.",
-        )}
+        description={
+          deleteSummaryQ.data
+            ? tx(
+                `Se borra el cliente y todo su historial. Esta acción no se puede deshacer. Debe ${money(deleteSummaryQ.data.balance)} · Tiene ${money(deleteSummaryQ.data.credit)} a favor · ${deleteSummaryQ.data.payments} pagos y ${deleteSummaryQ.data.jobs} visitas se borrarán.`,
+                `The client and their whole history are deleted. This cannot be undone. Owes ${money(deleteSummaryQ.data.balance)} · Has ${money(deleteSummaryQ.data.credit)} in advance · ${deleteSummaryQ.data.payments} payments and ${deleteSummaryQ.data.jobs} visits will be deleted.`,
+              )
+            : tx(
+                "Se borra el cliente y todo su historial. Esta acción no se puede deshacer.",
+                "The client and their whole history are deleted. This cannot be undone.",
+              )
+        }
         confirmLabel={tx("Eliminar", "Delete")}
         danger
         pending={remove.isPending}

@@ -26,6 +26,25 @@ export function withChecksum<T extends object>(body: T) {
   return { ...body, checksum: backupChecksum(canonicalJson(body)) };
 }
 
+/**
+ * MOVIMIENTO 2 (auditoría 2026-11-08, hallazgo 13): checksum of a backup's CONTENT only —
+ * everything except the fields that change on every copy even when nothing else did
+ * (`savedAt`, the copy's own checksums, and the settings row's `last_backup_at` /
+ * `updated_at` stamps, which snapshotBackup itself rewrites). Two copies with the same
+ * content checksum hold exactly the same book, so the newer one is pure churn: the
+ * snapshot path compares this against the newest stored copy and skips the insert.
+ */
+export function backupContentChecksum(body: unknown): string {
+  if (!body || typeof body !== "object") return backupChecksum(canonicalJson(body));
+  const { savedAt: _savedAt, checksum: _checksum, contentChecksum: _content, source: _source, ...rest } = body as Record<string, unknown>;
+  let settings = rest.settings;
+  if (settings && typeof settings === "object" && !Array.isArray(settings)) {
+    const { last_backup_at: _lba, updated_at: _ua, ...keep } = settings as Record<string, unknown>;
+    settings = keep;
+  }
+  return backupChecksum(canonicalJson({ ...rest, settings }));
+}
+
 export function checksumMatches(raw: Record<string, unknown>) {
   if (typeof raw.checksum !== "string") return true;
   const { checksum, ...rest } = raw;

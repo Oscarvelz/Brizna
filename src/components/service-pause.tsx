@@ -73,12 +73,12 @@ export function ServicePause({
         description={
           paused
             ? tx(
-                "Vuelve a la agenda automática. Un trabajo de una vez que estaba pendiente no se recupera solo.",
-                "They go back on the automatic schedule. A one-time job that was pending does not come back on its own.",
+                "Vuelve a la agenda automática. Los extras y trabajos de una vez que se cancelaron con la pausa no vuelven solos: quedan en el historial como cancelados.",
+                "They go back on the automatic schedule. Extras and one-time jobs cancelled with the pause do not come back on their own: they stay in the history as cancelled.",
               )
             : tx(
-                "No se le hará cortes ni trabajos hasta que decidas Continuar. Lo que debe se queda en Por cobrar y el caso queda en En espera.",
-                "No cuts or jobs until you choose to continue. What they owe stays in To collect and the case stays in Waiting.",
+                "No se le hará cortes ni trabajos hasta que decidas Continuar. Sus extras y trabajos de una vez pendientes se cancelan a la vista (quedan en el historial, no se borran). Lo que debe se queda en Por cobrar y el caso queda en En espera.",
+                "No cuts or jobs until you choose to continue. Their pending extras and one-time jobs are cancelled in plain sight (they stay in the history, not deleted). What they owe stays in To collect and the case stays in Waiting.",
               )
         }
         confirmLabel={paused ? tx("Sí, reanudar", "Yes, resume") : tx("Sí, pausar", "Yes, pause")}

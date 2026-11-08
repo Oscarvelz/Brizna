@@ -2,6 +2,7 @@
 // and saved in IndexedDB, so every screen works with no internet.
 import { PGlite } from "@electric-sql/pglite";
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
+import { setFlushFailed } from "@/lib/flush-state";
 import { warmPglite } from "./pg-warm";
 
 export type DbSource = "neon" | "pglite";
@@ -56,7 +57,13 @@ export function flushDb(): Promise<void> {
   if (flushTimer) { clearTimeout(flushTimer); flushTimer = 0; }
   needFlush = false;
   const sync = realSync;
-  const next = lane.then(() => sync()).catch((err) => { needFlush = true; console.warn("[brizna db] save", err); });
+  // MOVIMIENTO 2 (hallazgo 14): a failed save is no longer silent. The failure is
+  // published through flush-state, and the shell shows a persistent banner until a
+  // later flush succeeds and clears it.
+  const next = lane
+    .then(() => sync())
+    .then(() => { setFlushFailed(false); })
+    .catch((err) => { needFlush = true; setFlushFailed(true); console.warn("[brizna db] save", err); });
   lane = next;
   return next;
 }
@@ -96,13 +103,29 @@ async function open(): Promise<PGlite> {
     });
   }
   (globalThis as any).__bzTrace?.push(["db-migrated", "", Date.now()]);
-  if (needFlush && realSync) { needFlush = false; await realSync(); }
+  if (needFlush && realSync) {
+    needFlush = false;
+    try { await realSync(); setFlushFailed(false); }
+    catch (err) { needFlush = true; setFlushFailed(true); throw err; }
+  }
   return pg;
 }
 
 export function getPglite(): Promise<PGlite> {
   pgPromise ??= open().catch((err) => { pgPromise = null; throw err; });
   return pgPromise;
+}
+
+type Run = <T>(text: string, params: unknown[]) => Promise<T[]>;
+
+function makeSql(run: Run): Sql {
+  const sql = (async <T,>(strings: TemplateStringsArray, ...values: unknown[]) => {
+    let text = strings[0];
+    for (let i = 0; i < values.length; i += 1) text += `$${i + 1}${strings[i + 1]}`;
+    return run<T>(text, values);
+  }) as unknown as Sql;
+  sql.query = <T,>(text: string, params: unknown[] = []) => run<T>(text, params);
+  return sql;
 }
 
 function toSql(pg: PGlite): Sql {
@@ -118,13 +141,7 @@ function toSql(pg: PGlite): Sql {
     lane = next.catch(() => undefined);
     return next;
   };
-  const sql = (async <T,>(strings: TemplateStringsArray, ...values: unknown[]) => {
-    let text = strings[0];
-    for (let i = 0; i < values.length; i += 1) text += `$${i + 1}${strings[i + 1]}`;
-    return run<T>(text, values);
-  }) as unknown as Sql;
-  sql.query = <T,>(text: string, params: unknown[] = []) => run<T>(text, params);
-  return sql;
+  return makeSql(run);
 }
 
 /** Run work alone on the database (no screen queries in between). */
@@ -132,6 +149,20 @@ export function exclusive<T>(fn: (pg: PGlite) => Promise<T>): Promise<T> {
   const next = lane.then(() => getPglite()).then((pg) => fn(pg)).finally(() => markWrite());
   lane = next.catch(() => undefined);
   return next;
+}
+
+/**
+ * MOVIMIENTO 2 (hallazgo 18): run `fn` in ONE PGlite transaction, alone on the lane
+ * (exclusive), with a Sql handle bound to the transaction itself — the handle must
+ * bypass the lane, which exclusive is already holding. Any throw rolls back.
+ * The server build (src/lib/db.ts) exports the same contract.
+ */
+export function withTransaction<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
+  return exclusive(async (pg) =>
+    pg.transaction(async (tx) =>
+      fn(makeSql(async <R,>(text: string, params: unknown[]) => ((await tx.query(text, params)) as { rows: R[] }).rows)),
+    ),
+  );
 }
 
 export function getSql(): Promise<Sql> {

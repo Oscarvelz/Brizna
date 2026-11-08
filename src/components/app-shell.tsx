@@ -29,6 +29,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ExportSheet, useExportLaunch } from "@/components/export-center";
 import { Hint } from "@/components/hint";
 import { OfflineBanner } from "@/components/offline-banner";
+import { SaveFailedBanner } from "@/components/save-failed-banner";
 import { watchShellReady } from "@/spa/splash-ready";
 import { SampleChip } from "@/components/sample-data";
 import { BackupWatch } from "@/components/backup-watch";
@@ -529,6 +530,7 @@ export function AppShell({
             )}
           >
             <OfflineBanner />
+            <SaveFailedBanner />
             <BackupWatch />
             <SyncNotice />
             <PageWidthContext.Provider value={pageWidth}>

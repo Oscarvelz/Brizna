@@ -450,8 +450,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "In October Mrs. Díaz moves away owing $45. You take her off: her cuts disappear, but the $45 stays in To collect and she shows under With a balance. In Stats, October counts 1 departure. In March she returns: Reactivate and her cuts come back.",
         ],
         cases: [
-          "Reactivas a un cliente con temporada: sus cortes siguen la temporada desde hoy.\nBorras a alguien que debía: su deuda desaparece con él; para dejar constancia, mejor usa Perdonar y luego dale de baja.",
-          "You reactivate a client with a season: their cuts follow the season from today.\nYou delete someone who owed: the debt goes with them; to keep a record, Forgive first, then take them off.",
+          "Reactivas a un cliente con temporada: sus cortes siguen la temporada desde hoy.\nBorras a alguien: antes de borrar, Brizna te dice en voz alta cuánto debe, cuánto tiene a favor y cuántos pagos y visitas se borrarán — incluido el dinero que te prepagó. Para dejar constancia, mejor usa Perdonar y luego dale de baja.",
+          "You reactivate a client with a season: their cuts follow the season from today.\nYou delete someone: before deleting, Brizna tells you out loud how much they owe, how much they hold in advance, and how many payments and visits will be deleted — including money they prepaid you. To keep a record, Forgive first, then take them off.",
         ],
         related: ["lista-clientes", "perdonado", "clientes-filtros"],
         go: { to: "/clientes", search: { filter: "inactive" }, where: ["Clientes, filtro Archivos", "Clients, Archive filter"] },
@@ -474,8 +474,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "A neighbor asks you to clear a leaf-covered yard before a Saturday party: $120. You create it as one-time, for Saturday, with Cleanup. It shows on Today that day, and when marked Done it counts as a one-time job in Stats.",
         ],
         cases: [
-          "Sin fecha: el trabajo de una vez queda para hoy.\nEl cliente de una vez quiere repetir: edita la ficha y cámbialo a regular.\nAsesor sugiere pasar a los clientes de una vez a un plan cada 2 semanas, con lo que valdría al año.",
-          "No date: the one-time job is set for today.\nThe one-time client wants to repeat: edit the file and switch to regular.\nAdvisor suggests moving one-time clients to an every-2-weeks plan, with what it would be worth a year.",
+          "Sin fecha: el trabajo de una vez queda para hoy.\nEl cliente de una vez quiere repetir: edita la ficha y cámbialo a regular — sus cortes pendientes de antes se quitan y nace la agenda; y si un regular pasa a de una vez, sus cortes futuros se quitan y nace su único trabajo.\nCuando el trabajo de una vez termina y la cuenta queda en cero (sin deuda ni adelanto), el cliente se archiva solo: deja de contar como activo, y lo reactivas cuando quieras.\nAsesor sugiere pasar a los clientes de una vez recientes a un plan cada 2 semanas, con lo que valdría al año.",
+          "No date: the one-time job is set for today.\nThe one-time client wants to repeat: edit the file and switch to regular — their old pending cuts are removed and the schedule is born; and if a regular becomes one-time, their future cuts are removed and their single job is born.\nWhen the one-time job ends and the account sits at zero (no debt, no advance), the client archives itself: it stops counting as active, and you can reactivate it any time.\nAdvisor suggests moving recent one-time clients to an every-2-weeks plan, with what it would be worth a year.",
         ],
         related: ["frecuencia", "cobro-cliente", "asesor-pasos"],
         go: { to: "/nuevo", where: ["Nuevo cliente, Tipo", "New client, Type"] },
@@ -546,8 +546,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         title: ["Cómo paga el cliente", "How the client pays"],
         sum: ["Se acumula, o paga el mismo día.", "It adds up, or they pay the same day."],
         what: [
-          "Si no paga el mismo día, el precio se suma a su cuenta hasta que marques Pagado o Perdonar.",
-          "If they do not pay the same day, the price is added to their account until you mark Paid or Forgive.",
+          "Si no paga el mismo día, el precio se suma a su cuenta hasta que marques Pagado o Perdonar.\nUn trabajo extra que nace ya hecho sigue la misma regla: si paga el mismo día, nace cobrado; si se acumula, va a su cuenta.",
+          "If they do not pay the same day, the price is added to their account until you mark Paid or Forgive.\nAn extra born already done follows the same rule: same-day pay means born paid; if it adds up, it goes to their account.",
         ],
         how: [
           "En la ficha o en Nuevo cliente elige Se acumula o Paga el mismo día.\nSe acumula: cada corte hecho suma su precio a la deuda; tú marcas Pagado cuando te pague.\nPaga el mismo día: en Todos su patio sale ya en Pagó, y con Sin confirmación extra un toque en Hecho lo da por cobrado.\nEl cambio queda anotado en el historial de la ficha.",
@@ -634,8 +634,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Finished cut: on the file, History, tap the price, type the new one, and save.\nPrice from today: edit the file's price and save.",
         ],
         calc: [
-          "En un corte hecho, la diferencia se suma o resta a la deuda, aunque ya estuviera pagado. Si la deuda quedaría bajo cero, lo que sobra pasa a adelanto.\nAl cambiar el precio de la ficha, todos los cortes pendientes (también los atrasados) toman el precio nuevo; los hechos conservan el suyo.",
-          "On a finished cut, the difference is added to or taken from the debt, even if it was already paid. If the debt would go below zero, the extra becomes an advance.\nWhen you change the file's price, every pending cut (late ones too) takes the new price; finished ones keep theirs.",
+          "En un corte hecho, la diferencia se suma o resta a la deuda, aunque ya estuviera pagado. Si la deuda quedaría bajo cero, lo que sobra pasa a adelanto.\nAl cambiar el precio de la ficha, solo los cortes pendientes de HOY en adelante toman el precio nuevo; un corte atrasado pendiente conserva el precio acordado, y los hechos el suyo.",
+          "On a finished cut, the difference is added to or taken from the debt, even if it was already paid. If the debt would go below zero, the extra becomes an advance.\nWhen you change the file's price, only pending cuts from TODAY on take the new price; a late pending cut keeps the price it was agreed at, and finished ones keep theirs.",
         ],
         example: [
           "El corte de los Rivera decía $40 pero el pasto estaba altísimo y cobraste $55. En Historial cambias 40 por 55: su cuenta sube $15. En enero subes su precio a $45: desde ese momento todos sus cortes pendientes valen $45, y los de diciembre siguen en $40.",
@@ -662,8 +662,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Paused: no cuts until you tap Play. The case lives in Waiting.",
         ],
         how: [
-          "Toca las dos rayitas en Por cobrar (vistas Grande y Media) o en la ficha.\nConfirma en la ventana que aparece.\nSus cortes pendientes se quitan y el caso pasa a En espera.\nContinuar vuelve a armar sus cortes desde hoy, con su frecuencia de siempre.",
-          "Tap the two bars in To collect (Large and Medium views) or on the file.\nConfirm in the window that appears.\nTheir pending cuts are removed and the case moves to Waiting.\nPlay rebuilds their cuts from today, at their usual frequency.",
+          "Toca las dos rayitas en Por cobrar (vistas Grande y Media) o en la ficha.\nConfirma en la ventana que aparece.\nSus cortes pendientes se quitan y el caso pasa a En espera. Sus extras y trabajos de una vez pendientes se CANCELAN a la vista — quedan en el historial como cancelados, no se borran, y Continuar no los devuelve.\nContinuar vuelve a armar sus cortes desde hoy, con su frecuencia de siempre.",
+          "Tap the two bars in To collect (Large and Medium views) or on the file.\nConfirm in the window that appears.\nTheir pending cuts are removed and the case moves to Waiting. Their pending extras and one-time jobs are CANCELLED in plain sight — they stay in the history as cancelled, they are not deleted, and Play does not bring them back.\nPlay rebuilds their cuts from today, at their usual frequency.",
         ],
         calc: [
           "La deuda no cambia con la pausa: sigue en Por cobrar y sigue contando para En espera y Alto riesgo. En Estudio no entra en el Ingreso fijo mientras está en pausa, y Asesor lo cuenta en En riesgo (o en Morosos si su deuda ya va atrasada).",
@@ -706,8 +706,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "María pays $45 cash on Nov 3 when you mark Done, and on Oct 28 she left only a $5 tip. Activity shows Paid · Nov 3 · Cash $45 and Tip · Oct 28 · Cash $5. The box says 2 · $45: the tip does not add because it is not a payment.",
         ],
         cases: [
-          "Ves una fila de $0 de una versión anterior: era una propina sola, sin pago; ahora dice Propina y muestra su monto.\nUn corte se paga con el adelanto: no sale fila nueva, porque ese dinero ya entró el día del Adelanto.\nPagan más que la deuda: salen dos filas del mismo día, el pago a la deuda y el Adelanto con lo que sobra.\nRegistraste un pago por error: Deshacer lo quita de la lista y la deuda vuelve a como estaba.\nDeshaces un Hecho que se cobró: su fila de Pagado o de Abono desaparece.",
-          "You see a $0 row from an earlier version: it was a tip on its own, with no payment; it now says Tip and shows its amount.\nA cut is paid from the advance: no new row appears, because that money came in on the Advance day.\nThey pay more than the debt: two rows on the same day, the payment to the debt and the Advance with the rest.\nYou recorded a payment by mistake: Undo takes it off the list and the debt goes back to how it was.\nYou undo a Done that was collected: its Paid or Partial row disappears.",
+          "Ves una fila de $0 de una versión anterior: era una propina sola, sin pago; ahora dice Propina y muestra su monto.\nUn corte se paga con el adelanto: no sale fila nueva, porque ese dinero ya entró el día del Adelanto.\nPagan más que la deuda: salen dos filas del mismo día, el pago a la deuda y el Adelanto con lo que sobra.\nRegistraste un pago por error: Deshacer lo quita de la lista y la deuda vuelve a como estaba.\nDeshaces un Hecho que se cobró: su fila de Pagado o de Abono desaparece.\nLa lista enseña los 200 movimientos más recientes: si hay más, al final dice cuántos más antiguos quedan.\nSi el saldo guardado de un cliente no cuadra con sus movimientos, su ficha lo avisa con la diferencia; Brizna no cambia ese saldo sola, el aviso es para que lo revises tú.",
+          "You see a $0 row from an earlier version: it was a tip on its own, with no payment; it now says Tip and shows its amount.\nA cut is paid from the advance: no new row appears, because that money came in on the Advance day.\nThey pay more than the debt: two rows on the same day, the payment to the debt and the Advance with the rest.\nYou recorded a payment by mistake: Undo takes it off the list and the debt goes back to how it was.\nYou undo a Done that was collected: its Paid or Partial row disappears.\nThe list shows the 200 most recent movements: if there are more, the end of the list says how many older ones remain.\nIf a client's saved balance does not match their activity, their file warns you with the difference; Brizna never changes that balance on its own, the warning is for you to check.",
         ],
         related: ["ficha-deuda", "propina", "perdonado", "hecho", "deuda-anterior"],
         go: { to: "/clientes", where: ["La ficha del cliente, Movimientos", "The client file, Activity"] },
@@ -846,8 +846,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "A stretch of the year when every regular cut is spaced further apart, without editing each file.",
         ],
         how: [
-          "Para todos: en Ajustes, Temporada para todos, pon inicio y fin (mes-día, como 11-01 y 02-28) y cada cuántos días.\nPara un cliente: en su ficha, Temporada, pon sus propias fechas y su número; si lo dejas apagado, sigue la de todos.\nLa agenda se rehace sola al guardar.",
-          "For everyone: in Settings, Season for everyone, set start and end (month-day, like 11-01 and 02-28) and every how many days.\nFor one client: on their file, Season, set their own dates and number; if you leave it off, they follow everyone's.\nThe schedule rebuilds itself when you save.",
+          "Para todos: en Ajustes, Temporada para todos, pon inicio y fin (mes-día, como 11-01 y 02-28) y cada cuántos días. La temporada necesita las fechas Y el ritmo: las fechas solas no cambian nada.\nPara un cliente: en su ficha, Temporada, pon sus propias fechas y su número; si lo dejas apagado, sigue la de todos.\nLa agenda se rehace sola al guardar — también si solo cambias la fecha de fin.",
+          "For everyone: in Settings, Season for everyone, set start and end (month-day, like 11-01 and 02-28) and every how many days. A season needs the dates AND the pace: dates alone change nothing.\nFor one client: on their file, Season, set their own dates and number; if you leave it off, they follow everyone's.\nThe schedule rebuilds itself when you save — even if you only change the end date.",
         ],
         calc: [
           "Dentro de las fechas, cada cliente regular se corta cada N días (de 7 a 60), contando desde su día de inicio. Fuera, vuelve su frecuencia normal. El tramo puede cruzar el año (de noviembre a febrero). Los patios que moviste a mano no vuelven atrás.",
@@ -923,8 +923,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "To collect: $415, 6 people. Kevin owed $100 and gave you $40: he shows in Partial paid with $40 and still owes $60. Friday he pays the $60: he leaves Partial paid and To collect drops to $355.",
         ],
         cases: [
-          "Alguien con adelanto: no aparece aquí; el adelanto no es deuda.\nDas de baja a quien debe: su deuda sigue sumando aquí.\nDeshaces un pago: la deuda vuelve a subir.",
-          "Someone with an advance: they do not show here; an advance is not debt.\nYou take off someone who owes: their debt keeps counting here.\nYou undo a payment: the debt goes back up.",
+          "Alguien con adelanto: no aparece aquí; el adelanto no es deuda.\nDas de baja o pones en lista negra a quien debe: su deuda YA NO suma en Por cobrar (queda en su ficha); cada dólar del total tiene dueño visible en esta lista.\nDeshaces un pago: la deuda vuelve a subir.",
+          "Someone with an advance: they do not show here; an advance is not debt.\nYou take off or blacklist someone who owes: their debt NO LONGER counts in To collect (it stays on their file); every dollar of the total has a visible owner in this list.\nYou undo a payment: the debt goes back up.",
         ],
         mistake: [
           "Esperar que una deuda vieja desaparezca sola: solo un pago o Perdonar la quitan.",
@@ -955,8 +955,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "This week you did 40 yards at $45: work done $1,800. Collected this week: $1,950, because Robert paid $240 for two past weeks and $90 from this week is still owed. That's why Collected can be above or below work done.",
         ],
         cases: [
-          "Un adelanto que entra hoy: cuenta en Cobrado hoy, aunque el corte sea la semana que viene.\nDeshaces un Hecho y cobrado: sale de las dos cifras.\nUn patio movido a la semana que viene y hecho allí: cuenta en esa semana.",
-          "An advance that comes in today: counts in Collected today, even if the cut is next week.\nYou undo a Done and paid: it leaves both figures.\nA yard moved to next week and done there: counts in that week.",
+          "Un adelanto que entra hoy: cuenta en Cobrado hoy, aunque el corte sea la semana que viene.\nDeshaces un Hecho y cobrado: sale de las dos cifras.\nUn patio movido a la semana que viene y hecho allí: cuenta en esa semana.\nLas listas del año enseñan hasta 2.500 filas: si tu año tiene más, el final de la lista lo dice con «+N más»; los totales de arriba siempre cuentan todo el año.",
+          "An advance that comes in today: counts in Collected today, even if the cut is next week.\nYou undo a Done and paid: it leaves both figures.\nA yard moved to next week and done there: counts in that week.\nThe year lists show up to 2,500 rows: if your year has more, the end of the list says so with “+N more”; the totals at the top always count the whole year.",
         ],
         related: ["por-cobrar", "ingresos-mes", "propina", "este-mes"],
         go: { to: "/cobros", where: ["Cobros, arriba a la derecha", "Payments, top right"] },
@@ -971,12 +971,12 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Waiting: late, but they will pay. High risk: they passed your limits for days, amount, or unpaid cuts.",
         ],
         how: [
-          "En Ajustes, Espera y alto riesgo, pon: Días para En espera, Días para alto riesgo (después de En espera), Monto y Cortes sin pagar.\nCobros muestra cada caso con su color y En espera agrupa a los atrasados y a los pausados.\nEl dinero nunca sale de Por cobrar por cambiar de estado.",
-          "In Settings, Waiting and high risk, set: Days for Waiting, Days for high risk (after Waiting), Amount, and Unpaid cuts.\nPayments shows each case with its color, and Waiting groups late payers and paused clients.\nThe money never leaves To collect by changing state.",
+          "En Ajustes, Espera y alto riesgo, pon: Días para En espera, Días para alto riesgo (después de En espera), Monto y Cortes sin pagar.\nCobros muestra cada caso con su color y En espera agrupa a los atrasados y a los pausados.\nEl dinero nunca sale de Por cobrar por cambiar de estado.\nCambiar estos límites reclasifica a todos al instante.\nUn caso en serio (alto riesgo) deja de recibir visitas NUEVAS — la próxima ya puesta queda clavada en Hoy como aviso — hasta que pague, se le perdone o marques Seguir atendiendo en su ficha.",
+          "In Settings, Waiting and high risk, set: Days for Waiting, Days for high risk (after Waiting), Amount, and Unpaid cuts.\nPayments shows each case with its color, and Waiting groups late payers and paused clients.\nThe money never leaves To collect by changing state.\nChanging these limits reclassifies everyone instantly.\nA serious (high-risk) case stops receiving NEW visits — the next one already placed stays pinned on Today as a warning — until they pay, are forgiven, or you mark Keep serving on their file.",
         ],
         calc: [
-          "Los días cuentan desde el último pago, o desde el último corte si nunca pagó.\nEn espera: debe y pasaron los Días para En espera (45 de siempre).\nAlto riesgo: pasaron además los días de alto riesgo (21 más, o sea 66), o la deuda llegó al monto ($200), o tiene esos cortes sin pagar (3). Basta con uno.\nCortes sin pagar: los cortes más recientes que cubre su deuda (un abono paga primero lo más viejo).",
-          "Days count from the last payment, or from the last cut if they never paid.\nWaiting: they owe and the Days for Waiting passed (45 by default).\nHigh risk: the high-risk days passed too (21 more, so 66), or the debt reached the amount ($200), or they have that many unpaid cuts (3). Any one is enough.\nUnpaid cuts: the most recent cuts their debt covers (a partial pays the oldest first).",
+          "Los días cuentan desde el último pago — o desde el último perdón — o desde el último corte si nunca pagó ni se le perdonó.\nEn espera: debe y pasaron los Días para En espera (45 de siempre).\nAlto riesgo: pasaron además los días de alto riesgo (21 más, o sea 66), o la deuda llegó al monto ($200), o tiene esos cortes sin pagar (3). Basta con uno.\nCortes sin pagar: los cortes más recientes que cubre su deuda (un abono paga primero lo más viejo).",
+          "Days count from the last payment — or from the last forgiveness — or from the last cut if they never paid and were never forgiven.\nWaiting: they owe and the Days for Waiting passed (45 by default).\nHigh risk: the high-risk days passed too (21 more, so 66), or the debt reached the amount ($200), or they have that many unpaid cuts (3). Any one is enough.\nUnpaid cuts: the most recent cuts their debt covers (a partial pays the oldest first).",
         ],
         example: [
           "Luis pagó por última vez el 1 de septiembre y debe $80 de dos cortes. El 16 de octubre (45 días) pasa a En espera. Si nada cambia, el 6 de noviembre (66 días) pasa a Alto riesgo, en naranja. Si antes le haces un tercer corte sin pago, pasa a naranja ese mismo día.",
@@ -1003,20 +1003,20 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Money you decided not to collect. It leaves To collect and is recorded as forgiven.",
         ],
         how: [
-          "En Cobros (vista Grande) o en la ficha, toca Perdonar.\nBrizna siempre pregunta antes.\nSe perdona toda la deuda de ese cliente de una vez.\nEn Cobros, Perdonado este mes muestra cuánto perdonaste en el mes.",
-          "In Payments (Large view) or on the file, tap Forgive.\nBrizna always asks first.\nThe client's whole debt is forgiven at once.\nIn Payments, Forgiven this month shows how much you forgave this month.",
+          "En Cobros (vista Grande) o en la ficha, toca Perdonar.\nBrizna siempre pregunta antes.\nEscribe la cantidad a perdonar: vacío perdona todo el saldo; una parte deja el resto debiendo.\nEl perdón se puede deshacer arriba, como un pago.\nEn Cobros, Perdonado este mes muestra cuánto perdonaste en el mes.",
+          "In Payments (Large view) or on the file, tap Forgive.\nBrizna always asks first.\nType the amount to forgive: empty forgives the whole balance; part leaves the rest owed.\nA forgiveness can be undone above, like a payment.\nIn Payments, Forgiven this month shows how much you forgave this month.",
         ],
         calc: [
-          "Perdonar es lo único que borra una deuda sin un pago. No cuenta como cobrado ni como propina, y no toca el adelanto del cliente.",
-          "Forgive is the only way to clear a debt without a payment. It does not count as collected or as a tip, and it does not touch the client's advance.",
+          "Perdonar es lo único que borra una deuda sin un pago. No cuenta como cobrado ni como propina, y no toca el adelanto del cliente.\nPerdonar también reinicia su reloj: si después se atrasa otra vez, los días cuentan desde el perdón, no desde el último pago viejo.",
+          "Forgive is the only way to clear a debt without a payment. It does not count as collected or as a tip, and it does not touch the client's advance.\nForgiving also restarts their clock: if they fall behind again, the days count from the forgiveness, not from the old last payment.",
         ],
         example: [
           "Doña Carmen, de 82 años, te debe $35 de un corte de agosto y se le hace difícil pagar. Tocas Perdonar: Por cobrar baja $35 y Perdonado este mes sube $35. Su próximo corte se cobra normal.",
           "Doña Carmen, 82, owes $35 for an August cut and is struggling to pay. You tap Forgive: To collect drops $35 and Forgiven this month rises $35. Her next cut is charged as usual.",
         ],
         cases: [
-          "Te equivocaste de cliente: Deshacer devuelve la deuda completa.\nSolo quieres perdonar una parte: registra un abono por lo que sí te pagó y luego decide sobre el resto.\nQuieres darlo de baja: perdona primero si no vas a cobrar; así su deuda no queda colgando en Por cobrar.",
-          "Wrong client: Undo brings the whole debt back.\nYou only want to forgive part: record a partial for what they did pay, then decide on the rest.\nYou want to take them off: forgive first if you won't collect, so the debt does not linger in To collect.",
+          "Te equivocaste de cliente: Deshacer devuelve la deuda completa.\nSolo quieres perdonar una parte: escribe solo esa cantidad al perdonar; el resto se queda debiendo.\nQuieres darlo de baja: perdona primero si no vas a cobrar; así su deuda no queda colgando en Por cobrar.",
+          "Wrong client: Undo brings the whole debt back.\nYou only want to forgive part: type just that amount when forgiving; the rest stays owed.\nYou want to take them off: forgive first if you won't collect, so the debt does not linger in To collect.",
         ],
         mistake: [
           "Confundir perdonar con esperar: un atraso que sí vas a cobrar se queda en En espera, no se perdona.",
@@ -1791,20 +1791,20 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Keeps a backup of your clients, jobs, and payments. Restore replaces what is there now with that copy.",
         ],
         how: [
-          "Se guarda sola cuando cambias datos y antes de cosas delicadas (borrar un cliente, restaurar).\nGuardar copia hace una al momento.\nGuardar archivo descarga una copia al teléfono o la computadora.\nElegir carpeta guarda ahí las copias y deja las 5 más recientes.\nRestaurar pide confirmar y primero guarda lo que hay ahora.",
-          "It saves itself when data changes and before delicate actions (deleting a client, restoring).\nSave copy makes one right now.\nSave file downloads a copy to the phone or computer.\nChoose folder saves copies there and keeps the 5 most recent.\nRestore asks to confirm and first saves what is there now.",
+          "Se guarda sola cuando cambias datos y antes de cosas delicadas (borrar un cliente, restaurar).\nGuardar copia hace una al momento.\nGuardar archivo descarga una copia al teléfono o la computadora.\nElegir carpeta guarda ahí las copias y deja las 5 más recientes.\nRestaurar pide confirmar y primero guarda lo que hay ahora.\nSi nada cambió desde la última copia, no se guarda otra igual: la automática solo nace cuando el libro cambió.\nRestaurar cambia todo de una vez o no cambia nada: si algo falla a mitad, lo que tenías queda entero, nunca a medias.",
+          "It saves itself when data changes and before delicate actions (deleting a client, restoring).\nSave copy makes one right now.\nSave file downloads a copy to the phone or computer.\nChoose folder saves copies there and keeps the 5 most recent.\nRestore asks to confirm and first saves what is there now.\nIf nothing changed since the last copy, no identical one is saved: the automatic copy is only born when the book changed.\nRestore changes everything at once or nothing at all: if something fails halfway, what you had stays whole, never half-restored.",
         ],
         calc: [
-          "Una copia automática como mucho cada 10 minutos. Se conservan las 8 más recientes, una por día de la última semana y una por semana del último mes. Las copias llevan una suma de control: si un archivo se dañó, Brizna lo nota antes de usarlo.",
-          "At most one automatic copy every 10 minutes. It keeps the 8 most recent, one per day for the last week, and one per week for the last month. Copies carry a checksum: if a file got damaged, Brizna notices before using it.",
+          "Una copia automática como mucho cada 10 minutos, y solo si el libro cambió. Se conservan las 8 más recientes, una por día de la última semana y una por semana del último mes. Las copias llevan una suma de control: si un archivo se dañó, Brizna lo nota antes de usarlo.\nCuando este equipo y la nube cambian a la vez, la versión de la nube también se guarda en esta lista, marcada «Nube · conflicto», con su propio botón Restaurar: ninguna de las dos versiones se pierde en silencio.\nLa sección también dice cuánto pesan todas tus copias juntas y cuántas hay («Tus respaldos pesan…»). Ese peso crece con los años de historial: si sube sin parar, guarda también un archivo fuera del teléfono.",
+          "At most one automatic copy every 10 minutes, and only if the book changed. It keeps the 8 most recent, one per day for the last week, and one per week for the last month. Copies carry a checksum: if a file got damaged, Brizna notices before using it.\nWhen this device and the cloud change at the same time, the cloud version is also saved in this list, labelled “Cloud · conflict”, with its own Restore button: neither version is lost in silence.\nThe section also says how much all your copies weigh together and how many there are (“Your backups weigh…”). That weight grows with years of history: if it keeps climbing, also keep a file outside the phone.",
         ],
         example: [
           "El martes borras sin querer a los Rivera, con dos años de historial. Abres Copia de seguridad, eliges la copia de justo antes de las 3:12 y Restaurar: los Rivera vuelven con todo, y lo que había a las 3:15 también quedó guardado por si acaso.",
           "Tuesday you accidentally delete the Riveras, with two years of history. You open Backup, pick the copy from right before 3:12, and Restore: the Riveras are back with everything, and what you had at 3:15 was saved too, just in case.",
         ],
         cases: [
-          "Restauras una copia vieja: lo hecho después se pierde de la app, pero queda en la copia que se guardó antes de restaurar.\nCambios en dos equipos a la vez: las dos versiones se guardan aquí y eliges cuál queda.",
-          "You restore an old copy: what happened after is gone from the app, but it stays in the copy saved before restoring.\nChanges on two devices at once: both versions are saved here and you pick which one stays.",
+          "Restauras una copia vieja: lo hecho después se pierde de la app, pero queda en la copia que se guardó antes de restaurar.\nCambios en dos equipos a la vez: las dos versiones se guardan aquí y eliges cuál queda.\nSi el equipo no acepta un guardado (por ejemplo, se llenó el espacio), un aviso fijo arriba dice «No se pudo guardar en este equipo» y no se quita hasta que un guardado pase: no cierres la app mientras tanto, porque lo último vive solo en memoria.",
+          "You restore an old copy: what happened after is gone from the app, but it stays in the copy saved before restoring.\nChanges on two devices at once: both versions are saved here and you pick which one stays.\nIf the device refuses a save (for example, its storage filled up), a fixed notice at the top says “Could not save on this device” and stays until a save goes through: do not close the app meanwhile, because your latest work lives only in memory.",
         ],
         mistake: [
           "Restaurar para deshacer un solo toque: para eso usa Deshacer; restaurar cambia todo.",

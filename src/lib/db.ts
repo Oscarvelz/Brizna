@@ -48,6 +48,8 @@ const globalRef = globalThis as typeof globalThis & {
   __pgSqlPromise__?: Promise<Sql>;
   __pgliteInstance__?: Promise<import("@electric-sql/pglite").PGlite>;
   __pgliteMigrateChain__?: Promise<void>;
+  __pgPool__?: unknown;
+  __exclusiveChain__?: Promise<unknown>;
 };
 
 /**
@@ -94,6 +96,7 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
     const pool = new Pool({ connectionString: databaseUrl });
+    globalRef.__pgPool__ = pool;
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);
       return res.rows as T[];
@@ -198,6 +201,57 @@ export function getSql(): Promise<Sql> {
     throw err;
   });
   return sqlPromise;
+}
+
+/**
+ * MOVIMIENTO 2 (auditoría 2026-11-08, hallazgo 18): run `fn` inside ONE database
+ * transaction, with a Sql handle bound to that transaction. Any throw rolls
+ * everything back. The device build (src/spa/db.ts) exports the same contract,
+ * there serialised on the single PGlite lane via exclusive().
+ */
+export async function withTransaction<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
+  await getSql();
+  if (dbSource === "neon") {
+    const pool = globalRef.__pgPool__ as
+      | { connect(): Promise<{ query(text: string, params?: unknown[]): Promise<{ rows: unknown[] }>; release(): void }> }
+      | undefined;
+    if (!pool) throw new Error("withTransaction: database pool is not ready");
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      const out = await fn(
+        toSql(async <R>(text: string, params: unknown[]) => (await client.query(text, params)).rows as R[]),
+      );
+      await client.query("commit");
+      return out;
+    } catch (err) {
+      await client.query("rollback").catch(() => undefined);
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+  const pg = await globalRef.__pgliteInstance__;
+  if (!pg) throw new Error("withTransaction: PGlite instance is not ready");
+  return pg.transaction(async (tx) =>
+    fn(toSql(async <R>(text: string, params: unknown[]) => ((await tx.query(text, params)) as { rows: R[] }).rows)),
+  );
+}
+
+/**
+ * Run work alone against the shared PGlite instance (preview fallback only; the
+ * device build's src/spa/db.ts has its own lane-based exclusive()). Exported so
+ * @/lib/db offers the same surface in both builds.
+ */
+export function exclusive<T>(fn: (pg: import("@electric-sql/pglite").PGlite) => Promise<T>): Promise<T> {
+  if (dbSource !== "pglite") {
+    throw new Error("exclusive() is only available on the PGlite database");
+  }
+  const run = (globalRef.__exclusiveChain__ ?? Promise.resolve())
+    .catch(() => undefined)
+    .then(async () => fn(await getPglite()));
+  globalRef.__exclusiveChain__ = run.catch(() => undefined);
+  return run;
 }
 
 /**
