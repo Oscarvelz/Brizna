@@ -1703,8 +1703,12 @@ button.bz-sample-chip:hover { background: color-mix(in srgb, var(--color-abono, 
    Fijar = rose, Mensaje = cyan, WA = green, Llamar = indigo, Posponer = amber, Mapa = red. */
 /* 1.4.64 (Oscar): Mensaje is a warm muted mustard/ochre-gold (softer gold at night); Posponer is a
    quiet warm stone (1.4.65; violet stood out too much), distinct from every other action tone. */
-:root { --tone-pin: #b0306a; --tone-msg: #8a6a08; --tone-wa: #1b7a3a; --tone-call: #3f6a8f; --tone-post: #74695d; --tone-map: #c0392b; --tone-x: #5f625e; }
-html.theme-dark, html.theme-amoled { --tone-pin: #ff8fc0; --tone-msg: #dcc173; --tone-wa: #7ee08f; --tone-call: #9cbcd9; --tone-post: #c4b8a8; --tone-map: #ff8b7b; --tone-x: #b4b8b2; }
+/* 1.5.39 (Oscar): Fijar leaves the rose — every pin in the app is GREEN while it is pinning
+   something and colorless (muted) while it is not; the 1.4.62 wheel note above is superseded
+   for this one tone. Everything that reads --tone-pin follows: card pins, fold pins, the
+   «Días libres» keep-open pin, the inventory pin, and the FIJADOS kicker they all belong to. */
+:root { --tone-pin: #1f7a3d; --tone-msg: #8a6a08; --tone-wa: #1b7a3a; --tone-call: #3f6a8f; --tone-post: #74695d; --tone-map: #c0392b; --tone-x: #5f625e; }
+html.theme-dark, html.theme-amoled { --tone-pin: #4ade80; --tone-msg: #dcc173; --tone-wa: #7ee08f; --tone-call: #9cbcd9; --tone-post: #c4b8a8; --tone-map: #ff8b7b; --tone-x: #b4b8b2; }
 .bz-tone {
   --bz-t: var(--color-fg);
   background: color-mix(in oklab, var(--bz-t) 14%, var(--color-surface)) !important;

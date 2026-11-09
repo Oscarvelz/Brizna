@@ -111,10 +111,13 @@ function AgendaPage() {
   const [offReason, setOffReason] = useState("");
   const [onlyMoved, setOnlyMoved] = useState(false);
   const [pinnedOff, setPinnedOff] = useState(() => {
+    // 1.5.39 (Oscar): «mantén este chip desplegado» — the days-off panel starts KEPT OPEN
+    // (pinned) unless the user has explicitly unpinned it here before; a stored "0" is a
+    // decision and stands. Pinned is the only state the scroll/filter auto-fold can't close.
     try {
-      return localStorage.getItem("ols-agenda-off-pin") === "1";
+      return localStorage.getItem("ols-agenda-off-pin") !== "0";
     } catch {
-      return false;
+      return true;
     }
   });
   const [cal, setCal] = useState(false);
