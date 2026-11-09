@@ -610,7 +610,19 @@ export async function ensureScheduleForUser(userId: string): Promise<void> {
       return;
     }
     const run = ensureScheduleForUserInner(userId)
-      .then(() => { try { store?.setItem(stampKey, today); } catch { /* ignore */ } })
+      .then(() => {
+        // 1.5.51 (auditoría interna, A4): the stamp used to be written the moment the
+        // top-up resolved IN MEMORY — but on the GET path the inserts only become
+        // durable at the next flush (~200 ms later), so a process death inside that
+        // window left the stamp claiming "ensured" over a day whose visits were never
+        // saved, and nothing re-topped it up all day. On the device the stamp now waits
+        // for durability (__bzOnFlush, installed by spa/db.ts); elsewhere it writes at
+        // once, as before.
+        const onFlush = (globalThis as { __bzOnFlush?: (fn: () => void) => void }).__bzOnFlush;
+        const writeStamp = () => { try { store?.setItem(stampKey, today); } catch { /* ignore */ } };
+        if (typeof onFlush === "function") onFlush(writeStamp);
+        else writeStamp();
+      })
       .catch((err) => {
         console.error("[ensureSchedule]", err);
         if (ensureMemo?.key === key) ensureMemo = null;
@@ -707,7 +719,19 @@ export async function ensureScheduleForUserInner(userId: string): Promise<void> 
   const dropIds: number[] = [];
 
   for (const client of clients) {
-    if (serioIds.has(intId(client.id)) && !client.keep_serving) continue;
+    if (serioIds.has(intId(client.id)) && !client.keep_serving) {
+      // 1.5.51 (auditoría interna, P4): the freeze now also PRUNES. The design note
+      // above has always promised «la próxima visita ya sembrada queda» — but the bare
+      // `continue` skipped the pruning too, so a client who turned serio kept up to a
+      // year of already-seeded cuts, each one ripening into a late visit in Agenda.
+      // Only the next pending cut stays; the rest join the same drop list (and the
+      // same status-guarded delete below) as every other pruned row.
+      const pending = (futureByClient.get(intId(client.id)) ?? [])
+        .filter((r) => r.status === "pending")
+        .sort((a, b) => (asIsoDate(a.scheduled_date) < asIsoDate(b.scheduled_date) ? -1 : 1));
+      for (const row of pending.slice(1)) dropIds.push(intId(row.id));
+      continue;
+    }
     const generated: string[] = [];
     for (let step = 0; step < horizon; step += 1) {
       const part = addMonths(year, month, step);
@@ -1849,11 +1873,22 @@ export async function markJobDone(
   if (job.status === "done" || job.status === "cancelled") {
     return { ok: true, collected: false, skipped: true, usedCredit: 0 };
   }
-  await sql.query(
+  // 1.5.51 (auditoría interna, D5): the flip itself is the lock. This used to be
+  // check-then-act — read "pending", then update with no status predicate — so two
+  // overlapping passes (the queue flushing while the user taps Hecho, or two flushes
+  // racing) both proceeded and each inserted its payment, doubling the money. Now the
+  // update only lands while the job is still open, and the caller that gets no row
+  // back is the idempotent skip: the winner owns the payment. (No unique index on
+  // payments.job_id: a job legitimately gets two rows — the payment and its tip.)
+  const flip = await sql.query<{ id: number }>(
     `update jobs set status = 'done', completed_at = now()
-      where user_id = $1 and id = $2`,
+      where user_id = $1 and id = $2 and status not in ('done', 'cancelled')
+      returning id`,
     [userId, jobId],
   );
+  if (!flip.length) {
+    return { ok: true, collected: false, skipped: true, usedCredit: 0 };
+  }
   if (PHOTOS_ENABLED && photo.startsWith("data:image/") && photo.length <= 180_000) {
     await sql.query(`update jobs set photo = $3 where user_id = $1 and id = $2`, [
       userId,
@@ -5151,8 +5186,9 @@ export const setServicePaused = createServerFn({ method: "POST" })
 /**
  * Hallazgo 2: «seguir atendiendo». Con keep_serving = true, la generación de agenda
  * vuelve a sembrar visitas aunque el cliente esté en serio; al apagarlo, la próxima
- * regeneración vuelve a congelarlo (las visitas ya sembradas no se borran: quedan
- * como aviso en Hoy, como pide el informe).
+ * regeneración vuelve a congelarlo. 1.5.51 (P4): al congelar, la poda deja solo la
+ * próxima visita sembrada como aviso en Hoy — el resto del horizonte se retira, como
+ * el comentario de diseño de ensureScheduleForUserInner siempre prometió.
  */
 export const setKeepServing = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -5168,7 +5204,9 @@ export const setKeepServing = createServerFn({ method: "POST" })
       [context.userId, data.id, data.keepServing],
     );
     if (!rows[0]) return { ok: false as const };
-    if (data.keepServing) await ensureScheduleForUser(context.userId);
+    // Both directions re-run the top-up: on = reseeding resumes; off = the freeze
+    // (and, since 1.5.51, its pruning to the next visit) applies right away.
+    await ensureScheduleForUser(context.userId);
     await snapshotBackup(context.userId).catch(() => undefined);
     return { ok: true as const };
   });

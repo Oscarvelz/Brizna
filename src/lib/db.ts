@@ -284,6 +284,21 @@ export function ensureDbReady(): Promise<void> {
   return getSql().then(() => undefined);
 }
 
+/* Same contract as src/spa/db.ts (1.5.51, auditoría interna A3): on the server there is
+ * no IndexedDB store to rescue, so there are never counted failures and a fresh store
+ * is a no-op. The device build carries the real implementation. */
+export function dbFailureCount(): number {
+  return 0;
+}
+
+export function clearDbFailures(): void {
+  /* server: nothing to clear */
+}
+
+export function startWithFreshStore(): void {
+  /* server: there is no per-device store to rename */
+}
+
 // Server-only eager start: kick PGLite bootstrap as soon as this module loads in
 // Node. Client bundles never hit this path (`getSql` throws in the browser).
 const globalBoot = globalThis as typeof globalThis & {

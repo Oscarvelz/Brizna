@@ -20,6 +20,43 @@ const identity = (v: string) => v;
 export const DB_NAME = "idb://brizna";
 const OWNER = "brizna.dbOwner";
 
+/* 1.5.51 (auditoría interna, A3): the rescue door's bookkeeping. Failed opens are
+ * counted on the device (a corrupt store fails every time, so the count is what tells
+ * a loop apart from a hiccup); a successful open clears it. The "generation" is how
+ * the rescue renames without deleting: bumping it points the app at a fresh store
+ * (brizna-g1, brizna-g2…) while the old one stays on disk, untouched and recoverable —
+ * the cloud copy and the exported backups are the safety net that refills the book. */
+const GEN_KEY = "brizna.db-gen";
+const FAIL_KEY = "brizna.db-failures";
+
+export function dbGeneration(): number {
+  try { return Math.max(0, Number(localStorage.getItem(GEN_KEY)) || 0); } catch { return 0; }
+}
+
+export function dbFailureCount(): number {
+  try { return Math.max(0, Number(localStorage.getItem(FAIL_KEY)) || 0); } catch { return 0; }
+}
+
+function noteDbFailure() {
+  try { localStorage.setItem(FAIL_KEY, String(dbFailureCount() + 1)); } catch { /* ignore */ }
+}
+
+function noteDbSuccess() {
+  try { localStorage.removeItem(FAIL_KEY); } catch { /* ignore */ }
+}
+
+export function clearDbFailures() {
+  try { localStorage.removeItem(FAIL_KEY); } catch { /* ignore */ }
+}
+
+/** Rescue: future opens use a NEW store on this device. The old store is not deleted. */
+export function startWithFreshStore() {
+  try {
+    localStorage.setItem(GEN_KEY, String(dbGeneration() + 1));
+    localStorage.removeItem(FAIL_KEY);
+  } catch { /* ignore */ }
+}
+
 let dbUser: string | null = null;
 /** Which account's on-device database to open. The first account on a device keeps
  *  the original database (so data typed before sign-in is kept); others get their own. */
@@ -27,11 +64,13 @@ export function setDbUser(uid: string) { dbUser = uid; }
 function dbName(): string {
   const forced = (globalThis as any).__bzDb as string | undefined;
   if (forced) return forced;
-  if (!dbUser) return DB_NAME;
+  const gen = dbGeneration();
+  const base = gen > 0 ? `idb://brizna-g${gen}` : DB_NAME;
+  if (!dbUser) return base;
   let owner: string | null = null;
   try { owner = localStorage.getItem(OWNER); } catch { /* ignore */ }
-  if (!owner) { try { localStorage.setItem(OWNER, dbUser); } catch { /* ignore */ } return DB_NAME; }
-  return owner === dbUser ? DB_NAME : `${DB_NAME}-${dbUser}`;
+  if (!owner) { try { localStorage.setItem(OWNER, dbUser); } catch { /* ignore */ } return base; }
+  return owner === dbUser ? base : `${base}-${dbUser}`;
 }
 
 let pgPromise: Promise<PGlite> | null = null;
@@ -51,19 +90,41 @@ function markWrite() {
   flushTimer = setTimeout(() => { flushTimer = 0; void flushDb(); }, 200);
 }
 
+// 1.5.51 (auditoría interna, A4): callbacks that may only run once the data is DURABLE
+// — the agenda's "ensured today" stamp is the first tenant. They drain after a
+// successful flush; a failed flush keeps them waiting for the next one, and if the
+// process dies first they simply never run, which is exactly the point.
+const flushWaiters: Array<() => void> = [];
+(globalThis as { __bzOnFlush?: (fn: () => void) => void }).__bzOnFlush = (fn) => {
+  if (!needFlush && !flushTimer && !flushing) {
+    fn();
+    return;
+  }
+  flushWaiters.push(fn);
+};
+let flushing = false;
+
 /** Make sure every change so far is saved on the device. */
 export function flushDb(): Promise<void> {
   if (!needFlush || !realSync) return Promise.resolve();
   if (flushTimer) { clearTimeout(flushTimer); flushTimer = 0; }
   needFlush = false;
+  flushing = true;
   const sync = realSync;
   // MOVIMIENTO 2 (hallazgo 14): a failed save is no longer silent. The failure is
   // published through flush-state, and the shell shows a persistent banner until a
   // later flush succeeds and clears it.
   const next = lane
     .then(() => sync())
-    .then(() => { setFlushFailed(false); })
-    .catch((err) => { needFlush = true; setFlushFailed(true); console.warn("[brizna db] save", err); });
+    .then(() => {
+      flushing = false;
+      setFlushFailed(false);
+      const waiters = flushWaiters.splice(0);
+      for (const fn of waiters) {
+        try { fn(); } catch { /* a waiter's failure is its own */ }
+      }
+    })
+    .catch((err) => { flushing = false; needFlush = true; setFlushFailed(true); console.warn("[brizna db] save", err); });
   lane = next;
   return next;
 }
@@ -112,7 +173,9 @@ async function open(): Promise<PGlite> {
 }
 
 export function getPglite(): Promise<PGlite> {
-  pgPromise ??= open().catch((err) => { pgPromise = null; throw err; });
+  pgPromise ??= open()
+    .then((pg) => { noteDbSuccess(); return pg; })
+    .catch((err) => { noteDbFailure(); pgPromise = null; throw err; });
   return pgPromise;
 }
 

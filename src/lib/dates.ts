@@ -134,15 +134,24 @@ export function everyNDaysInRange(
   const step = Math.max(1, Math.floor(n) || 1);
   const out: string[] = [];
   let cursor = startISO;
-  let guard = 0;
-  while (cursor < rangeStart && guard < 800) {
-    cursor = addDaysISO(cursor, step);
-    guard += 1;
+  // 1.5.51 (auditoría interna, P2): the jump from the anchor to the range is ARITHMETIC
+  // now. It used to walk one step at a time under the same 800-step guard as the
+  // enumeration, so a daily client anchored more than 800 days ago spent the whole
+  // guard jumping and got ZERO dates back — silently: no future visits, no error, no
+  // trace, and the client quietly stopped being scheduled.
+  if (cursor < rangeStart) {
+    const diffDays = Math.round((Date.parse(rangeStart) - Date.parse(cursor)) / 86_400_000);
+    if (Number.isFinite(diffDays) && diffDays > 0) {
+      cursor = addDaysISO(cursor, Math.ceil(diffDays / step) * step);
+    }
   }
-  while (cursor <= rangeEnd && guard < 800) {
+  // The enumeration keeps its own guard, sized by the range it has to cover.
+  const spanDays = Math.max(0, Math.round((Date.parse(rangeEnd) - Date.parse(cursor)) / 86_400_000));
+  let guard = Math.floor(spanDays / step) + 2;
+  while (cursor <= rangeEnd && guard > 0) {
     out.push(cursor);
     cursor = addDaysISO(cursor, step);
-    guard += 1;
+    guard -= 1;
   }
   return out;
 }

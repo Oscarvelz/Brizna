@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useRef, useState } from "react";
+import { StrictMode, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { createHashHistory, createRouter, RouterProvider } from "@tanstack/react-router";
 import "@/styles.css";
@@ -16,7 +16,7 @@ import { APPEARANCE_BOOT_SCRIPT } from "@/lib/theme";
 import { AppErrorComponent } from "@/lib/error-component";
 import { routeTree } from "@/routeTree.gen";
 import { setPaneRouteTree } from "@/lib/pane-context";
-import { getPglite, getSql, setDbUser } from "@/lib/db";
+import { clearDbFailures, dbFailureCount, ensureDbReady, getPglite, getSql, setDbUser, startWithFreshStore } from "@/lib/db";
 import { I18nProvider } from "@/lib/i18n";
 import { awayWasInternal, guardInternalTrips, lockDue, markSeen, unlock } from "@/lib/device-lock";
 import { saveBackupNow } from "@/lib/server/lawn";
@@ -175,8 +175,26 @@ function Gate() {
 // Database opened early (before sign-in checks finish) for the account last used here.
 let preopenedFor: string | null = null;
 
+let dbDeadlineArmed = false;
+function armDbDeadline() {
+  if (dbDeadlineArmed) return;
+  dbDeadlineArmed = true;
+  // 1.5.51 (auditoría interna, A2): if the on-device database never finishes opening,
+  // every screen used to sit on its skeleton forever — a promise that never settles is
+  // not an error React Query can retry. After 30 s without the database, the stuck
+  // screen says so and offers a way out. A fast REJECTION is a different story (the
+  // failure count, A3): the app's own error cards show it, so this stays quiet then.
+  void Promise.race([
+    ensureDbReady().then(() => true).catch(() => false),
+    new Promise<boolean>((r) => setTimeout(() => r(false), 30_000)),
+  ]).then((ready) => {
+    if (!ready && dbFailureCount() === 0) root.render(<DbStuck />);
+  });
+}
+
 function start() {
   void warmPglite();
+  armDbDeadline();
   if (CLOUD_READY) {
     const last = lastUser();
     if (last) {
@@ -221,15 +239,81 @@ function OtherTab() {
   );
 }
 
+function BootShell({ children }: { children: ReactNode }) {
+  useEffect(() => markShellReady(), []);
+  return (
+    <main style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 24, textAlign: "center", fontFamily: "Figtree, system-ui, sans-serif" }}>
+      <div style={{ maxWidth: 430 }}>
+        <h1 style={{ fontFamily: "Fraunces, Georgia, serif", fontSize: 32, margin: 0 }}>Brizna</h1>
+        {children}
+      </div>
+    </main>
+  );
+}
+
+const bootBtn: CSSProperties = { marginTop: 16, padding: "10px 20px", borderRadius: 12, border: 0, background: "#1f6a3a", color: "#fff", fontSize: 16 };
+const bootBtnQuiet: CSSProperties = { marginTop: 10, padding: "10px 20px", borderRadius: 12, border: "1px solid #999", background: "transparent", fontSize: 16 };
+
+function DbStuck() {
+  const es = (document.documentElement.lang || "es").startsWith("es");
+  return (
+    <BootShell>
+      <p style={{ marginTop: 12 }}>{es ? "La base de datos de este equipo no respondió. Puede estar ocupada por otra ventana o tardando más de lo normal." : "This device's database did not answer. It may be busy in another window or just taking longer than usual."}</p>
+      <button type="button" onClick={() => location.reload()} style={bootBtn}>
+        {es ? "Reintentar" : "Retry"}
+      </button>
+    </BootShell>
+  );
+}
+
+function DbRescue() {
+  const es = (document.documentElement.lang || "es").startsWith("es");
+  return (
+    <BootShell>
+      <p style={{ marginTop: 12 }}>{es ? "La base de datos guardada en este equipo no se puede abrir, y ya falló varias veces. Tu cuenta y tus copias no se tocan: viven fuera de esta base." : "The database saved on this device cannot be opened, and it has already failed several times. Your account and your backups are untouched: they live outside this database."}</p>
+      <p style={{ marginTop: 8 }}>{es ? "Si empiezas con una base vacía, la dañada NO se borra: queda guardada en el equipo y solo deja de usarse. Al entrar, la Nube o una copia pueden rellenar el libro." : "If you start with an empty database, the damaged one is NOT deleted: it stays saved on the device and simply stops being used. Once you are in, the Cloud or a backup can refill the book."}</p>
+      <div>
+        <button type="button" onClick={() => { clearDbFailures(); location.reload(); }} style={bootBtn}>
+          {es ? "Reintentar" : "Retry"}
+        </button>
+      </div>
+      <div>
+        <button type="button" onClick={() => { startWithFreshStore(); location.reload(); }} style={bootBtnQuiet}>
+          {es ? "Empezar con una base vacía en este equipo" : "Start with an empty database on this device"}
+        </button>
+      </div>
+    </BootShell>
+  );
+}
+
+function NoLocks() {
+  const es = (document.documentElement.lang || "es").startsWith("es");
+  return (
+    <BootShell>
+      <p style={{ marginTop: 12 }}>{es ? "Este navegador no puede asegurar que Brizna se abra una sola vez. Si se abre en dos sitios a la vez, un libro puede pisar al otro sin avisar." : "This browser cannot guarantee that Brizna opens only once. If it is opened in two places at once, one book can overwrite the other without warning."}</p>
+      <button type="button" onClick={() => start()} style={bootBtn}>
+        {es ? "Abrir de todos modos" : "Open anyway"}
+      </button>
+    </BootShell>
+  );
+}
+
 // One tab at a time owns the on-device database (two would overwrite each other).
-if (navigator.locks?.request) {
+if (dbFailureCount() >= 3) {
+  // 1.5.51 (auditoría interna, A3): the saved store has failed to open again and
+  // again — offer the rescue door instead of another lap around the same error loop.
+  root.render(<DbRescue />);
+} else if (navigator.locks?.request) {
   void navigator.locks.request("brizna-db", { ifAvailable: true }, (lock) => {
     if (!lock) { root.render(<OtherTab />); return; }
     start();
     return new Promise<void>(() => undefined); // hold until the tab closes
   });
 } else {
-  start();
+  // 1.5.51 (auditoría interna, A1): without Web Locks there used to be NO arbitration
+  // at all — the app started blind and two copies could overwrite each other in
+  // silence. Now the screen says so, and opening is a deliberate tap.
+  root.render(<NoLocks />);
 }
 
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {

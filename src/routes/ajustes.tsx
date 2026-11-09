@@ -30,6 +30,7 @@ import { formatDay, formatStamp } from "@/lib/format";
 import { emphasize, useI18n, useTx } from "@/lib/i18n";
 import { smartHit } from "@/lib/fuzzy";
 import { notificationsSupported, requestNotificationPermission } from "@/lib/reminders";
+import { quarantineOutbox } from "@/lib/offline-queue";
 import { pickBackupFolder, writeBackupBundle } from "@/lib/save-file";
 import {
   applyVacation,
@@ -320,6 +321,9 @@ function AjustesPage() {
         toast.error(tx("No se encontró esa copia", "That copy was not found"));
         return;
       }
+      // 1.5.51 (auditoría interna, D1): the restore remapped every id — anything still
+      // queued against the old book is quarantined (visible), never flushed into it.
+      quarantineOutbox("restore");
       toast.success(tx(`Copia restaurada · ${res.clients} clientes`, `Copy restored · ${res.clients} clients`));
       setRestoreTarget(null);
       await invalidateLawn(qc);
@@ -329,6 +333,7 @@ function AjustesPage() {
   const restoreFile = useMutation({
     mutationFn: (json: string) => importBackupJson({ data: { json } }),
     onSuccess: async (res) => {
+      quarantineOutbox("restore");
       toast.success(tx(`Archivo restaurado · ${res.clients} clientes`, `File restored · ${res.clients} clients`));
       setRestoreJson(null);
       await invalidateLawn(qc);
