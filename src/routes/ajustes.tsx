@@ -236,10 +236,20 @@ function AjustesPage() {
   const [wideDefault] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches,
   );
+  // 1.5.43 (Oscar: entering Ajustes, the deployment of every card «se pega» — it sticks, not
+  // smooth): the 1.5.42 effect fired AFTER the page had already painted closed, so every fold
+  // mounted twice (closed, then open) and the masonry measured and re-flowed the whole page
+  // twice in the first frames — that double burst was the hitch. Now the force is written
+  // during this page's own render, BEFORE any fold below mounts: each fold reads it in its
+  // initializer and is BORN open — one render, one measure, nothing re-flows. The ref keeps
+  // the write mount-only: folding everything by hand still sticks while you stay (1.5.42),
+  // and leaving + returning re-asserts it, because a fresh mount runs this again.
+  const assertedRef = useRef(false);
+  if (!assertedRef.current) {
+    assertedRef.current = true;
+    if (wideDefault && !foldsOpen("aj-")) setFoldsOpen("aj-", true);
+  }
   const [expandAll, setExpandAll] = useState(() => foldsOpen("aj-") || wideDefault);
-  useEffect(() => {
-    if (wideDefault) setFoldsOpen("aj-", true);
-  }, [wideDefault]);
   const [tabletOn, setTabletOn] = useState(() => readTabletEnabled());
 
   const saveName = useMutation({
