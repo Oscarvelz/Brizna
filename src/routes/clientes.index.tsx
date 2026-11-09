@@ -1,7 +1,8 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBackClose } from "@/lib/back-close";
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { AlertCircle, Archive, CalendarDays, Check, ChevronDown, ChevronRight, Filter, HandCoins, MapPin, Phone, Pin, PiggyBank, Plus, Scissors, Search, ShieldAlert, Sparkles, Trash2, UserCheck, UserMinus, Wallet, Ban, Hourglass, Leaf, Repeat, Star, TriangleAlert } from "lucide-react";
+import { AlertCircle, Archive, CalendarDays, Check, ChevronDown, ChevronRight, Filter, GripVertical, HandCoins, MapPin, Phone, Pin, PiggyBank, Plus, Scissors, Search, ShieldAlert, Sparkles, Trash2, UserCheck, UserMinus, Wallet, Ban, Hourglass, Leaf, Repeat, Star, TriangleAlert } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import { toast } from "sonner";
@@ -228,6 +229,7 @@ function ClientesPage() {
   const [sort, setSort] = useState<ClientSort>("name");
   const [filter, setFilter] = useState<ClientFilter>(search.filter ?? "active");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterBarRef = useRef<HTMLDivElement | null>(null);
   // Inventario is pinned by default (1.4.61). It stays pinned unless unpinned after this change
   // (new key, so an old "0" from before does not count).
   const [invPin, setInvPin] = useState(() => {
@@ -367,6 +369,8 @@ function ClientesPage() {
         </p>
       ) : null}
 
+      <div className="bz-clientes-split">
+      <div className="bz-clientes-side">
       <details
         id="inventario"
         className="group mb-4 rounded-md bg-surface px-3 py-2 shadow-card"
@@ -400,7 +404,7 @@ function ClientesPage() {
             </button>
           </span>
         </summary>
-        <div className="mt-2 grid grid-cols-2 gap-1.5 pb-1">
+        <div className="bz-inv-grid mt-2 grid grid-cols-2 gap-1.5 pb-1">
           <Link
             to="/clientes"
             search={{ filter: "regular" }}
@@ -465,8 +469,10 @@ function ClientesPage() {
         }}
         onCancel={() => setAskUnpin(false)}
       />
+      </div>
+      <div className="bz-clientes-main">
 
-      <div className="relative mb-4" data-no-swipe>
+      <div ref={filterBarRef} className="relative mb-4" data-no-swipe>
         <div data-spot="clientes-filtros" data-spot-alt="archivo" className="flex h-11 w-full items-center gap-1 rounded-full bg-surface pr-1 pl-3 text-sm font-semibold shadow-card">
           <button
             type="button"
@@ -486,6 +492,7 @@ function ClientesPage() {
         {filtersOpen ? (
           <FilterMenu
             value={filter}
+            anchorRef={filterBarRef}
             onPick={(next) => {
               applyFilter(next);
               setFiltersOpen(false);
@@ -568,6 +575,8 @@ function ClientesPage() {
           </li>
         ))}
       </ul>
+      </div>
+      </div>
 
       <ConfirmDialog
         open={askBulk === "reactivate"}
@@ -1238,12 +1247,29 @@ function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "gran
     <div className="min-w-0 flex-1">
       <Link to="/clientes/$id" params={{ id: String(client.id) }} className="block min-w-0">
         <div className="bz-ctop flex min-w-0 items-start gap-3">
+          {/* 1.5.45 (Oscar, consistency with Hoy): the client card takes the same left rail —
+              the six-dot grip beside the name and the little scissors in the cadence row,
+              in the grip's own column, so name and cadence text start on the same line. */}
+          <span aria-hidden className="-ml-2 grid size-8 shrink-0 place-items-center text-muted">
+            <GripVertical className="size-4" />
+          </span>
           <span className={cn("bz-cname block min-w-0 flex-1 font-semibold", grande ? "font-display is-grande" : "is-media")}>
             <MeshNameUniform name={client.name} cols={2} size={grande ? "grande" : "cmedia"} />
           </span>
           <span className={cn("bz-cprice shrink-0", grande ? "is-grande" : "is-media")}>{money(client.pricePerCut)}</span>
         </div>
-        <FitLine forms={freq} underName sizes={grande ? [0.8125, 0.75] : [0.71875, 0.6875]} className={cn("bz-csub", grande ? "is-grande" : "is-media")} />
+        <div className="-ml-2 flex min-w-0 items-center gap-3">
+          <span aria-hidden className="grid w-8 shrink-0 place-items-center text-muted">
+            <Scissors className="size-3.5" />
+            {/* FitLine caps the cadence line at the name's width and finds the name through the
+                previous sibling — inside this slot it finds this hidden proxy, set in the name's
+                own font, so the cap survives the row wrap untouched. */}
+            <span className="sr-only">
+              <span data-card-name className={cn("font-display font-semibold", grande ? "text-[1.375rem] tracking-[-0.012em]" : "text-[1.125rem]")}>{client.name}</span>
+            </span>
+          </span>
+          <FitLine forms={freq} underName sizes={grande ? [0.8125, 0.75] : [0.71875, 0.6875]} className={cn("bz-csub min-w-0 flex-1", grande ? "is-grande" : "is-media")} />
+        </div>
       </Link>
       {grande && client.cue ? <CueChip text={client.cue} full className="mt-1.5" /> : null}
       <div className={cn("flex min-w-0 items-center justify-between gap-2", grande ? "mt-3" : "mt-2.5")}>
@@ -1271,7 +1297,7 @@ const FILTER_LOOK: Record<ClientFilter, { icon: React.ReactNode; tone: string; e
  * one compact row per filter (tone icon chip, label, one short line, count, inline check), fits the screen
  * (scrolls inside), back closes it, the add button tucks away while it is open.
  */
-function FilterMenu({ value, onPick, onClose }: { value: ClientFilter; onPick: (next: ClientFilter) => void; onClose: () => void }) {
+function FilterMenu({ value, onPick, onClose, anchorRef }: { value: ClientFilter; onPick: (next: ClientFilter) => void; onClose: () => void; anchorRef: { current: HTMLDivElement | null } }) {
   const tx = useTx();
   const box = useRef<HTMLDivElement>(null);
   const [maxH, setMaxH] = useState<number | null>(null);
@@ -1283,30 +1309,48 @@ function FilterMenu({ value, onPick, onClose }: { value: ClientFilter; onPick: (
       staleTime: 30_000,
     })),
   });
+  // 1.5.45 (Oscar — bug): rendered inside the page, the menu deployed BEHIND the tally and the
+  // cards («se despliega por atrás de toda la información»): an ancestor stacking context caps
+  // its z-index, and no z bump inside escapes it (bisected on the bench: z-999 still lost; the
+  // same node portaled to <body> won). So the menu now portals to the body and sits position:
+  // fixed under its bar, following it on scroll/resize — above everything, on tablet and phone.
+  const [place, setPlace] = useState(() => {
+    const r = anchorRef.current?.getBoundingClientRect();
+    return r ? { left: r.left, top: r.bottom + 8, width: r.width } : null;
+  });
   useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const top = el.getBoundingClientRect().top;
-    setMaxH(Math.max(220, window.innerHeight - top - 96));
+    const update = () => {
+      const r = anchorRef.current?.getBoundingClientRect();
+      if (!r) return;
+      setPlace({ left: r.left, top: r.bottom + 8, width: r.width });
+      setMaxH(Math.max(220, window.innerHeight - (r.bottom + 8) - 96));
+    };
+    update();
     document.documentElement.dataset.fabTuck = "1";
     const onPointer = (event: PointerEvent) => {
-      const root = el.parentElement;
-      if (root && !root.contains(event.target as Node)) onClose();
+      const target = event.target as Node;
+      if (box.current && box.current.contains(target)) return;
+      if (anchorRef.current && anchorRef.current.contains(target)) return;
+      onClose();
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
     document.addEventListener("pointerdown", onPointer);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
     return () => {
       delete document.documentElement.dataset.fabTuck;
       document.removeEventListener("pointerdown", onPointer);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return (
-    <div ref={box} role="listbox" aria-label={tx("Filtrar clientes", "Filter clients")} className="bz-fmenu" style={maxH ? { maxHeight: `${maxH}px` } : undefined}>
+  return createPortal(
+    <div ref={box} role="listbox" aria-label={tx("Filtrar clientes", "Filter clients")} className="bz-fmenu" style={{ position: "fixed", left: place?.left, top: place?.top, width: place?.width, right: "auto", maxHeight: maxH ? `${maxH}px` : undefined, visibility: place ? undefined : "hidden" }}>
       {FILTERS.map((item, i) => {
         const look = FILTER_LOOK[item.value];
         const on = value === item.value;
@@ -1327,6 +1371,7 @@ function FilterMenu({ value, onPick, onClose }: { value: ClientFilter; onPick: (
           </button>
         );
       })}
-    </div>
+    </div>,
+    document.body,
   );
 }
