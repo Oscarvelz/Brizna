@@ -2120,7 +2120,11 @@ html:is(.theme-dark, .theme-amoled) .bz-actbtn { background: color-mix(in oklab,
 /* Fijados head: tone kicker chip + note on the same line. */
 /* 1.5.23 (Oscar): the note runs AFTER the kicker chip, in its own column — the chip alone on line one
    (the old text-wrap: pretty pushed the whole note below it) cost a full line and left the section cut. */
-.bz-pinned-head { display: flex; align-items: flex-start; gap: 0.25rem; margin: 0 0 0.5rem; padding: 0.125rem 0.25rem 0; font-size: 0.75rem; line-height: 1.55; color: var(--color-muted); }
+/* 1.5.55 (Oscar): the column is gone — on the phone it squeezed the note into a tall narrow stack
+   («esa fila así de montada»). The head is a plain paragraph again: the chip leads inline and the
+   note flows after it at FULL width, wrapping under the chip like ordinary text. No text-wrap:
+   pretty/balance anywhere near it — that was the 1.5.23 failure (the whole note dropping below). */
+.bz-pinned-head { margin: 0 0 0.5rem; padding: 0.125rem 0.25rem 0; font-size: 0.75rem; line-height: 1.55; color: var(--color-muted); }
 /* 1.5.30 (Oscar): the Fijados note went unnoticed in small muted type — a little more presence,
    carefully, as he asked: ink lifted from muted to near-foreground, one step larger, medium
    weight. Same line, same words, same place; the chip is untouched. */
