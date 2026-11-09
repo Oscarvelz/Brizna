@@ -2096,6 +2096,10 @@ html:is(.theme-dark, .theme-amoled) .bz-actbtn { background: color-mix(in oklab,
 /* 1.5.23 (Oscar): the note runs AFTER the kicker chip, in its own column — the chip alone on line one
    (the old text-wrap: pretty pushed the whole note below it) cost a full line and left the section cut. */
 .bz-pinned-head { display: flex; align-items: flex-start; gap: 0.25rem; margin: 0 0 0.5rem; padding: 0.125rem 0.25rem 0; font-size: 0.75rem; line-height: 1.55; color: var(--color-muted); }
+/* 1.5.30 (Oscar): the Fijados note went unnoticed in small muted type — a little more presence,
+   carefully, as he asked: ink lifted from muted to near-foreground, one step larger, medium
+   weight. Same line, same words, same place; the chip is untouched. */
+.bz-pinned-note { font-size: 0.8125rem; font-weight: 500; color: color-mix(in oklab, var(--color-fg) 82%, var(--color-muted)); }
 .bz-pinned-kicker {
   display: inline-flex; align-items: center; gap: 0.3125rem; height: 1.375rem; margin-right: 0.25rem; padding: 0 0.25rem 0 0.4375rem;
   border-radius: 999px; vertical-align: 1px; white-space: nowrap;
