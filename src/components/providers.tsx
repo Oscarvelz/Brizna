@@ -167,7 +167,7 @@ function ToastLayer() {
       position="top-center"
       toastOptions={{
         className:
-          "!bg-surface !text-fg !shadow-card !border-0 !rounded-[14px] !font-sans",
+          "!bg-surface !text-fg !rounded-[14px] !font-sans",
       }}
     />
   );

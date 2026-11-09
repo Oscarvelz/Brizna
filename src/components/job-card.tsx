@@ -489,17 +489,33 @@ export function JobCard({
         title={isCancel ? tx("¿Cancelar este corte?", "Cancel this cut?") : tx("¿Por qué pospuso?", "Why was it postponed?")}
         description={
           <div className="grid gap-2">
-            <p>
-              {isCancel
-                ? tx(`${job.clientName} no se hace ni se cobra. Queda como Cancelado con su razón. El cliente no se borra.`, `${job.clientName} is not done or charged. It stays as Canceled with its reason. The client is not deleted.`)
-                : tx(`${job.clientName} pasa a otro día.`, `${job.clientName} moves to another day.`)}
-            </p>
+            {isCancel ? (
+              <>
+                {/* 1.5.44 (Oscar): «Cancelado» alone is ambiguous — the dialog must ask what it
+                    means before anything is cancelled: never doing it again, or really just
+                    postponing it. Universal logic, here where every Posponer flows through. */}
+                <p>{tx(`¿Qué significa «cancelado» para ${job.clientName}?`, `What does “canceled” mean for ${job.clientName}?`)}</p>
+                <p>
+                  <strong>{tx("No volverlo a hacer", "Never do it again")}</strong>
+                  {tx(": este corte se cancela del todo — no se hace, no se cobra y no vuelve. El cliente no se borra.", ": this cut is canceled for good — not done, not charged, and it does not come back. The client is not deleted.")}
+                </p>
+                <p>
+                  <strong>{tx("Posponerlo", "Postpone it")}</strong>
+                  {tx(": en realidad solo cambia de día — el corte sí se hace, en otra fecha.", ": it really only moves to another day — the cut still gets done, on a different date.")}
+                </p>
+              </>
+            ) : (
+              <p>{tx(`${job.clientName} pasa a otro día.`, `${job.clientName} moves to another day.`)}</p>
+            )}
             {isCancel ? null : <Input type="date" value={postDate} onChange={(e) => setPostDate(e.target.value)} />}
             {/* 1.4.65 (Oscar): Quitar left the card; Posponer covers it with the reason Cancelado */}
             <ReasonChips value={reason} onChange={setReason} reasons={CARD_REASONS} history={!isCancel} />
           </div>
         }
-        confirmLabel={isCancel ? tx("Sí, cancelar", "Yes, cancel") : tx("Sí, posponer", "Yes, postpone")}
+        confirmLabel={isCancel ? tx("No volverlo a hacer", "Never do it again") : tx("Sí, posponer", "Yes, postpone")}
+        extraLabel={isCancel ? tx("Posponerlo", "Postpone it") : undefined}
+        onExtra={isCancel ? () => setReason("") : undefined}
+        cancelLabel={tx("Atrás", "Back")}
         danger={isCancel}
         pending={postpone.isPending || cancel.isPending}
         onConfirm={() => {
