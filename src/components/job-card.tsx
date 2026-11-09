@@ -759,13 +759,17 @@ export function JobCard({
           </div>
           {pinButton}
         </div>
-        {/* 1.5.25 (Oscar): the work line slides right to live under the name's first letter — the grip's
-            24 px (32 box − 8 lean) plus the header gap (12 Grande / 8 Media) — so the card's left side
-            reads as one leveled column: dots, name, instruction. And the line opens with a super-tiny
-            scissors, quiet (fg/50), «no llamativo, solo que parezca bien hecho»: the icon sits on the
-            name's letter line and the text follows it, leveling the row. */}
-        <div className={cn("flex min-w-0 items-center gap-1.5", media ? "mt-1 ml-8" : "mt-2 ml-9")}>
-          <Scissors className={cn("shrink-0 text-fg/50", media ? "size-2.5" : "size-3")} strokeWidth={2.2} aria-hidden />
+        {/* 1.5.25 (Oscar): the line opens with a super-tiny scissors, quiet (fg/50), «no llamativo,
+            solo que parezca bien hecho». (Its seat moved in 1.5.32 — see below.) */}
+        {/* 1.5.32 (Oscar, experimento — «te puedo decir reviértelo»): the scissors move OUT from under
+            the name to the grip's own column: the line starts at the grip's box (-ml-1, w-8 slot,
+            icon centered = under the six dots) and the gap is sized so the TEXT lands exactly on
+            the name's first letter (Grande: 8 + 32 + 12 = 52; Media: 8 + 32 + 8 = 48). Before, the
+            icon sat on the name's letter line and pushed the text past it. */}
+        <div className={cn("flex min-w-0 items-center", media ? "mt-1 -ml-2 gap-2" : "mt-2 -ml-2 gap-3")}>
+          <span className="grid w-8 shrink-0 place-items-center" aria-hidden>
+            <Scissors className={cn("shrink-0 text-fg/50", media ? "size-2.5" : "size-3")} strokeWidth={2.2} />
+          </span>
           <FitLine
             underName
             className={cn("min-w-0 flex-1 font-medium leading-tight text-fg/75", media ? "text-xs" : "text-sm")}
