@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Clock, CloudLightning, CloudRain, Crosshair, Droplets, GlassWater, MapPin, Pause, Play, Search, Sprout, SunMedium, Timer, Tractor, Wind } from "lucide-react";
@@ -715,12 +715,29 @@ const CELL = 56;
 
 /** The next hours: icon, a smooth temperature line, and rain chance as small bars. */
 function HourStrip({ hours, night, nowLabel }: { hours: Hour[]; night: boolean; nowLabel: string }) {
-  const w = hours.length * CELL;
+  // 1.5.38 (Oscar): on a tablet the strip used only its natural phone width and hugged the left of
+  // a wide card («próximas horas puede utilizar mejor el ancho de la tableta»). The scroller is
+  // measured and each hour's cell grows to fill the card exactly — the SVG is rebuilt at the same
+  // pixel width, so the line, dots and degree labels never distort. On a phone the measured width
+  // is at or under the natural strip, the cell stays CELL and it scrolls as it always has.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [avail, setAvail] = useState(0);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const read = () => setAvail(Math.max(0, el.clientWidth - 29)); // the scroller's side padding
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const cell = avail > 0 ? Math.max(CELL, Math.floor(avail / hours.length)) : CELL;
+  const w = hours.length * cell;
   const temps = hours.map((h) => h.temp);
   const lo = Math.min(...temps);
   const hi = Math.max(...temps);
   const y = (t: number) => (hi === lo ? 26 : 34 - ((t - lo) / (hi - lo)) * 18);
-  const pts = hours.map((h, i) => [CELL / 2 + i * CELL, y(h.temp)] as const);
+  const pts = hours.map((h, i) => [cell / 2 + i * cell, y(h.temp)] as const);
   let d = `M${pts[0][0]} ${pts[0][1]}`;
   for (let i = 1; i < pts.length; i++) {
     const [x0, y0] = pts[i - 1];
@@ -730,14 +747,14 @@ function HourStrip({ hours, night, nowLabel }: { hours: Hour[]; night: boolean; 
   }
   const area = `${d} L${pts[pts.length - 1][0]} 44 L${pts[0][0]} 44 Z`;
   return (
-    <div className="clx-hours">
+    <div className="clx-hours" ref={wrapRef}>
       <div className="clx-hours-in" style={{ width: w }}>
         <div className="clx-hrow">
           {hours.map((h, i) => {
             const t = new Date(h.time);
             const dark = night ? true : t.getHours() < 6 || t.getHours() >= 19;
             return (
-              <div key={h.time} className={cn("clx-hcell", i === 0 && "is-now", h.pop >= 50 && "is-wet")} style={{ width: CELL }}>
+              <div key={h.time} className={cn("clx-hcell", i === 0 && "is-now", h.pop >= 50 && "is-wet")} style={{ width: cell }}>
                 <span className="clx-htime">{i === 0 ? nowLabel : clock(t)}</span>
                 <WxIcon code={h.code} night={i === 0 ? night : dark} className="clx-hicon" />
               </div>
@@ -756,7 +773,7 @@ function HourStrip({ hours, night, nowLabel }: { hours: Hour[]; night: boolean; 
         </svg>
         <div className="clx-hrow">
           {hours.map((h, i) => (
-            <div key={h.time} className={cn("clx-hcell", h.pop >= 50 && "is-wet")} style={{ width: CELL }}>
+            <div key={h.time} className={cn("clx-hcell", h.pop >= 50 && "is-wet")} style={{ width: cell }}>
               <span className="clx-hbar"><span style={{ transform: `scaleY(${Math.max(0.04, h.pop / 100)})`, "--i": i } as CSSProperties} /></span>
               <span className="clx-hpop">{h.pop}%</span>
             </div>
