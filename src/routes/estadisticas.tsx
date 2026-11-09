@@ -48,7 +48,11 @@ function readView(): StudyView {
 function StudyToggle({ view, onChange }: { view: StudyView; onChange: (v: StudyView) => void }) {
   const tx = useTx();
   return (
-    <div data-spot="estudio" className={`as-toggle${view === "asesor" ? " is-right" : ""}`} role="tablist" aria-label={tx("Vista", "View")}>
+    /* 1.5.57 (Oscar, with video): data-fixed keeps the pill OUT of the swipe's movers — flipping
+       Estudio <-> Asesor used to drag the whole capsule away with the page and slide it back in.
+       The pill now stands still like the header; the only thing that moves is its green thumb,
+       which already glides on its own CSS transition when the view flips. */
+    <div data-fixed data-spot="estudio" className={`as-toggle${view === "asesor" ? " is-right" : ""}`} role="tablist" aria-label={tx("Vista", "View")}>
       <span className="as-toggle-thumb" aria-hidden />
       <button type="button" role="tab" aria-selected={view === "estudio"} className={view === "estudio" ? "is-on" : undefined} onClick={() => onChange("estudio")}>
         <BarChart3 aria-hidden />
