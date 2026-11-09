@@ -560,9 +560,12 @@ function CobrosPage() {
       />
       <ConfirmDialog
         open={askBulk === "waived"}
-        title={tx(`¿Cancelar ${picked.length} saldos?`, `Cancel ${picked.length} balances?`)}
+        title={tx(
+          picked.length === 1 ? "¿Perdonar 1 saldo?" : `¿Perdonar ${picked.length} saldos?`,
+          picked.length === 1 ? "Forgive 1 balance?" : `Forgive ${picked.length} balances?`,
+        )}
         description={tx("No se cuenta como cobrado.", "It is not counted as collected.")}
-        confirmLabel={tx("Cancelar saldos", "Cancel balances")}
+        confirmLabel={tx("Perdonar saldos", "Forgive balances")}
         danger
         pending={bulk.isPending}
         onConfirm={() => bulk.mutate("waived")}

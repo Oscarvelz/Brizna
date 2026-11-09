@@ -45,6 +45,7 @@ export function MethodField({
             <button
               key={item.id}
               type="button"
+              aria-pressed={on}
               onClick={() => {
                 if (item.id === "otro") {
                   setDraft(custom ? value.slice(5) : "");

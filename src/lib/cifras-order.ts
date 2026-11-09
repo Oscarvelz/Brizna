@@ -3,9 +3,12 @@ import { useEffect, useState } from "react";
 export const CIFRAS_DEFAULT = [
   "pulso",
   "meta",
+  // 1.5.54 (Oscar, censo de botones): «esfuerzo» va justo tras «meta» en el orden de fábrica,
+  // para que la pareja quede pegada bajo «Este mes» también en la columna del teléfono.
+  // Un orden ya guardado por el usuario no se toca: esto solo cambia el valor por defecto.
+  "esfuerzo",
   "mes",
   "fiabilidad",
-  "esfuerzo",
   "semana",
   "fijo",
   "hora",

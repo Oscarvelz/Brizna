@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { invalidateLawn } from "@/components/job-card";
@@ -41,9 +42,17 @@ export function PayDialog({
   const [amount, setAmount] = useState(mode === "full" ? String(balance) : "");
   const [tip, setTip] = useState("");
   const [method, setMethod] = useState("");
+  // 1.5.54 (censo de botones): el aviso de «falta la cantidad» vive DENTRO de la hoja;
+  // el toast anterior no se veía sobre el diálogo y la hoja parecía callarse sin guardar.
+  const [amountError, setAmountError] = useState(false);
+  const changeAmount = (v: string) => {
+    setAmount(v);
+    setAmountError(false);
+  };
 
   useEffect(() => {
     if (!open) return;
+    setAmountError(false);
     if (defaultAmount) setAmount(defaultAmount);
     else setAmount(mode === "full" && balance > 0 ? String(balance) : "");
   }, [open, mode, balance, defaultAmount]);
@@ -152,9 +161,15 @@ export function PayDialog({
               step="0.01"
               inputMode="decimal"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => changeAmount(e.target.value)}
             />
-            <MoneyCalc value={amount} onChange={setAmount} presets={presets} />
+            <MoneyCalc value={amount} onChange={changeAmount} presets={presets} />
+            {amountError ? (
+              <p className="bz-msg bz-msg-error" role="alert">
+                <TriangleAlert aria-hidden />
+                {tx("Falta la cantidad.", "The amount is missing.")}
+              </p>
+            ) : null}
           </div>
           <div>
             <Label className="text-fg">{tx("Propina, si dieron de más", "Tip, if they gave extra")}</Label>
@@ -187,7 +202,7 @@ export function PayDialog({
       pending={mut.isPending}
       onConfirm={() => {
         if (n <= 0) {
-          toast.error(tx("Pon una cantidad", "Enter an amount"));
+          setAmountError(true);
           return;
         }
         mut.mutate();

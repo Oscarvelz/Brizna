@@ -53,6 +53,9 @@ export function JobCard({
   const [askDone, setAskDone] = useState(false);
   const [askAbono, setAskAbono] = useState(false);
   const [abono, setAbono] = useState("");
+  // 1.5.54 (censo de botones): el aviso de «falta el monto» vive DENTRO de la hoja; el toast
+  // anterior no se veía sobre el diálogo y la hoja parecía callarse sin guardar.
+  const [abonoError, setAbonoError] = useState(false);
   const [askUndo, setAskUndo] = useState(false);
   const [askPost, setAskPost] = useState(false);
   const [askReturn, setAskReturn] = useState(false);
@@ -380,6 +383,7 @@ export function JobCard({
         onAlt={() => {
           setAskDone(false);
           setAbono(String(job.amount || ""));
+          setAbonoError(false);
           setAskAbono(true);
         }}
         onCancel={() => setAskDone(false)}
@@ -398,9 +402,18 @@ export function JobCard({
             </p>
             <MoneyCalc
               value={abono}
-              onChange={setAbono}
+              onChange={(v) => {
+                setAbono(v);
+                setAbonoError(false);
+              }}
               presets={DEFAULT_ABONO_PRESETS}
             />
+            {abonoError ? (
+              <p className="bz-msg bz-msg-error" role="alert">
+                <TriangleAlert aria-hidden />
+                {tx("Falta el monto del abono.", "The partial payment amount is missing.")}
+              </p>
+            ) : null}
           </div>
         }
         confirmLabel={tx("Hecho y abonado", "Done with a partial payment")}
@@ -410,7 +423,7 @@ export function JobCard({
         onConfirm={() => {
           const n = Math.round((Number(abono) || 0) * 100) / 100;
           if (n <= 0) {
-            toast.error(tx("Escribe el monto del abono.", "Enter the partial payment amount."));
+            setAbonoError(true);
             return;
           }
           if (skip) {
