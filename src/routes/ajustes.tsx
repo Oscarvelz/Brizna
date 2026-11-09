@@ -324,6 +324,13 @@ function AjustesPage() {
       // 1.5.51 (auditoría interna, D1): the restore remapped every id — anything still
       // queued against the old book is quarantined (visible), never flushed into it.
       quarantineOutbox("restore");
+      // 1.5.52 (D4): the copy also brought this device a new local layer (folders,
+      // look, orders): reload so the boot reads it as the copy holds it.
+      if (res.localChanged) {
+        toast.success(tx("Copia restaurada. Se recarga para aplicar también tus carpetas y tu apariencia.", "Copy restored. Reloading to also apply your folders and your look."));
+        setTimeout(() => location.reload(), 900);
+        return;
+      }
       toast.success(tx(`Copia restaurada · ${res.clients} clientes`, `Copy restored · ${res.clients} clients`));
       setRestoreTarget(null);
       await invalidateLawn(qc);
@@ -334,6 +341,11 @@ function AjustesPage() {
     mutationFn: (json: string) => importBackupJson({ data: { json } }),
     onSuccess: async (res) => {
       quarantineOutbox("restore");
+      if (res.localChanged) {
+        toast.success(tx("Archivo restaurado. Se recarga para aplicar también tus carpetas y tu apariencia.", "File restored. Reloading to also apply your folders and your look."));
+        setTimeout(() => location.reload(), 900);
+        return;
+      }
       toast.success(tx(`Archivo restaurado · ${res.clients} clientes`, `File restored · ${res.clients} clients`));
       setRestoreJson(null);
       await invalidateLawn(qc);

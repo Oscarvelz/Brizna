@@ -24,6 +24,7 @@ import { PHOTOS_ENABLED } from "@/lib/photos-flag";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { smartHit } from "@/lib/fuzzy";
 import { backupContentChecksum, checksumMatches, idsToKeep, withChecksum } from "@/lib/backup-plan";
+import { applyLocalStore, collectLocalStore, sanitizeLocalStore } from "@/lib/local-store-backup";
 import { reconcileBalance } from "@/lib/balance-reconcile";
 import { buildReportPdf } from "@/lib/report-pdf";
 import { buildReportXls, type WorkbookPack } from "@/lib/report-xls";
@@ -490,7 +491,9 @@ function sortClients(list: ClientRow[], sort: ClientSort): ClientRow[] {
 }
 
 /** The backup file format this build writes — and the newest it may restore (1.5.50, D7). */
-const BACKUP_FORMAT_VERSION = 5;
+// v6 (1.5.52, auditoría interna D4): a copy also carries the device layer
+// (`localStore`) — see lib/local-store-backup.ts for what travels and what never does.
+const BACKUP_FORMAT_VERSION = 6;
 
 async function collectBackup(userId: string) {
   const sql = await getSql();
@@ -536,7 +539,17 @@ async function collectBackup(userId: string) {
   };
   // Hallazgo 13: the content checksum rides inside the copy so the snapshot path can
   // recognise "same book as the newest copy" with one cheap payload->> lookup.
-  return withChecksum({ ...body, contentChecksum: backupContentChecksum(body) });
+  const contentChecksum = backupContentChecksum(body);
+  // 1.5.52 (D4): the device layer rides along — captured by enumeration on this
+  // device (on the server build there is no localStorage and the section is simply
+  // absent). It is INSIDE the sealed object, so the integrity checksum covers it;
+  // the CONTENT checksum above stays book-only, so a preference-only change does not
+  // churn the automatic snapshots — the newest copy still carries the layer.
+  let localStore: Record<string, string> = {};
+  try {
+    if (typeof localStorage !== "undefined") localStore = collectLocalStore(localStorage);
+  } catch { /* a copy without the layer is still a copy */ }
+  return withChecksum({ ...body, contentChecksum, ...(Object.keys(localStore).length ? { localStore } : {}) });
 }
 
 const BACKUP_GAP_MS = 10 * 60 * 1000;
@@ -3286,6 +3299,9 @@ type BackupPayload = {
   dayNotes?: Record<string, unknown>[];
   padLinks?: Record<string, unknown>[];
   weekOff?: Record<string, unknown>[];
+  // v6 copies only (1.5.52, D4): the device layer, already sanitized — a copy
+  // without it (older, or made on the server) leaves this device's layer untouched.
+  localStore?: Record<string, string>;
 };
 
 function asRecordArray(v: unknown): Record<string, unknown>[] {
@@ -3331,6 +3347,9 @@ function parseBackup(raw: unknown, trusted = false): BackupPayload {
     dayNotes: Array.isArray(data.dayNotes) ? asRecordArray(data.dayNotes) : undefined,
     padLinks: Array.isArray(data.padLinks) ? asRecordArray(data.padLinks) : undefined,
     weekOff: Array.isArray(data.weekOff) ? asRecordArray(data.weekOff) : undefined,
+    // Sanitized on the way in as well: even a hand-made file cannot plant a session,
+    // a sync state or a queue through this section (lib/local-store-backup.ts).
+    localStore: data.localStore ? sanitizeLocalStore(data.localStore) : undefined,
   };
 }
 
@@ -3391,7 +3410,7 @@ async function restoreClientExtras(clientId: number, row: Record<string, unknown
   );
 }
 
-async function applyBackup(userId: string, payload: BackupPayload): Promise<{ clients: number; jobs: number }> {
+async function applyBackup(userId: string, payload: BackupPayload): Promise<{ clients: number; jobs: number; localChanged: boolean }> {
   // MOVIMIENTO 2 (hallazgo 19): backups never carry photos (see photos-flag.ts). While
   // photos are off this never fires; the day they are enabled, a restore must refuse —
   // loudly — rather than replace the tables and silently take the device's photos with it.
@@ -3610,7 +3629,19 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
   return { clients: payload.clients?.length ?? 0, jobs: payload.jobs?.length ?? 0 };
   });
   await ensureScheduleForUser(userId);
-  return counts;
+  // 1.5.52 (D4): the copy's device layer lands AFTER the book transaction commits —
+  // localStorage cannot join a SQL transaction, and a rolled-back restore must not
+  // leave the layer half-applied either (on failure above, we never reach this).
+  // Merging only: keys the copy does not carry stay as this device has them. The
+  // flag tells Ajustes to reload, so preferences the boot reads (look, folders,
+  // orders) come up as the copy holds them.
+  let localChanged = false;
+  if (payload.localStore && Object.keys(payload.localStore).length) {
+    try {
+      if (typeof localStorage !== "undefined") localChanged = applyLocalStore(localStorage, payload.localStore);
+    } catch { /* the book is restored; the layer can be re-applied from the same copy */ }
+  }
+  return { ...counts, localChanged };
 }
 
 // Rows as the copy holds them, only the columns this table has (a missing column takes its default).
