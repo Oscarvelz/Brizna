@@ -314,13 +314,14 @@ export function JobCard({
       aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
       onClick={onPin}
       className={cn(
-        "grid size-8 shrink-0 place-items-center -mr-2 -translate-y-0.5",
+        "grid size-8 shrink-0 place-items-center",
         job.pinned ? "text-[color:var(--tone-pin)]" : "text-muted",
       )}
     >
-      {/* 1.5.20 (Oscar, fine-tuning): the whole button leans 8 px right (-mr-2 above) so the pin glyph
-          sits almost on the map button's right-edge line below it.
-          1.5.22 (Oscar): it also rises 2 px with the name and the price, onto the grip dots' center line. */}
+      {/* 1.5.34 (Oscar): the pin no longer sits inside the header — it FLOATS on the card's top border
+          (see the wide return's wrapper), so the old in-row leans (-mr-2, the 2 px rise) are gone; the
+          button is a plain 32 px seat and its glyph lands centered on the border line. Same tap, same
+          confirm dialog, same tone rule (rose filled when pinned, muted when not). */}
       <Pin className={cn(media ? "size-4" : "size-[18px]", job.pinned && "fill-current")} />
     </button>
   );
@@ -696,6 +697,12 @@ export function JobCard({
 
   return (
     <>
+    {/* 1.5.34 (Oscar): the pin FLOATS on the card's top border, left side («encima o flotando del borde
+        superior… al lado izquierdo, área superior»), so the article rides in this plain relative
+        wrapper and the pin lives OUTSIDE it, straddling the border line above the grip column —
+        it takes no room inside and never pushes the name. The wrapper is the same height as the
+        article (the pin is absolute), so grids and drag math see the card exactly as before. */}
+    <div className="relative min-w-0">
     <article
       className={cn(
         "min-w-0 max-w-full overflow-hidden rounded-xl bg-surface shadow-card",
@@ -709,12 +716,14 @@ export function JobCard({
         !late && job.kind === "cut" && "border-l-4 border-today",
       )}
     >
-      {/* 1.5.18 (Oscar, correcting 1.5.12 from his phone): the header is his 1.4.64/1.4.80 arrangement
-          again — the name at its original size, shrink-wrapped; the price right after it in the neutral
-          grey (text-fg/70), 19px Grande / 14px Media — not large green at the far corner; and the BARE
-          pin tucked into the top corner. What 1.5.12 keeps: the service - date line, the ONE wide row
-          of contact buttons, and the status band. The address now hides behind a long-press on the map
-          button, and Hecho/Posponer own their whole row (the pin left it). Spec doc updated the same day. */}
+      {/* 1.5.18 (Oscar, correcting 1.5.12 from his phone): the header was his 1.4.64/1.4.80 arrangement
+          again — name, then the price beside it in neutral grey, bare pin in the top corner.
+          1.5.34 (Oscar) supersedes the seats once more: the PRICE returns to the top-right corner
+          («para separarlo del nombre», neutral treatment kept), the PIN floats on the top border at
+          the left (rendered at the wrapper, below), and the NAME grows a step in both densities
+          (.bz-mname-u.is-jgrande 1.5rem, .is-jmedia 1.375rem). What survives from 1.5.12: the
+          service – date line, the ONE wide row of contact buttons, and Hecho/Posponer owning
+          their row. The address hides behind a long-press on the map button. */}
       <div className="min-w-0">
         {/* 1.5.20 (Oscar): the header row centers its children — the six grip dots, the name and the pin
             share one optical line (before, items-start left the dots riding off the name's line). */}
@@ -745,19 +754,22 @@ export function JobCard({
             >
               <MeshNameUniform name={job.clientName} cols={2} size={media ? "jmedia" : "jgrande"} fit />
             </Link>
-            <span
-              data-price
-              className={cn(
-                // 1.5.20 (Oscar, fine-tuning): the price rides a touch high next to the bigger serif name;
-                // 2 px down (1 px on Media) and its optical center meets the name's and the pin's line.
-                "shrink-0 font-display font-semibold leading-none tabular-nums text-fg/70",
-                media ? "text-sm translate-y-px" : "text-[1.1875rem] translate-y-0.5",
-              )}
-            >
-              {money(job.amount)}
-            </span>
           </div>
-          {pinButton}
+          {/* 1.5.34 (Oscar): the price leaves the name's side and takes the top-right CORNER back, as in
+              the 1.5.12 layout — «para separarlo del nombre». Same neutral treatment and sizes as 1.5.18
+              kept (fg/70, 19 px Grande / 14 px Media); only the seat changes. It now sits outside the
+              name-room, so its old stacked lift is re-based: no shift on Grande, 1 px up on Media —
+              the same net optical line it had beside the name. The pin is out of this row entirely:
+              it floats on the card's top border, left side (see the wide return's wrapper). */}
+          <span
+            data-price
+            className={cn(
+              "shrink-0 font-display font-semibold leading-none tabular-nums text-fg/70",
+              media ? "text-sm -translate-y-px" : "text-[1.1875rem]",
+            )}
+          >
+            {money(job.amount)}
+          </span>
         </div>
         {/* 1.5.25 (Oscar): the line opens with a super-tiny scissors, quiet (fg/50), «no llamativo,
             solo que parezca bien hecho». (Its seat moved in 1.5.32 — see below.) */}
@@ -885,9 +897,11 @@ export function JobCard({
         </div>
       )}
 
-      {/* 1.5.18: no bottom pin row anymore — every Grande/Media card carries its one bare pin in the
-          top corner (header), whatever its state. */}
+      {/* 1.5.18: no bottom pin row anymore. 1.5.34 (Oscar): the pin is not in the header either — it
+          floats on the top border, left side, rendered just below as the wrapper's overlay. */}
     </article>
+    <div className={cn("absolute -top-4 z-20", media ? "left-0.5" : "left-2")}>{pinButton}</div>
+    </div>
     {dialogs}
     {showStatus ? <StatusInfoCard job={job} today={today} onClose={() => setShowStatus(false)} /> : null}
     </>
