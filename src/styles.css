@@ -2612,6 +2612,30 @@ html:is(.theme-dark, .theme-amoled) .bz-cact.is-forgive { color: color-mix(in ok
    and a deep soft shadow lifts the toast off whatever is behind it. Sonner's own stylesheet
    targets [data-styled="true"], so this rule matches that specificity and carries !important. */
 [data-sonner-toast][data-styled="true"] { border: 1px solid color-mix(in srgb, var(--color-fg) 26%, transparent) !important; box-shadow: 0 18px 44px -12px rgb(0 0 0 / 0.55), 0 4px 14px -4px rgb(0 0 0 / 0.35) !important; }
+
+/* 1.5.46 (Oscar): a FINISH for the Días libres panel — it read as one flat block of color
+   («que no parezca simplemente un bloque de color y tenga contrastes bonitos»). The shell
+   gets a soft vertical light, a hairline frame and a real shadow; the head separates with
+   its own hairline; the week nav becomes a small segmented pill; the day chips get three
+   readable states (quiet workday, marked-off in the late family, today ringed in primary);
+   the second section starts after a hairline divider. Everything mixes from the theme's own
+   tokens, so the finish holds in day, night, AMOLED and grafito — the universal panel finish. */
+.bz-ag-libres { background: linear-gradient(180deg, color-mix(in oklab, var(--color-fg) 4%, var(--color-surface)), var(--color-surface) 58%); box-shadow: var(--shadow-card), inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 9%, transparent), inset 0 1px 0 color-mix(in srgb, #ffffff 7%, transparent); border-radius: 1.25rem; }
+.bz-ag-libres-head { box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--color-fg) 8%, transparent); }
+.bz-ag-libres-nav { background: color-mix(in oklab, var(--color-fg) 5%, var(--color-surface)); border-radius: 999px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 10%, transparent); padding: 0.125rem; }
+.bz-ag-daychip { background: color-mix(in oklab, var(--color-fg) 6%, var(--color-surface)); color: color-mix(in srgb, var(--color-fg) 78%, var(--color-muted)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 11%, transparent); transition: transform 0.12s ease, background-color 0.15s ease; }
+.bz-ag-daychip:active { transform: scale(0.96); }
+.bz-ag-daychip.is-on { background: color-mix(in oklab, var(--color-late) 17%, var(--color-surface)); color: var(--color-late); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-late) 55%, transparent); }
+.bz-ag-daychip.is-today { color: var(--color-fg); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-primary) 65%, transparent); }
+.bz-ag-daychip.is-on.is-today { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-late) 55%, transparent), inset 0 -3px 0 color-mix(in srgb, var(--color-primary) 85%, transparent); }
+.bz-ag-libres-sub { border-top: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent); padding-top: 0.75rem; }
+
+/* 1.5.46 (Oscar): on PHONE the Clientes tally («14 clientes · $910…») moves BELOW the view
+   toggle — filter, then Grande/Media/Lista/Malla, then the little report, then the cards.
+   Tablet keeps the report above the toggle, as it was. Clientes only. */
+@media (max-width: 767px) {
+  .bz-clientes-tallyrow .bz-vistas { order: -1; }
+}
 .bz-fmenu { position: absolute; left: 0; right: 0; top: calc(100% + 0.5rem); z-index: 75; display: grid; gap: 0.25rem; padding: 0.375rem; overflow-y: auto; overscroll-behavior: contain;
   border-radius: 1.125rem; background: var(--color-surface); box-shadow: var(--shadow-card), 0 18px 40px -18px rgb(0 0 0 / 0.45); animation: bz-fmenu-in .16s cubic-bezier(.2,.7,.2,1) both; transform-origin: 50% 0; }
 html.theme-amoled .bz-fmenu { background: var(--bz-l2, #161616); box-shadow: inset 0 0 0 1px var(--bz-hair-2), 0 18px 40px -14px rgb(0 0 0 / 0.9); }

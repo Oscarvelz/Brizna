@@ -476,7 +476,7 @@ function AgendaPage() {
           >
             <Pin className={cn("size-3.5", pinnedOff && "fill-current")} />
           </button>
-          <div className="flex shrink-0 items-center">
+          <div className="bz-ag-libres-nav flex shrink-0 items-center">
             <button type="button" aria-label={tx("Semana anterior", "Previous week")} className="grid h-9 w-7 place-items-center text-muted" onClick={() => setWeekCursor(addDaysISO(weekCursor, -7))}>
               <ChevronLeft className="size-3.5" />
             </button>
@@ -506,14 +506,14 @@ function AgendaPage() {
                     key={date}
                     type="button"
                     onClick={() => askDate(date, `${wd?.short ?? ""} ${date.slice(8)}`)}
-                    className={cn("h-10 min-w-12 rounded-full px-3 text-sm font-semibold", on ? "bg-late-bg text-late" : "bg-sun text-muted")}
+                    className={cn("bz-ag-daychip h-10 min-w-12 rounded-full px-3 text-sm font-semibold", on && "is-on", date === today && "is-today", on ? "bg-late-bg text-late" : "bg-sun text-muted")}
                   >
                     {wd?.short} {date.slice(8)}
                   </button>
                 );
               })}
             </div>
-            <p className="mt-3 flex items-center gap-1 text-sm font-semibold">
+            <p className="bz-ag-libres-sub mt-3 flex items-center gap-1 text-sm font-semibold">
               {tx("Días que casi nunca se trabajan", "Days that are almost never worked")}
               <Hint topic="dia-casi-nunca" />
             </p>
@@ -525,7 +525,7 @@ function AgendaPage() {
                     key={day.value}
                     type="button"
                     onClick={() => askWeekday(day.value, day.short)}
-                    className={cn("h-10 min-w-12 rounded-full px-3 text-sm font-semibold", on ? "bz-pick" : "bg-sun text-muted")}
+                    className={cn("bz-ag-daychip h-10 min-w-12 rounded-full px-3 text-sm font-semibold", on ? "bz-pick" : "bg-sun text-muted")}
                   >
                     {day.short}
                   </button>

@@ -527,7 +527,7 @@ function ClientesPage() {
         </div>
       ) : null}
 
-      <div className="mb-3 grid gap-2">
+      <div className="bz-clientes-tallyrow mb-3 grid gap-2">
         <p className="bz-tally">
           {clients.length} {clients.length === 1 ? tx("cliente", "client") : tx("clientes", "clients")}
           {filter === "regular" || filter === "active"
