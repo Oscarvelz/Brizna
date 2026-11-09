@@ -73,7 +73,101 @@ function movers(host: HTMLElement): HTMLElement[] {
 }
 
 const EASE = "cubic-bezier(.22, 1, .36, 1)";
-let pending: { dir: SwipeDir; at: number; off: number } | null = null;
+let pending: { dir: SwipeDir; at: number; off: number; bridge: boolean } | null = null;
+
+/* 1.5.59 — the integrated sheet (Oscar, three rounds of screenshots of the same defect: the page
+ * dragged aside, a black strip beside it, the next page arriving only later). The strip is empty
+ * because the neighbor screen does not exist until the finger lets go and the router mounts it.
+ * The bridge: every time a tab screen is LEFT by a committed swipe, a faithful clone of it is kept
+ * in a small vault. On the next drag toward that tab, the clone is staged beside the live page and
+ * follows the same offset, so the strip is the neighbor itself, moving as one sheet. At release
+ * the clone glides the rest of the way on the compositor — it keeps moving even while the main
+ * thread is busy mounting the real screen underneath — and a 60 ms crossfade hands over to the
+ * real screen once it has painted. The follow, the lock, the thresholds and the exit are exactly
+ * as they were; this only fills the strip and covers the mount. A tab never visited in this
+ * session has no clone yet and enters the 1.5.58 way. */
+const SNAP_MAX_AGE = 5 * 60_000;
+const vault = new Map<string, { node: HTMLElement; at: number }>();
+let bridge: { wrap: HTMLElement; mounted: boolean; glided: boolean; done: boolean } | null = null;
+
+function routeKey(): string {
+  const h = window.location.hash.replace(/^#\/?/, "").split("/")[0];
+  return h || "hoy";
+}
+
+/** Keep a faithful, inert clone of the screen being left. Ids are stripped (the real screen's code
+ * must never find the clone) and the drag's inline transforms are stripped (it must stage at rest). */
+function snapshotPage(host: HTMLElement) {
+  const page = host.querySelector<HTMLElement>(".alive-page");
+  if (!page) return;
+  const clone = page.cloneNode(true) as HTMLElement;
+  clone.removeAttribute("id");
+  clone.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+  clone.querySelectorAll<HTMLElement>("[style]").forEach((n) => {
+    n.style.removeProperty("translate");
+    n.style.removeProperty("opacity");
+    n.style.removeProperty("transition");
+    n.style.removeProperty("will-change");
+  });
+  vault.set(routeKey(), { node: clone, at: Date.now() });
+  while (vault.size > 4) {
+    const oldest = vault.keys().next().value;
+    if (oldest === undefined) break;
+    vault.delete(oldest);
+  }
+}
+
+/** Stage the neighbor's clone in a fixed slab clipped to the main column, ready to follow the drag. */
+function stageSlab(host: HTMLElement, key: string): HTMLElement | null {
+  const hit = vault.get(key);
+  if (!hit || Date.now() - hit.at > SNAP_MAX_AGE) return null;
+  const main = host.querySelector<HTMLElement>("main");
+  if (!main) return null;
+  const r = main.getBoundingClientRect();
+  const wrap = document.createElement("div");
+  wrap.setAttribute("aria-hidden", "true");
+  wrap.style.cssText = `position:fixed;left:${r.left.toFixed(1)}px;top:${r.top.toFixed(1)}px;width:${r.width.toFixed(1)}px;height:${r.height.toFixed(1)}px;overflow:hidden;pointer-events:none;z-index:20;`;
+  wrap.appendChild(hit.node);
+  document.body.appendChild(wrap);
+  return wrap;
+}
+
+function fadeSlabOut(wrap: HTMLElement) {
+  const anim = wrap.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 60, easing: "ease-out", fill: "forwards" });
+  const kill = () => wrap.remove();
+  if (anim.finished) anim.finished.then(kill, kill);
+  else window.setTimeout(kill, 140);
+}
+
+function finishBridge() {
+  if (!bridge || bridge.done || !bridge.mounted || !bridge.glided) return;
+  bridge.done = true;
+  const wrap = bridge.wrap;
+  bridge = null;
+  fadeSlabOut(wrap);
+}
+
+function dropBridge() {
+  if (!bridge) return;
+  bridge.done = true;
+  bridge.wrap.remove();
+  bridge = null;
+}
+
+/** The clone rides the rest of the sweep on the compositor while the real screen mounts beneath it. */
+function glideSlab(wrap: HTMLElement) {
+  bridge = { wrap, mounted: false, glided: false, done: false };
+  const anim = wrap.animate(
+    [{ translate: wrap.style.translate || "0px 0" }, { translate: "0px 0" }],
+    { duration: 240, easing: EASE, fill: "forwards" },
+  );
+  const mark = () => { if (bridge && bridge.wrap === wrap) { bridge.glided = true; finishBridge(); } };
+  if (anim.finished) anim.finished.then(mark, mark);
+  else window.setTimeout(mark, 320);
+  window.setTimeout(() => {
+    if (bridge && bridge.wrap === wrap && !bridge.done) { bridge.done = true; bridge = null; fadeSlabOut(wrap); }
+  }, 1000);
+}
 
 function clear(els: HTMLElement[]) {
   for (const el of els) {
@@ -97,6 +191,12 @@ export function playPendingSlide(host: HTMLElement | null) {
   const p = pending;
   if (!p || !host) return;
   pending = null;
+  if (p.bridge) {
+    // The real screen has painted under the bridge clone: signal it, and do not slide the real
+    // screen too (the clone is doing the moving; a second slide would double the motion).
+    if (bridge) { bridge.mounted = true; finishBridge(); }
+    return;
+  }
   if (Date.now() - p.at > 900 || reducedMotion()) return;
   const els = movers(host);
   const width = host.querySelector<HTMLElement>("main")?.clientWidth || window.innerWidth;
@@ -115,6 +215,7 @@ type Gesture = {
   t: number;
   axis: "x" | "y" | null;
   els: HTMLElement[];
+  slab: { wrap: HTMLElement; dir: SwipeDir } | null;
   width: number;
   samples: { x: number; t: number }[];
   dx: number;
@@ -124,7 +225,7 @@ type Gesture = {
 /** Wires the swipe onto the shell column. commit() does the switch and says which kind it was (null = nothing to switch). */
 export function installPageSwipe(
   host: HTMLElement,
-  opts: { canStart: () => boolean; kind: () => SwipeKind | null; commit: (dir: SwipeDir) => void },
+  opts: { canStart: () => boolean; kind: () => SwipeKind | null; commit: (dir: SwipeDir) => void; neighbor?: (dir: SwipeDir) => string | null },
 ): () => void {
   let g: Gesture | null = null;
   let suppressUntil = 0;
@@ -140,6 +241,15 @@ export function installPageSwipe(
       el.style.translate = tr;
       el.style.opacity = fade;
     }
+    if (g.slab) g.slab.wrap.style.translate = `${(off + g.slab.dir * g.width).toFixed(1)}px 0`;
+  };
+
+  /** The staged clone leaves the way it came when the gesture does not commit. */
+  const springSlab = (slab: { wrap: HTMLElement; dir: SwipeDir } | null, width: number) => {
+    if (!slab) return;
+    slab.wrap.style.transition = `translate .22s ${EASE}`;
+    slab.wrap.style.translate = `${slab.dir * width}px 0`;
+    window.setTimeout(() => slab.wrap.remove(), 260);
   };
 
   const springBack = (els: HTMLElement[]) => {
@@ -169,10 +279,14 @@ export function installPageSwipe(
   const onBlur = () => {
     if (!g) return;
     const els = g.els;
+    const slab = g.slab;
+    const width = g.width;
     const was = g.axis === "x";
     end();
     if (was) suppressUntil = performance.now() + 400;
     if (els.length) springBack(els);
+    if (was) springSlab(slab, width);
+    else slab?.wrap.remove();
   };
 
   // A mouse press on an image or a link would start the browser's own drag (a ghost) a few px in: never while ours may run.
@@ -189,20 +303,27 @@ export function installPageSwipe(
     if (mouse && (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey)) return; // right/middle/modified: not a swipe
     if (g && (mouse || g.mouse)) { // a mouse has one pointer: a new press means the last release was missed; drop it, start fresh
       const els = g.axis === "x" ? g.els : [];
+      const slab = g.axis === "x" ? g.slab : null;
+      const width = g.width;
       end();
       if (els.length) springBack(els);
+      springSlab(slab, width);
     }
     if (g) { // a second finger: pinch, never a swipe
       const els = g.axis === "x" ? g.els : [];
+      const slab = g.axis === "x" ? g.slab : null;
+      const width = g.width;
       end();
       if (els.length) springBack(els);
+      springSlab(slab, width);
       return;
     }
+    dropBridge(); // a fresh press supersedes a bridge still handing over
     if (!e.isPrimary || !opts.canStart()) return;
     if (!mouse && (e.clientX < EDGE_PX || e.clientX > window.innerWidth - EDGE_PX)) return;
     if (swipeBlocked(host, e.target as Element, mouse)) return;
     const main = host.querySelector<HTMLElement>("main");
-    g = { id: e.pointerId, mouse, x: e.clientX, y: e.clientY, t: e.timeStamp, axis: null, els: [], width: main?.clientWidth || window.innerWidth, samples: [{ x: e.clientX, t: e.timeStamp }], dx: 0, frame: 0 };
+    g = { id: e.pointerId, mouse, x: e.clientX, y: e.clientY, t: e.timeStamp, axis: null, els: [], slab: null, width: main?.clientWidth || window.innerWidth, samples: [{ x: e.clientX, t: e.timeStamp }], dx: 0, frame: 0 };
     window.addEventListener("pointermove", onMove, true);
     window.addEventListener("pointerup", onUp, true);
     window.addEventListener("pointercancel", onCancel, true);
@@ -222,6 +343,16 @@ export function installPageSwipe(
       if (!reducedMotion()) {
         g.els = movers(host);
         for (const el of g.els) { el.style.transition = "none"; el.style.willChange = "translate, opacity"; }
+        // 1.5.59: stage the neighbor's clone beside the page, if this drag is a tab switch and a
+        // faithful clone of that tab is in the vault. From here it follows the same offset.
+        if (opts.kind() === "route" && opts.neighbor) {
+          const dir: SwipeDir = dx < 0 ? 1 : -1;
+          const key = opts.neighbor(dir);
+          if (key) {
+            const wrap = stageSlab(host, key);
+            if (wrap) g.slab = { wrap, dir };
+          }
+        }
       }
       if (g.mouse) {
         // After movers() read the layout: an inline style on the host only (a class on <html> re-matched every rule and cost
@@ -242,9 +373,12 @@ export function installPageSwipe(
   const onCancel = (e: PointerEvent) => {
     if (!g || e.pointerId !== g.id) return;
     const els = g.els;
+    const slab = g.slab;
+    const width = g.width;
     if (g.axis === "x") suppressUntil = performance.now() + 400;
     end();
     if (els.length) springBack(els);
+    springSlab(slab, width);
   };
 
   const onUp = (e: PointerEvent) => {
@@ -260,15 +394,21 @@ export function installPageSwipe(
     const v = e.timeStamp - last.t > 80 ? 0 : (last.x - first.x) / Math.max(8, last.t - first.t);
     const flick = Math.abs(v) >= FLICK_V && Math.abs(dx) >= FLICK_MIN && Math.sign(v) === Math.sign(dx);
     const far = Math.abs(dx) >= commitDistance(st.width) && !(Math.sign(v) === -Math.sign(dx) && Math.abs(v) > 0.3);
-    if (!flick && !far) { if (st.els.length) springBack(st.els); return; }
+    if (!flick && !far) { if (st.els.length) springBack(st.els); springSlab(st.slab, st.width); return; }
     const dir: SwipeDir = dx < 0 ? 1 : -1;
     const kind = opts.kind();
     const els = st.els;
-    if (!kind) { if (els.length) springBack(els); return; }
+    if (!kind) { if (els.length) springBack(els); springSlab(st.slab, st.width); return; }
     if (!els.length) { // reduced motion: switch at once
       opts.commit(dir);
       return;
     }
+    // 1.5.59: leaving this tab by a committed swipe — keep its clone in the vault for the way back,
+    // and keep the staged neighbor only if it matches the committed direction (a drag that reversed
+    // past center staged the wrong side: drop that clone, the 1.5.58 entrance covers the switch).
+    if (kind === "route") snapshotPage(host);
+    const slab = st.slab && st.slab.dir === dir ? st.slab : null;
+    if (st.slab && !slab) st.slab.wrap.remove();
     // The page leaves the way the finger went; a new screen is switched to at once, the other Estudio view after the exit.
     const now = parseFloat(els[0]!.style.translate) || 0;
     const out = `${(now - dir * Math.max(60, st.width * 0.18)).toFixed(1)}px 0`;
@@ -277,8 +417,9 @@ export function installPageSwipe(
       el.style.translate = out;
       el.style.opacity = "0";
     }
-    pending = { dir, at: Date.now(), off: now };
+    pending = { dir, at: Date.now(), off: now, bridge: !!slab };
     if (kind === "route") {
+      if (slab) glideSlab(slab.wrap);
       opts.commit(dir);
       // The old screen is unmounted by the switch; if it stays (something kept it), it comes back.
       window.setTimeout(() => {
@@ -307,7 +448,10 @@ export function installPageSwipe(
   document.addEventListener("selectstart", onSelectStart, true);
   return () => {
     const els = g?.els ?? [];
+    const slabWrap = g?.slab?.wrap;
     end();
+    if (slabWrap) slabWrap.remove();
+    dropBridge();
     clear(els);
     host.removeEventListener("pointerdown", onDown, true);
     host.removeEventListener("click", onClick, true);

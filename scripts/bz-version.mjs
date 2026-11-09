@@ -2,7 +2,8 @@
 // node scripts/bz-version.mjs            -> bump the patch (1.5.02 -> 1.5.03; 1.4.99 -> 1.5.00), write, print it
 // node scripts/bz-version.mjs 1.6.00     -> use that version, write, print it
 // KEEP=1 node scripts/bz-version.mjs     -> keep the current version, write sw.js to match, print it
-// Writes package.json "version" and spa-public/sw.js `const VERSION = "brizna-X.Y.ZZ";`.
+// Writes package.json "version", spa-public/sw.js `const VERSION = "brizna-X.Y.ZZ";` and
+// src/lib/app-version.ts (the version line at the bottom of Settings, 1.5.59 — Oscar's request).
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,4 +45,8 @@ else outPkg = pkgText.replace(/"private"\s*:\s*true,/, (m) => `${m}\n  "version"
 if (JSON.parse(outPkg).version !== next) throw new Error("could not write package.json version");
 fs.writeFileSync(PKG, outPkg);
 fs.writeFileSync(SW, swText.replace(SW_LINE, `const VERSION = "brizna-${next}";`));
+fs.writeFileSync(
+  path.join(root, "src", "lib", "app-version.ts"),
+  `// Written by scripts/bz-version.mjs from package.json "version" — do not edit by hand.\nexport const APP_VERSION = "${next}";\n`,
+);
 process.stdout.write(next);

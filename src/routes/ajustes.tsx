@@ -6,6 +6,7 @@ import { BatteryCharging, Bell, BellRing, Check, ChevronDown, ChevronsUpDown, Ca
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell, SignOutControl, TitleSearch } from "@/components/app-shell";
+import { APP_VERSION } from "@/lib/app-version";
 import { FingerprintControl } from "@/components/fingerprint-control";
 import { SyncStatusCard } from "@/components/sync-status";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -1045,6 +1046,11 @@ function AjustesPage() {
         </section>
         ) : null}
       </Masonry>
+      {/* 1.5.59 (Oscar): the app version at the very bottom of Settings, so any screenshot or
+          report can say exactly which build the device is running. */}
+      <p className="mt-6 pb-2 text-center text-xs text-muted">
+        Brizna · {tx("versión", "version")} {APP_VERSION}
+      </p>
     </AppShell>
   );
 }

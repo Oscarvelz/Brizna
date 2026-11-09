@@ -433,6 +433,15 @@ export function AppShell({
     return installPageSwipe(columnEl, {
       canStart: () => kindOf() !== null,
       kind: kindOf,
+      // 1.5.59: the vault key of the tab a drag in this direction would land on (the bridge clone).
+      neighbor: (dir) => {
+        const here = swipeLive.current.pathname;
+        if (here === "/estadisticas") return null;
+        const index = tabs.indexOf(here as (typeof tabs)[number]);
+        if (index < 0) return null;
+        const target = tabs[(index + dir + tabs.length) % tabs.length];
+        return target === "/" ? "hoy" : target.slice(1);
+      },
       commit: (dir) => {
         const { pathname: here, navigate: go } = swipeLive.current;
         if (here === "/estadisticas") { window.dispatchEvent(new CustomEvent("bz-study-swipe")); return; }
