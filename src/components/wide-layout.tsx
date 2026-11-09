@@ -62,8 +62,9 @@ const MASONRY_FULL = "#cif-pulso, #cif-mes";
  * so opening a fold only pushes what is below it in that column). Children keep their CSS order.
  * A child with data-masonry-full spans every column. cols = 0 turns it off (phones).
  */
-export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap = 16, fillLast = false, under?: Record<string, string>) {
+export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap = 16, fillLast = false, under?: Record<string, string>, beside?: Record<string, string>) {
   const underKey = under ? JSON.stringify(under) : "";
+  const besideKey = beside ? JSON.stringify(beside) : "";
   useLayoutEffect(() => {
     const box = ref.current;
     if (!box) return;
@@ -86,6 +87,9 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
     // Sections that sit right under another one: with dense packing a column choice alone could drop them into
     // an earlier hole, so size() also pins their first row to the line just below their host.
     let unders: { el: HTMLElement; host: HTMLElement }[] = [];
+    // 1.5.26 (Oscar): a section can also sit BESIDE its host — same first row, next column over — to
+    // fill a hole the rotation would otherwise leave (Esfuerzo next to Meta del mes in Estudio).
+    let besides: { el: HTMLElement; host: HTMLElement }[] = [];
     const assign = () => {
       const list = kids()
         .map((el, i) => ({ el, i, o: Number.parseInt(getComputedStyle(el).order, 10) || 0 }))
@@ -93,6 +97,7 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
       let k = 0;
       let last: { el: HTMLElement; c: number } | null = null;
       const later: { el: HTMLElement; host: HTMLElement }[] = [];
+      const laterBeside: { el: HTMLElement; host: HTMLElement }[] = [];
       for (const { el } of list) {
         if (el.hasAttribute("data-masonry-full") || el.matches(MASONRY_FULL)) {
           el.style.gridColumn = "1 / -1";
@@ -109,6 +114,14 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
           later.push({ el, host });
           continue;
         }
+        // data-masonry-beside="<id>" (or the hook's `beside` map): the NEXT column over from that
+        // section, on its same first row — fills the hole beside a short host instead of rotating on.
+        const besideId: string | undefined = el.dataset.masonryBeside || (beside && el.id ? beside[el.id] : undefined);
+        const besideHost: HTMLElement | null = besideId ? box.querySelector<HTMLElement>(`#${CSS.escape(besideId)}`) : null;
+        if (besideHost && besideHost.parentElement === box) {
+          laterBeside.push({ el, host: besideHost });
+          continue;
+        }
         const c = (k % cols) + 1;
         el.style.gridColumn = String(c);
         last = { el, c };
@@ -118,6 +131,12 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
       for (const { el, host } of later) {
         const hostCol = Number.parseInt(host.style.gridColumn, 10);
         el.style.gridColumn = Number.isFinite(hostCol) && hostCol > 0 ? String(hostCol) : "1";
+      }
+      besides = laterBeside;
+      for (const { el, host } of laterBeside) {
+        const hostCol = Number.parseInt(host.style.gridColumn, 10);
+        const next = Number.isFinite(hostCol) && hostCol > 0 ? (hostCol >= cols ? 1 : hostCol + 1) : 1;
+        el.style.gridColumn = String(next);
       }
       // An odd last card (3 cards in 2 columns) takes the rest of the row instead of leaving a hole.
       if (fillLast && last && k % cols !== 0) last.el.style.gridColumn = `${last.c} / -1`;
@@ -135,13 +154,19 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
     // on the next one (a stretched row moves the host), so look again a few frames on until it holds.
     let pinRaf = 0;
     const pin = (tries: number) => {
-      if (!unders.length) return;
+      if (!unders.length && !besides.length) return;
       const top = box.getBoundingClientRect().top;
       let moved = false;
       for (const { el, host } of unders) {
         const span = Number.parseInt((host.style.gridRowEnd || "").replace("span", ""), 10);
         if (!Number.isFinite(span) || host.getBoundingClientRect().height <= 0) { el.style.removeProperty("grid-row-start"); continue; }
         const start = String(Math.round((host.getBoundingClientRect().top - top) / UNIT) + 1 + span);
+        if (el.style.gridRowStart !== start) { el.style.gridRowStart = start; moved = true; }
+      }
+      // Beside items start on the host's OWN first row (not below it).
+      for (const { el, host } of besides) {
+        if (host.getBoundingClientRect().height <= 0) { el.style.removeProperty("grid-row-start"); continue; }
+        const start = String(Math.round((host.getBoundingClientRect().top - top) / UNIT) + 1);
         if (el.style.gridRowStart !== start) { el.style.gridRowStart = start; moved = true; }
       }
       if (tries < 6 && (moved || tries < 3)) {
@@ -181,7 +206,7 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
       clear();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ref, cols, gap, fillLast, underKey]);
+  }, [ref, cols, gap, fillLast, underKey, besideKey]);
 }
 
 /** A box whose children become steady columns on large screens; phones get the box exactly as before. */

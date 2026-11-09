@@ -299,15 +299,21 @@ export function JobCard({
     !queued &&
     (live.scheduledDate === today || (live.completedAt ? stampDay(live.completedAt) === today : false));
 
-  // 1.5.18 (Oscar): the pin is BARE — no tone box anywhere, just the pin in its rose color, filled when
-  // pinned. On Grande/Media it lives tucked into the card's top corner (see the header); Hecho and
-  // Posponer own their whole row again. Same tap, same confirm dialog.
+  // 1.5.18 (Oscar): the pin is BARE — no tone box anywhere. On Grande/Media it lives tucked into the
+  // card's top corner (see the header); Hecho and Posponer own their whole row again. Same tap, same
+  // confirm dialog.
+  // 1.5.26 (Oscar): its COLOR now follows the whole app (folds, Agenda, the inventory pin): rose only
+  // when pinned («se vuelve rosado cuando están seleccionados»), colorless muted when not — the card
+  // pins were the odd ones out, wearing the rose outline even when unpinned.
   const pinButton = (
     <button
       type="button"
       aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
       onClick={onPin}
-      className="grid size-8 shrink-0 place-items-center text-[color:var(--tone-pin)] -mr-2 -translate-y-0.5"
+      className={cn(
+        "grid size-8 shrink-0 place-items-center -mr-2 -translate-y-0.5",
+        job.pinned ? "text-[color:var(--tone-pin)]" : "text-muted",
+      )}
     >
       {/* 1.5.20 (Oscar, fine-tuning): the whole button leans 8 px right (-mr-2 above) so the pin glyph
           sits almost on the map button's right-edge line below it.
@@ -644,8 +650,9 @@ export function JobCard({
             type="button"
             aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
             onClick={onPin}
-            // 1.5.18 (Oscar): no box at all — the bare pin in its rose color (1.5.17's smaller hit area stays).
-            className="grid size-6 shrink-0 place-items-center text-[color:var(--tone-pin)]"
+            // 1.5.18 (Oscar): no box at all — the bare pin (1.5.17's smaller hit area stays).
+            // 1.5.26 (Oscar): same color rule as the wide card — rose only when pinned, muted when not.
+            className={cn("grid size-6 shrink-0 place-items-center", job.pinned ? "text-[color:var(--tone-pin)]" : "text-muted")}
           >
             <Pin className={cn("size-3", job.pinned && "fill-current")} />
           </button>

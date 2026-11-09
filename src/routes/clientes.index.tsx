@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FREQ_SEP, formatDay, frequencyLabel, mapsHref, money, telHref, weekdayLabel } from "@/lib/format";
 import { MeshName, MeshNameUniform } from "@/components/mesh-name";
+import { masonryCols, useMasonry } from "@/components/wide-layout";
 import { meshFrame, viewGrid } from "@/lib/density";
 import { useTx } from "@/lib/i18n";
 import { bulkClients, deleteClient, getClientDeleteSummary, getClientInventory, listClients, setClientActive } from "@/lib/server/lawn";
@@ -205,6 +206,23 @@ function ClientesPage() {
   const navigate = useNavigate({ from: "/clientes" });
   const density = useDensity();
   const cols = useQuadCols();
+  // 1.5.26 (Oscar): «nada de huecos entre las tarjetas» — on tablet/desk the client cards pack
+  // upward in steady columns (the Estudio masonry), leaving only the separation gap; a short card
+  // no longer leaves a hole under it. Phones keep the plain grid (one column, no holes possible)
+  // and Malla keeps its own aligned mesh. The columns follow the LIST's own width (the same width
+  // its container queries use) — the shell's page-width reading does not reach this page's shell.
+  const listRef = useRef<HTMLUListElement>(null);
+  const [listW, setListW] = useState(0);
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const read = () => setListW(el.clientWidth);
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  useMasonry(listRef, density === "quad" ? 0 : masonryCols(listW), density === "compact" ? 8 : 12);
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<ClientSort>("name");
@@ -534,7 +552,7 @@ function ClientesPage() {
         </div>
       )}
 
-      <ul id="lista-clientes" className={viewGrid(density, cols, gap)}>
+      <ul ref={listRef} id="lista-clientes" className={viewGrid(density, cols, gap)}>
         {clients.map((c) => (
           <li key={c.id} className={density === "quad" ? "bz-qcell" : undefined}>
             <ClientListCard

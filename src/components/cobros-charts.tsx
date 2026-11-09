@@ -35,6 +35,8 @@ const tooltipStyle = {
 };
 
 const UNDER = { "cif-pospuesto": "cif-anio" };
+/** 1.5.26 (Oscar): Esfuerzo de la semana sits beside Meta del mes, not far below it. */
+const BESIDE = { "cif-esfuerzo": "cif-meta" };
 
 export function CobrosCharts({
   embedded = false,
@@ -53,7 +55,9 @@ export function CobrosCharts({
   // Large screens: the sections flow into steady columns (phones keep one column).
   const box = useRef<HTMLDivElement | null>(null);
   // 1.4.98 (Oscar, tablet): "Por qué se pospuso" sits right under "Cada año" (it was alone at the foot of the middle column).
-  useMasonry(box, embedded ? 0 : masonryCols(usePageWidth()), 16, false, UNDER);
+  // 1.5.26 (Oscar, tablet): «Esfuerzo de la semana» moves BESIDE «Meta del mes», filling the empty
+  // space at its side — his standing rule is no holes between cards on the tablet.
+  useMasonry(box, embedded ? 0 : masonryCols(usePageWidth()), 16, false, UNDER, BESIDE);
   const navigate = useNavigate();
   // 1.4.84: no first-pass skeleton (an SSR-era guard): with the reading cached, the charts paint at once.
   const q = useQuery({ queryKey: ["finance"], queryFn: () => getFinanceStats(), gcTime: STUDY_GC, refetchOnMount: false });

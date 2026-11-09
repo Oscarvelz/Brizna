@@ -92,8 +92,36 @@ export function readStoredLocale(): LocaleName {
   return window.localStorage.getItem(LOCALE_KEY) === "en" ? "en" : "es";
 }
 
+const AMOLED_FIX_KEY = "ols-amoled-fix-v1";
+
+/** 1.5.26 (Oscar): «el modo noche no está predeterminado por Amoled» on his tablet. The 1.4.98 default
+ *  only ever reaches a device whose storage is empty — a night palette stored BEFORE that rule (when
+ *  the old default itself wrote "noche") sits in ols-look-v2 / ols-palette-night forever after,
+ *  indistinguishable from a deliberate pick, so the tablet kept opening in the green dark. One-time
+ *  repair per device: the first read after this ships rewrites the stored night to AMOLED and marks
+ *  itself done. From then on the stored value rules again — a night palette he picks in Ajustes
+ *  afterwards sticks like any other choice. */
+function fixStoredNightOnce() {
+  try {
+    if (window.localStorage.getItem(AMOLED_FIX_KEY)) return;
+    window.localStorage.setItem(AMOLED_FIX_KEY, "1");
+    const raw = JSON.parse(window.localStorage.getItem(LOOK_KEY) || "null") as Partial<Appearance> | null;
+    if (raw && isNightPalette(newNight(raw.night)) && newNight(raw.night) !== DEFAULT_NIGHT) {
+      raw.night = DEFAULT_NIGHT;
+      window.localStorage.setItem(LOOK_KEY, JSON.stringify(raw));
+    }
+    const legacy = newNight(window.localStorage.getItem(NIGHT_KEY));
+    if (isNightPalette(legacy) && legacy !== DEFAULT_NIGHT) {
+      window.localStorage.setItem(NIGHT_KEY, DEFAULT_NIGHT);
+    }
+  } catch {
+    /* storage unavailable: the read below still falls back to DEFAULT_NIGHT where it can */
+  }
+}
+
 export function readAppearance(): Appearance {
   if (typeof window === "undefined") return { mode: "day", day: "jardin", night: DEFAULT_NIGHT };
+  fixStoredNightOnce();
   try {
     const raw = JSON.parse(window.localStorage.getItem(LOOK_KEY) || "null") as Partial<Appearance> | null;
     if (raw && (raw.mode === "day" || raw.mode === "night" || raw.mode === "auto") && isDayPalette(raw.day) && isNightPalette(newNight(raw.night))) {
