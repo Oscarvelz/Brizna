@@ -1881,19 +1881,40 @@ html.theme-dark .bz-daynight, html.theme-amoled .bz-daynight {
 
 /* 1.4.67 (Oscar): Inventario de clientes tiles get a fine hairline in their own tone, a little deeper
    than the fill (never grey, never thick). Night: a touch stronger so it reads over the dark fill. */
-.bz-inv-tile { --inv-tone: var(--color-primary); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--inv-tone) 30%, transparent); }
+.bz-inv-tile { --inv-tone: var(--color-primary); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--inv-tone) 30%, transparent); transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease, background-color 120ms ease; }
 .bz-inv-tile.is-today { --inv-tone: var(--color-today); }
 .bz-inv-tile.is-pending { --inv-tone: var(--color-pending); }
 .bz-inv-tile.is-sun { --inv-tone: var(--color-primary); }
 .bz-inv-tile.is-soil { --inv-tone: var(--color-soil); }
 html.theme-dark .bz-inv-tile, html.theme-amoled .bz-inv-tile { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--inv-tone) 42%, transparent); }
+/* 1.5.35 (Oscar, UNIVERSAL — phone and everywhere): the tiles answer the finger and the chosen one
+   STAYS chosen. A press dips the tile and lifts its light for a moment; the tile whose filter is
+   on wears a deeper tint of its own tone, a full 2 px ring in that tone, its number in the tone
+   and its label warmed toward the tone — in every theme, on every device. Until now nothing at
+   all marked the selected tile («hasta el momento eso no es posible en ningún dispositivo»). */
+.bz-inv-tile:active { transform: scale(0.97); filter: brightness(1.13); }
+.bz-inv-tile.is-active { background: color-mix(in oklab, var(--inv-tone) 20%, var(--color-surface)) !important; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--inv-tone) 82%, transparent), 0 2px 8px -4px color-mix(in srgb, var(--inv-tone) 55%, transparent) !important; }
+.bz-inv-tile.is-active > p:first-child { color: var(--inv-tone); }
+.bz-inv-tile.is-active > p:last-child { color: color-mix(in oklab, var(--inv-tone) 76%, var(--color-fg)); font-weight: 600; }
+/* 1.5.35 (Oscar): in the NIGHT modes Juntos turns TURQUOISE (green married to blue) and Archivos
+   turns properly ORANGE, so the four tiles stand out as one family next to green Permanentes and
+   amber Una vez. Grafito already leans this way (cyan sun, peach soil) and keeps its own tones —
+   its rules live further down and win there. Day themes are untouched. */
+html.theme-dark:not(.theme-amoled) .bz-inv-tile.is-sun { --inv-tone: #45c8b2; background: color-mix(in oklab, var(--inv-tone) 17%, var(--color-surface)) !important; }
+html.theme-dark:not(.theme-amoled) .bz-inv-tile.is-soil { --inv-tone: #f29c52; background: color-mix(in oklab, var(--inv-tone) 19%, var(--color-surface)) !important; }
+html.theme-dark:not(.theme-amoled) .bz-inv-tile.is-sun > p:first-child, html.theme-dark:not(.theme-amoled) .bz-inv-tile.is-soil > p:first-child { color: var(--inv-tone); }
 /* 1.5.27 (Oscar): in AMOLED, Juntos and Archivos read dull next to Permanentes and Una vez — the
    sun surface is pure black and the soil surface sits darker than the page's own surface, so both
    tiles sink. Same cure as the grafito palette (1.4.x): a surface mixed from their own tone over
-   the AMOLED surface, a stronger hairline, and Juntos' number takes its tone like the tiles above. */
-html.theme-amoled .bz-inv-tile.is-sun { background: color-mix(in oklab, var(--color-primary) 16%, #141415) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 55%, transparent); }
-html.theme-amoled .bz-inv-tile.is-sun > p:first-child { color: var(--color-primary); }
-html.theme-amoled .bz-inv-tile.is-soil { background: color-mix(in oklab, var(--color-soil) 24%, #141415) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-soil) 55%, transparent); }
+   the AMOLED surface, a stronger hairline, and Juntos' number takes its tone like the tiles above.
+   1.5.35: the tones themselves are now Oscar's — turquoise for Juntos, orange for Archivos. */
+html.theme-amoled .bz-inv-tile.is-sun { --inv-tone: #45c8b2; background: color-mix(in oklab, var(--inv-tone) 16%, #141415) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--inv-tone) 55%, transparent); }
+html.theme-amoled .bz-inv-tile.is-sun > p:first-child { color: var(--inv-tone); }
+html.theme-amoled .bz-inv-tile.is-soil { --inv-tone: #f29c52; background: color-mix(in oklab, var(--inv-tone) 22%, #141415) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--inv-tone) 55%, transparent); }
+html.theme-amoled .bz-inv-tile.is-soil > p:first-child { color: var(--inv-tone); }
+/* The selected tile's deeper tint must also win under the night rules above (same specificity,
+   later seat): a selected tile at night goes to a 26% mix of its tone. */
+html.theme-dark .bz-inv-tile.is-active, html.theme-amoled .bz-inv-tile.is-active { background: color-mix(in oklab, var(--inv-tone) 26%, var(--color-surface)) !important; }
 
 /* 1.4.67 (Oscar): the Tarde badge gets a soft halo behind it, in its own red, that grows a few px and
    fades: "aquí estoy" without shouting. Slow (2.8 s), low (peak ~30%), never moves the badge or the layout.
@@ -2791,6 +2812,8 @@ html.theme-dark .bz-late-glow, html.theme-amoled .bz-late-glow { animation-name:
 /* 1.4.84 (Oscar): in Grafito the inventory tiles all read gold/tan (today = pending = primary gold), with no
    colours of their own. Each tile gets its own jewel tone over graphite, like the other palettes. */
 html.theme-dark[data-palette="grafito"] .bz-inv-tile { background: color-mix(in oklab, var(--inv-tone) 16%, #232325) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--inv-tone) 55%, transparent); }
+/* 1.5.35: in grafito the selected tile deepens past the family tint, like everywhere else. */
+html.theme-dark[data-palette="grafito"] .bz-inv-tile.is-active { background: color-mix(in oklab, var(--inv-tone) 28%, #232325) !important; }
 html.theme-dark[data-palette="grafito"] .bz-inv-tile > p:first-child { color: var(--inv-tone) !important; }
 html.theme-dark[data-palette="grafito"] .bz-inv-tile.is-today { --inv-tone: #a4d888; }
 html.theme-dark[data-palette="grafito"] .bz-inv-tile.is-pending { --inv-tone: #b9a4f0; }

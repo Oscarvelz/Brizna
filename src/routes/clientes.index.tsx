@@ -405,7 +405,8 @@ function ClientesPage() {
             to="/clientes"
             search={{ filter: "regular" }}
             data-ref="inv-regular"
-            className="bz-inv-tile is-today rounded-sm bg-today-bg px-1.5 py-1.5 text-center"
+            aria-current={filter === "regular" ? "true" : undefined}
+            className={cn("bz-inv-tile is-today rounded-sm bg-today-bg px-1.5 py-1.5 text-center", filter === "regular" && "is-active")}
           >
             <p className="font-display text-lg font-semibold tabular-nums text-today">
               {inventory.data?.regular ?? "—"}
@@ -416,7 +417,8 @@ function ClientesPage() {
             to="/clientes"
             search={{ filter: "one_time" }}
             data-ref="inv-once"
-            className="bz-inv-tile is-pending rounded-sm bg-pending-bg px-1.5 py-1.5 text-center"
+            aria-current={filter === "one_time" ? "true" : undefined}
+            className={cn("bz-inv-tile is-pending rounded-sm bg-pending-bg px-1.5 py-1.5 text-center", filter === "one_time" && "is-active")}
           >
             <p className="font-display text-lg font-semibold tabular-nums text-pending">
               {inventory.data?.oneTime ?? "—"}
@@ -427,7 +429,8 @@ function ClientesPage() {
             to="/clientes"
             search={{ filter: "active" }}
             data-ref="inv-all"
-            className="bz-inv-tile is-sun rounded-sm bg-sun px-1.5 py-1.5 text-center"
+            aria-current={filter === "active" ? "true" : undefined}
+            className={cn("bz-inv-tile is-sun rounded-sm bg-sun px-1.5 py-1.5 text-center", filter === "active" && "is-active")}
           >
             <p className="font-display text-lg font-semibold tabular-nums">{inventory.data?.total ?? "—"}</p>
             <p className="text-xs text-muted">{tx("Juntos", "Together")}</p>
@@ -436,7 +439,8 @@ function ClientesPage() {
             to="/clientes"
             search={{ filter: "inactive" }}
             data-ref="inv-archive"
-            className="bz-inv-tile is-soil rounded-sm bg-soil-bg px-1.5 py-1.5 text-center"
+            aria-current={filter === "inactive" ? "true" : undefined}
+            className={cn("bz-inv-tile is-soil rounded-sm bg-soil-bg px-1.5 py-1.5 text-center", filter === "inactive" && "is-active")}
           >
             <p className="font-display text-lg font-semibold tabular-nums text-soil">
               {inventory.data?.archived ?? "—"}
