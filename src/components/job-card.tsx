@@ -770,13 +770,15 @@ export function JobCard({
             underName
             className={cn("min-w-0 flex-1 font-medium leading-tight text-fg/75", media ? "text-xs" : "text-sm")}
             sizes={media ? [0.6875] : undefined}
-            // 1.5.27 (Oscar, correcting 1.5.25's narrow read): the date leaves the work line on EVERY
-            // card, not only Agenda's day blocks — «la fecha que está al lado de las instrucciones de
-            // corte de cada tarjeta» (his example: «Lun 2 nov» on a late card in Hoy). The line holds
-            // only the instruction and, when there is one, the arrival time. The date itself still
-            // lives one tap away in the status card (Programado / Debió hacerse).
-            forms={[[jobKindLabel(job.kind, job.title), timeLabel].filter(Boolean).join(" - ")]}
-            lastResort={jobKindLabel(job.kind, job.title)}
+            // 1.5.29 (Oscar): the dates COME BACK to the work line, beside the instruction — his call,
+            // reversing 1.5.27's removal. This time an en dash (–) separates the parts «para que se
+            // vea más bonito»: «Corte de césped – Lun 9 nov», with the arrival time after another one
+            // when there is one. Same forms as the original line, new dash.
+            forms={[
+              [jobKindLabel(job.kind, job.title), capFirst(formatDay(job.scheduledDate, "EEE d MMM")), timeLabel].filter(Boolean).join(" – "),
+              [jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM"), timeLabel].filter(Boolean).join(" – "),
+            ]}
+            lastResort={[jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM")].filter(Boolean).join(" – ")}
           />
         </div>
         {/* 1.5.28 (Oscar): the four contact buttons no longer stretch across the card — they sit
@@ -988,6 +990,10 @@ export async function invalidateLawn(qc: ReturnType<typeof useQueryClient>) {
     qc.invalidateQueries({ queryKey: ["client-changes"] }),
     qc.invalidateQueries({ queryKey: ["week-off"] }),
   ]);
+}
+
+function capFirst(text: string): string {
+  return text ? text.charAt(0).toLocaleUpperCase() + text.slice(1) : text;
 }
 
 /** 1.4.64 (Oscar): a client's name on one line at its normal size. A long name drops its middle
