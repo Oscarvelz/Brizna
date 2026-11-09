@@ -279,11 +279,18 @@ function ClientesPage() {
     if (search.filter) setFilter(search.filter);
   }, [search.filter]);
 
+  // 1.5.48 (Oscar): the jump to the list is a PHONE courtesy — the tiles sit far above the
+  // results there. On tablet/desk the split layout (1.5.45) puts the clients right beside
+  // the tiles, so tapping Permanentes/Una vez/Juntos/Archivos must NOT scroll the page.
+  function scrollToListIfPhone() {
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      document.getElementById("lista-clientes")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   useEffect(() => {
     if (!search.filter || search.filter === "active") return;
-    const t = window.setTimeout(() => {
-      document.getElementById("lista-clientes")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 280);
+    const t = window.setTimeout(scrollToListIfPhone, 280);
     return () => window.clearTimeout(t);
   }, [search.filter]);
 
@@ -294,9 +301,7 @@ function ClientesPage() {
   function applyFilter(next: ClientFilter) {
     setFilter(next);
     void navigate({ search: { filter: next } });
-    window.setTimeout(() => {
-      document.getElementById("lista-clientes")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 280);
+    window.setTimeout(scrollToListIfPhone, 280);
   }
 
   function toggle(id: number) {
