@@ -276,11 +276,15 @@
 /* Hours beside the day's changes: one band, both the same height. */
 .bz-hoy-toolgrid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 1rem; align-items: stretch; margin-bottom: 1.25rem; }
 .bz-hoy-toolgrid > section { margin-bottom: 0 !important; min-width: 0; }
-.bz-hoy-acts { display: grid; grid-template-rows: auto repeat(3, minmax(3.1rem, 1fr)); gap: 0.4rem; padding: 0.75rem; }
-.bz-hoy-acts-kicker { padding: 0.1rem 0.25rem 0.15rem; font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--color-fg); white-space: nowrap; }
+.bz-hoy-acts { display: grid; grid-template-rows: auto repeat(3, minmax(3.4rem, 1fr)); gap: 0.4rem; padding: 0.75rem; }
+/* 1.5.33 (Oscar): on tablet this panel's letters read small next to the work-hours card beside
+   them («están desproporcionales con respecto a las letras de al lado») — the kicker, the row
+   labels and subs, and the icon discs all step up together. This file is the tablet sheet, so
+   phones never see it. */
+.bz-hoy-acts-kicker { padding: 0.1rem 0.25rem 0.15rem; font-family: var(--font-display); font-size: 1.125rem; font-weight: 600; color: var(--color-fg); white-space: nowrap; }
 .bz-hoy-act {
   --t: var(--color-primary);
-  display: grid; grid-template-columns: 2.25rem minmax(0, 1fr) 1rem; align-items: center; gap: 0.75rem;
+  display: grid; grid-template-columns: 2.5rem minmax(0, 1fr) 1rem; align-items: center; gap: 0.75rem;
   padding: 0.45rem 0.7rem 0.45rem 0.5rem; border-radius: 0.95rem; text-align: left;
   background: color-mix(in srgb, var(--color-surface-2) 72%, transparent);
   transition: background-color .18s ease, transform .12s ease-out;
@@ -294,13 +298,13 @@
 .bz-hoy-act:disabled { cursor: default; }
 .bz-hoy-act:disabled .bz-hoy-act-ic, .bz-hoy-act:disabled .bz-hoy-act-label, .bz-hoy-act:disabled .bz-hoy-act-go { opacity: .45; }
 .bz-hoy-act-ic {
-  display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 999px;
+  display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 999px;
   color: var(--t); background: color-mix(in srgb, var(--t) 15%, transparent);
 }
-.bz-hoy-act-ic svg { width: 1.1rem; height: 1.1rem; }
+.bz-hoy-act-ic svg { width: 1.25rem; height: 1.25rem; }
 .bz-hoy-act-txt { display: grid; min-width: 0; }
-.bz-hoy-act-label { font-size: 0.92rem; font-weight: 650; line-height: 1.2; color: var(--color-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bz-hoy-act-sub { margin-top: 0.1rem; font-size: 0.76rem; line-height: 1.25; color: var(--color-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bz-hoy-act-label { font-size: 1.03rem; font-weight: 650; line-height: 1.2; color: var(--color-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bz-hoy-act-sub { margin-top: 0.1rem; font-size: 0.85rem; line-height: 1.25; color: var(--color-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bz-hoy-act-go { width: 1rem; height: 1rem; color: var(--color-subtle); }
 
 /* ── Clients panel ── */
