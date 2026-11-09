@@ -4,6 +4,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { CloudRain, AlertTriangle, CalendarClock, ChevronRight, CheckCheck, CircleDollarSign, Palmtree, Pin, Plus, Scissors, Sprout, Wallet } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { markJump } from "@/lib/jump-back";
+import { Beat2 } from "@/lib/first-screen";
 import { toast } from "sonner";
 import { htmlToNote } from "@/components/rich-notes";
 import { HoyLayout } from "@/components/hoy-clients";
@@ -608,6 +609,9 @@ function DayBoard({
         </DayFold>
       ) : null}
 
+      {/* 1.5.56: two-beat mount (lib/first-screen) — Fijados and Atrasados arrive with the page;
+          the day folds below and «Hechos hoy» land a breath later, under the slide-in. */}
+      <Beat2>
       {ordered.map(([date, items]) => {
         const isToday = date === today;
         const label = isToday
@@ -695,6 +699,7 @@ function DayBoard({
           )}
         </div>
       </details>
+      </Beat2>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { NarrowOnly, PackedGrid, WideOnly, WideSplit } from "@/components/wide-l
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { markJump } from "@/lib/jump-back";
+import { useBeat2 } from "@/lib/first-screen";
 import { AlertTriangle, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, Palmtree, Pin, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -92,6 +93,9 @@ function AgendaPage() {
   const rare = useRareDay();
   const [rareMove, setRareMove] = useState<null | { iso: string; kind: "sunday" | "free"; run: (iso: string) => void }>(null);
   const [filter, setFilter] = useState<JobListFilter>(search.filter ?? "pending");
+  // 1.5.56: two-beat mount (lib/first-screen) — the first day section arrives with the page;
+  // the sections below it land a breath later, under the slide-in.
+  const beat2 = useBeat2();
   const [range, setRange] = useState<JobRange>(search.range && search.range !== "history" ? search.range : "month");
   const [q, setQ] = useState("");
   const [moveFrom, setMoveFrom] = useState<string | null>(null);
@@ -607,6 +611,7 @@ function AgendaPage() {
                 {sections
                   .filter((section) => (onlyMoved ? section.report.length > 0 : section.items.length > 0 || section.report.length > 0))
                   .map((section, index, list) => {
+                  if (!beat2 && index > 0) return null;
                   const date = section.date;
                   const items = section.items;
                   const week = startOfWeekISO(date);

@@ -1,5 +1,6 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBackClose } from "@/lib/back-close";
+import { useFirstScreen } from "@/lib/first-screen";
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { AlertCircle, Archive, CalendarDays, Check, ChevronDown, ChevronRight, Filter, GripVertical, HandCoins, MapPin, Phone, Pin, PiggyBank, Plus, Scissors, Search, ShieldAlert, Sparkles, Trash2, UserCheck, UserMinus, Wallet, Ban, Hourglass, Leaf, Repeat, Star, TriangleAlert } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -269,6 +270,9 @@ function ClientesPage() {
   });
   const inventory = useQuery({ queryKey: ["inventory"], queryFn: () => getClientInventory() });
   const clients = query.data ?? [];
+  // 1.5.56: two-beat mount (lib/first-screen) — the first screen of cards lands with the page,
+  // the rest a breath later, so arriving here by swipe never waits on the whole list.
+  const shownClients = useFirstScreen(clients, 10);
   const totalPrice = useMemo(
     () => clients.reduce((s, c) => s + (c.kind === "regular" ? c.pricePerCut : 0), 0),
     [clients],
@@ -569,7 +573,7 @@ function ClientesPage() {
       )}
 
       <ul ref={listRef} id="lista-clientes" className={viewGrid(density, cols, gap)}>
-        {clients.map((c) => (
+        {shownClients.map((c) => (
           <li key={c.id} className={density === "quad" ? "bz-qcell" : undefined}>
             <ClientListCard
               client={c}
