@@ -72,13 +72,6 @@ export function foldsOpen(prefix: string): boolean {
   return readMap()[prefix] === true;
 }
 
-/** The session's expand-all choice for a prefix, or undefined when nobody has chosen yet —
- *  lets a page tell «default» apart from «the user folded everything on purpose». */
-export function foldsAllState(prefix: string): boolean | undefined {
-  const value = readMap()[prefix];
-  return typeof value === "boolean" ? value : undefined;
-}
-
 export function setFoldsOpen(prefix: string, open: boolean) {
   const map = readMap();
   map[prefix] = open;
