@@ -2814,6 +2814,17 @@ html.theme-dark .bz-late-glow, html.theme-amoled .bz-late-glow { animation-name:
 html.theme-dark[data-palette="grafito"] .bz-inv-tile { background: color-mix(in oklab, var(--inv-tone) 16%, #232325) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--inv-tone) 55%, transparent); }
 /* 1.5.35: in grafito the selected tile deepens past the family tint, like everywhere else. */
 html.theme-dark[data-palette="grafito"] .bz-inv-tile.is-active { background: color-mix(in oklab, var(--inv-tone) 28%, #232325) !important; }
+
+/* 1.5.37 (Oscar): Agenda's filter chips were bare text floating in the air («como si estuvieran
+   olvidados») — only the chosen one wore a pill. Now every chip sits on a real button seat in
+   EVERY theme: a quiet surface-2 fill and a hairline ring from the border token; the chosen chip
+   keeps its status tint and adds a ring in its own tone (currentColor, so each status rings in
+   its own color); a press dips the chip like the inventory tiles. All tokens — day, night,
+   AMOLED and every palette agree without a single theme rule. */
+.bz-ag-chip { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border) 88%, transparent); transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease, background-color 120ms ease; }
+.bz-ag-chip:not(.is-on) { background: color-mix(in oklab, var(--color-surface-2) 82%, transparent); }
+.bz-ag-chip.is-on { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, currentColor 48%, transparent); }
+.bz-ag-chip:active { transform: scale(0.96); filter: brightness(1.1); }
 html.theme-dark[data-palette="grafito"] .bz-inv-tile > p:first-child { color: var(--inv-tone) !important; }
 html.theme-dark[data-palette="grafito"] .bz-inv-tile.is-today { --inv-tone: #a4d888; }
 html.theme-dark[data-palette="grafito"] .bz-inv-tile.is-pending { --inv-tone: #b9a4f0; }

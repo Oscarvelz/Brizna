@@ -397,7 +397,7 @@ function AgendaPage() {
                 setFilter(item.value);
                 scrollCases();
               }}
-              className={cn("h-10 min-w-0 whitespace-nowrap rounded-full px-1.5 text-[11px] font-semibold sm:text-xs", on ? item.on : "text-muted")}
+              className={cn("bz-ag-chip h-10 min-w-0 whitespace-nowrap rounded-full px-1.5 text-[11px] font-semibold sm:text-xs", on ? `${item.on} is-on` : "text-muted")}
             >
               {filterLabel(item.value)}
             </button>
@@ -410,8 +410,8 @@ function AgendaPage() {
             scrollCases();
           }}
           className={cn(
-            "h-10 min-w-0 whitespace-nowrap rounded-full px-1.5 text-[11px] font-semibold sm:text-xs",
-            onlyMoved ? "bg-soil-bg text-soil" : "text-muted",
+            "bz-ag-chip h-10 min-w-0 whitespace-nowrap rounded-full px-1.5 text-[11px] font-semibold sm:text-xs",
+            onlyMoved ? "bg-soil-bg text-soil is-on" : "text-muted",
           )}
         >
           {tx("Pospuesto", "Postponed")}
@@ -424,8 +424,8 @@ function AgendaPage() {
             scrollCases();
           }}
           className={cn(
-            "h-10 min-w-0 whitespace-nowrap rounded-full px-1.5 text-[11px] font-semibold sm:text-xs",
-            !onlyMoved && status === "cancelled" ? FILTERS.find((item) => item.value === "cancelled")?.on : "text-muted",
+            "bz-ag-chip h-10 min-w-0 whitespace-nowrap rounded-full px-1.5 text-[11px] font-semibold sm:text-xs",
+            !onlyMoved && status === "cancelled" ? `${FILTERS.find((item) => item.value === "cancelled")?.on ?? ""} is-on` : "text-muted",
           )}
         >
           {tx("Cancelado", "Canceled")}
