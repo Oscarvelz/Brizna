@@ -651,11 +651,11 @@ function AgendaPage() {
                         ) : null}
                       </div>
                       {onlyMoved || items.length === 0 ? null : reorder ? (
-                        <ReorderableJobs jobs={items} enabled hideServiceDate />
+                        <ReorderableJobs jobs={items} enabled />
                       ) : (
                         <div className={viewGrid(density, cols, gap)}>
                           {items.map((job) => (
-                            <JobCard key={job.id} job={job} compact={job.status !== "pending"} hideServiceDate />
+                            <JobCard key={job.id} job={job} compact={job.status !== "pending"} />
                           ))}
                         </div>
                       )}

@@ -1887,6 +1887,13 @@ html.theme-dark .bz-daynight, html.theme-amoled .bz-daynight {
 .bz-inv-tile.is-sun { --inv-tone: var(--color-primary); }
 .bz-inv-tile.is-soil { --inv-tone: var(--color-soil); }
 html.theme-dark .bz-inv-tile, html.theme-amoled .bz-inv-tile { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--inv-tone) 42%, transparent); }
+/* 1.5.27 (Oscar): in AMOLED, Juntos and Archivos read dull next to Permanentes and Una vez — the
+   sun surface is pure black and the soil surface sits darker than the page's own surface, so both
+   tiles sink. Same cure as the grafito palette (1.4.x): a surface mixed from their own tone over
+   the AMOLED surface, a stronger hairline, and Juntos' number takes its tone like the tiles above. */
+html.theme-amoled .bz-inv-tile.is-sun { background: color-mix(in oklab, var(--color-primary) 16%, #141415) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 55%, transparent); }
+html.theme-amoled .bz-inv-tile.is-sun > p:first-child { color: var(--color-primary); }
+html.theme-amoled .bz-inv-tile.is-soil { background: color-mix(in oklab, var(--color-soil) 24%, #141415) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-soil) 55%, transparent); }
 
 /* 1.4.67 (Oscar): the Tarde badge gets a soft halo behind it, in its own red, that grows a few px and
    fades: "aquí estoy" without shouting. Slow (2.8 s), low (peak ~30%), never moves the badge or the layout.

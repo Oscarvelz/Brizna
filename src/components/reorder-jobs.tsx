@@ -9,12 +9,9 @@ import type { JobRow } from "@/lib/types";
 export function ReorderableJobs({
   jobs,
   enabled,
-  hideServiceDate,
 }: {
   jobs: JobRow[];
   enabled: boolean;
-  /** 1.5.25: Agenda's day blocks pass this through — the day is already headed above the cards. */
-  hideServiceDate?: boolean;
 }) {
   const [order, setOrder] = useState(jobs.map((j) => j.id));
   const orderRef = useRef(order);
@@ -79,7 +76,7 @@ export function ReorderableJobs({
     return (
       <div className={grid}>
         {jobs.map((job) => (
-          <JobCard key={job.id} job={job} hideServiceDate={hideServiceDate} />
+          <JobCard key={job.id} job={job} />
         ))}
       </div>
     );
@@ -101,7 +98,7 @@ export function ReorderableJobs({
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
-          <JobCard job={job} dragHandle hideServiceDate={hideServiceDate} />
+          <JobCard job={job} dragHandle />
         </div>
       ))}
     </div>

@@ -148,25 +148,35 @@ export function useMasonry(ref: RefObject<HTMLElement | null>, cols: number, gap
         const next = `span ${span}`;
         if (el.style.gridRowEnd !== next) el.style.gridRowEnd = next;
       }
+      // 1.5.27: a beside item is never row-pinned (a definite row in the same grid as a full-width
+      // section shoves that section below the pinned span — that is how the pair ended up ABOVE
+      // «Este mes» in 1.5.26). Instead it rides the dense flow in its host's column + 1, and when
+      // it stands only a breath taller than its host (a few px past the host's band), its span is
+      // capped to the host's span so the flow can lift it into the band; the small overflow hides
+      // in the band's own gap. Much taller, and it keeps its honest span and drops below, as before.
+      for (const { el, host } of besides) {
+        const hostSpan = Number.parseInt((host.style.gridRowEnd || "").replace("span", ""), 10);
+        if (!Number.isFinite(hostSpan)) continue;
+        const elH = el.getBoundingClientRect().height;
+        const hostH = host.getBoundingClientRect().height;
+        if (elH > hostH && elH - hostH <= gap + 8) {
+          const next = `span ${hostSpan}`;
+          if (el.style.gridRowEnd !== next) el.style.gridRowEnd = next;
+        }
+      }
       pin(0);
     };
     // The host's first row is read back from the layout (rows are UNIT px, no row gap). Spans written this frame settle
     // on the next one (a stretched row moves the host), so look again a few frames on until it holds.
     let pinRaf = 0;
     const pin = (tries: number) => {
-      if (!unders.length && !besides.length) return;
+      if (!unders.length) return;
       const top = box.getBoundingClientRect().top;
       let moved = false;
       for (const { el, host } of unders) {
         const span = Number.parseInt((host.style.gridRowEnd || "").replace("span", ""), 10);
         if (!Number.isFinite(span) || host.getBoundingClientRect().height <= 0) { el.style.removeProperty("grid-row-start"); continue; }
         const start = String(Math.round((host.getBoundingClientRect().top - top) / UNIT) + 1 + span);
-        if (el.style.gridRowStart !== start) { el.style.gridRowStart = start; moved = true; }
-      }
-      // Beside items start on the host's OWN first row (not below it).
-      for (const { el, host } of besides) {
-        if (host.getBoundingClientRect().height <= 0) { el.style.removeProperty("grid-row-start"); continue; }
-        const start = String(Math.round((host.getBoundingClientRect().top - top) / UNIT) + 1);
         if (el.style.gridRowStart !== start) { el.style.gridRowStart = start; moved = true; }
       }
       if (tries < 6 && (moved || tries < 3)) {

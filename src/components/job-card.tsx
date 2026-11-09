@@ -37,15 +37,10 @@ export function JobCard({
   job,
   compact,
   dragHandle,
-  hideServiceDate,
 }: {
   job: JobRow;
   compact?: boolean;
   dragHandle?: boolean;
-  /** 1.5.25 (Oscar): Agenda's day blocks are already headed by their full date — there the work line
-   *  drops the date and holds only the instruction («es dato innecesario… ese espacio queda únicamente
-   *  para las instrucciones del trabajo»). Mixed lists keep their dates. */
-  hideServiceDate?: boolean;
 }) {
   const qc = useQueryClient();
   const { t } = useI18n();
@@ -767,19 +762,13 @@ export function JobCard({
             underName
             className={cn("min-w-0 flex-1 font-medium leading-tight text-fg/75", media ? "text-xs" : "text-sm")}
             sizes={media ? [0.6875] : undefined}
-            forms={
-              hideServiceDate
-                ? [[jobKindLabel(job.kind, job.title), timeLabel].filter(Boolean).join(" - ")]
-                : [
-                    [jobKindLabel(job.kind, job.title), capFirst(formatDay(job.scheduledDate, "EEE d MMM")), timeLabel].filter(Boolean).join(" - "),
-                    [jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM"), timeLabel].filter(Boolean).join(" - "),
-                  ]
-            }
-            lastResort={
-              hideServiceDate
-                ? jobKindLabel(job.kind, job.title)
-                : [jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM")].join(" - ")
-            }
+            // 1.5.27 (Oscar, correcting 1.5.25's narrow read): the date leaves the work line on EVERY
+            // card, not only Agenda's day blocks — «la fecha que está al lado de las instrucciones de
+            // corte de cada tarjeta» (his example: «Lun 2 nov» on a late card in Hoy). The line holds
+            // only the instruction and, when there is one, the arrival time. The date itself still
+            // lives one tap away in the status card (Programado / Debió hacerse).
+            forms={[[jobKindLabel(job.kind, job.title), timeLabel].filter(Boolean).join(" - ")]}
+            lastResort={jobKindLabel(job.kind, job.title)}
           />
         </div>
         {job.clientPhone || hasAddress(job.clientAddress) ? (
@@ -994,10 +983,6 @@ export async function invalidateLawn(qc: ReturnType<typeof useQueryClient>) {
     qc.invalidateQueries({ queryKey: ["client-changes"] }),
     qc.invalidateQueries({ queryKey: ["week-off"] }),
   ]);
-}
-
-function capFirst(text: string): string {
-  return text ? text.charAt(0).toLocaleUpperCase() + text.slice(1) : text;
 }
 
 /** 1.4.64 (Oscar): a client's name on one line at its normal size. A long name drops its middle
