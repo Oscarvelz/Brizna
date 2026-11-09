@@ -82,13 +82,13 @@ let pending: { dir: SwipeDir; at: number; off: number; bridge: boolean } | null 
  * in a small vault. On the next drag toward that tab, the clone is staged beside the live page and
  * follows the same offset, so the strip is the neighbor itself, moving as one sheet. At release
  * the clone glides the rest of the way on the compositor — it keeps moving even while the main
- * thread is busy mounting the real screen underneath — and a 60 ms crossfade hands over to the
+ * thread is busy mounting the real screen underneath — and a short crossfade hands over to the
  * real screen once it has painted. The follow, the lock, the thresholds and the exit are exactly
  * as they were; this only fills the strip and covers the mount. A tab never visited in this
  * session has no clone yet and enters the 1.5.58 way. */
 const SNAP_MAX_AGE = 5 * 60_000;
 const vault = new Map<string, { node: HTMLElement; at: number }>();
-let bridge: { wrap: HTMLElement; mounted: boolean; glided: boolean; done: boolean } | null = null;
+let bridge: { wrap: HTMLElement; mounted: boolean; glided: boolean; done: boolean; land?: () => void } | null = null;
 
 function routeKey(): string {
   const h = window.location.hash.replace(/^#\/?/, "").split("/")[0];
@@ -133,10 +133,10 @@ function stageSlab(host: HTMLElement, key: string): HTMLElement | null {
 }
 
 function fadeSlabOut(wrap: HTMLElement) {
-  const anim = wrap.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 60, easing: "ease-out", fill: "forwards" });
+  const anim = wrap.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 100, easing: "ease-out", fill: "forwards" });
   const kill = () => wrap.remove();
   if (anim.finished) anim.finished.then(kill, kill);
-  else window.setTimeout(kill, 140);
+  else window.setTimeout(kill, 180);
 }
 
 function finishBridge() {
@@ -154,18 +154,37 @@ function dropBridge() {
   bridge = null;
 }
 
-/** The clone rides the rest of the sweep on the compositor while the real screen mounts beneath it. */
+/** The clone rides the rest of the sweep on the compositor while the real screen mounts beneath it.
+ * 1.5.60 (Oscar: the sheet works — "I feel I'm literally moving" — but a small freeze remains):
+ * the glide used to end on schedule and then stand still, a photograph, for however long the real
+ * screen still needed to mount on his phone. The landing now stretches to meet the mount: if the
+ * real screen has not painted as the glide nears its end, the glide slows to a crawl over its last
+ * pixels instead of stopping dead; the moment the mount lands, full speed is restored and it
+ * finishes. The handover crossfade also got a little longer (100 ms), so the swap itself dissolves
+ * instead of blinking. */
 function glideSlab(wrap: HTMLElement) {
   bridge = { wrap, mounted: false, glided: false, done: false };
   const anim = wrap.animate(
     [{ translate: wrap.style.translate || "0px 0" }, { translate: "0px 0" }],
-    { duration: 240, easing: EASE, fill: "forwards" },
+    { duration: 300, easing: EASE, fill: "forwards" },
   );
+  bridge.land = () => { anim.playbackRate = 1; };
   const mark = () => { if (bridge && bridge.wrap === wrap) { bridge.glided = true; finishBridge(); } };
   if (anim.finished) anim.finished.then(mark, mark);
-  else window.setTimeout(mark, 320);
+  else window.setTimeout(mark, 380);
+  const stretch = (rate: number, delay: number) => window.setTimeout(() => {
+    if (bridge && bridge.wrap === wrap && !bridge.done && !bridge.mounted) anim.playbackRate = rate;
+  }, delay);
+  stretch(0.3, 190);
+  stretch(0.12, 330);
   window.setTimeout(() => {
-    if (bridge && bridge.wrap === wrap && !bridge.done) { bridge.done = true; bridge = null; fadeSlabOut(wrap); }
+    if (bridge && bridge.wrap === wrap && !bridge.done) {
+      bridge.done = true;
+      bridge = null;
+      anim.cancel();
+      wrap.style.translate = "0px 0";
+      fadeSlabOut(wrap);
+    }
   }, 1000);
 }
 
@@ -192,9 +211,10 @@ export function playPendingSlide(host: HTMLElement | null) {
   if (!p || !host) return;
   pending = null;
   if (p.bridge) {
-    // The real screen has painted under the bridge clone: signal it, and do not slide the real
-    // screen too (the clone is doing the moving; a second slide would double the motion).
-    if (bridge) { bridge.mounted = true; finishBridge(); }
+    // The real screen has painted under the bridge clone: signal it, restore the glide's full
+    // speed so it can finish, and do not slide the real screen too (a second slide would double
+    // the motion).
+    if (bridge) { bridge.mounted = true; bridge.land?.(); finishBridge(); }
     return;
   }
   if (Date.now() - p.at > 900 || reducedMotion()) return;
@@ -403,10 +423,8 @@ export function installPageSwipe(
       opts.commit(dir);
       return;
     }
-    // 1.5.59: leaving this tab by a committed swipe — keep its clone in the vault for the way back,
-    // and keep the staged neighbor only if it matches the committed direction (a drag that reversed
-    // past center staged the wrong side: drop that clone, the 1.5.58 entrance covers the switch).
-    if (kind === "route") snapshotPage(host);
+    // 1.5.59: keep the staged neighbor only if it matches the committed direction (a drag that
+    // reversed past center staged the wrong side: drop that clone, the 1.5.58 entrance covers it).
     const slab = st.slab && st.slab.dir === dir ? st.slab : null;
     if (st.slab && !slab) st.slab.wrap.remove();
     // The page leaves the way the finger went; a new screen is switched to at once, the other Estudio view after the exit.
@@ -420,6 +438,9 @@ export function installPageSwipe(
     pending = { dir, at: Date.now(), off: now, bridge: !!slab };
     if (kind === "route") {
       if (slab) glideSlab(slab.wrap);
+      // Leaving this tab: keep its clone in the vault for the way back. Taken AFTER the glide is
+      // rolling, so the clone's cost overlaps the motion instead of delaying the release (1.5.60).
+      snapshotPage(host);
       opts.commit(dir);
       // The old screen is unmounted by the switch; if it stays (something kept it), it comes back.
       window.setTimeout(() => {
