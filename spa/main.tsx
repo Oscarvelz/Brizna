@@ -16,11 +16,11 @@ import { APPEARANCE_BOOT_SCRIPT } from "@/lib/theme";
 import { AppErrorComponent } from "@/lib/error-component";
 import { routeTree } from "@/routeTree.gen";
 import { setPaneRouteTree } from "@/lib/pane-context";
-import { clearDbFailures, dbFailureCount, ensureDbReady, getPglite, getSql, setDbUser, startWithFreshStore } from "@/lib/db";
+import { clearDbFailures, dbFailureCount, ensureDbReady, getPglite, getSql, localBookOwner, setDbUser, startWithFreshStore } from "@/lib/db";
 import { I18nProvider } from "@/lib/i18n";
 import { awayWasInternal, guardInternalTrips, lockDue, markSeen, unlock } from "@/lib/device-lock";
 import { saveBackupNow } from "@/lib/server/lawn";
-import { CLOUD_READY, emitUser, keepSignedIn, setSessionGone, getUser, lastUser, onUser, rememberUser, supabase, type BriznaUser } from "@/spa/cloud";
+import { CLOUD_READY, emitLocalUser, emitUser, isLocalOnly, keepSignedIn, setSessionGone, getUser, lastUser, onUser, rememberUser, supabase, type BriznaUser } from "@/spa/cloud";
 import { setKeepCopy, startSync } from "@/spa/sync";
 import { signOutHere } from "@/spa/session";
 import { Locked, Login, Splash } from "@/spa/login";
@@ -89,7 +89,19 @@ function Gate() {
   // "Mantener sesión abierta": an ended cloud session doesn't block the app; Ajustes offers to sign in again.
   const softExpired = expiredRaw && keepSignedIn() && !relogin;
   const expired = expiredRaw && !softExpired;
-  useEffect(() => { setSessionGone(expiredRaw); }, [expiredRaw]);
+  // A provisional (local-only) owner counts as "session gone" too: Ajustes offers
+  // "Entrar de nuevo", and signing in reconciles instead of blocking (1.5.53, C1).
+  useEffect(() => { setSessionGone(expiredRaw || isLocalOnly()); }, [expiredRaw, user]);
+  // Sync belongs to real sessions only. It starts when a signed-in user is present —
+  // including the moment a provisional owner's session lands (same id, new emission):
+  // its first pass reads the cloud head and the full copy before writing anything.
+  const syncStartedFor = useRef("");
+  useEffect(() => {
+    if (user && !isLocalOnly() && syncStartedFor.current !== user.id) {
+      syncStartedFor.current = user.id;
+      startSync(user.id);
+    }
+  }, [user]);
   useEffect(() => {
     const go = () => setRelogin(true);
     window.addEventListener("brizna-relogin", go);
@@ -167,7 +179,9 @@ function Gate() {
     setDbUser(user.id);
     void getSql();
     setKeepCopy(() => saveBackupNow());
-    startSync(user.id);
+    // Sync starts from the effect below, not here: a provisional owner (C1) opens
+    // the book WITHOUT syncing, and the same effect starts it the moment a real
+    // session lands for this same user.
   }
   return <RouterProvider router={router} />;
 }
@@ -201,6 +215,15 @@ function start() {
       preopenedFor = last.id;
       setDbUser(last.id);
       void getSql().catch(() => undefined);
+    } else {
+      // 1.5.53 (C1): no remembered session, but a book may already live here — warm
+      // the owner's store so the provisional open below is instant.
+      const owner = localBookOwner();
+      if (owner) {
+        preopenedFor = owner;
+        setDbUser(owner);
+        void getSql().catch(() => undefined);
+      }
     }
   }
   if (!CLOUD_READY) {
@@ -214,6 +237,18 @@ function start() {
   }
   const remembered = lastUser();
   if (remembered) emitUser(remembered);
+  else {
+    // 1.5.53 (auditoría interna, C1 — Oscar's rule): with no remembered session —
+    // "Mantener sesión" off, a new cold start, storage cleared — the Login used to
+    // stand in front of a whole local book until the network allowed signing in.
+    // Now the book's owner is admitted provisionally and the book opens from this
+    // device; when the network returns, signing in reconciles (sync observes first).
+    // The device lock above the app (fingerprint) is untouched by this.
+    let signedOut = false;
+    try { signedOut = sessionStorage.getItem("brizna.signed-out") === "1"; } catch { /* ignore */ }
+    const owner = localBookOwner();
+    if (owner && !signedOut) emitLocalUser({ id: owner, email: "", name: "" });
+  }
   root.render(
     <StrictMode>
       <I18nProvider>

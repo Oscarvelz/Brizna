@@ -35,8 +35,22 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 
 export type BriznaUser = { id: string; email: string; name: string };
 
+/* 1.5.53 (auditoría interna, C1 — Oscar's rule): a device that already holds a book
+ * opens it without a session; the account reconciles when the network returns, and
+ * the sync's first pass OBSERVES both sides before it writes anything. A local-only
+ * user is the book's owner, admitted provisionally: no sync starts for them, Ajustes
+ * offers "Entrar de nuevo" (sessionGone), and the device lock still guards the door.
+ * A real session (rememberUser) ends the provisional state. */
+let localOnly = false;
+export function isLocalOnly() { return localOnly; }
+export function emitLocalUser(u: BriznaUser) {
+  localOnly = true;
+  emitUser(u);
+}
+
 export function rememberUser(s: Session | null): BriznaUser | null {
   if (!s?.user) return null;
+  localOnly = false;
   const meta = s.user.user_metadata ?? {};
   const u: BriznaUser = {
     id: s.user.id,
@@ -58,6 +72,7 @@ export function lastUser(): BriznaUser | null {
 }
 
 export function forgetUser() {
+  localOnly = false;
   try { localStorage.removeItem(LAST); sessionStorage.removeItem(LAST); } catch { /* ignore */ }
 }
 

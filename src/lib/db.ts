@@ -299,6 +299,11 @@ export function startWithFreshStore(): void {
   /* server: there is no per-device store to rename */
 }
 
+/** Same contract as src/spa/db.ts (1.5.53, C1): the server has no device book. */
+export function localBookOwner(): string | null {
+  return null;
+}
+
 // Server-only eager start: kick PGLite bootstrap as soon as this module loads in
 // Node. Client bundles never hit this path (`getSql` throws in the browser).
 const globalBoot = globalThis as typeof globalThis & {

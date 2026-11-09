@@ -57,6 +57,13 @@ export function startWithFreshStore() {
   } catch { /* ignore */ }
 }
 
+/** 1.5.53 (C1): the account whose book is this device's base store, if any has ever
+ *  opened here. The gate uses it to admit the owner provisionally when no session is
+ *  remembered: the book is here, so the book opens. */
+export function localBookOwner(): string | null {
+  try { return localStorage.getItem(OWNER); } catch { return null; }
+}
+
 let dbUser: string | null = null;
 /** Which account's on-device database to open. The first account on a device keeps
  *  the original database (so data typed before sign-in is kept); others get their own. */
