@@ -10,7 +10,7 @@ import { FingerprintControl } from "@/components/fingerprint-control";
 import { SyncStatusCard } from "@/components/sync-status";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ExportCenterCard, ExportSheet, useExportLaunch } from "@/components/export-center";
-import { Fold, foldsOpen, setFoldsOpen } from "@/components/fold";
+import { Fold, foldsAllState, foldsOpen, setFoldsOpen } from "@/components/fold";
 import { Hint } from "@/components/hint";
 import { invalidateLawn } from "@/components/job-card";
 import { SoundSettings } from "@/components/settings-finder";
@@ -226,7 +226,19 @@ function AjustesPage() {
       window.removeEventListener("storage", sync);
     };
   }, []);
-  const [expandAll, setExpandAll] = useState(() => foldsOpen("aj-"));
+  // 1.5.40 (Oscar): on a tablet or any large screen, Ajustes opens with EVERYTHING deployed —
+  // «Desplegar todo» is the established option; folding is the user's decision afterwards.
+  // Only when this session holds no choice yet: a user who folded all keeps them folded.
+  const [wideDefault] = useState(
+    () =>
+      foldsAllState("aj-") === undefined &&
+      typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 768px)").matches,
+  );
+  const [expandAll, setExpandAll] = useState(() => foldsOpen("aj-") || wideDefault);
+  useEffect(() => {
+    if (wideDefault) setFoldsOpen("aj-", true);
+  }, [wideDefault]);
   const [tabletOn, setTabletOn] = useState(() => readTabletEnabled());
 
   const saveName = useMutation({
