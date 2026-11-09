@@ -7,11 +7,15 @@ export function StatusBadge({
   status,
   band,
   compact,
+  detail,
 }: {
   status: ComputedStatus;
   /** 1.5.12: full-width band (the settled card spec) instead of the pill chip. */
   band?: boolean;
   compact?: boolean;
+  /** 1.5.28 (Oscar): extra words on the PILL only, after the label — the days («· 1 día»),
+   *  so the state reads whole without opening the details card. */
+  detail?: string;
 }) {
   const tx = useTx();
   const map: Record<
@@ -71,6 +75,7 @@ export function StatusBadge({
     >
       <Icon className={big ? "size-4" : "size-3.5"} strokeWidth={2.4} />
       {item.label}
+      {detail ? <span>{detail}</span> : null}
     </span>
   );
 }

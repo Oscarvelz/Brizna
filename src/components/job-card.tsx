@@ -261,6 +261,14 @@ export function JobCard({
   const quad = density === "quad";
   const pending = live.status === "pending";
   const late = live.computedStatus === "late";
+  // 1.5.28 (Oscar): the status pill in the contact row carries the days too («Tarde · 1 día»,
+  // «Pendiente · en 5 días»), so nobody has to open the details card just to read them.
+  const dayDiff = Math.round((Date.parse(job.scheduledDate) - Date.parse(today)) / 86400000);
+  const statusDetail = late
+    ? tx(`· ${-dayDiff} día${-dayDiff === 1 ? "" : "s"}`, `· ${-dayDiff} day${-dayDiff === 1 ? "" : "s"}`)
+    : live.computedStatus === "pending" && dayDiff > 0
+      ? tx(`· en ${dayDiff} día${dayDiff === 1 ? "" : "s"}`, `· in ${dayDiff} day${dayDiff === 1 ? "" : "s"}`)
+      : undefined;
   const timeLabel = formatTime(job.arrivalTime);
   const isOnce = job.kind === "one_time";
   const isExtra = job.kind === "extra";
@@ -771,37 +779,48 @@ export function JobCard({
             lastResort={jobKindLabel(job.kind, job.title)}
           />
         </div>
-        {job.clientPhone || hasAddress(job.clientAddress) ? (
-          <div className={cn("flex min-w-0", media ? "mt-2 gap-1.5" : "mt-3 gap-2")} data-contact-row>
-            {job.clientPhone ? (
-              <>
-                <MessageComposer phone={job.clientPhone} name={job.clientName} compact tight={media} wide />
-                <WhatsAppButton phone={job.clientPhone} name={job.clientName} tight={media} wide />
-                <ConfirmLink
-                  href={telHref(job.clientPhone)}
-                  kind="call"
-                  name={job.clientName}
-                  className={cn("bz-tone bz-tone-call flex min-w-0 flex-1 items-center justify-center rounded-md", media ? "h-9" : "h-11")}
-                >
-                  <Phone className={media ? "size-4" : "size-[18px]"} />
-                  <span className="sr-only">{tx("Llamar", "Call")}</span>
-                </ConfirmLink>
-              </>
-            ) : null}
-            {hasAddress(job.clientAddress) ? (
+        {/* 1.5.28 (Oscar): the four contact buttons no longer stretch across the card — they sit
+            compact at the left, like the client file's row that «respira mejor», and the status
+            rides in THIS row as a pill at the right (with its days), instead of a full-width band
+            below. The pill still opens the status details card. Only Grande/Media change;
+            Lista and Malla keep their own rows. */}
+        <div className={cn("flex min-w-0 flex-wrap items-center", media ? "mt-2 gap-1.5" : "mt-3 gap-2")} data-contact-row>
+          {job.clientPhone ? (
+            <>
+              <MessageComposer phone={job.clientPhone} name={job.clientName} compact />
+              <WhatsAppButton phone={job.clientPhone} name={job.clientName} />
               <ConfirmLink
-                href={mapsHref(job.clientAddress)}
-                kind="maps"
+                href={telHref(job.clientPhone)}
+                kind="call"
                 name={job.clientName}
-                onLongPress={() => setShowAddr((v) => !v)}
-                className={cn("bz-tone bz-tone-map flex min-w-0 flex-1 items-center justify-center rounded-md", media ? "h-9" : "h-11")}
+                className="bz-tone bz-tone-call grid size-11 shrink-0 place-items-center rounded-sm"
               >
-                <MapPin className={media ? "size-4" : "size-[18px]"} />
-                <span className="sr-only">{tx("Mapa", "Map")}</span>
+                <Phone className="size-[18px]" />
+                <span className="sr-only">{tx("Llamar", "Call")}</span>
               </ConfirmLink>
-            ) : null}
-          </div>
-        ) : null}
+            </>
+          ) : null}
+          {hasAddress(job.clientAddress) ? (
+            <ConfirmLink
+              href={mapsHref(job.clientAddress)}
+              kind="maps"
+              name={job.clientName}
+              onLongPress={() => setShowAddr((v) => !v)}
+              className="bz-tone bz-tone-map grid size-11 shrink-0 place-items-center rounded-sm"
+            >
+              <MapPin className="size-[18px]" />
+              <span className="sr-only">{tx("Mapa", "Map")}</span>
+            </ConfirmLink>
+          ) : null}
+          <button
+            type="button"
+            className="ml-auto shrink-0 cursor-pointer transition active:scale-[0.97]"
+            onClick={() => setShowStatus(true)}
+            aria-label={tx(`Detalles del estado de ${job.clientName}`, `${job.clientName}: status details`)}
+          >
+            <StatusBadge status={live.computedStatus} detail={statusDetail} />
+          </button>
+        </div>
         {job.clientCue ? <CueChip text={job.clientCue} className="mt-1.5" /> : null}
         {job.standingExtras.length > 0 ? (
           <p className="mt-1 text-xs font-semibold text-soil">
@@ -826,20 +845,6 @@ export function JobCard({
       {showAddr && hasAddress(job.clientAddress) && (
         <AddressLine address={job.clientAddress} name={job.clientName} compact oneLine className={media ? "mt-2" : "mt-3"} />
       )}
-
-      {/* 1.5.12: the state closes the card as a full-width band, right above Hecho / Posponer.
-          1.5.23 (Oscar): the band is a button now — tapping it opens a small, well-made card with what
-          the state means for THIS yard: when it was due, how many days late, or how far away it is. */}
-      <div className={media ? "mt-2" : "mt-3"}>
-        <button
-          type="button"
-          className="block w-full cursor-pointer transition active:scale-[0.99]"
-          onClick={() => setShowStatus(true)}
-          aria-label={tx(`Detalles del estado de ${job.clientName}`, `${job.clientName}: status details`)}
-        >
-          <StatusBadge status={live.computedStatus} band compact={media} />
-        </button>
-      </div>
 
       {pending && !compact && (
         <div className={cn("flex items-center", media ? "mt-2 gap-1.5" : "mt-2 gap-2")}>
