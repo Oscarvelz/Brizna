@@ -58,8 +58,10 @@ export function writeDensity(scope: string, next: Density): void {
   ping();
 }
 
-/** Entering Malla starts at 2 columns. Each extra tap goes 2, then 3, then 4, then back to 2. */
-export function pickDensity(scope: string, next: Density): void {
+/** Entering Malla starts at 2 columns. Each extra tap goes 2, then 3, then 4, then back to 2.
+ *  1.5.25 (Oscar): on tablet and desk there IS no 3 or 4 — «solo deja el grid normal» there; the
+ *  cycle lives on the phone only, where the extra columns earn their keep. */
+export function pickDensity(scope: string, next: Density, screen: ScreenKind = "phone"): void {
   if (next !== "quad") {
     writeDensity(scope, next);
     return;
@@ -68,6 +70,15 @@ export function pickDensity(scope: string, next: Density): void {
   if (readDensity(scope) !== "quad") {
     try {
       window.localStorage.setItem(densityKey(scope), "quad");
+      window.localStorage.setItem(colsKey(scope), "2");
+    } catch {
+      /* ignore */
+    }
+    ping();
+    return;
+  }
+  if (screen !== "phone") {
+    try {
       window.localStorage.setItem(colsKey(scope), "2");
     } catch {
       /* ignore */

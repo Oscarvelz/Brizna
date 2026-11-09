@@ -120,8 +120,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Large, Medium, List, and Grid change how much you see of each yard. Each screen remembers its own.",
         ],
         how: [
-          "Toca el botón de vista arriba de la lista y elige.\nMalla empieza en 2 columnas; otro toque pone 3, luego 4 y vuelve a 2.\nHoy, Clientes, Agenda, Cobros, la ficha y el Fichero guardan cada uno su vista: cambiar una no cambia las otras.",
-          "Tap the view button above the list and pick one.\nGrid starts at 2 columns; another tap gives 3, then 4, then back to 2.\nToday, Clients, Schedule, Payments, the file, and the cabinet each keep their own view: changing one does not change the others.",
+          "Toca el botón de vista arriba de la lista y elige.\nMalla empieza en 2 columnas; en el teléfono, otro toque pone 3, luego 4 y vuelve a 2. En tableta y computadora la Malla es siempre de 2 columnas.\nHoy, Clientes, Agenda, Cobros, la ficha y el Fichero guardan cada uno su vista: cambiar una no cambia las otras.",
+          "Tap the view button above the list and pick one.\nGrid starts at 2 columns; on the phone, another tap gives 3, then 4, then back to 2. On a tablet or computer the Grid is always 2 columns.\nToday, Clients, Schedule, Payments, the file, and the cabinet each keep their own view: changing one does not change the others.",
         ],
         example: [
           "Viernes por la tarde, 12 personas te deben. En Cobros pones Lista: ves nombre y monto en una línea y cobras rápido. Para revisar a Don Rafa, que debe tres cortes, cambias a Grande y ves el corte, el atraso y Perdonar.",

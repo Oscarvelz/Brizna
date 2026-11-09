@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Check, Clock, GripVertical, MapPin, Phone, Pin, RotateCcw } from "lucide-react";
+import { Ban, Check, Clock, GripVertical, MapPin, Phone, Pin, RotateCcw, Scissors, TriangleAlert } from "lucide-react";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AddressLine, hasAddress } from "@/components/address-line";
@@ -37,10 +37,15 @@ export function JobCard({
   job,
   compact,
   dragHandle,
+  hideServiceDate,
 }: {
   job: JobRow;
   compact?: boolean;
   dragHandle?: boolean;
+  /** 1.5.25 (Oscar): Agenda's day blocks are already headed by their full date — there the work line
+   *  drops the date and holds only the instruction («es dato innecesario… ese espacio queda únicamente
+   *  para las instrucciones del trabajo»). Mixed lists keep their dates. */
+  hideServiceDate?: boolean;
 }) {
   const qc = useQueryClient();
   const { t } = useI18n();
@@ -744,16 +749,32 @@ export function JobCard({
           </div>
           {pinButton}
         </div>
-        <FitLine
-          underName
-          className={cn("min-w-0 font-medium leading-tight text-fg/75", media ? "mt-1 text-xs" : "mt-2 text-sm")}
-          sizes={media ? [0.6875] : undefined}
-          forms={[
-            [jobKindLabel(job.kind, job.title), capFirst(formatDay(job.scheduledDate, "EEE d MMM")), timeLabel].filter(Boolean).join(" - "),
-            [jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM"), timeLabel].filter(Boolean).join(" - "),
-          ]}
-          lastResort={[jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM")].join(" - ")}
-        />
+        {/* 1.5.25 (Oscar): the work line slides right to live under the name's first letter — the grip's
+            24 px (32 box − 8 lean) plus the header gap (12 Grande / 8 Media) — so the card's left side
+            reads as one leveled column: dots, name, instruction. And the line opens with a super-tiny
+            scissors, quiet (fg/50), «no llamativo, solo que parezca bien hecho»: the icon sits on the
+            name's letter line and the text follows it, leveling the row. */}
+        <div className={cn("flex min-w-0 items-center gap-1.5", media ? "mt-1 ml-8" : "mt-2 ml-9")}>
+          <Scissors className={cn("shrink-0 text-fg/50", media ? "size-2.5" : "size-3")} strokeWidth={2.2} aria-hidden />
+          <FitLine
+            underName
+            className={cn("min-w-0 flex-1 font-medium leading-tight text-fg/75", media ? "text-xs" : "text-sm")}
+            sizes={media ? [0.6875] : undefined}
+            forms={
+              hideServiceDate
+                ? [[jobKindLabel(job.kind, job.title), timeLabel].filter(Boolean).join(" - ")]
+                : [
+                    [jobKindLabel(job.kind, job.title), capFirst(formatDay(job.scheduledDate, "EEE d MMM")), timeLabel].filter(Boolean).join(" - "),
+                    [jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM"), timeLabel].filter(Boolean).join(" - "),
+                  ]
+            }
+            lastResort={
+              hideServiceDate
+                ? jobKindLabel(job.kind, job.title)
+                : [jobKindLabel(job.kind, job.title), formatDay(job.scheduledDate, "d MMM")].join(" - ")
+            }
+          />
+        </div>
         {job.clientPhone || hasAddress(job.clientAddress) ? (
           <div className={cn("flex min-w-0", media ? "mt-2 gap-1.5" : "mt-3 gap-2")} data-contact-row>
             {job.clientPhone ? (
@@ -865,18 +886,22 @@ export function JobCard({
 }
 
 /** 1.5.23 (Oscar): the little card behind the status band — designed, not loose: the client's name,
- *  the state as its own pill, and a few truthful rows (due date, days late or days away, price). */
+ *  the state as its own pill, and a few truthful rows (due date, days late or days away, price).
+ *  1.5.25 (Oscar): a more premium finish — the name stands clearly above the rest (text-xl), the dates
+ *  open with a capital («Jueves 5 de noviembre»), a status-tinted hairline crowns the card, the headline
+ *  travels on a soft tinted band with its icon, and Cerrar is the primary button. */
 function StatusInfoCard({ job, today, onClose }: { job: JobRow; today: string; onClose: () => void }) {
   const tx = useTx();
+  const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
   const diff = Math.round((Date.parse(job.scheduledDate) - Date.parse(today)) / 86400000);
   const rows: Array<[string, string]> = [];
   let headline: string | null = null;
   if (job.computedStatus === "late") {
     const n = -diff;
     headline = n === 1 ? tx("Lleva 1 día de retraso", "1 day overdue") : tx(`Lleva ${n} días de retraso`, `${n} days overdue`);
-    rows.push([tx("Debió hacerse", "Was due"), formatDay(job.scheduledDate, "EEEE d 'de' MMMM")]);
+    rows.push([tx("Debió hacerse", "Was due"), cap(formatDay(job.scheduledDate, "EEEE d 'de' MMMM"))]);
     if (job.originDate && job.originDate !== job.scheduledDate) {
-      rows.push([tx("Día original", "Original day"), formatDay(job.originDate, "EEE d 'de' MMM")]);
+      rows.push([tx("Día original", "Original day"), cap(formatDay(job.originDate, "EEE d 'de' MMM"))]);
     }
     if (job.postponeReason) rows.push([tx("Razón", "Reason"), job.postponeReason]);
   } else if (job.computedStatus === "pending") {
@@ -886,45 +911,62 @@ function StatusInfoCard({ job, today, onClose }: { job: JobRow; today: string; o
         : diff === 1
           ? tx("Es mañana", "It's tomorrow")
           : tx(`Faltan ${diff} días`, `${diff} days away`);
-    rows.push([tx("Programado", "Scheduled"), formatDay(job.scheduledDate, "EEEE d 'de' MMMM")]);
+    rows.push([tx("Programado", "Scheduled"), cap(formatDay(job.scheduledDate, "EEEE d 'de' MMMM"))]);
   } else if (job.computedStatus === "done") {
     rows.push([
       tx("Se hizo", "Done on"),
-      formatDay(job.completedAt ? stampDay(job.completedAt) : job.scheduledDate, "EEEE d 'de' MMMM"),
+      cap(formatDay(job.completedAt ? stampDay(job.completedAt) : job.scheduledDate, "EEEE d 'de' MMMM")),
     ]);
   } else {
-    rows.push([tx("Programado", "Scheduled"), formatDay(job.scheduledDate, "EEEE d 'de' MMMM")]);
+    rows.push([tx("Programado", "Scheduled"), cap(formatDay(job.scheduledDate, "EEEE d 'de' MMMM"))]);
   }
   rows.push([tx("Precio", "Price"), money(job.amount)]);
+  const accent =
+    job.computedStatus === "late"
+      ? { bar: "bg-late", band: "bg-late-bg text-late", Icon: TriangleAlert }
+      : job.computedStatus === "done"
+        ? { bar: "bg-done", band: "bg-done-bg text-done", Icon: Check }
+        : job.computedStatus === "cancelled"
+          ? { bar: "bg-muted", band: "bg-surface-2 text-muted", Icon: Ban }
+          : { bar: "bg-pending", band: "bg-pending-bg text-pending", Icon: Clock };
+  const HeadIcon = accent.Icon;
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/45 p-6" onClick={onClose} role="presentation">
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/45 p-6 backdrop-blur-[2px]" onClick={onClose} role="presentation">
       <div
-        className="w-full max-w-xs rounded-2xl bg-surface p-4 shadow-xl ring-1 ring-border"
+        className="w-full max-w-xs overflow-hidden rounded-3xl bg-surface shadow-2xl ring-1 ring-border"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={job.clientName}
       >
-        <div className="flex items-start justify-between gap-3">
-          <p className="min-w-0 font-display text-base font-semibold leading-tight">{job.clientName}</p>
-          <StatusBadge status={job.computedStatus} />
+        <div className={cn("h-1.5 w-full", accent.bar)} aria-hidden />
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-3">
+            <p className="min-w-0 font-display text-xl font-semibold leading-tight tracking-tight">{job.clientName}</p>
+            <StatusBadge status={job.computedStatus} />
+          </div>
+          {headline ? (
+            <p className={cn("mt-3 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold", accent.band)}>
+              <HeadIcon className="size-4 shrink-0" strokeWidth={2.4} />
+              {headline}
+            </p>
+          ) : null}
+          <dl className="mt-2 divide-y divide-border/60">
+            {rows.map(([label, value]) => (
+              <div key={label} className="flex items-baseline justify-between gap-4 py-2">
+                <dt className="shrink-0 text-xs font-medium uppercase tracking-wide text-muted">{label}</dt>
+                <dd className="min-w-0 text-right text-[15px] font-semibold tabular-nums">{value}</dd>
+              </div>
+            ))}
+          </dl>
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-4 h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-fg shadow-sm transition active:scale-[0.99]"
+          >
+            {tx("Cerrar", "Close")}
+          </button>
         </div>
-        {headline ? <p className="mt-2 text-sm font-medium">{headline}</p> : null}
-        <dl className="mt-3 divide-y divide-border/70">
-          {rows.map(([label, value]) => (
-            <div key={label} className="flex items-baseline justify-between gap-4 py-1.5">
-              <dt className="shrink-0 text-xs text-muted">{label}</dt>
-              <dd className="min-w-0 text-right text-sm font-medium">{value}</dd>
-            </div>
-          ))}
-        </dl>
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-3 h-9 w-full rounded-lg bg-surface-2 text-sm font-semibold ring-1 ring-border transition active:scale-[0.99]"
-        >
-          {tx("Cerrar", "Close")}
-        </button>
       </div>
     </div>
   );

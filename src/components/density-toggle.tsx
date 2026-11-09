@@ -49,7 +49,7 @@ function readScreen(): ScreenKind {
 }
 
 export function useScreen(): ScreenKind {
-  const [screen, setScreen] = useState<ScreenKind>("phone");
+  const [screen, setScreen] = useState<ScreenKind>(() => readScreen());
   useEffect(() => {
     const read = () => setScreen(readScreen());
     read();
@@ -65,13 +65,16 @@ export function useScreen(): ScreenKind {
 
 export function useQuadCols(): QuadCols {
   const scope = useDensityScope();
+  const screen = useScreen();
   const [cols, setCols] = useState<QuadCols>(() => readQuadCols(scope));
   useEffect(() => {
     const read = () => setCols(readQuadCols(scope));
     read();
     return subscribeDensity(read);
   }, [scope]);
-  return cols;
+  // 1.5.25 (Oscar): tablet and desk always read the plain 2-column grid, whatever an earlier tap
+  // stored — the 3/4-column grids exist on the phone only. The stored value is left untouched.
+  return screen === "phone" ? cols : 2;
 }
 
 /** Toggles whose row currently sits under the round + button. */
@@ -127,6 +130,7 @@ export function DensityToggle() {
   const scope = useDensityScope();
   const density = useDensity();
   const cols = useQuadCols();
+  const screen = useScreen();
   const { t } = useI18n();
   return (
     <div ref={box} data-spot="vistas" className={cn("bz-vistas flex w-full min-w-0 rounded-md bg-surface-2 p-0.5 ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-border))]")} role="group" aria-label={t("density.label")}>
@@ -140,7 +144,7 @@ export function DensityToggle() {
             type="button"
             title={label}
             aria-pressed={on}
-            onClick={() => pickDensity(scope, opt.value)}
+            onClick={() => pickDensity(scope, opt.value, screen)}
             className={cn(
               "bz-vista flex h-14 min-w-0 flex-1 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-sm px-1 text-xs font-semibold text-muted",
               on && "is-on bg-surface text-primary ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-primary)_38%,var(--color-border))]",
