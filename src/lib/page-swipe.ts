@@ -73,7 +73,7 @@ function movers(host: HTMLElement): HTMLElement[] {
 }
 
 const EASE = "cubic-bezier(.22, 1, .36, 1)";
-let pending: { dir: SwipeDir; at: number } | null = null;
+let pending: { dir: SwipeDir; at: number; off: number } | null = null;
 
 function clear(els: HTMLElement[]) {
   for (const el of els) {
@@ -85,16 +85,25 @@ function clear(els: HTMLElement[]) {
   }
 }
 
-/** The new screen (or the other Estudio view) slides in from the side the finger went to. */
+/** The new screen (or the other Estudio view) slides in from the side the finger went to.
+ * 1.5.58 (Oscar, with screenshots): the entrance used to start almost in place — 44 px out, at
+ * 0.35 opacity — so at release the motion stopped, the new page faded in where it stood, and the
+ * strip the finger had vacated sat empty for a beat: the "gap" after letting go. The entrance now
+ * CONTINUES the sweep the finger began: the new screen starts at the distance the strip still had
+ * to travel (page width minus the release offset the drag had already covered) and rides it in
+ * nearly solid, like the second half of one sheet. Only this start geometry changed — the follow,
+ * the lock, the thresholds and the exit are exactly as they were. */
 export function playPendingSlide(host: HTMLElement | null) {
   const p = pending;
   if (!p || !host) return;
   pending = null;
   if (Date.now() - p.at > 900 || reducedMotion()) return;
   const els = movers(host);
-  const from = `${p.dir * 44}px 0`;
+  const width = host.querySelector<HTMLElement>("main")?.clientWidth || window.innerWidth;
+  const rest = Math.max(28, Math.min(width, Math.abs(p.dir * width + p.off)));
+  const from = `${p.dir * rest}px 0`;
   for (const el of els) {
-    el.animate([{ translate: from, opacity: 0.35 }, { translate: "0 0", opacity: 1 }], { duration: 240, easing: EASE });
+    el.animate([{ translate: from, opacity: 0.85 }, { translate: "0 0", opacity: 1 }], { duration: 240, easing: EASE });
   }
 }
 
@@ -268,7 +277,7 @@ export function installPageSwipe(
       el.style.translate = out;
       el.style.opacity = "0";
     }
-    pending = { dir, at: Date.now() };
+    pending = { dir, at: Date.now(), off: now };
     if (kind === "route") {
       opts.commit(dir);
       // The old screen is unmounted by the switch; if it stays (something kept it), it comes back.
