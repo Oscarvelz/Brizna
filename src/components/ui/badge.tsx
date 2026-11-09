@@ -64,18 +64,27 @@ export function StatusBadge({
       </span>
     );
   }
+  // 1.5.47 (Oscar): on the phone the detail leaves the line and stacks UNDER the label (see
+  // .bz-spill in styles.css), so the separator dot becomes its own span the phone can hide.
+  const detailBody = detail?.replace(/^·\s*/, "");
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full font-semibold tracking-tight",
+        "bz-spill inline-flex items-center gap-1 rounded-full font-semibold tracking-tight",
         big ? "h-8 px-3 text-sm" : "h-7 px-2.5 text-xs",
         big && "bz-late-pulse", // 1.4.67 (Oscar): a calm "aquí estoy" halo behind Tarde
+        detail && "has-detail",
         item.className,
       )}
     >
       <Icon className={big ? "size-4" : "size-3.5"} strokeWidth={2.4} />
       {item.label}
-      {detail ? <span>{detail}</span> : null}
+      {detail ? (
+        <span className="bz-sdetail">
+          <span className="bz-sdetail-sep" aria-hidden>· </span>
+          {detailBody}
+        </span>
+      ) : null}
     </span>
   );
 }

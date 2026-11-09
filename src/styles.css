@@ -2636,6 +2636,25 @@ html:is(.theme-dark, .theme-amoled) .bz-cact.is-forgive { color: color-mix(in ok
 @media (max-width: 767px) {
   .bz-clientes-tallyrow .bz-vistas { order: -1; }
 }
+
+/* 1.5.47 (Oscar): the Hoy day headers must read as DAYS, not as one more card («que se separe
+   de la tarjeta lo suficiente en cuanto a look»). The head becomes a tinted band in the day's
+   own family — garden for a plain day, today-tone for Hoy, late for Atrasados — under the
+   bigger serif title and the filled count pill; Abrir/Cerrar rides as a small surface chip. */
+.bz-dayfold-head { background: color-mix(in oklab, var(--color-primary) 9%, var(--color-surface)); }
+.bz-dayfold.is-today .bz-dayfold-head { background: color-mix(in oklab, var(--color-today) 16%, var(--color-surface)); }
+.bz-dayfold.is-late .bz-dayfold-head { background: color-mix(in oklab, var(--color-late) 12%, var(--color-surface)); }
+
+/* 1.5.47 (Oscar): on the PHONE the status pill stops wrapping to its own line. It stays at the
+   map button's edge in the contact row, and its detail («2 días») stacks UNDER the label —
+   «Tarde» arriba, los días abajo — so the row is one line tall and the space is well used.
+   The contact row itself stops wrapping on the phone. Tablet and desk keep the one-line pill. */
+@media (max-width: 767px) {
+  [data-contact-row] { flex-wrap: nowrap; }
+  .bz-spill.has-detail { display: inline-grid; grid-template-columns: auto auto; column-gap: 0.25rem; height: auto; padding: 0.3125rem 0.75rem; border-radius: 1rem; }
+  .bz-spill.has-detail .bz-sdetail { grid-column: 2; font-size: 0.6875rem; font-weight: 600; line-height: 1.15; opacity: 0.88; }
+  .bz-spill.has-detail .bz-sdetail-sep { display: none; }
+}
 .bz-fmenu { position: absolute; left: 0; right: 0; top: calc(100% + 0.5rem); z-index: 75; display: grid; gap: 0.25rem; padding: 0.375rem; overflow-y: auto; overscroll-behavior: contain;
   border-radius: 1.125rem; background: var(--color-surface); box-shadow: var(--shadow-card), 0 18px 40px -18px rgb(0 0 0 / 0.45); animation: bz-fmenu-in .16s cubic-bezier(.2,.7,.2,1) both; transform-origin: 50% 0; }
 html.theme-amoled .bz-fmenu { background: var(--bz-l2, #161616); box-shadow: inset 0 0 0 1px var(--bz-hair-2), 0 18px 40px -14px rgb(0 0 0 / 0.9); }

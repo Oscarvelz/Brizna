@@ -728,16 +728,16 @@ function DayFold({
       data-spot-alt={spotAlt}
       className={cn(
         "bz-dayfold overflow-hidden rounded-xl bg-surface shadow-card",
-        tone === "late" && "ring-1 ring-late/40",
-        tone === "today" && "ring-1 ring-today/40",
+        tone === "late" && "ring-1 ring-late/40 is-late",
+        tone === "today" && "ring-1 ring-today/40 is-today",
       )}
     >
-      <div className="flex min-h-12 items-center gap-2 px-3">
+      <div className="bz-dayfold-head flex min-h-12 items-center gap-2 px-3">
         <button type="button" onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-2 text-left">
           <span
             key={tone === "today" ? `t-${open}` : undefined}
             className={cn(
-              "font-display text-base font-semibold",
+              "font-display text-lg font-semibold",
               tone === "late" && "text-late",
               tone === "today" && "text-today bz-today-title",
             )}
@@ -747,14 +747,14 @@ function DayFold({
           <span
             className={cn(
               "rounded-full px-2 py-0.5 text-xs font-bold tabular-nums",
-              tone === "late" ? "bg-late text-primary-fg" : "bg-sun text-fg",
+              tone === "late" ? "bg-late text-primary-fg" : tone === "today" ? "bg-today text-primary-fg" : "bg-primary text-primary-fg",
             )}
           >
             {count}
           </span>
         </button>
         {extra}
-        <button type="button" aria-label={open ? tx("Cerrar día", "Close day") : tx("Abrir día", "Open day")} onClick={onToggle} className="text-sm text-muted">
+        <button type="button" aria-label={open ? tx("Cerrar día", "Close day") : tx("Abrir día", "Open day")} onClick={onToggle} className="rounded-full bg-surface px-2.5 py-1 text-xs font-semibold text-fg/80 ring-1 ring-border">
           {open ? tx("Cerrar", "Close") : tx("Abrir", "Open")}
         </button>
       </div>
