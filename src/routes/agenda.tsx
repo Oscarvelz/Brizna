@@ -1,4 +1,4 @@
-import { NarrowOnly, WideOnly, WideSplit } from "@/components/wide-layout";
+import { NarrowOnly, PackedGrid, WideOnly, WideSplit } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { markJump } from "@/lib/jump-back";
@@ -656,11 +656,11 @@ function AgendaPage() {
                       {onlyMoved || items.length === 0 ? null : reorder ? (
                         <ReorderableJobs jobs={items} enabled />
                       ) : (
-                        <div className={viewGrid(density, cols, gap)}>
+                        <PackedGrid density={density} quadCols={cols} gapClass={gap}>
                           {items.map((job) => (
                             <JobCard key={job.id} job={job} compact={job.status !== "pending"} />
                           ))}
-                        </div>
+                        </PackedGrid>
                       )}
                       {section.report.length > 0 ? <DayReport rows={section.report} /> : null}
                     </section>
@@ -1129,11 +1129,11 @@ function MonthBoard({
                         : tx("Nada pendiente en esta semana.", "Nothing pending this week.")}
               </p>
             ) : (
-              <div className={viewGrid(density, cols, gap)}>
+              <PackedGrid density={density} quadCols={cols} gapClass={gap}>
                 {shown.map((job) => (
                   <JobCard key={job.id} job={job} compact={job.status !== "pending"} />
                 ))}
-              </div>
+              </PackedGrid>
             )}
           </>
         )}

@@ -24,6 +24,7 @@ import { WorkDayCard } from "@/components/work-day";
 import { MessageComposer } from "@/components/message-composer";
 import { addDaysISO, todayISO } from "@/lib/dates";
 import { viewGrid } from "@/lib/density";
+import { PackedGrid } from "@/components/wide-layout";
 import { formatDay, formatLongDay, money, weekdayOptions } from "@/lib/format";
 import { useI18n, reasonLabel, useTx } from "@/lib/i18n";
 import { isHechoConfirmSkipped, setHechoConfirmSkipped, subscribeHechoConfirm } from "@/lib/hecho-confirm";
@@ -581,11 +582,11 @@ function DayBoard({
               )}
             </span>
           </p>
-          <div className={tight}>
+          <PackedGrid density={density} quadCols={cols} gapClass="gap-1.5">
             {pinned.map((job) => (
               <JobCard key={job.id} job={job} />
             ))}
-          </div>
+          </PackedGrid>
         </section>
       ) : null}
 
@@ -597,11 +598,11 @@ function DayBoard({
           tone="late"
           onToggle={() => toggle("late")}
         >
-          <div className={tiles}>
+          <PackedGrid density={density} quadCols={cols} gapClass="gap-2">
             {late.map((job) => (
               <JobCard key={job.id} job={job} />
             ))}
-          </div>
+          </PackedGrid>
         </DayFold>
       ) : null}
 
@@ -668,11 +669,11 @@ function DayBoard({
             ) : isToday ? (
               <ReorderableJobs jobs={items} enabled={items.length > 1} />
             ) : (
-              <div className={tiles}>
+              <PackedGrid density={density} quadCols={cols} gapClass="gap-2">
                 {items.map((job) => (
                   <JobCard key={job.id} job={job} />
                 ))}
-              </div>
+              </PackedGrid>
             )}
           </DayFold>
           </div>

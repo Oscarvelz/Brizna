@@ -1,7 +1,8 @@
-import { useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { usePageWide, usePageWidth } from "@/components/app-shell";
 import { cn } from "@/lib/utils";
 import { SidePinContext } from "@/components/fold";
+import { viewGrid, type Density, type QuadCols } from "@/lib/density";
 
 /**
  * Large screens: the page's main list on the left and its tools in a side column.
@@ -226,6 +227,43 @@ export function Masonry({ className, min = 880, three, children, gap }: { classN
   useMasonry(ref, cols, gap);
   return (
     <div ref={ref} className={className}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * 1.5.49 (Oscar): a JobCard grid that PACKS on wide screens. The plain bz-vg grids equalize
+ * every row to its tallest card, so a card that grows (the address revealed by a long press
+ * on the map button) leaves a hole under its row-mates — «mira lo que se crea: huecos entre
+ * las tarjetas». PackedGrid borrows the steady-column machinery (useMasonry): each card
+ * keeps a fixed column and stacks by its real height, so the cards below slide up and close
+ * the hole — his standing rule: «Sube las demás, cierra los huecos». Columns mirror the
+ * bz-vg container steps, measured on the grid's own width (640 → 2, 1120 → 3). Only
+ * Grande/Media pack; Lista and Malla keep their plain grids, and drag grids never come here.
+ * The packing gap stays the density's own (14px Grande / 12px Media, the .bz-vg gaps).
+ */
+export function PackedGrid({ density, quadCols, gapClass, children }: { density: Density; quadCols: QuadCols; gapClass: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [ownW, setOwnW] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setOwnW(el.clientWidth);
+    const ro = new ResizeObserver(() => setOwnW(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const packable = density === "full" || density === "compact";
+  const gapPx = density === "full" ? 14 : 12;
+  const cols = !packable || ownW < 640 ? 0 : ownW >= 1120 ? 3 : 2;
+  useMasonry(ref, cols, gapPx);
+  return (
+    <div
+      ref={ref}
+      className={cn(viewGrid(density, quadCols, gapClass), cols >= 2 && "bz-packed")}
+      style={cols >= 2 ? ({ "--bz-pack-gap": `${gapPx}px` } as CSSProperties) : undefined}
+    >
       {children}
     </div>
   );

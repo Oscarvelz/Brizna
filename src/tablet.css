@@ -185,6 +185,8 @@
   align-items: start;
 }
 .bz-masonry > * { margin-top: 0 !important; margin-bottom: 0 !important; }
+/* 1.5.49: packed card grids (PackedGrid) keep their density's own column gap, not the sections' 1.25rem. */
+.bz-masonry.bz-packed { column-gap: var(--bz-pack-gap, 0.875rem) !important; }
 
 /* ── Manual: contents stay on the left while you read on the right ── */
 @container bzmain (min-width: 960px) {
