@@ -849,7 +849,9 @@ export function JobCard({
       )}
 
       {pending && !compact && (
-        <div className={cn("flex items-center", media ? "mt-2 gap-1.5" : "mt-2 gap-2")}>
+        // 1.5.31 (Oscar): a little more air between the contact/pill row and Hecho/Posponer
+        // («deja un espacio pequeñito entre ellos») — the action row's top margin goes 8 → 12 px.
+        <div className={cn("flex items-center", media ? "mt-3 gap-1.5" : "mt-3 gap-2")}>
           <Button data-spot="hecho propina" onClick={onHecho} disabled={complete.isPending} className={cn("min-w-0 flex-1", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
             <Check />
             {tx("Hecho", "Done")}
