@@ -697,11 +697,14 @@ export function JobCard({
 
   return (
     <>
-    {/* 1.5.34 (Oscar): the pin FLOATS on the card's top border, left side («encima o flotando del borde
-        superior… al lado izquierdo, área superior»), so the article rides in this plain relative
-        wrapper and the pin lives OUTSIDE it, straddling the border line above the grip column —
-        it takes no room inside and never pushes the name. The wrapper is the same height as the
-        article (the pin is absolute), so grids and drag math see the card exactly as before. */}
+    {/* 1.5.34 (Oscar): the pin FLOATS on the card's top border, so the article rides in this plain
+        relative wrapper and the pin lives OUTSIDE it, straddling the border line — it takes no
+        room inside and never pushes the name. The wrapper is the same height as the article
+        (the pin is absolute), so grids and drag math see the card exactly as before.
+        1.5.41 (Oscar, correcting the seat): the corner is the RIGHT one — «esperaba que el pin
+        quedara en la derecha esquina superior encima del precio del patio» — the pin crowns the
+        border above the price's corner (glyph center 24 px in from the right edge on Grande,
+        18 px on Media), not the left above the grip as 1.5.34 first read it. */}
     <div className="relative min-w-0">
     <article
       className={cn(
@@ -756,16 +759,17 @@ export function JobCard({
             </Link>
           </div>
           {/* 1.5.34 (Oscar): the price leaves the name's side and takes the top-right CORNER back, as in
-              the 1.5.12 layout — «para separarlo del nombre». Same neutral treatment and sizes as 1.5.18
-              kept (fg/70, 19 px Grande / 14 px Media); only the seat changes. It now sits outside the
+              the 1.5.12 layout — «para separarlo del nombre». Same neutral treatment as 1.5.18 kept
+              (fg/70, 19 px Grande); only the seat changes. 1.5.41 (Oscar): in Media the amount read
+              too small next to the grown name — 14 px → 17 px (Grande stays 19). It now sits outside the
               name-room, so its old stacked lift is re-based: no shift on Grande, 1 px up on Media —
               the same net optical line it had beside the name. The pin is out of this row entirely:
-              it floats on the card's top border, left side (see the wide return's wrapper). */}
+              it floats on the card's top border at the right, above this price (see the wrapper). */}
           <span
             data-price
             className={cn(
               "shrink-0 font-display font-semibold leading-none tabular-nums text-fg/70",
-              media ? "text-sm -translate-y-px" : "text-[1.1875rem]",
+              media ? "text-[1.0625rem] -translate-y-px" : "text-[1.1875rem]",
             )}
           >
             {money(job.amount)}
@@ -898,9 +902,10 @@ export function JobCard({
       )}
 
       {/* 1.5.18: no bottom pin row anymore. 1.5.34 (Oscar): the pin is not in the header either — it
-          floats on the top border, left side, rendered just below as the wrapper's overlay. */}
+          floats on the top border (1.5.41: at the RIGHT corner, above the price), rendered just
+          below as the wrapper's overlay. */}
     </article>
-    <div className={cn("absolute -top-4 z-20", media ? "left-0.5" : "left-2")}>{pinButton}</div>
+    <div className={cn("absolute -top-4 z-20", media ? "right-0.5" : "right-2")}>{pinButton}</div>
     </div>
     {dialogs}
     {showStatus ? <StatusInfoCard job={job} today={today} onClose={() => setShowStatus(false)} /> : null}
