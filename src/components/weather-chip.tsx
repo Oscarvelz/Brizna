@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTx } from "@/lib/i18n";
 import { PLACE_EVENT, readWeatherPlace } from "@/lib/weather-place";
+import { fetchWithTimeout } from "@/lib/fetch-timeout";
 import { applySky } from "@/lib/weather-sky";
 import { afterSplash } from "@/spa/splash-ready";
 
@@ -43,7 +44,7 @@ export function WeatherChip({ className }: { className?: string } = {}) {
 
   function load(lat: number, lon: number) {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`;
-    void fetch(url)
+    void fetchWithTimeout(url)
       .then((r) => r.json())
       .then((data: { current?: { temperature_2m?: number; weather_code?: number } }) => {
         const c = data.current?.temperature_2m;

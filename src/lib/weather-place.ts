@@ -1,5 +1,7 @@
 // Where the weather is read for. Works without the browser's location permission:
 // the user can type a ZIP code or city, and the choice is kept on this device.
+import { fetchWithTimeout } from "@/lib/fetch-timeout";
+
 export type WeatherPlace = { lat: number; lon: number; name: string; source: "gps" | "typed" | "default" };
 
 export const MIAMI_PLACE: WeatherPlace = { lat: 25.7617, lon: -80.1918, name: "Miami", source: "default" };
@@ -37,7 +39,7 @@ export async function findPlace(text: string, es: boolean): Promise<WeatherPlace
   const zip = q.match(/^\d{5}$/);
   if (zip) {
     try {
-      const r = await fetch(`https://api.zippopotam.us/us/${q}`);
+      const r = await fetchWithTimeout(`https://api.zippopotam.us/us/${q}`);
       if (r.ok) {
         const d = (await r.json()) as { places?: { "place name": string; latitude: string; longitude: string; "state abbreviation": string }[] };
         const p = d.places?.[0];
@@ -48,7 +50,7 @@ export async function findPlace(text: string, es: boolean): Promise<WeatherPlace
     }
   }
   try {
-    const r = await fetch(
+    const r = await fetchWithTimeout(
       `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=${es ? "es" : "en"}`,
     );
     const d = (await r.json()) as { results?: { name: string; latitude: number; longitude: number; admin1?: string; country_code?: string }[] };

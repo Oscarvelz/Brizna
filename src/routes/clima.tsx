@@ -11,7 +11,8 @@ import { applySky } from "@/lib/weather-sky";
 import { RadarMap } from "@/components/radar-map";
 import { ReasonChips } from "@/components/reason-chips";
 import { Button } from "@/components/ui/button";
-import { formatLongDay } from "@/lib/format";
+import { formatLongDay, formatTime } from "@/lib/format";
+import { fetchWithTimeout } from "@/lib/fetch-timeout";
 import { reasonLabel, useI18n, useTx } from "@/lib/i18n";
 import { getDashboard, shiftForRain } from "@/lib/server/lawn";
 import { STOP_REASONS } from "@/lib/types";
@@ -134,6 +135,10 @@ function ClimaPage() {
   const [frame, setFrame] = useState(0);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  // 1.5.50 (auditoría interna, C2): when the pack on screen is a CACHED reading, this is
+  // when it was read — the hero says so ("Datos de las 7:42"), and says it louder when
+  // the renewal failed. Null while the pack is fresh from the network.
+  const [packAt, setPackAt] = useState<number | null>(null);
   const [playing, setPlaying] = useState(true);
 
   useEffect(() => {
@@ -157,10 +162,10 @@ function ClimaPage() {
     const cacheKey = `brizna.clima.${place.lat.toFixed(2)},${place.lon.toFixed(2)}`;
     try {
       const old = JSON.parse(localStorage.getItem(cacheKey) || "null") as { at: number; pack: Pack } | null;
-      if (old?.pack && Date.now() - old.at < 6 * 3600_000) { setPack(old.pack); setReady(true); }
+      if (old?.pack && Date.now() - old.at < 6 * 3600_000) { setPack(old.pack); setPackAt(old.at); setReady(true); }
     } catch { /* ignore */ }
     setFailed(false);
-    void fetch(url)
+    void fetchWithTimeout(url)
       .then((r) => r.json())
       .then((data) => {
         const c = data.current;
@@ -196,6 +201,7 @@ function ClimaPage() {
           days,
         };
         setPack(next);
+        setPackAt(null);
         applySky(next.code);
         try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), pack: next })); } catch { /* ignore */ }
         setReady(true);
@@ -205,7 +211,7 @@ function ClimaPage() {
 
   useEffect(() => {
     const load = () =>
-      void fetch("https://api.rainviewer.com/public/weather-maps.json")
+      void fetchWithTimeout("https://api.rainviewer.com/public/weather-maps.json")
         .then((r) => r.json())
         .then((data: { host?: string; radar?: { past?: Frame[] } }) => {
           const past = (data.radar?.past ?? []).slice(-6);
@@ -299,6 +305,10 @@ function ClimaPage() {
   const radarWhen = shot ? clock(new Date(shot.time * 1000), true) : "";
   const hk = pack ? heroKind(pack.code) : "cloud";
   const chip = tone === "alert" ? tx("Alerta", "Alert") : tone === "wait" ? tx("Esperar", "Wait") : tx("Cortar ✓", "Mow ✓");
+  // 1.5.50 (C2): the cached reading's clock time, for the hero's honesty line.
+  const packAtLabel = packAt
+    ? (formatTime(`${String(new Date(packAt).getHours()).padStart(2, "0")}:${String(new Date(packAt).getMinutes()).padStart(2, "0")}`) ?? "")
+    : "";
   const tomorrow = pack?.days[1];
 
   return (
@@ -362,6 +372,15 @@ function ClimaPage() {
                 ? tx("No pude leer el clima ahora. Vuelve a intentarlo en un rato.", "Couldn't read the weather right now. Try again in a bit.")
                 : ""}
           </p>
+          {/* 1.5.50 (C2): a cached pack never poses as current — its reading time rides
+              under the verdict, and stays (louder) when the renewal failed. */}
+          {pack && packAt ? (
+            <p className="clx-sub">
+              {failed
+                ? tx(`Sin conexión · datos de las ${packAtLabel}`, `Offline · data from ${packAtLabel}`)
+                : tx(`Datos de las ${packAtLabel}`, `Data from ${packAtLabel}`)}
+            </p>
+          ) : null}
 
           {pack && next12.length ? (
             <div className="clx-plan">

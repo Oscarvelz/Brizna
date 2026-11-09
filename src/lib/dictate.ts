@@ -84,22 +84,34 @@ function viaNative(lang: string, h: DictHandlers): DictSession {
   const n = native()!;
   const id = Math.random().toString(36).slice(2);
   let over = false;
+  // 1.5.50 (auditoría interna, C4): the shell can die WITHOUT emitting any event (its own
+  // history documents recognizers falling silent), and this session used to wait for it
+  // forever — the button stuck on "Oyendo…". An INACTIVITY deadline, not a session cap:
+  // 60 s with no sign of life from the shell ends the session as failed; states and
+  // partials re-arm it, so a long live dictation is never cut.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const arm = () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => { if (!over) { h.onError("failed"); end(); } }, 60_000);
+  };
   const end = () => {
     if (over) return;
     over = true;
+    if (timer) clearTimeout(timer);
     window.removeEventListener("briznanative-dictate", on);
     h.onEnd?.();
   };
   const on = (ev: Event) => {
     const d = (ev as CustomEvent<Detail>).detail;
     if (!d || d.id !== id || over) return;
-    if (d.state === "asking" || d.state === "listening" || d.state === "processing") { h.onState?.(d.state); return; }
-    if (typeof d.partial === "string") { h.onPartial?.(d.partial); return; }
+    if (d.state === "asking" || d.state === "listening" || d.state === "processing") { arm(); h.onState?.(d.state); return; }
+    if (typeof d.partial === "string") { arm(); h.onPartial?.(d.partial); return; }
     if (d.ok && d.text) h.onFinal(d.text);
     else h.onError(NATIVE_ERRORS.includes(d.error as DictError) ? (d.error as DictError) : "failed", typeof d.code === "number" ? d.code : undefined, typeof d.attempts === "string" ? d.attempts : undefined);
     end();
   };
   window.addEventListener("briznanative-dictate", on);
+  arm();
   try { n.dictate!(id, lang); } catch { h.onError("failed"); end(); }
   return {
     stop: () => { if (!over) { try { n.dictateStop?.(id); } catch { /* ignore */ } } },

@@ -76,9 +76,16 @@ export function nativeAuth(): Promise<boolean> {
   if (!n) return Promise.resolve(false);
   const id = Math.random().toString(36).slice(2);
   return new Promise((resolve) => {
+    // 1.5.50 (auditoría interna, C4): if the shell never answers (it can die silently),
+    // the lock screen used to wait forever; 30 s without the event resolves as "no".
+    const timer = setTimeout(() => {
+      window.removeEventListener("briznanative-auth", on);
+      resolve(false);
+    }, 30_000);
     const on = (e: Event) => {
       const d = (e as CustomEvent<{ id: string; ok: boolean }>).detail;
       if (!d || d.id !== id) return;
+      clearTimeout(timer);
       window.removeEventListener("briznanative-auth", on);
       resolve(!!d.ok);
     };
@@ -86,6 +93,7 @@ export function nativeAuth(): Promise<boolean> {
     try {
       n.authenticate(id, en() ? "Unlock Brizna" : "Desbloquear Brizna", en() ? "Use your fingerprint or your screen lock" : "Usa tu huella o el bloqueo de pantalla");
     } catch {
+      clearTimeout(timer);
       window.removeEventListener("briznanative-auth", on);
       resolve(false);
     }

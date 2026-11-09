@@ -49,10 +49,28 @@ export function clock12(value: string): string {
   const match = /^(\d{1,2}):(\d{2})/.exec(value.trim());
   if (!match) return value;
   const hour = Number(match[1]);
-  if (!Number.isFinite(hour) || hour > 23) return value;
+  // 1.5.50 (auditoría interna, P1): the minutes count too — "12:99" used to render as
+  // "12:99 p. m.", a fabricated time. An impossible stored time now shows as it is.
+  if (!Number.isFinite(hour) || hour > 23 || Number(match[2]) > 59) return value;
   const suffix = readStoredLocale() === "en" ? (hour >= 12 ? "PM" : "AM") : hour >= 12 ? "p. m." : "a. m.";
   const h12 = hour % 12 || 12;
   return `${h12}:${match[2]} ${suffix}`;
+}
+
+/** 1.5.50 (auditoría interna, P1): shape AND existence. "2026-02-30" is shaped like a
+ *  date and is not one; the old gates checked the shape only, so an impossible date
+ *  travelled until the database's ::date cast killed the whole operation with an error
+ *  that never named the cause. Round-trips through Date.UTC: a rolled-over result is a
+ *  different day than the one written, so it is not real. */
+export function isRealISODate(value: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!m) return false;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
 }
 
 export function addDaysISO(iso: string, days: number): string {

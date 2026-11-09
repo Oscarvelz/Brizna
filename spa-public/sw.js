@@ -1,5 +1,5 @@
 // Brizna service worker: the app opens with no internet. VERSION is written by build.sh from package.json "version".
-const VERSION = "brizna-1.5.49";
+const VERSION = "brizna-1.5.50";
 const CORE = ["./", "./index.html", "./icon-192.png", "./icon-512.png", "./icon-180.png", "./precache.json"];
 
 self.addEventListener("install", (event) => {
@@ -42,8 +42,14 @@ self.addEventListener("fetch", (event) => {
     event.respondWith((async () => {
       try {
         const res = await fetch(req);
-        const cache = await caches.open(VERSION);
-        cache.put("./index.html", res.clone());
+        // 1.5.50 (auditoría interna, D10/C9/A5): only a GOOD page becomes the offline
+        // page — a transient 404/500 from the host during a deploy used to be cached as
+        // "the app" until the next lucky navigation. The asset branch below already
+        // required res.ok; the navigation branch now does too.
+        if (res.ok) {
+          const cache = await caches.open(VERSION);
+          cache.put("./index.html", res.clone());
+        }
         return res;
       } catch {
         return (await caches.match("./index.html")) || (await caches.match("./")) || Response.error();

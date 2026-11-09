@@ -17,6 +17,7 @@ import {
   stampDay,
   weekdayFromISO,
   APP_TZ,
+  isRealISODate,
 } from "@/lib/dates";
 import { DEFAULT_BUSINESS_NAME } from "@/lib/format";
 import { PHOTOS_ENABLED } from "@/lib/photos-flag";
@@ -82,6 +83,19 @@ function asIsoDate(v: unknown): string {
   return String(v ?? "").slice(0, 10);
 }
 
+/** 1.5.50 (auditoría interna, P1): the one date gate for server-fn inputs — it checks
+ *  EXISTENCE, not just shape. "2026-02-30" used to pass every regex gate in this file and
+ *  die later inside a ::date cast, failing the whole operation with an error that never
+ *  named the cause; now the gate itself refuses it, with the cause in the message. */
+const isoDate = z.string().refine((v) => isRealISODate(v), "La fecha no existe en el calendario");
+
+/** The time twin: "25:61" has the shape of a time and is not one — it used to be SAVED
+ *  (the column is text) and displayed dressed up as "1:61 p.m.". */
+const isoTime = z.string().refine((v) => {
+  const m = /^(\d{2}):(\d{2})$/.exec(v);
+  return !!m && Number(m[1]) <= 23 && Number(m[2]) <= 59;
+}, "La hora no existe");
+
 function asIsoStamp(v: unknown): string {
   if (!v) return "";
   if (v instanceof Date) return v.toISOString();
@@ -91,7 +105,12 @@ function asIsoStamp(v: unknown): string {
 function asTime(v: unknown): string | null {
   if (!v) return null;
   const s = String(v).slice(0, 5);
-  return /^\d{2}:\d{2}$/.test(s) ? s : null;
+  if (!/^\d{2}:\d{2}$/.test(s)) return null;
+  // 1.5.50 (auditoría interna, P1): the shape is not enough — "25:61" passed and was
+  // SAVED (arrival_time is a text column), then displayed as a fabricated "1:61 p.m.".
+  const hh = Number(s.slice(0, 2));
+  const mm = Number(s.slice(3, 5));
+  return hh <= 23 && mm <= 59 ? s : null;
 }
 
 function asCuts(n: unknown): CutsPerMonth {
@@ -470,16 +489,19 @@ function sortClients(list: ClientRow[], sort: ClientSort): ClientRow[] {
   return copy;
 }
 
+/** The backup file format this build writes — and the newest it may restore (1.5.50, D7). */
+const BACKUP_FORMAT_VERSION = 5;
+
 async function collectBackup(userId: string) {
   const sql = await getSql();
   const clients = await sql.query(`select * from clients where user_id = $1 order by name`, [userId]);
   const jobs = await sql.query(`select * from jobs where user_id = $1 order by scheduled_date, id`, [userId]);
   const payments = await sql.query(`select * from payments where user_id = $1 order by paid_at, id`, [userId]);
   const pad = await sql.query(`select body from pad_notes where user_id = $1`, [userId]);
-  const pages = await sql.query(
-    `select id, title, body, sort_order, pinned, tags, due_date, due_time from pad_pages where user_id = $1 order by sort_order, id`,
-    [userId],
-  );
+  // 1.5.50 (auditoría interna, D3): pad_pages rides WHOLE, like every other table — the old
+  // 8-column select dropped folder/deleted_at/created_at, so a file restore flattened the
+  // cabinet and resurrected trashed notes as active.
+  const pages = await sql.query(`select * from pad_pages where user_id = $1 order by sort_order, id`, [userId]);
   const workDays = await sql.query(
     `select work_date, clock_in, clock_out, stopped_reason, stopped_at, confirmed, auto from work_days where user_id = $1 order by work_date`,
     [userId],
@@ -496,7 +518,7 @@ async function collectBackup(userId: string) {
   const padLinks = await sql.query(`select * from pad_links where user_id = $1 order by id`, [userId]);
   const weekOff = await sql.query(`select * from week_off_dates where user_id = $1 order by off_date`, [userId]);
   const body = {
-    version: 5,
+    version: BACKUP_FORMAT_VERSION,
     savedAt: new Date().toISOString(),
     clients,
     jobs,
@@ -810,10 +832,10 @@ const clientInput = z.object({
   weekday2: z.number().int().min(0).max(6).nullable().optional(),
   frequencyDays: z.number().int().min(1).max(60).nullable().optional(),
   arrivalTime: z.string().trim().max(8).optional().default(""),
-  startDate: z.string().optional(),
+  startDate: isoDate.optional(),
   paySameDay: z.boolean().optional().default(false),
   payDueDay: z.number().int().min(1).max(31).nullable().optional(),
-  oneTimeDate: z.string().optional(),
+  oneTimeDate: isoDate.optional(),
   oneTimeTitle: z.string().trim().max(120).optional().default(""),
   cue: z.string().trim().max(80).optional().default(""),
   richNotes: z.string().max(20000).optional().default(""),
@@ -1204,8 +1226,8 @@ const listClientsInput = z.object({
     .optional()
     .default("active"),
   flow: z.enum(["altas", "bajas"]).optional(),
-  since: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  since: isoDate.optional(),
+  until: isoDate.optional(),
 });
 
 export const listClients = createServerFn({ method: "GET" })
@@ -1432,12 +1454,12 @@ export const createClientsBulk = createServerFn({ method: "POST" })
               pricePerCut: z.coerce.number().min(0).max(100000).optional().default(30),
               cutsPerMonth: z.coerce.number().int().min(1).max(5).optional().default(2),
               weekday: z.coerce.number().int().min(0).max(6).optional(),
-              startDate: z.string().optional(),
+              startDate: isoDate.optional(),
               paySameDay: z.boolean().optional().default(false),
               payDueDay: z.number().int().min(1).max(31).nullable().optional(),
               frequencyDays: z.number().int().min(1).max(60).nullable().optional(),
               kind: z.enum(["regular", "one_time"]).optional().default("regular"),
-              oneTimeDate: z.string().optional(),
+              oneTimeDate: isoDate.optional(),
               oneTimeTitle: z.string().trim().max(120).optional().default(""),
               openingBalance: z.coerce.number().min(0).max(100000).optional().default(0),
             }),
@@ -2511,7 +2533,7 @@ export const upsertDayGoal = createServerFn({ method: "POST" })
   .validator((data: unknown) =>
     z
       .object({
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        date: isoDate,
         goal: z.union([z.coerce.number().int().min(1).max(80), z.null()]),
       })
       .parse(data),
@@ -2947,7 +2969,7 @@ const settingsInput = z.object({
   abonoPresets: z.array(z.coerce.number().min(0.01).max(100000)).min(1).max(12).optional(),
   excludedWeekdays: z.array(z.coerce.number().int().min(0).max(6)).max(6).optional(),
   taskPresets: z.array(z.string().trim().min(1).max(40)).min(1).max(24).optional(),
-  arrivalPresets: z.array(z.string().regex(/^\d{2}:\d{2}$/)).min(1).max(8).optional(),
+  arrivalPresets: z.array(isoTime).min(1).max(8).optional(),
   pricePresets: z.array(z.coerce.number().min(0.01).max(100000)).min(1).max(12).optional(),
   debtPresets: z.array(z.coerce.number().min(0.01).max(100000)).min(1).max(12).optional(),
   visitPresets: z.array(z.string().trim().min(1).max(60)).min(1).max(16).optional(),
@@ -2963,8 +2985,8 @@ const settingsInput = z.object({
   seasonEvery: z.number().int().min(7).max(60).nullable().optional(),
   locale: z.enum(["es", "en"]).optional(),
   palette: z.enum(["jardin", "costa", "barro", "pino", "cielo"]).optional(),
-  workStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-  workEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  workStart: isoTime.optional(),
+  workEnd: isoTime.optional(),
 });
 
 export const updateSettings = createServerFn({ method: "POST" })
@@ -3240,9 +3262,23 @@ function parseBackup(raw: unknown, trusted = false): BackupPayload {
   const obj = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
   if (!obj || typeof obj !== "object") throw new Error("Copia inválida");
   const data = obj as Record<string, unknown>;
+  // 1.5.50 (auditoría interna, D7): a copy written by a NEWER Brizna than this build is
+  // refused out loud. Restoring it here would silently drop every column this build does
+  // not know (the restore keeps only the columns its tables have), and the next save or
+  // sync would make that loss permanent.
+  const version = Number(data.version);
+  if (Number.isFinite(version) && version > BACKUP_FORMAT_VERSION) {
+    throw new Error("Esta copia es de una Brizna más nueva. Actualiza la app para restaurarla.");
+  }
+  // 1.5.50 (auditoría interna, D2): a Brizna copy ALWAYS carries its client list as an
+  // array — collectBackup writes it so, in every format version. Anything else is not a
+  // copy of a book, and feeding it to the restore would empty the real one.
+  if (!Array.isArray(data.clients)) throw new Error("Copia inválida: no trae la lista de clientes.");
   // Copies kept in this device's own database are trusted (their old checksums were taken before
-  // the database reordered keys, so they could never match); files still have to match.
-  if (!trusted && !checksumMatches(data)) throw new Error("Copia dañada");
+  // the database reordered keys, so they could never match); files still have to match —
+  // and the checksum has to be THERE, not just not-wrong (checksumMatches alone passes a
+  // file that carries none).
+  if (!trusted && (typeof data.checksum !== "string" || !checksumMatches(data))) throw new Error("Copia dañada");
   return {
     clients: asRecordArray(data.clients),
     jobs: asRecordArray(data.jobs),
@@ -3474,8 +3510,11 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
     await sql.query(`delete from pad_pages where user_id = $1`, [userId]);
     for (const row of payload.padPages) {
       const ins = await sql.query<{ id: number }>(
-        `insert into pad_pages (user_id, title, body, sort_order, pinned, tags, due_date, due_time)
-         values ($1,$2,$3,$4,$5,$6,$7,$8) returning id`,
+        // 1.5.50 (D3): folder, deleted_at and created_at restore too — the note keeps its
+        // cabinet folder and trashed notes stay in the trash. Old copies without them fall
+        // back to the defaults (no folder, active, stamped now by the column default).
+        `insert into pad_pages (user_id, title, body, sort_order, pinned, tags, due_date, due_time, folder, deleted_at, created_at)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
         [
           userId,
           (strField(row, "title") ?? "Nota").slice(0, 160),
@@ -3485,6 +3524,9 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
           strField(row, "tags") ?? "",
           strField(row, "due_date", "dueDate"),
           strField(row, "due_time", "dueTime"),
+          strField(row, "folder") ?? "",
+          row.deleted_at ?? row.deletedAt ?? null,
+          row.created_at ?? row.createdAt ?? null,
         ],
       );
       const oldPage = intId(row.id);
@@ -3622,7 +3664,17 @@ export const importBackupJson = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((data: unknown) => z.object({ json: z.string().min(2).max(40_000_000) }).parse(data))
   .handler(async ({ context, data }) => {
-    const counts = await applyBackup(context.userId, parseBackup(data.json));
+    const payload = parseBackup(data.json);
+    // 1.5.50 (auditoría interna, D2): an EMPTY copy never empties a book that has clients.
+    // The cloud sync has always had this guard; the file door gets it now too.
+    if ((payload.clients?.length ?? 0) === 0) {
+      const sql = await getSql();
+      const rows = await sql.query<{ n: unknown }>(`select count(*) as n from clients where user_id = $1`, [context.userId]);
+      if (intId(rows[0]?.n) > 0) {
+        throw new Error("Esta copia no trae clientes y tu libro sí. No se restauró nada.");
+      }
+    }
+    const counts = await applyBackup(context.userId, payload);
     return { ok: true as const, ...counts };
   });
 
@@ -3853,8 +3905,10 @@ export const getFinanceStats = createServerFn({ method: "GET" })
     }
 
     const owing = await sql.query<{ pay_due_day: number | null; balance: unknown }>(
+      // 1.5.50 (auditoría interna, P3): latePayers follows the single totals rule — a
+      // blacklisted balance is written off, so its owner is not a "late payer" here.
       `select pay_due_day, balance from clients
-        where user_id = $1 and is_active = true and balance > 0`,
+        where user_id = $1 and is_active = true and blacklisted = false and balance > 0`,
       [context.userId],
     );
     const latePayers = owing.filter((c) =>
@@ -3958,7 +4012,7 @@ export const rescheduleJob = createServerFn({ method: "POST" })
     z
       .object({
         id: z.coerce.number().int(),
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        date: isoDate,
         reason: z.string().trim().max(80).optional().default(""),
       })
       .parse(data),
@@ -4246,8 +4300,8 @@ export const savePad = createServerFn({ method: "POST" })
         folder: z.string().trim().max(40).optional(),
         pinned: z.boolean().optional(),
         tags: z.string().trim().max(200).optional(),
-        dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-        dueTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+        dueDate: isoDate.nullable().optional(),
+        dueTime: isoTime.nullable().optional(),
         trashed: z.boolean().optional(),
         clientIds: z.array(z.coerce.number().int()).max(30).optional(),
       })
@@ -4507,8 +4561,10 @@ export const exportReport = createServerFn({ method: "GET" })
       phone: string | null;
       price_per_cut: unknown;
       balance: unknown;
+      is_active: boolean;
+      blacklisted: boolean;
     }>(
-      `select name, phone, price_per_cut, balance from clients
+      `select name, phone, price_per_cut, balance, is_active, blacklisted from clients
         where user_id = $1 order by balance desc, name asc limit 2000`,
       [context.userId],
     );
@@ -4540,7 +4596,17 @@ export const exportReport = createServerFn({ method: "GET" })
       price: money(row.price_per_cut),
       balance: money(row.balance),
     }));
-    const owing = clientRows.filter((row) => row.balance > 0);
+    // 1.5.50 (auditoría interna, P3): the report's owing figures follow the single totals
+    // rule — active and not blacklisted. The roster (clientRows) stays complete; only the
+    // "te deben" population is the rule's.
+    const owing = clients
+      .filter((row) => money(row.balance) > 0 && row.is_active !== false && !row.blacklisted)
+      .map((row) => ({
+        name: row.name,
+        phone: row.phone ?? "",
+        price: money(row.price_per_cut),
+        balance: money(row.balance),
+      }));
     const statusEs = (status: string) => (status === "done" ? "Hecho" : status === "cancelled" ? "Cancelado" : "Pendiente");
     const pack: WorkbookPack = {
       business: settings[0]?.business_name?.trim() || "Oscar's Lawn Service",
@@ -4582,8 +4648,8 @@ export const applyVacation = createServerFn({ method: "POST" })
   .validator((data: unknown) =>
     z
       .object({
-        start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        start: isoDate,
+        end: isoDate,
       })
       .parse(data),
   )
@@ -4650,7 +4716,7 @@ export const bulkReschedule = createServerFn({ method: "POST" })
     z
       .object({
         ids: z.array(z.coerce.number().int()).min(1).max(200),
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        date: isoDate,
       })
       .parse(data),
   )
@@ -4678,7 +4744,7 @@ export const postponeAccumulated = createServerFn({ method: "POST" })
   .validator((data: unknown) =>
     z
       .object({
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        date: isoDate,
         scope: z.enum(["overdue", "today"]).optional().default("overdue"),
         reason: z.string().trim().max(80).optional().default(""),
       })
@@ -4724,8 +4790,8 @@ export const moveDayJobs = createServerFn({ method: "POST" })
   .validator((data: unknown) =>
     z
       .object({
-        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        from: isoDate,
+        to: isoDate,
       })
       .parse(data),
   )
@@ -5180,7 +5246,7 @@ export const toggleOffDate = createServerFn({ method: "POST" })
   .validator((data: unknown) =>
     z
       .object({
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        date: isoDate,
         reason: z.string().trim().max(80).optional().default(""),
       })
       .parse(data),
@@ -5245,7 +5311,7 @@ export const saveDayNote = createServerFn({ method: "POST" })
   .validator((data: unknown) =>
     z
       .object({
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        date: isoDate,
         body: z.string().max(180),
       })
       .parse(data),
@@ -5432,8 +5498,8 @@ export const exportScope = createServerFn({ method: "GET" })
   .validator((data: unknown) =>
     z
       .object({
-        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        from: isoDate.optional(),
+        to: isoDate.optional(),
       })
       .parse(data ?? {}),
   )
@@ -5651,8 +5717,8 @@ export const punchWork = createServerFn({ method: "POST" })
     z
       .object({
         kind: z.enum(["in", "out", "preset", "confirm", "unconfirm", "confirm-yesterday", "unconfirm-yesterday"]),
-        time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-        out: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+        time: isoTime.optional(),
+        out: isoTime.optional(),
       })
       .parse(data),
   )
@@ -5737,8 +5803,8 @@ export const listDueNotes = createServerFn({ method: "GET" })
   .validator((data: unknown) =>
     z
       .object({
-        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        from: isoDate,
+        to: isoDate,
       })
       .parse(data),
   )
@@ -6353,7 +6419,9 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
       unpaid.set(c.id, n);
     }
     const dueRows = await sql.query<{ pay_due_day: number | null; balance: unknown }>(
-      `select pay_due_day, balance from clients where user_id = $1 and balance > 0`,
+      // 1.5.50 (auditoría interna, P3): same rule — latePayers counts only active,
+      // non-blacklisted debtors.
+      `select pay_due_day, balance from clients where user_id = $1 and is_active = true and blacklisted = false and balance > 0`,
       [uid],
     );
     const waitPeople = owing.filter((c) => c.payTier === "espera").length;
@@ -7038,7 +7106,10 @@ export const getAdvisor = createServerFn({ method: "GET" })
     const morosos = groupList.find((g) => g.key === "morosos")!;
     // 1.5.08: the hero's "owed" counts the same people as the rest of the screen — a blacklisted
     // balance is written off, not money owed (it used to sit in the total next to "all current").
-    const owed = r2(clients.reduce((t, c) => t + (c.balance > 0 && !c.blacklisted ? c.balance : 0), 0));
+    // 1.5.50 (auditoría interna, P3): the other half of the rule — an ARCHIVED client's
+    // balance is not "te deben" either. The population is active && !blacklisted, as the
+    // note at the top of this file states for every outstanding sum.
+    const owed = r2(clients.reduce((t, c) => t + (c.balance > 0 && c.isActive && !c.blacklisted ? c.balance : 0), 0));
     const owedLate = r2(morosos.people.reduce((t, p) => t + p.balance, 0));
     if (morosos.count > 0 && owedLate >= 20) {
       // Biggest first, nudged up by age (capped at 6 months so an old $50 never beats a fresh $2,000).
@@ -7277,8 +7348,8 @@ export const exportCenterData = createServerFn({ method: "GET" })
   .validator((data: unknown) =>
     z
       .object({
-        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        from: isoDate,
+        to: isoDate,
         ahead: z.coerce.number().int().min(0).max(120).default(14),
       })
       .parse(data ?? {}),

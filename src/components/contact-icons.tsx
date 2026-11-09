@@ -30,8 +30,8 @@ export function ContactIcons({
   const icon = tight ? "size-3.5" : "size-4";
   return (
     <div className={cn("flex flex-wrap items-center gap-1", className)}>
-      {dial ? (
-        <ConfirmLink href={telHref(dial)} kind="call" name={name} className={cn(box, "bz-tone-call")}>
+      {dial && telHref(dial) ? (
+        <ConfirmLink href={telHref(dial)!} kind="call" name={name} className={cn(box, "bz-tone-call")}>
           <Phone className={icon} />
           <span className="sr-only">{tx("Llamar", "Call")}</span>
         </ConfirmLink>

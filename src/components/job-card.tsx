@@ -827,15 +827,17 @@ export function JobCard({
             <>
               <MessageComposer phone={job.clientPhone} name={job.clientName} compact />
               <WhatsAppButton phone={job.clientPhone} name={job.clientName} />
-              <ConfirmLink
-                href={telHref(job.clientPhone)}
-                kind="call"
-                name={job.clientName}
-                className="bz-tone bz-tone-call grid size-11 shrink-0 place-items-center rounded-sm"
-              >
-                <Phone className="size-[18px]" />
-                <span className="sr-only">{tx("Llamar", "Call")}</span>
-              </ConfirmLink>
+              {telHref(job.clientPhone) ? (
+                <ConfirmLink
+                  href={telHref(job.clientPhone)!}
+                  kind="call"
+                  name={job.clientName}
+                  className="bz-tone bz-tone-call grid size-11 shrink-0 place-items-center rounded-sm"
+                >
+                  <Phone className="size-[18px]" />
+                  <span className="sr-only">{tx("Llamar", "Call")}</span>
+                </ConfirmLink>
+              ) : null}
             </>
           ) : null}
           {hasAddress(job.clientAddress) ? (

@@ -1566,8 +1566,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "10 am, clear, but 60% rain at 2: it says Rain is close. Cut what is urgent and leave the blowing for later. You do the big yards first and, if it rains at 2, use Stop the day.",
         ],
         cases: [
-          "Sin internet: muestra el último clima guardado.\nSin permiso de ubicación: escribe tu código postal en Tu zona.",
-          "Offline: it shows the last saved weather.\nNo location permission: type your ZIP code in Your area.",
+          "Sin internet: muestra el último clima guardado, y debajo del veredicto dice de qué hora es esa lectura («Datos de las…»); si no pudo actualizar, dice «Sin conexión» junto a la hora.\nSin permiso de ubicación: escribe tu código postal en Tu zona.",
+          "Offline: it shows the last saved weather, and under the verdict it says what time that reading is from (“Data from…”); if it could not refresh, it says “Offline” next to the time.\nNo location permission: type your ZIP code in Your area.",
         ],
         related: ["parar-dia", "hoy"],
         go: { to: "/clima", where: ["Clima", "Weather"] },
@@ -1803,8 +1803,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Tuesday you accidentally delete the Riveras, with two years of history. You open Backup, pick the copy from right before 3:12, and Restore: the Riveras are back with everything, and what you had at 3:15 was saved too, just in case.",
         ],
         cases: [
-          "Restauras una copia vieja: lo hecho después se pierde de la app, pero queda en la copia que se guardó antes de restaurar.\nCambios en dos equipos a la vez: las dos versiones se guardan aquí y eliges cuál queda.\nSi el equipo no acepta un guardado (por ejemplo, se llenó el espacio), un aviso fijo arriba dice «No se pudo guardar en este equipo» y no se quita hasta que un guardado pase: no cierres la app mientras tanto, porque lo último vive solo en memoria.",
-          "You restore an old copy: what happened after is gone from the app, but it stays in the copy saved before restoring.\nChanges on two devices at once: both versions are saved here and you pick which one stays.\nIf the device refuses a save (for example, its storage filled up), a fixed notice at the top says “Could not save on this device” and stays until a save goes through: do not close the app meanwhile, because your latest work lives only in memory.",
+          "Restauras una copia vieja: lo hecho después se pierde de la app, pero queda en la copia que se guardó antes de restaurar.\nCambios en dos equipos a la vez: las dos versiones se guardan aquí y eliges cuál queda.\nSi el equipo no acepta un guardado (por ejemplo, se llenó el espacio), un aviso fijo arriba dice «No se pudo guardar en este equipo» y no se quita hasta que un guardado pase: no cierres la app mientras tanto, porque lo último vive solo en memoria.\nUn archivo que no es una copia de verdad (vacío, dañado o sin su suma de control) se rechaza y no cambia nada: una copia sin clientes nunca vacía un libro que sí tiene.\nUna copia guardada por una Brizna más nueva que esta pide actualizar la app antes de restaurarse.\nLas notas del Bloc viajan completas en la copia: al restaurar, cada nota vuelve a su carpeta y las de la papelera siguen en la papelera.",
+          "You restore an old copy: what happened after is gone from the app, but it stays in the copy saved before restoring.\nChanges on two devices at once: both versions are saved here and you pick which one stays.\nIf the device refuses a save (for example, its storage filled up), a fixed notice at the top says “Could not save on this device” and stays until a save goes through: do not close the app meanwhile, because your latest work lives only in memory.\nA file that is not a real copy (empty, damaged, or missing its checksum) is refused and changes nothing: a copy with no clients never empties a book that has them.\nA copy saved by a newer Brizna than this one asks you to update the app before restoring.\nNotepad notes travel whole in the copy: on restore, each note returns to its folder and trashed notes stay in the trash.",
         ],
         mistake: [
           "Restaurar para deshacer un solo toque: para eso usa Deshacer; restaurar cambia todo.",

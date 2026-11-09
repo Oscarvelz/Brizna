@@ -171,7 +171,9 @@ export function MessageComposer({
       if (href) window.open(href, "_blank", "noopener,noreferrer");
       return;
     }
-    window.location.href = smsHref(phone, text);
+    // 1.5.50 (C3): an implausible number has no sms: link — send() simply does not go.
+    const sms = smsHref(phone, text);
+    if (sms) window.location.href = sms;
   }
 
   function openSheet(event?: { preventDefault: () => void; stopPropagation: () => void }) {
@@ -251,6 +253,8 @@ export function MessageComposer({
   );
 
   if (channel === "whatsapp" && !waHref(phone)) return null;
+  // 1.5.50 (C3): same honesty for SMS — no plausible number, no message button.
+  if (channel === "sms" && !smsHref(phone)) return null;
 
   if (compact) {
     return (

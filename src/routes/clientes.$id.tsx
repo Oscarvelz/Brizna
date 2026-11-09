@@ -468,18 +468,30 @@ function ClientDetailPage() {
             <div className="bz-cl-rows mt-3 grid min-w-0 gap-2">
               {client.phone && (
                 <div className="bz-cl-contact flex min-w-0 items-center gap-2">
-                  <ConfirmLink
-                    href={telHref(client.phone)}
-                    kind="call"
-                    name={client.name}
-                    label={tx(`Llamar a ${client.name}: ${client.phone}`, `Call ${client.name}: ${client.phone}`)}
-                    className="bz-inset bz-cl-phone flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-md bg-sun pr-3 pl-1.5 text-sm font-semibold tabular-nums"
-                  >
-                    <span className="bz-tone bz-tone-call grid size-8 shrink-0 place-items-center rounded-sm">
-                      <Phone className="size-4" />
-                    </span>
-                    <span className="min-w-0 whitespace-nowrap">{client.phone}</span>
-                  </ConfirmLink>
+                  {/* 1.5.50 (auditoría interna, C3): a stored number that is not dialable
+                      (junk text, too few digits) shows as plain text, never as a call
+                      link to a fabricated number. The number stays visible to fix it. */}
+                  {telHref(client.phone) ? (
+                    <ConfirmLink
+                      href={telHref(client.phone)!}
+                      kind="call"
+                      name={client.name}
+                      label={tx(`Llamar a ${client.name}: ${client.phone}`, `Call ${client.name}: ${client.phone}`)}
+                      className="bz-inset bz-cl-phone flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-md bg-sun pr-3 pl-1.5 text-sm font-semibold tabular-nums"
+                    >
+                      <span className="bz-tone bz-tone-call grid size-8 shrink-0 place-items-center rounded-sm">
+                        <Phone className="size-4" />
+                      </span>
+                      <span className="min-w-0 whitespace-nowrap">{client.phone}</span>
+                    </ConfirmLink>
+                  ) : (
+                    <div className="bz-inset bz-cl-phone flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-md bg-sun pr-3 pl-1.5 text-sm font-semibold tabular-nums">
+                      <span className="bz-tone bz-tone-call grid size-8 shrink-0 place-items-center rounded-sm">
+                        <Phone className="size-4" />
+                      </span>
+                      <span className="min-w-0 whitespace-nowrap">{client.phone}</span>
+                    </div>
+                  )}
                   <MessageComposer phone={client.phone} name={client.name} compact />
                   <WhatsAppButton phone={client.phone} name={client.name} />
                 </div>

@@ -710,9 +710,9 @@ function ClientListCard({
         className={bang ? "has-bang" : undefined}
         leftActions={
           <>
-            {client.phone ? (
+            {client.phone && telHref(client.phone) ? (
               <ConfirmLink
-                href={telHref(client.phone)}
+                href={telHref(client.phone)!}
                 kind="call"
                 name={client.name}
                 className="flex h-full flex-1 flex-col items-center justify-center gap-1 bg-done text-xs font-semibold text-primary-fg"

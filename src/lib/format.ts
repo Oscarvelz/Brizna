@@ -58,26 +58,46 @@ export function formatTime(hhmm: string | null | undefined): string | null {
   if (!m) return hhmm;
   let h = Number(m[1]);
   const min = m[2];
+  // 1.5.50 (auditoría interna, P1): an impossible stored time shows as it is — "25:61"
+  // used to be dressed up as "1:61 p.m." by the modulo below.
+  if (h > 23 || Number(min) > 59) return hhmm;
   const suffix = english() ? (h >= 12 ? "PM" : "AM") : h >= 12 ? "p.m." : "a.m.";
   h = h % 12;
   if (h === 0) h = 12;
   return min === "00" ? `${h} ${suffix}` : `${h}:${min} ${suffix}`;
 }
 
-export function telHref(phone: string): string {
-  const cleaned = phone.replace(/[^\d+]/g, "");
-  return cleaned ? `tel:${cleaned}` : `tel:${phone}`;
+/** 1.5.50 (auditoría interna, C3): one phone normalizer behind every outgoing link.
+ *  The extension is NOT part of the number — "305 555 0110 ext 89" used to dial
+ *  305555011089, somebody else entirely — and junk ("*#06#", "CALL-NOW") used to become
+ *  a tel: link to garbage, or the raw string passed through unencoded as a fallback.
+ *  Now the string is cut at the extension marker and only a plausible number survives:
+ *  7–15 digits (E.164's ceiling). Anything else yields NO link and the button hides —
+ *  the behaviour waHref already had, extended to call and SMS. */
+function dialParts(phone: string): { plus: string; digits: string } {
+  const main = phone.split(/\bext\.?\b|;|\bx\s*\d/i)[0] ?? "";
+  return { plus: main.trim().startsWith("+") ? "+" : "", digits: main.replace(/\D/g, "") };
 }
 
-export function smsHref(phone: string, body = ""): string {
-  const cleaned = phone.replace(/[^\d+]/g, "") || phone;
-  if (!body.trim()) return `sms:${cleaned}`;
-  return `sms:${cleaned}?body=${encodeURIComponent(body)}`;
+function plausible(digits: string): boolean {
+  return digits.length >= 7 && digits.length <= 15;
+}
+
+export function telHref(phone: string): string | null {
+  const { plus, digits } = dialParts(phone);
+  return plausible(digits) ? `tel:${plus}${digits}` : null;
+}
+
+export function smsHref(phone: string, body = ""): string | null {
+  const { plus, digits } = dialParts(phone);
+  if (!plausible(digits)) return null;
+  if (!body.trim()) return `sms:${plus}${digits}`;
+  return `sms:${plus}${digits}?body=${encodeURIComponent(body)}`;
 }
 
 export function waHref(phone: string, text = ""): string | null {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length < 10) return null;
+  const { digits } = dialParts(phone);
+  if (digits.length < 10 || digits.length > 15) return null;
   const n = digits.length === 10 ? `1${digits}` : digits;
   const base = `https://wa.me/${n}`;
   const body = text.trim();

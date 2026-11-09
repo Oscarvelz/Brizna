@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { readWeatherPlace, PLACE_EVENT } from "@/lib/weather-place";
+import { fetchWithTimeout } from "@/lib/fetch-timeout";
 import { applySky, restoreSky } from "@/lib/weather-sky";
 
 /** Background weather layers (clouds, rain, lightning, fog, snow). Pure CSS; html[data-sky] picks what shows. */
@@ -9,7 +10,7 @@ export function WeatherSky() {
     let dead = false;
     const load = () => {
       const p = readWeatherPlace();
-      void fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=weather_code&timezone=auto`)
+      void fetchWithTimeout(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=weather_code&timezone=auto`)
         .then((r) => r.json())
         .then((d: { current?: { weather_code?: number } }) => {
           if (!dead && typeof d.current?.weather_code === "number") applySky(d.current.weather_code);
