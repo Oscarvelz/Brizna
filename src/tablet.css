@@ -72,6 +72,14 @@
   .bz-hd-kicker > .bz-sample-chip { align-self: center; }
   .bz-hd-kicker + .bz-hd-row { margin-top: 0; min-height: 2.5rem; }
 
+  /* 1.5.36 (Oscar): the top bar comes DOWN a step so the title breathes and the first content
+     no longer reads glued to it; the title's companion icon (the ☰ beside Estudio, the gear
+     beside Ajustes…) drops 2 px onto the serif's optical line — its box was centered on the
+     line box, which leaves the glyph riding high next to the letters. Category titles also
+     stepped down in app-shell (1.6rem → 1.42rem) so they stop competing with the wordmark. */
+  .pod-header { padding-bottom: 0.9rem; }
+  .bz-hd-row h1 > button { transform: translateY(2px); }
+
   /* ── View menu: opens beside the rail ── */
   .bz-view-menu {
     position: absolute; left: calc(100% + 1.4rem); bottom: 0; z-index: 70;

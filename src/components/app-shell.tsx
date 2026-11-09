@@ -500,7 +500,7 @@ export function AppShell({
               </div>
             )}
             <div className="bz-hd-row mt-0.5 flex min-h-11 min-w-0 items-center gap-2">
-              <h1 className={cn("flex min-w-0 items-center gap-2 font-display font-semibold tracking-tight", titleTight ? "shrink-0 text-[1.03rem] md:text-[1.375rem]" : "flex-1 text-[1.15rem] sm:text-[1.375rem]", !embedded && "md:text-[1.6rem]")}>
+              <h1 className={cn("flex min-w-0 items-center gap-2 font-display font-semibold tracking-tight", titleTight ? "shrink-0 text-[1.03rem] md:text-[1.3rem]" : "flex-1 text-[1.15rem] sm:text-[1.375rem]", !embedded && "md:text-[1.42rem]")}>
                 <span className={titleFull ? "leading-tight" : "truncate"}>{title}</span>
                 {titleExtra}
               </h1>
