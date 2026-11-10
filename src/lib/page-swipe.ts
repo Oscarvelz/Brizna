@@ -155,28 +155,37 @@ function dropBridge() {
 }
 
 /** The clone rides the rest of the sweep on the compositor while the real screen mounts beneath it.
- * 1.5.60 (Oscar: the sheet works — "I feel I'm literally moving" — but a small freeze remains):
- * the glide used to end on schedule and then stand still, a photograph, for however long the real
- * screen still needed to mount on his phone. The landing now stretches to meet the mount: if the
- * real screen has not painted as the glide nears its end, the glide slows to a crawl over its last
- * pixels instead of stopping dead; the moment the mount lands, full speed is restored and it
- * finishes. The handover crossfade also got a little longer (100 ms), so the swap itself dissolves
- * instead of blinking. */
+ * 1.5.61 (Oscar: "Estás muy cerca, pero aún le falta. Se pega un poquito… Quiero que se sienta como
+ * que vuela"): the 1.5.60 landing slowed the glide with timers — but timers starve during the
+ * mount's long task, so on his phone the glide still ended on schedule and the sheet stood frozen
+ * until the thread freed. This landing depends on no timers: the glide is long (520 ms) with a
+ * creeping ease-out tail, so the sheet is still moving whenever the mount lands; and the moment
+ * the real screen signals, the landing measures the distance left — a short hop: it settles at
+ * once under the crossfade; a long way: it speeds up just enough to arrive in ~90 ms. There is no
+ * state in which the sheet waits standing still. (The 100 ms crossfade from 1.5.60 stays.) */
 function glideSlab(wrap: HTMLElement) {
   bridge = { wrap, mounted: false, glided: false, done: false };
   const anim = wrap.animate(
     [{ translate: wrap.style.translate || "0px 0" }, { translate: "0px 0" }],
-    { duration: 300, easing: EASE, fill: "forwards" },
+    { duration: 520, easing: EASE, fill: "forwards" },
   );
-  bridge.land = () => { anim.playbackRate = 1; };
   const mark = () => { if (bridge && bridge.wrap === wrap) { bridge.glided = true; finishBridge(); } };
   if (anim.finished) anim.finished.then(mark, mark);
-  else window.setTimeout(mark, 380);
-  const stretch = (rate: number, delay: number) => window.setTimeout(() => {
-    if (bridge && bridge.wrap === wrap && !bridge.done && !bridge.mounted) anim.playbackRate = rate;
-  }, delay);
-  stretch(0.3, 190);
-  stretch(0.12, 330);
+  else window.setTimeout(mark, 600);
+  const startOff = parseFloat(wrap.style.translate) || 0;
+  const baseX = wrap.getBoundingClientRect().x - startOff;
+  bridge.land = () => {
+    if (!bridge || bridge.wrap !== wrap || bridge.done) return;
+    const dist = Math.abs(wrap.getBoundingClientRect().x - baseX);
+    if (dist <= 34) {
+      bridge.glided = true;
+      anim.cancel();
+      wrap.style.translate = "0px 0";
+      finishBridge();
+    } else {
+      anim.playbackRate = Math.min(4, Math.max(1.6, dist / 90));
+    }
+  };
   window.setTimeout(() => {
     if (bridge && bridge.wrap === wrap && !bridge.done) {
       bridge.done = true;
@@ -185,7 +194,7 @@ function glideSlab(wrap: HTMLElement) {
       wrap.style.translate = "0px 0";
       fadeSlabOut(wrap);
     }
-  }, 1000);
+  }, 1200);
 }
 
 function clear(els: HTMLElement[]) {
@@ -211,10 +220,14 @@ export function playPendingSlide(host: HTMLElement | null) {
   if (!p || !host) return;
   pending = null;
   if (p.bridge) {
-    // The real screen has painted under the bridge clone: signal it, restore the glide's full
-    // speed so it can finish, and do not slide the real screen too (a second slide would double
-    // the motion).
-    if (bridge) { bridge.mounted = true; bridge.land?.(); finishBridge(); }
+    // The real screen has painted under the bridge clone. Signal a breath later — the screens'
+    // second beat (the folds and sections that mount ~200 ms in) should be in before the clone
+    // hands over, or their pop lands after the reveal — trigger the landing (which measures the
+    // distance left and settles or hurries), and do not slide the real screen too.
+    const b = bridge;
+    requestAnimationFrame(() => requestAnimationFrame(() => window.setTimeout(() => {
+      if (bridge && bridge === b) { bridge.mounted = true; bridge.land?.(); finishBridge(); }
+    }, 150)));
     return;
   }
   if (Date.now() - p.at > 900 || reducedMotion()) return;
