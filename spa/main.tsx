@@ -339,11 +339,37 @@ if (dbFailureCount() >= 3) {
   // again — offer the rescue door instead of another lap around the same error loop.
   root.render(<DbRescue />);
 } else if (navigator.locks?.request) {
-  void navigator.locks.request("brizna-db", { ifAvailable: true }, (lock) => {
-    if (!lock) { root.render(<OtherTab />); return; }
+  // 1.5.63 (Oscar hit the wall himself): asking once, instantly, was not enough. When Brizna is
+  // reopened right after closing — or reloads itself to install an update — its own previous page
+  // can still be shutting down and holding the lock for a moment, and the instant check mistook
+  // that corpse for another tab ("ya está abierta en otra pestaña" with no other tab anywhere:
+  // on his phone the app's storage is its own, so a browser copy could not even hold this lock).
+  // Now a busy lock is waited out behind the splash: a dying holder frees it in a moment and the
+  // book opens; only a holder still alive after a few seconds is a real second Brizna and earns
+  // the OtherTab screen.
+  const begin = (lock: Lock | null) => {
+    if (!lock) return "busy" as const;
     start();
     return new Promise<void>(() => undefined); // hold until the tab closes
-  });
+  };
+  void (async () => {
+    let first: unknown;
+    try {
+      first = await navigator.locks.request("brizna-db", { ifAvailable: true }, begin);
+    } catch {
+      first = "busy";
+    }
+    if (first !== "busy") return; // granted: begin's promise never settles, so this is really the busy path only
+    const ac = new AbortController();
+    const timer = window.setTimeout(() => ac.abort(), 6_000);
+    try {
+      await navigator.locks.request("brizna-db", { signal: ac.signal }, begin);
+    } catch {
+      root.render(<OtherTab />);
+    } finally {
+      window.clearTimeout(timer);
+    }
+  })();
 } else {
   // 1.5.51 (auditoría interna, A1): without Web Locks there used to be NO arbitration
   // at all — the app started blind and two copies could overwrite each other in
