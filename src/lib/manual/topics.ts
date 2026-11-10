@@ -1521,16 +1521,16 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Every note goes into a folder. Double-tap the notes icon to open the cabinet.",
         ],
         how: [
-          "Carpetas de siempre: Trabajo por hacer, Materiales, Recordatorios y No especificada; crea las tuyas con el engranaje (también renombrar y borrar).\nDesliza una nota a la derecha para cambiarla de carpeta y a la izquierda para mandarla a la papelera.\nDoble toque abre el editor.\nFijar marca la nota y la muestra en Hoy; fuera de las carpetas solo se ven las fijadas.",
-          "Default folders: To do, Materials, Reminders, and Unspecified; make your own with the gear (rename and delete too).\nSwipe a note right to change its folder and left to send it to the trash.\nDouble-tap opens the editor.\nPin marks the note and shows it on Today; outside the folders only pinned notes show.",
+          "Carpetas de siempre: Trabajo por hacer, Materiales, Recordatorios y No especificada; crea las tuyas con el engranaje (también renombrar y borrar).\nDesliza una nota a la derecha para cambiarla de carpeta y a la izquierda para mandarla a la papelera.\nDentro de la nota, «Mover a…» la cambia de carpeta sin deslizar.\nDoble toque abre el editor.\nFijar marca la nota y la muestra en Hoy; fuera de las carpetas solo se ven las fijadas.",
+          "Default folders: To do, Materials, Reminders, and Unspecified; make your own with the gear (rename and delete too).\nSwipe a note right to change its folder and left to send it to the trash.\nInside the note, “Move to…” changes its folder without swiping.\nDouble-tap opens the editor.\nPin marks the note and shows it on Today; outside the folders only pinned notes show.",
         ],
         example: [
           "Fijas Pagar el seguro del trailer el 15. Cada mañana sale en Hoy, arriba de tus patios. El 15 lo pagas, desfijas la nota y la mueves a Recordatorios para el año que viene.",
           "You pin Pay the trailer insurance on the 15th. Every morning it shows on Today, above your yards. On the 15th you pay it, unpin the note, and move it to Reminders for next year.",
         ],
         cases: [
-          "Borras una carpeta: Brizna pregunta antes de borrarla.\nMandaste una nota a la papelera por error: sácala de la papelera.",
-          "You delete a folder: Brizna asks before deleting it.\nYou trashed a note by mistake: take it out of the trash.",
+          "Borras una carpeta: Brizna pregunta antes de borrarla.\nMandaste una nota a la papelera por error: sácala de la papelera.\nPara borrar la papelera del todo: en el engranaje, «Vaciar papelera» — pregunta antes, dice cuántas notas se borran y no se puede deshacer.",
+          "You delete a folder: Brizna asks before deleting it.\nYou trashed a note by mistake: take it out of the trash.\nTo clear the trash for good: in the gear, “Empty trash” — it asks first, says how many notes go, and cannot be undone.",
         ],
         related: ["notas", "hoy"],
         go: { to: "/fichero", where: ["Fichero", "Cabinet"] },

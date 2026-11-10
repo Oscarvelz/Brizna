@@ -27,7 +27,7 @@ import {
   type CabinetFolder,
   type FolderDesign,
 } from "@/lib/pad-cabinet";
-import { dropPadFolder, getPad, savePad } from "@/lib/server/lawn";
+import { deletePadPage, dropPadFolder, getPad, savePad } from "@/lib/server/lawn";
 import type { PadData, PadPage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -1208,9 +1208,28 @@ function GearSheet({
 }) {
   const tx = useTx();
   const [draft, setDraft] = useState("");
+  const [askEmpty, setAskEmpty] = useState(false);
   const active = cabinet.filter((folder) => !folder.trashedAt);
   const trashed = cabinet.filter((folder) => folder.trashedAt);
+  // 1.5.65 (censo de botones, oleada 3): todo lo que la papelera guarda — las notas
+  // borradas sueltas y las que viven en carpetas borradas (trashFolder las marcó a
+  // todas), que es lo que «Vaciar papelera» borra del todo.
+  const trashNotes = pages.filter((page) => page.deletedAt);
   if (typeof document === "undefined") return null;
+
+  async function emptyTrash() {
+    setAskEmpty(false);
+    try {
+      for (const folder of trashed) await dropPadFolder({ data: { name: folder.name } });
+      const loose = pages.filter((page) => page.deletedAt && !trashed.some((folder) => folder.name === page.folder));
+      for (const page of loose) await deletePadPage({ data: { id: page.id } });
+      if (trashed.length > 0) onCabinet(cabinet.filter((folder) => !folder.trashedAt));
+      toast.success(tx("Papelera vaciada", "Trash emptied"));
+      await onRefresh();
+    } catch {
+      toast.error(tx("No se pudo vaciar la papelera", "Could not empty the trash"));
+    }
+  }
 
   function addFolder() {
     const name = draft.trim().slice(0, 40);
@@ -1356,10 +1375,27 @@ function GearSheet({
                 </li>
               ))}
           </ul>
+          {trashed.length > 0 || trashNotes.length > 0 ? (
+            <Button type="button" variant="ghost" className="mt-3 w-full text-late" onClick={() => setAskEmpty(true)}>
+              {tx("Vaciar papelera", "Empty trash")}
+            </Button>
+          ) : null}
         </div>
         <Button type="button" variant="secondary" className="mt-4 w-full" onClick={onClose}>
           {tx("Listo", "Done")}
         </Button>
+        <ConfirmDialog
+          open={askEmpty}
+          title={tx("¿Vaciar la papelera?", "Empty the trash?")}
+          description={tx(
+            `Se borran del todo ${trashNotes.length} ${trashNotes.length === 1 ? "nota" : "notas"}${trashed.length > 0 ? ` y ${trashed.length} ${trashed.length === 1 ? "carpeta" : "carpetas"}` : ""}. No se puede deshacer.`,
+            `${trashNotes.length} ${trashNotes.length === 1 ? "note" : "notes"}${trashed.length > 0 ? ` and ${trashed.length} ${trashed.length === 1 ? "folder" : "folders"}` : ""} will be deleted for good. This cannot be undone.`,
+          )}
+          confirmLabel={tx("Vaciar", "Empty")}
+          danger
+          onConfirm={() => void emptyTrash()}
+          onCancel={() => setAskEmpty(false)}
+        />
       </div>
     </div>,
     document.body,

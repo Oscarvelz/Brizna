@@ -73,7 +73,10 @@ const DAY_THEMES: { id: DayPalette; es: string; en: string; swatch: string }[] =
 ];
 
 const NIGHT_THEMES: { id: NightPalette; es: string; en: string; swatch: string }[] = [
-  { id: "noche", es: "Noche", en: "Night", swatch: "swatch-noche" },
+  // 1.5.65 (censo de botones, oleada 3): el tema se llama «Noche clara» — «Noche» a secas
+  // ya es el nombre del modo, y los dos convivían en la misma sección de Tema. El id no
+  // cambia («noche»): quien lo tiene elegido lo sigue teniendo, solo lee otro nombre.
+  { id: "noche", es: "Noche clara", en: "Clear night", swatch: "swatch-noche" },
   { id: "medianoche", es: "Medianoche", en: "Midnight", swatch: "swatch-medianoche" },
   { id: "ciruela", es: "Ciruela", en: "Plum", swatch: "swatch-ciruela" },
   { id: "grafito", es: "Grafito", en: "Graphite", swatch: "swatch-grafito" },

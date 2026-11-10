@@ -2,7 +2,7 @@ import { usePageWidth, WideSplit } from "@/components/wide-layout";
 import { DeskDivider, DeskStrip, NotesListPanel, useDesk, type DeskMode } from "@/components/notes-desk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Calculator, CalendarDays, ChevronDown, ChevronLeft, Download, FolderOpen, NotebookPen, Pencil, Pin, Plus, Search, Share2, Trash2, X } from "lucide-react";
+import { Calculator, CalendarDays, ChevronDown, ChevronLeft, Download, FolderInput, FolderOpen, NotebookPen, Pencil, Pin, Plus, Search, Share2, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { createPortal } from "react-dom";
@@ -131,6 +131,7 @@ function PadBody({
   const [askDel, setAskDel] = useState(false);
   const [askUnpin, setAskUnpin] = useState(false);
   const [askSave, setAskSave] = useState(false);
+  const [askMove, setAskMove] = useState(false);
   const [noteFindOn, setNoteFindOn] = useState(false);
   const [noteFind, setNoteFind] = useState("");
   const [calcOn, setCalcOn] = useState(false);
@@ -396,6 +397,26 @@ function PadBody({
     }
   }
 
+  // 1.5.65 (censo de botones, oleada 3): la carpeta de la nota, con el nombre de la
+  // carpeta sin especificar normalizado como lo hace el Fichero (homeOf).
+  const homeName = page ? page.folder || cabinet.find((folder) => folder.id === "sin-especificar")?.name || "No especificada" : "";
+
+  // 1.5.65 (censo de botones, oleada 3): mover sin deslizar. El botón «Mover a…» del
+  // lector abre la misma lista de carpetas que el gesto de deslizar del Fichero
+  // (SaveSheet) y mueve con el mismo savePad parcial que togglePin; el gesto se queda.
+  async function movePage(folder: string) {
+    if (!page) return;
+    setAskMove(false);
+    if (!folder || folder === homeName) return;
+    try {
+      await savePad({ data: { pageId: page.id, folder } });
+      toast.success(tx(`Movida a ${folder}`, `Moved to ${folder}`));
+      await refresh();
+    } catch {
+      toast.error(tx("No se pudo mover", "Could not move it"));
+    }
+  }
+
   async function trashPage() {
     if (!page) return;
     try {
@@ -564,6 +585,24 @@ function PadBody({
           </button>
         </div>
         {calcOn && !calcDocked ? <QuickPad onClose={() => setCalcOn(false)} /> : null}
+        {/* 1.5.65 (censo de botones, oleada 3): en el teléfono el lector no decía en qué
+            carpeta vive la nota ni ofrecía moverla sin el gesto del Fichero. Esta línea
+            dice la carpeta y trae el botón «Mover a…». En el escritorio no hace falta:
+            la pastilla de carpeta de la barra y la lista de al lado ya lo hacen. */}
+        {!mode && page && !draftOn ? (
+          <div className="mb-2 flex items-center gap-2 text-sm">
+            <FolderOpen className="size-4 shrink-0 text-muted" aria-hidden />
+            <span className="min-w-0 flex-1 truncate text-muted">{homeName}</span>
+            <button
+              type="button"
+              onClick={() => setAskMove(true)}
+              className="inline-flex shrink-0 items-center gap-1 font-semibold text-primary"
+            >
+              <FolderInput className="size-4" aria-hidden />
+              {tx("Mover a…", "Move to…")}
+            </button>
+          </div>
+        ) : null}
         {pinned.length > 0 ? (
           <div className="mb-3">
             <p className="mb-1 text-xs font-semibold text-muted">{tx("Fijadas", "Pinned")}</p>
@@ -878,6 +917,15 @@ function PadBody({
           onPick={(folder) => void commit(folder)}
           onCreate={addCabinetFolder}
           onClose={() => setAskSave(false)}
+        />
+      ) : null}
+      {askMove && page ? (
+        <SaveSheet
+          folders={activeFolders}
+          current={homeName}
+          onPick={(folder) => void movePage(folder)}
+          onCreate={addCabinetFolder}
+          onClose={() => setAskMove(false)}
         />
       ) : null}
       {mode ? null : (
