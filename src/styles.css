@@ -155,6 +155,8 @@ html.theme-amoled {
 }
 
 html[data-palette="costa"] {
+  --shadow-card: 0 0 0 1px rgba(16, 36, 40, 0.07), 0 1px 2px rgba(16, 36, 40, 0.05), 0 10px 24px rgba(16, 36, 40, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --shadow-card-hover: 0 0 0 1px rgba(16, 36, 40, 0.12), 0 2px 8px rgba(16, 36, 40, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.55);
   --color-bg: #e5f1f0;
   --color-sun: #d5e6e4;
   --color-surface: #f4fbfa;
@@ -195,6 +197,8 @@ html.theme-amoled[data-palette="costa"] {
 }
 
 html[data-palette="barro"] {
+  --shadow-card: 0 0 0 1px rgba(42, 28, 20, 0.07), 0 1px 2px rgba(42, 28, 20, 0.05), 0 10px 24px rgba(42, 28, 20, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --shadow-card-hover: 0 0 0 1px rgba(42, 28, 20, 0.12), 0 2px 8px rgba(42, 28, 20, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.55);
   --color-bg: #f6eee6;
   --color-sun: #efe2d4;
   --color-surface: #fbf6f1;
@@ -231,6 +235,8 @@ html.theme-amoled[data-palette="barro"] {
 }
 
 html[data-palette="pino"] {
+  --shadow-card: 0 0 0 1px rgba(20, 36, 28, 0.07), 0 1px 2px rgba(20, 36, 28, 0.05), 0 10px 24px rgba(20, 36, 28, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --shadow-card-hover: 0 0 0 1px rgba(20, 36, 28, 0.12), 0 2px 8px rgba(20, 36, 28, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.55);
   --color-bg: #e7eee9;
   --color-sun: #d7e4db;
   --color-surface: #f4f8f5;
@@ -267,6 +273,8 @@ html.theme-amoled[data-palette="pino"] {
 }
 
 html[data-palette="cielo"] {
+  --shadow-card: 0 0 0 1px rgba(20, 32, 51, 0.07), 0 1px 2px rgba(20, 32, 51, 0.05), 0 10px 24px rgba(20, 32, 51, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --shadow-card-hover: 0 0 0 1px rgba(20, 32, 51, 0.12), 0 2px 8px rgba(20, 32, 51, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.55);
   --color-bg: #e8eef6;
   --color-sun: #d9e3f0;
   --color-surface: #f5f8fc;
@@ -305,6 +313,8 @@ html.theme-amoled[data-palette="cielo"] {
 }
 
 html[data-palette="lima"] {
+  --shadow-card: 0 0 0 1px rgba(28, 40, 16, 0.07), 0 1px 2px rgba(28, 40, 16, 0.05), 0 10px 24px rgba(28, 40, 16, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --shadow-card-hover: 0 0 0 1px rgba(28, 40, 16, 0.12), 0 2px 8px rgba(28, 40, 16, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.55);
   --color-bg: #eef6d4;
   --color-sun: #e4f0c0;
   --color-surface: #f7fbe8;
@@ -329,6 +339,8 @@ html[data-palette="lima"] {
 }
 
 html[data-palette="arena"] {
+  --shadow-card: 0 0 0 1px rgba(44, 36, 22, 0.07), 0 1px 2px rgba(44, 36, 22, 0.05), 0 10px 24px rgba(44, 36, 22, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --shadow-card-hover: 0 0 0 1px rgba(44, 36, 22, 0.12), 0 2px 8px rgba(44, 36, 22, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.55);
   --color-bg: #f6efe2;
   --color-sun: #efe3cc;
   --color-surface: #fbf7ef;
@@ -351,6 +363,8 @@ html[data-palette="arena"] {
 }
 
 html[data-palette="flor"] {
+  --shadow-card: 0 0 0 1px rgba(44, 24, 32, 0.07), 0 1px 2px rgba(44, 24, 32, 0.05), 0 10px 24px rgba(44, 24, 32, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --shadow-card-hover: 0 0 0 1px rgba(44, 24, 32, 0.12), 0 2px 8px rgba(44, 24, 32, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.55);
   --color-bg: #f8eef1;
   --color-sun: #f3e0e6;
   --color-surface: #fdf7f8;
@@ -408,8 +422,8 @@ html.theme-dark[data-palette="noche"] {
   --color-hint-fg: #edf3ee;
   --color-abono: #f5c451;
   --color-abono-fg: #1a1404;
-  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 28px rgba(0, 0, 0, 0.32);
-  --shadow-card-hover: 0 0 0 1px rgba(255, 255, 255, 0.13), 0 12px 30px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 28px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-card-hover: 0 0 0 1px rgba(255, 255, 255, 0.13), 0 12px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.07);
   color-scheme: dark;
 }
 
@@ -449,8 +463,8 @@ html.theme-dark[data-palette="medianoche"] {
   --color-hint-fg: #eaf0fb;
   --color-abono: #f6c65b;
   --color-abono-fg: #1a1404;
-  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 28px rgba(0, 0, 0, 0.32);
-  --shadow-card-hover: 0 0 0 1px rgba(255, 255, 255, 0.13), 0 12px 30px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 28px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-card-hover: 0 0 0 1px rgba(255, 255, 255, 0.13), 0 12px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.07);
   color-scheme: dark;
 }
 
@@ -490,8 +504,8 @@ html.theme-dark[data-palette="ciruela"] {
   --color-hint-fg: #f4eef8;
   --color-abono: #f7c86a;
   --color-abono-fg: #1a1404;
-  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 28px rgba(0, 0, 0, 0.32);
-  --shadow-card-hover: 0 0 0 1px rgba(255, 255, 255, 0.13), 0 12px 30px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 28px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-card-hover: 0 0 0 1px rgba(255, 255, 255, 0.13), 0 12px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.07);
   color-scheme: dark;
 }
 
@@ -531,8 +545,8 @@ html.theme-dark[data-palette="grafito"] {
   --color-hint-fg: #f2f2f0;
   --color-abono: #e9c46a;
   --color-abono-fg: #1a1404;
-  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 28px rgba(0, 0, 0, 0.32);
-  --shadow-card-hover: 0 0 0 1px rgba(255, 255, 255, 0.13), 0 12px 30px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 28px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-card-hover: 0 0 0 1px rgba(255, 255, 255, 0.13), 0 12px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.07);
   color-scheme: dark;
 }
 
@@ -572,11 +586,35 @@ html.theme-dark[data-palette="luciernaga"] {
   --color-hint-fg: #f1f4e6;
   --color-abono: #ffcf5c;
   --color-abono-fg: #1a1404;
-  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 28px rgba(0, 0, 0, 0.32);
-  --shadow-card-hover: 0 0 0 1px rgba(255, 255, 255, 0.13), 0 12px 30px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 28px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-card-hover: 0 0 0 1px rgba(255, 255, 255, 0.13), 0 12px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.07);
   color-scheme: dark;
 }
 
+/* 1.5.66 (noche de piel): la luz del tema cae desde arriba. Solo alcanza a los temas con
+   data-palette — Jardín y AMOLED no llevan el atributo y quedan intactos. De día la luz es
+   el sol de la paleta; de noche, un susurro de su color principal. Respira muy despacio
+   (solo opacidad) y se apaga con «reducir movimiento». */
+html[data-palette] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(130% 55% at 50% -10%, var(--color-sun) 0%, transparent 62%);
+  opacity: 0.5;
+  animation: bz-breathe 16s ease-in-out infinite alternate;
+}
+html.theme-dark[data-palette] body::before {
+  background: radial-gradient(120% 50% at 50% -10%, color-mix(in srgb, var(--color-primary) 9%, transparent) 0%, transparent 60%);
+}
+@keyframes bz-breathe {
+  from { opacity: 0.34; }
+  to { opacity: 0.6; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-palette] body::before { animation: none; }
+}
 .swatch-jardin { background: linear-gradient(135deg, #efe8d6 0 52%, #1f6a3a 52% 100%); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.14); }
 .swatch-costa { background: linear-gradient(135deg, #e5f1f0 0 52%, #0e6e78 52% 100%); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.14); }
 .swatch-barro { background: linear-gradient(135deg, #f6eee6 0 52%, #8c3d22 52% 100%); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.14); }
