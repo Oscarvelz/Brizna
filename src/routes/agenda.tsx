@@ -223,6 +223,17 @@ function AgendaPage() {
   const jobs = (query.data ?? []).filter((job) =>
     onlyMoved ? postponedJob(job) && job.status !== "done" && job.status !== "cancelled" : true,
   );
+  // 1.5.64 (censo de botones, oleada 2): «Pasar atrasados» cuenta el LIBRO, no el filtro
+  // activo. Su diálogo ya pasa el atraso real del libro (postponeAccumulated con scope
+  // "overdue"), pero el conteo seguía a la vista: en «Pendiente» el atrasado vive en
+  // «Tarde», el conteo daba cero y el botón se veía muerto (y en Realizado/Cancelado la
+  // sección entera desaparecía). Esta consulta es el atraso del libro, sin filtro ni
+  // período: el botón está habilitado en los cinco filtros mientras haya trabajo tarde,
+  // y deshabilitado solo cuando de verdad no hay ninguno.
+  const lateQ = useQuery({
+    queryKey: ["jobs", { filter: "late", range: "all", q: "" }],
+    queryFn: () => listJobs({ data: { filter: "late", range: "all", q: "" } }),
+  });
   const grouped = useMemo(() => groupByDate(jobs), [jobs]);
   const bounds = useMemo(() => {
     if (range === "week") return { from: startOfWeekISO(today), to: endOfWeekISO(today) };
@@ -243,6 +254,14 @@ function AgendaPage() {
       }))
       .filter((section) => section.items.length > 0 || section.report.length > 0);
   }, [grouped, offQ.data, bounds]);
+  // 1.5.64 (censo de botones, oleada 2): el reporte del día pospuesto («¿Por qué no se
+  // trabajó este día?») cuenta su historia en Pendiente y en Pospuesto. En Tarde,
+  // Realizado y Cancelado se colaba como sección fantasma sin trabajos y escondía el
+  // estado vacío verdadero («Nada en esta vista»), así que ahí el reporte no cuenta
+  // como contenido ni se dibuja.
+  const reportHome = onlyMoved || filter === "pending" || filter === "all";
+  const sectionHasContent = (section: (typeof sections)[number]) =>
+    onlyMoved ? section.report.length > 0 : section.items.length > 0 || (reportHome && section.report.length > 0);
   // The landing scroll: the page is still settling while a landing runs — the data arrives, the
   // second beat opens, and the days-off panel folds shut because the range changed — so a one-shot
   // scroll lands wherever the layout happened to be. Like the manual's own "Ver en la app" glide
@@ -295,7 +314,7 @@ function AgendaPage() {
   }, [sections, beat2]);
   const total = jobs.reduce((sum, job) => sum + job.amount, 0);
   const gap = density === "dense" ? "gap-1.5" : density === "compact" ? "gap-2" : "gap-3";
-  const overdueCount = jobs.filter((job) => job.computedStatus === "late").length;
+  const overdueCount = (lateQ.data ?? []).length;
 
   const moveMut = useMutation({
     mutationFn: (to: string) => moveDayJobs({ data: { from: moveFrom ?? today, to } }),
@@ -669,7 +688,7 @@ function AgendaPage() {
                 <div className="h-24 animate-pulse rounded-xl bg-surface-2" />
               </div>
             ) : null}
-            {!query.isLoading && sections.filter((section) => (onlyMoved ? section.report.length > 0 : true)).length === 0 ? (
+            {!query.isLoading && sections.filter(sectionHasContent).length === 0 ? (
               <div className="rounded-xl bg-sun px-5 py-8 text-center">
                 <p className="font-display text-lg font-semibold">
                   {onlyMoved
@@ -687,10 +706,10 @@ function AgendaPage() {
                 </p>
               </div>
             ) : null}
-            {sections.filter((section) => (onlyMoved ? section.report.length > 0 : section.items.length > 0 || section.report.length > 0)).length > 0 ? (
+            {sections.filter(sectionHasContent).length > 0 ? (
               <div className="grid gap-6">
                 {sections
-                  .filter((section) => (onlyMoved ? section.report.length > 0 : section.items.length > 0 || section.report.length > 0))
+                  .filter(sectionHasContent)
                   .map((section, index, list) => {
                   if (!beat2 && index > 0) return null;
                   const date = section.date;
@@ -748,7 +767,7 @@ function AgendaPage() {
                           ))}
                         </PackedGrid>
                       )}
-                      {section.report.length > 0 ? <DayReport rows={section.report} /> : null}
+                      {reportHome && section.report.length > 0 ? <DayReport rows={section.report} /> : null}
                     </section>
                   );
                 })}
