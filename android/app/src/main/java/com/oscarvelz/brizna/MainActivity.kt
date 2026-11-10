@@ -201,7 +201,7 @@ class MainActivity : Activity() {
             // If the page's process dies (out of memory, say), Android would close the whole app unless the app says it
             // handled it. Start a fresh page instead.
             override fun onRenderProcessGone(v: WebView, detail: RenderProcessGoneDetail): Boolean {
-                recoverWeb(v)
+                recoverWeb(v, detail.didCrash())
                 return true
             }
         }
@@ -269,7 +269,22 @@ class MainActivity : Activity() {
     }
 
     /** A fresh page after the old one's process was lost, so the app stays open instead of closing. */
-    private fun recoverWeb(dead: WebView) {
+    private fun recoverWeb(dead: WebView, wasCrash: Boolean = false) {
+        // android-9: el registro queda en silencio. La recuperación se anunciaba con un toast
+        // («Brizna reabrió la página después de que se detuvo.») que Oscar reportó como un
+        // problema — no sabía de dónde salía ni qué era. La recuperación no necesita anuncio:
+        // la página reabre y el libro está intacto. A cambio, el evento queda registrado en
+        // las prefs (cuenta, cuándo, si fue choque o el sistema reclamó el proceso) para
+        // poder diagnosticarlo si vuelve a pasar seguido.
+        runCatching {
+            val gone = prefs.getInt("rendererGone", 0) + 1
+            prefs.edit()
+                .putInt("rendererGone", gone)
+                .putLong("rendererGoneAt", System.currentTimeMillis())
+                .putBoolean("rendererGoneCrash", wasCrash)
+                .apply()
+            android.util.Log.w("Brizna", "renderer gone #$gone crash=$wasCrash")
+        }
         if (dead !== web) { runCatching { (dead.parent as? ViewGroup)?.removeView(dead); dead.destroy() }; return }
         frame.removeView(dead)
         runCatching { dead.destroy() }
@@ -283,7 +298,6 @@ class MainActivity : Activity() {
             offlinePage(web, "Brizna tuvo que reabrir la página varias veces en un minuto, así que espera aquí. Tus datos están guardados en el teléfono.", "Abrir Brizna")
         } else {
             web.loadUrl(home)
-            Toast.makeText(this, "Brizna reabrió la página después de que se detuvo.", Toast.LENGTH_SHORT).show()
         }
     }
 
