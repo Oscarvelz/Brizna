@@ -51,7 +51,16 @@ export function NativeHost() {
     if (!n) return;
     const go = () => {
       const r = n.takeRoute?.() || "";
-      if (r) void navigate({ to: r as "/" });
+      if (!r) return;
+      // A route may carry the day it points at ("/agenda?dia=2026-11-10", the tomorrow's-cuts
+      // reminder): hand the date to Agenda as a search param so it can focus that day.
+      const [path, qs] = r.split("?");
+      const dia = qs ? new URLSearchParams(qs).get("dia") : null;
+      if (path === "/agenda" && dia && /^\d{4}-\d{2}-\d{2}$/.test(dia)) {
+        void navigate({ to: "/agenda", search: { dia } });
+      } else if (path) {
+        void navigate({ to: path as "/" });
+      }
     };
     go();
     refreshNativeSoon(2500);

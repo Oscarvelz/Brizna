@@ -89,7 +89,9 @@ export function buildSchedule(plan: NativePlan, prefs: NotifyPrefs, now = Date.n
         kind: "cortes",
         title: tx(`Mañana: ${plural(day.cuts.length, "corte", "cortes")}`, `Tomorrow: ${plural(day.cuts.length, "cut", "cuts")}`),
         body,
-        route: "/agenda",
+        // 1.5.62 (Oscar): tapping this reminder must land ON the day it announces — the route carries
+        // the date and Agenda focuses that day's section (see the landing effect in routes/agenda).
+        route: `/agenda?dia=${day.date}`,
       });
     }
     if (prefs.pay) {

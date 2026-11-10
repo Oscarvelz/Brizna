@@ -1,6 +1,6 @@
 import { NarrowOnly, PackedGrid, WideOnly, WideSplit } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { markJump } from "@/lib/jump-back";
 import { useBeat2 } from "@/lib/first-screen";
 import { AlertTriangle, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, Palmtree, Pin, Search } from "lucide-react";
@@ -47,9 +47,17 @@ import {
 import type { JobListFilter, JobRange, JobRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+// The day a tapped reminder asks Agenda to land on (module state on purpose: it must survive the
+// param-clearing navigation below, which can remount this page — the scroll effect re-reads it on
+// every commit until the day's section exists, then lands once).
+let landTarget: { dia: string; at: number } | null = null;
+let landWaiting = false;
+
 const searchSchema = z.object({
   filter: z.enum(["pending", "late", "done", "cancelled", "all"]).optional(),
   range: z.enum(["week", "month", "ahead", "all", "history"]).optional(),
+  // The day a tapped reminder points at (the tomorrow's-cuts alert carries its date; see native-plan).
+  dia: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export const Route = createFileRoute("/agenda")({
@@ -128,6 +136,29 @@ function AgendaPage() {
   const [calCursor, setCalCursor] = useState(now);
   const [weekOf, setWeekOf] = useState(today);
   const [focusDay, setFocusDay] = useState<string | null>(null);
+  // 1.5.62 (Oscar): a tapped reminder lands ON the day it announces. The tomorrow's-cuts alert
+  // carries its date (?dia=): Agenda shows that day's pending cuts — the full range, because the
+  // week and month views are anchored to today and could hide a day across the boundary (a Sunday
+  // night's alert points at next week's Monday) — scrolls its section into view, and clears the
+  // param so a later plain visit does not land again.
+  const navigate = useNavigate();
+  const landedDia = useRef<string | null>(null);
+  useEffect(() => {
+    const dia = search.dia;
+    if (!dia) {
+      landedDia.current = null;
+      return;
+    }
+    if (landedDia.current === dia) return;
+    landedDia.current = dia;
+    landTarget = { dia, at: Date.now() };
+    setFilter("pending");
+    setRange("all");
+    setCal(false);
+    setOnlyMoved(false);
+    setFocusDay(dia);
+    void navigate({ to: "/agenda", search: { filter: "pending", range: "all" }, replace: true });
+  }, [search.dia, navigate]);
   const holiday = useMemo(() => {
     const query = q.trim();
     if (query.length < 3) return null;
@@ -212,6 +243,56 @@ function AgendaPage() {
       }))
       .filter((section) => section.items.length > 0 || section.report.length > 0);
   }, [grouped, offQ.data, bounds]);
+  // The landing scroll: the page is still settling while a landing runs — the data arrives, the
+  // second beat opens, and the days-off panel folds shut because the range changed — so a one-shot
+  // scroll lands wherever the layout happened to be. Like the manual's own "Ver en la app" glide
+  // (nav-host), this waits until the day's position stands still (~280 ms), then glides to it with
+  // room for the sticky header. One waiter at a time; it re-reads the target every tick, so a
+  // re-render mid-wait cannot lose it.
+  useEffect(() => {
+    if (!landTarget || landWaiting) return;
+    if (Date.now() - landTarget.at > 15_000) {
+      landTarget = null;
+      return;
+    }
+    const dia = landTarget.dia;
+    if (!document.getElementById(`ag-dia-${dia}`)) return;
+    landWaiting = true;
+    let lastY = NaN;
+    let stableAt = Date.now();
+    const started = Date.now();
+    const tick = () => {
+      if (!landTarget || landTarget.dia !== dia || Date.now() - started > 9_000) {
+        if (landTarget && landTarget.dia === dia) landTarget = null;
+        landWaiting = false;
+        return;
+      }
+      const el = document.getElementById(`ag-dia-${dia}`);
+      if (!el) {
+        window.setTimeout(tick, 90);
+        return;
+      }
+      const y = el.getBoundingClientRect().top + window.scrollY;
+      if (Math.abs(y - lastY) > 2) {
+        lastY = y;
+        stableAt = Date.now();
+      }
+      if (Date.now() - stableAt < 280 && Date.now() - started < 6_000) {
+        window.setTimeout(tick, 70);
+        return;
+      }
+      landTarget = null;
+      landWaiting = false;
+      const head = document.querySelector(".pod-header")?.getBoundingClientRect().bottom ?? 0;
+      const keep = el.style.scrollMarginTop;
+      el.style.scrollMarginTop = `${Math.round(head + 12)}px`;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.setTimeout(() => {
+        el.style.scrollMarginTop = keep;
+      }, 2500);
+    };
+    window.setTimeout(tick, 60);
+  }, [sections, beat2]);
   const total = jobs.reduce((sum, job) => sum + job.amount, 0);
   const gap = density === "dense" ? "gap-1.5" : density === "compact" ? "gap-2" : "gap-3";
   const overdueCount = jobs.filter((job) => job.computedStatus === "late").length;
@@ -619,7 +700,7 @@ function AgendaPage() {
                   const weekCount = list.filter((row) => startOfWeekISO(row.date) === week).reduce((sum, row) => sum + row.items.length, 0);
                   const reorder = filter === "pending" && items.length > 1;
                   return (
-                    <section key={date}>
+                    <section key={date} id={`ag-dia-${date}`}>
                       {week !== prevWeek ? (
                         <div className="bz-wk mb-2" role="group" aria-label={tx(`Semana del ${formatDay(week, "d 'de' MMMM")}`, `Week of ${formatDay(week, "MMMM d")}`)}>
                           {/* 1.4.72: each week its own bubble: day-range badge + title + yards pill on one line. */}
