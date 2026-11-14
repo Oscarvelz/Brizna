@@ -8,24 +8,32 @@
 .pres-root { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
 .pres-shield { position: fixed; pointer-events: auto; }
 
-/* El velo ya no es la sombra del hueco: son CUATRO parches que rodean el
-   recorte (la misma geometría de los escudos), cada uno con el desenfoque
-   del fondo que pidió Oscar (2026-11-14: «trata de difuminar un poco el
-   fondo para que no haya información innecesaria durante la presentación»).
-   El hueco queda pixel-nítido — el control real se lee y se toca — y lo
-   demás baja a .47 + blur(6px) saturate(.8): el texto de atrás deja de
-   competir y la app se sigue reconociendo. Técnica de paneles (la
-   blindada en todo motor) sobre clip-path/máscaras, frágiles en WebView.
-   Los parches comparten el reloj de .42s del hueco: se mueven con él. */
+/* El velo son CUATRO parches que rodean el recorte (la misma geometría
+   de los escudos). LA LEY DEL VELO (Oscar, corrección 2026-11-14 16:58
+   EST, desde su veredicto telefónico sobre Faro: «no es un difuminado,
+   es un oscurecimiento de la pantalla de atrás y una desaturización
+   leve para poder ver dónde están los botones. De otra forma no sirve
+   el mapa»): el fondo se OSCURECE (.47) y se DESATURA LEVEMENTE
+   (saturate .8), SIN blur en ninguna parte — los botones y el layout
+   de atrás deben seguir infiriéndose, porque un módulo que recorre la
+   app no sirve si la app no se ve. El hueco queda pixel-nítido — el
+   control real se lee y se toca. (Esto deroga el blur(6px) de la ola
+   de diseño de la mañana.) Técnica de paneles (la blindada en todo
+   motor) sobre clip-path/máscaras, frágiles en WebView. Los parches
+   comparten el reloj de .42s del hueco: se mueven con él. */
 .pres-blurpatch {
   position: fixed;
   pointer-events: none;
   background: rgb(0 0 0 / .47);
-  backdrop-filter: blur(6px) saturate(.8);
-  -webkit-backdrop-filter: blur(6px) saturate(.8);
+  -webkit-backdrop-filter: saturate(.8);
   transition: left .42s cubic-bezier(.22, 1, .36, 1), top .42s cubic-bezier(.22, 1, .36, 1),
     width .42s cubic-bezier(.22, 1, .36, 1), height .42s cubic-bezier(.22, 1, .36, 1), opacity .2s ease-out;
 }
+/* La forma estándar va en su PROPIA regla: si convive con la -webkit-
+   en la misma, el minificador deja solo la -webkit- y la desaturación
+   se pierde en los motores que leen la estándar (hallazgo de la línea
+   de Faro, 2026-11-14, confirmado en este build). */
+.pres-blurpatch { backdrop-filter: saturate(.8); }
 /* La entrada y la salida del velo entero (investigación de movimiento,
    2026-11-14): nada aparece a opacidad plena en el primer fotograma, y
    salir cuesta menos que entrar (200ms contra 300ms). La opacidad la

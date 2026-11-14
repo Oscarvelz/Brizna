@@ -52,9 +52,14 @@ export const Q1: Module = {
       steps: [{ kind: "show", anchor: "pestana-estudio", caption: ["Estudio: tus cifras; dentro vive también el Asesor.", "Stats: your figures; the Advisor lives inside too."], contexto: ["Estudio y Asesor son una sola pestaña: se voltean en la misma pantalla.", "Stats and the Advisor are one tab: they flip on the same screen."] }, { kind: "ref", topic: "estudio" }],
     },
     {
-      id: "q1-vistas", chapter: "tarjeta", anchors: ["vistas"],
+      id: "q1-vistas", chapter: "tarjeta", anchors: ["vistas", "vistas-malla", "vistas-grande"],
       keys: [["vistas", "views"], ["grande", "large"], ["malla", "grid"]],
-      steps: [{ kind: "show", anchor: "vistas", caption: ["Tú eliges el tamaño: Grande luce cada tarjeta; Malla mete más clientes en pantalla.", "You choose the size: Large spreads each card out; Grid fits more clients per screen."] }, { kind: "ref", topic: "vistas" }],
+      steps: [
+        { kind: "show", anchor: "vistas", caption: ["Tú eliges el tamaño: Grande luce cada tarjeta; Malla mete más clientes en pantalla.", "You choose the size: Large spreads each card out; Grid fits more clients per screen."] },
+        { kind: "do", anchor: "vistas-malla", caption: ["Toca Malla y mira lo que pasa: todo se achica y cabe más.", "Tap Grid and watch what happens: everything shrinks and more fits."] },
+        { kind: "do", anchor: "vistas-grande", caption: ["Ahora Grande: cada tarjeta vuelve a lucirse entera.", "Now Large: each card spreads out in full again."] },
+        { kind: "ref", topic: "vistas" },
+      ],
     },
     {
       id: "q1-nombre", chapter: "tarjeta", anchors: ["tarjeta-nombre"],
@@ -71,6 +76,7 @@ export const Q1: Module = {
       steps: [
         { kind: "show", anchor: "tarjeta-precio", caption: ["Ese precio es el corte de hoy: se cobra o queda a deber.", "That price is today's cut: it gets collected, or it stays owed."] },
         { kind: "show", anchor: "tarjeta-pin", caption: ["Fijada, su tarjeta no baja en Hoy: el patio queda a mano.", "Pinned, his card never sinks in Today: the yard stays at hand."] },
+        { kind: "do", anchor: "tarjeta-pin", caption: ["Toca el pin: su tarjeta queda fijada arriba en Hoy.", "Tap the pin: his card stays pinned at the top of Today."] },
       ],
     },
     {

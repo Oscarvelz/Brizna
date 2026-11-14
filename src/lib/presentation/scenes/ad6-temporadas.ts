@@ -148,6 +148,7 @@ export const AD6: Module = {
         { kind: "go", screen: "/ajustes" },
         { kind: "show", anchor: "ajustes-vacaciones-quitar", caption: ["Quitar vacaciones corre los patios de vuelta y regenera.", "Removing vacations shifts yards back and regenerates."], contexto: ["La vuelta es el corrimiento inverso, no una foto del antes.", "The return is the reverse shift, not a snapshot of before."] },
         { kind: "show", anchor: "ajustes-vacaciones-quitar", caption: ["Si moviste algo a mano, eso se queda como quedó.", "If you moved something by hand, it stays as it ended."] },
+        { kind: "do", anchor: "ajustes-vacaciones-quitar", caption: ["Toca Quitar vacaciones: los patios corren de vuelta ahora.", "Tap Remove time off: the yards shift back right now."] },
         { kind: "go", screen: "/agenda" },
         { kind: "show", anchor: "agenda", caption: ["Tras quitarlas, revisa la Agenda antes de prometer días.", "After removing them, check the Schedule before promising days."] },
         { kind: "ref", topic: "vacaciones" },

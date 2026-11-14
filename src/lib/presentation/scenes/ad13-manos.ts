@@ -67,11 +67,12 @@ export const AD13: Module = {
       ],
     },
     {
-      id: "ad13-malla", chapter: "malla", anchors: ["vistas"],
+      id: "ad13-malla", chapter: "malla", anchors: ["vistas", "vistas-malla"],
       keys: [["malla", "grid"], ["columnas", "columns"]],
       steps: [
         { kind: "go", screen: "/" },
-        { kind: "ask", anchor: "vistas", caption: ["¿Ya estás en Malla? Tócala otra vez.", "Already on Grid? Tap it again."] },
+        { kind: "do", anchor: "vistas-malla", caption: ["Toca Malla: las tarjetas se ordenan en columnas.", "Tap Grid: the cards line up in columns."] },
+        { kind: "do", anchor: "vistas-malla", caption: ["Tócala otra vez: las columnas ciclan a tres.", "Tap it again: the columns cycle to three."] },
         { kind: "show", anchor: "vistas", caption: ["Cada toque extra cicla las columnas: dos, tres, cuatro, dos.", "Each extra tap cycles the columns: two, three, four, two."], contexto: ["El ciclo solo existe en el teléfono; en pantalla grande, siempre dos.", "The cycle exists only on the phone; on big screens, always two."] },
         { kind: "ref", topic: "vistas" },
       ],

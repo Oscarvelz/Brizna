@@ -120,9 +120,15 @@ export const ORIENT_MS = 1000;
 
 export const wordCount = (text: string): number => text.trim().split(/\s+/).filter(Boolean).length;
 
+/** El suelo de toda leyenda (registro de Faro 1.3.278, aplicado
+ * 2026-11-14): ninguna vive menos de 2,6 s a 1× — las de 3–4 palabras
+ * calculaban 1,9–2,2 s, de los que la aparición de la tarjeta y el
+ * scroll comen ~0,4 s, y no se alcanzaban a leer. */
+export const MIN_DWELL_MS = 2600;
+
 /** Permanencia de un pie a velocidad 1×: proporcional a sus palabras. */
 export const dwellMs = (caption: Pair, lang: string): number =>
-  Math.round((wordCount(pick(caption, lang)) / WORDS_PER_MINUTE) * 60_000) + ORIENT_MS;
+  Math.max(MIN_DWELL_MS, Math.round((wordCount(pick(caption, lang)) / WORDS_PER_MINUTE) * 60_000) + ORIENT_MS);
 
 /** La lectura de la ventanita de contexto, cuando el paso la lleva: anunciarla
  * sin contarla sería mentir la duración. */
@@ -139,17 +145,17 @@ export function stepMs(step: Step, lang: string): number {
     case "theatre":
       return dwellMs(step.caption, lang) + contextoMs(step, lang);
     case "do":
-      return dwellMs(step.caption, lang) + contextoMs(step, lang) + 1200; // el latido + el gesto
+      return dwellMs(step.caption, lang) + contextoMs(step, lang) + 650; // el pie entero, el toque y el asentamiento
     case "press":
-      return dwellMs(step.caption, lang) + contextoMs(step, lang) + step.ms; // el pie + la presión entera
+      return dwellMs(step.caption, lang) + contextoMs(step, lang) + step.ms + 800; // el pie + la presión entera con su respiro (150) + el asentamiento (650)
     case "swipe":
-      return dwellMs(step.caption, lang) + contextoMs(step, lang) + 800; // el pie + el arrastre
+      return dwellMs(step.caption, lang) + contextoMs(step, lang) + 1150; // el pie + el arrastre (~500) + el asentamiento (650)
     case "type":
-      return dwellMs(step.caption, lang) + contextoMs(step, lang) + 900; // el pie + el tecleo
+      return dwellMs(step.caption, lang) + contextoMs(step, lang) + 500; // el pie + el tecleo dentro de su vida
     case "go":
       return 1400; // el viaje y el asentamiento
     case "tap":
-      return 700;
+      return 720; // 300 hasta el toque + 420 de asentamiento, como corre el motor
     case "stage":
       return 600; // sembrar y seguir
     case "ref":

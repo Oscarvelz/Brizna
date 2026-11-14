@@ -98,10 +98,13 @@ export const AD2: Module = {
       ],
     },
     {
-      id: "ad2-editar-despues", chapter: "editar", anchors: ["alta-guardar"],
+      id: "ad2-editar-despues", chapter: "editar", anchors: ["alta-guardar", "alta-confirmar"],
       keys: [["guardar", "save"], ["agenda", "schedule"], ["precio", "price"]],
       steps: [
         { kind: "show", anchor: "alta-guardar", caption: ["Guardar pide confirmación antes de tocar nada.", "Saving asks for confirmation before touching anything."] },
+        { kind: "do", anchor: "alta-guardar", caption: ["Toca Guardar: el resumen pide tu confirmación.", "Tap Save: the summary asks for your confirmation."] },
+        { kind: "show", anchor: "alta-confirmar", caption: ["El resumen muestra qué cambia. Tu sí lo aplica.", "The summary shows what changes. Your yes applies it."] },
+        { kind: "do", anchor: "alta-confirmar", caption: ["Confirma: la pista «Casa azul» queda guardada en su ficha.", "Confirm: the “Blue house” cue is saved to his file."] },
       ],
     },
     {
@@ -129,6 +132,7 @@ export const AD2: Module = {
       steps: [
         { kind: "show", anchor: "historial", caption: ["Historial cuenta sus patios: hechos, pagado y años como cliente.", "History counts their yards: done, paid and years as client."] },
         { kind: "show", anchor: "historial-precio", caption: ["Toca un precio y la cuenta sigue el nuevo monto.", "Tap a price and the balance follows the new amount."], contexto: ["Si quedaría bajo cero, el sobrante pasa a adelanto.", "If it would go below zero, the excess becomes an advance."] },
+        { kind: "do", anchor: "historial-precio", caption: ["Toca el precio: se abre su editor para corregirlo.", "Tap the price: its editor opens so you can fix it."] },
         { kind: "ref", topic: "precio" },
       ],
     },
@@ -182,12 +186,14 @@ export const AD2: Module = {
       ],
     },
     {
-      id: "ad2-pausa-tuya", chapter: "riesgo", anchors: ["ficha-pausa"],
+      id: "ad2-pausa-tuya", chapter: "riesgo", anchors: ["ficha-pausa", "ficha-continuar"],
       keys: [["pausa", "pause"], ["agenda", "schedule"]],
       steps: [
         { kind: "go", screen: "/clientes/:aurelio" },
         { kind: "show", anchor: "ficha-pausa", caption: ["Pausa la decides tú: sin cortes ni trabajos hasta Continuar.", "Pause is your call: no cuts or jobs until Continuing."] },
-        { kind: "show", anchor: "ficha-pausa", caption: ["Mientras tanto, su caso queda marcado En espera, sin perdonarse.", "Meanwhile, their case sits marked as Waiting, unforgiven."] },
+        { kind: "do", anchor: "ficha-pausa", caption: ["Toca Pausa: su ficha queda En espera al instante.", "Tap Pause: his file turns to Waiting on the spot."] },
+        { kind: "show", anchor: "ficha-continuar", caption: ["El botón ahora es Continuar: la vuelta es el mismo toque.", "The button is now Continue: coming back is the same tap."] },
+        { kind: "do", anchor: "ficha-continuar", caption: ["Toca Continuar: su agenda vuelve a correr como antes.", "Tap Continue: his schedule runs again just as before."] },
         { kind: "ref", topic: "pausa" },
       ],
     },
@@ -199,6 +205,7 @@ export const AD2: Module = {
         { kind: "show", anchor: "ficha-riesgo", caption: ["Serio no es un botón: el sistema congela por deuda vencida.", "Serious is not a button: the system freezes overdue debt."], contexto: ["Omar debe $240 y cruzó el monto de riesgo, $200.", "Omar owes $240 and crossed the risk amount, $200."] },
         { kind: "show", anchor: "ficha-deuda", caption: ["Su deuda no cambió: lo que cambió es si se le sigue trabajando.", "His debt did not change: what changed is whether he keeps getting service."] },
         { kind: "show", anchor: "ficha-seguir", caption: ["Seguir atendiendo deshiela su agenda si ya acordaste algo.", "Keep serving thaws his schedule if you already agreed on something."] },
+        { kind: "do", anchor: "ficha-seguir", caption: ["Toca Seguir atendiendo: Omar vuelve a la agenda de trabajo.", "Tap Keep serving: Omar returns to the work schedule."] },
         { kind: "ref", topic: "espera" },
       ],
     },

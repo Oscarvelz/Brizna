@@ -96,7 +96,11 @@ test("F-1: cada AnchorRec resuelve en su archivo", () => {
       const literal = [...text.matchAll(/data-spot(?:-alt)?="([^"]+)"/g)]
         .some((m) => (m[1] ?? "").split(/\s+/).includes(rec.value));
       const family = text.includes("data-spot={") && text.includes(`topic="${rec.value}"`);
-      assert.ok(literal || family, `${rec.id}: data-spot «${rec.value}» no aparece en ${rec.file}`);
+      // Emisión por mapa en el mismo archivo (p. ej. VISTA_SPOT en
+      // density-toggle): el literal «valor» vive en el archivo y el
+      // archivo emite data-spot={…} — el ancla resuelve en la fuente.
+      const byMap = text.includes("data-spot={") && text.includes(`"${rec.value}"`);
+      assert.ok(literal || family || byMap, `${rec.id}: data-spot «${rec.value}» no aparece en ${rec.file}`);
     } else if (rec.by === "id") {
       // Literal id="valor", o el id pasado por prop a un componente que lo
       // pinta (p. ej. DayFold recibe id={isToday ? "dia-hoy" : undefined}).

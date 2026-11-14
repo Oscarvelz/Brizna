@@ -22,6 +22,15 @@ export function useDensityScope(): string {
   return useContext(ScopeContext);
 }
 
+/** El spot propio de cada opción: la Presentación ancla Grande y Malla
+ * para DEMOSTRARLAS tocándolas (ley «No solo contar, mostrar», 2026-11-14). */
+const VISTA_SPOT: Record<Density, string> = {
+  full: "vistas-full",
+  compact: "vistas-compact",
+  dense: "vistas-dense",
+  quad: "vistas-quad",
+};
+
 const OPTIONS: { value: Density; key: MsgKey; icon: typeof Rows3 }[] = [
   { value: "full", key: "density.full", icon: StretchHorizontal },
   { value: "compact", key: "density.compact", icon: Rows3 },
@@ -142,6 +151,7 @@ export function DensityToggle() {
           <button
             key={opt.value}
             type="button"
+            data-spot={VISTA_SPOT[opt.value]}
             title={label}
             aria-pressed={on}
             onClick={() => pickDensity(scope, opt.value, screen)}

@@ -171,7 +171,7 @@ export const AD8: Module = {
         { kind: "stage", build: "perdon-grupo" },
         { kind: "go", screen: "/cobros" },
         { kind: "show", anchor: "cobros-grupo", caption: ["Tres vecinos deben $40, $50 y $60.", "Three neighbors owe $40, $50, and $60."] },
-        { kind: "show", anchor: "cobros-grupo", caption: ["Marca sus casillas en Por cobrar, una por tarjeta.", "Check their boxes in To collect, one per card."] },
+        { kind: "do", anchor: "cobros-grupo", caption: ["Marca la primera casilla: la barra de grupo aparece.", "Check the first box: the group bar appears."] },
         { kind: "show", anchor: "cobros-perdonar-elegidos", caption: ["Con elegidos, aparece Perdonar elegidos.", "With selections, Forgive selected appears."] },
         { kind: "ref", topic: "perdonado" },
       ],

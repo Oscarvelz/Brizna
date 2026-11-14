@@ -60,6 +60,8 @@ export const anchorById = (id: string): AnchorRec | undefined => ANCHORS.find((a
 export const ANCHORS: readonly AnchorRec[] = [
   /* ================= B1 · spot — el sistema de la casa ================= */
   { id: "vistas", by: "spot", value: "vistas", file: "components/density-toggle.tsx", serves: "Q1 A-41 (selector Grande/Media/Lista/Malla)", presence: "siempre" },
+  { id: "vistas-malla", by: "spot", value: "vistas-quad", file: "components/density-toggle.tsx", serves: "Q1 q1-vistas (el botón Malla del selector, para demostrarlo tocándolo)", presence: "siempre" },
+  { id: "vistas-grande", by: "spot", value: "vistas-full", file: "components/density-toggle.tsx", serves: "Q1 q1-vistas (el botón Grande del selector, para volver y demostrar el regreso)", presence: "siempre" },
   { id: "parar-dia", by: "spot", value: "parar-dia", file: "routes/index.tsx", serves: "Q3 A-79 (Parar el día / por lluvia)", presence: "siempre" },
   { id: "pasar-pendientes", by: "spot", value: "pasar-pendientes", file: "routes/index.tsx", serves: "Q3 A-77/A-78 (Pasar atrasados / los de hoy)", presence: "estado: hay pendientes de hoy o atrasados (la pareja de botones solo se pinta entonces)" },
   { id: "todos", by: "spot", value: "todos", file: "routes/index.tsx", serves: "Q3 A-71 (cerrar el día entero)", presence: "estado: más de un patio pendiente hoy" },

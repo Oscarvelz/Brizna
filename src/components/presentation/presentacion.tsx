@@ -17,7 +17,7 @@
  * 550ms, censo A-55) se espera de verdad en interactivo y el conductor la
  * mantiene él mismo en automático.
  */
-import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { BookOpen, Check, ChevronLeft, ChevronRight, Gauge, Hand, List, Pause, Play, X } from "lucide-react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -182,6 +182,10 @@ export function Presentacion() {
    * intención de lanzamiento cuando el escenario se enciende. */
   const [stageTick, setStageTick] = useState(0);
   const stagedRef = useRef<Set<string>>(new Set());
+  /** Construcciones de escenario ya sembradas en esta sesión (por
+   * nombre): la siembra previa del conductor y el paso `stage` comparten
+   * este registro para no sembrar dos veces la misma ficción. */
+  const sownBuildsRef = useRef<Set<string>>(new Set());
   const runRef = useRef<RunState | null>(null);
   runRef.current = run;
   const timers = useRef<number[]>([]);
@@ -457,10 +461,35 @@ export function Presentacion() {
    * esperan: el parqueo central ES su lugar verdadero. */
   const [cardShown, setCardShown] = useState(false);
   const placePending = !!(step && "anchor" in step && step.anchor) && !rect;
+  /* LA LECCIÓN NUNCA SE QUEDA EN BLANCO (Oscar, 2026-11-14, de su
+   * teléfono: al avanzar en Q1 la presentación desapareció segundos,
+   * solo el hilo arriba). La invisibilidad de is-unplaced es SOLO del
+   * nacimiento — el primer compás de la corrida, antes de que la
+   * tarjeta haya tenido casa alguna. Una vez nacida en su sitio
+   * (bornRef), un compás pendiente ya NO la apaga: la tarjeta permanece
+   * viva en su último asiento (lastRectRef) mientras el ancla nueva se
+   * mide o muere, y la lección sigue su camino a la vista. Sin esto,
+   * cada ancla muerta costaba su espera entera a oscuras, y tres
+   * seguidas dejaban la pantalla sin lección. */
+  const bornRef = useRef(false);
+  const lastRectRef = useRef<DOMRect | null>(null);
+  /** La última escena ejecutada: la puerta abierta se cierra al cambiar. */
+  const prevSceneRef = useRef(-1);
+  /** La altura real de la tarjeta, medida en cada render: su sitio se
+   * abraza a la pantalla con esa medida (la tarjeta nunca se corta). */
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [cardH, setCardH] = useState(0);
+  useLayoutEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const h = el.offsetHeight;
+    if (h > 0 && Math.abs(h - cardH) > 1) setCardH(h);
+  });
+  useEffect(() => { if (rect) lastRectRef.current = rect; }, [rect]);
   useEffect(() => {
-    if (!run) { setCardShown(false); return; }
-    if (placePending) { setCardShown(false); return; }
-    const raf = requestAnimationFrame(() => setCardShown(true));
+    if (!run) { setCardShown(false); bornRef.current = false; lastRectRef.current = null; prevSceneRef.current = -1; return; }
+    if (placePending && !bornRef.current) { setCardShown(false); return; }
+    const raf = requestAnimationFrame(() => { setCardShown(true); bornRef.current = true; });
     return () => cancelAnimationFrame(raf);
   }, [run, placePending, run?.sceneIdx, run?.stepIdx]);
 
@@ -521,10 +550,72 @@ export function Presentacion() {
     };
 
     const runStep = async () => {
+      /* EL ESCENARIO SE SIEMBRA ENTERO ANTES DE ACTUAR (Oscar,
+       * 2026-11-14, del fallo de Q1 en su teléfono): entrar a un módulo
+       * por una escena intermedia — la reanudación «Sigue donde ibas»,
+       * un aterrizaje de búsqueda, un salto de capítulos — no puede
+       * dejar sin sembrar la ficción que las escenas siguientes enseñan
+       * (sus anclas morirían todas y la lección se quedaría en blanco).
+       * Antes de ejecutar el paso en curso se siembran, en orden, todas
+       * las construcciones declaradas hasta aquí que esta sesión de
+       * escenario aún no tenga — respetando el orden dentro de la
+       * escena: solo los pasos de escenario ANTERIORES al paso actual. */
+      for (let i = 0; i <= r.sceneIdx; i++) {
+        const sceneSteps = r.mod.scenes[i].steps;
+        const upto = i < r.sceneIdx ? sceneSteps.length : r.stepIdx;
+        for (let j = 0; j < upto; j++) {
+          const s = sceneSteps[j];
+          if (s.kind !== "stage" || sownBuildsRef.current.has(s.build)) continue;
+          sownBuildsRef.current.add(s.build);
+          stagedRef.current.add(`${r.mod.id}:${i}:${j}`);
+          const sow = STAGE_SEEDS[s.build];
+          if (!sow) continue;
+          let landed = false;
+          const seeding = sow()
+            .catch(() => undefined)
+            .then(() => { landed = true; });
+          await Promise.race([
+            seeding,
+            new Promise((res) => setTimeout(res, 20_000)),
+          ]);
+          if (cancelled) return;
+          window.dispatchEvent(new Event(STAGE_EVENT));
+          if (!landed) {
+            void seeding.then(() => {
+              if (!cancelled) window.dispatchEvent(new Event(STAGE_EVENT));
+            });
+          }
+        }
+      }
+      /* LA PUERTA SE CIERRA AL CAMBIAR DE ESCENA (2026-11-14, de la ley
+       * «No solo contar, mostrar»): una escena que DEMUESTRA una puerta
+       * (Posponer, Parar el día, Enviar…) la deja abierta, y el diálogo
+       * abierto tapa las anclas de la escena siguiente — en Interactivo
+       * el alumno no podría tocar lo que la lección le pide. Al cambiar
+       * de escena, si el primer ancla vive FUERA del diálogo abierto, el
+       * conductor lo cierra tocando su velo (bz-scrim, la superficie de
+       * descarte de la casa), como haría el usuario con un toque fuera.
+       * Si el ancla vive dentro, la puerta se queda: es su casa. */
+      if (r.sceneIdx !== prevSceneRef.current) {
+        prevSceneRef.current = r.sceneIdx;
+        const scrim = [...document.querySelectorAll<HTMLElement>(".bz-scrim")].find(
+          (s) => s.getClientRects().length > 0 && !s.closest(".pres-root"),
+        );
+        if (scrim) {
+          const target = "anchor" in step && step.anchor ? resolveAnchor(step.anchor) : null;
+          const layer = scrim.parentElement;
+          if (!target || !(layer && layer.contains(target))) {
+            tapEl(scrim);
+            await new Promise((res) => setTimeout(res, 380));
+            if (cancelled) return;
+          }
+        }
+      }
       if (step.kind === "stage") {
         const key = `${r.mod.id}:${r.sceneIdx}:${r.stepIdx}`;
         if (!stagedRef.current.has(key)) {
           stagedRef.current.add(key);
+          sownBuildsRef.current.add(step.build);
           const sow = STAGE_SEEDS[step.build];
           if (sow) {
             // La siembra se ESPERA y luego se anuncia: las pantallas ya
@@ -658,7 +749,13 @@ export function Presentacion() {
           document.addEventListener("pointercancel", onUp, true);
           timers.current.push(window.setTimeout(cleanup, 120_000) as unknown as number);
         } else if (r.playing) {
-          const beat = Math.max(650, capDwell * 0.55) / speed;
+          // EL GESTO ESPERA LA LEYENDA ENTERA (registro de Faro 1.3.278,
+          // aplicado 2026-11-14): antes el gesto automático se ejecutaba
+          // al 55% de la vida del pie — el módulo corría más rápido de lo
+          // anunciado y las leyendas cortas no se alcanzaban a leer. Ahora
+          // el gesto espera la vida COMPLETA del pie y luego asienta, y el
+          // total del motor es exactamente lo que stepMs anuncia.
+          const beat = capDwell / speed;
           later(() => {
             if (cancelled) return;
             // La presión mostrada dura los `ms` REALES del compás (+ un
@@ -714,7 +811,7 @@ export function Presentacion() {
           document.addEventListener("pointercancel", onUp, true);
           timers.current.push(window.setTimeout(cleanup, 120_000) as unknown as number);
         } else if (r.playing) {
-          const beat = Math.max(650, capDwell * 0.55) / speed;
+          const beat = capDwell / speed;
           later(() => {
             if (cancelled) return;
             swipeEl(el, () => {
@@ -738,7 +835,7 @@ export function Presentacion() {
         document.addEventListener("pointerdown", onTap, true);
         timers.current.push(window.setTimeout(() => document.removeEventListener("pointerdown", onTap, true), 120_000) as unknown as number);
       } else if (r.playing) {
-        const beat = Math.max(650, capDwell * 0.55) / speed;
+        const beat = capDwell / speed;
         later(() => {
           if (cancelled) return;
           tapEl(el);
@@ -794,15 +891,22 @@ export function Presentacion() {
   // inferior y el derecho el aire se comía el anillo. Ahora el rectángulo
   // entero se contiene en la pantalla con 4px de margen: donde hay sitio,
   // el aire es 10px; donde no, se comprime el aire — jamás el anillo.
-  const hole = rect ? (() => {
+  const containHole = (r: DOMRect) => {
     const vw = window.innerWidth, vh = window.innerHeight;
-    const left = Math.max(4, rect.left - 10);
-    const top = Math.max(4, rect.top - 10);
-    const right = Math.min(vw - 4, rect.right + 10);
-    const bottom = Math.min(vh - 4, rect.bottom + 10);
+    const left = Math.max(4, r.left - 10);
+    const top = Math.max(4, r.top - 10);
+    const right = Math.min(vw - 4, r.right + 10);
+    const bottom = Math.min(vh - 4, r.bottom + 10);
     return { left, top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
-  })() : null;
-  const cardBelow = hole ? (window.innerHeight - (hole.top + hole.height)) > 240 : true;
+  };
+  const hole = rect ? containHole(rect) : null;
+  /* El asiento de la TARJETA mientras su compás está pendiente: el
+   * último foco medido (el anillo y el velo, en cambio, jamás señalan a
+   * un fantasma: sin rect no hay hueco). Así la tarjeta espera viva en
+   * su casa anterior y luego se desliza a la nueva — nunca al parqueo
+   * del centro a mitad de corrida. */
+  const cardHole = hole ?? (lastRectRef.current ? containHole(lastRectRef.current) : null);
+  const cardBelow = cardHole ? (window.innerHeight - (cardHole.top + cardHole.height)) > 240 : true;
   // La tarjeta se centra sobre el foco y se abraza a los bordes — con SU
   // ancho real en cada ancho de pantalla (370 bajo 48rem; 442 desde ahí;
   // siempre 100vw−20 como techo). La fórmula anterior llevaba el 370 fijo
@@ -810,9 +914,27 @@ export function Presentacion() {
   // tarjeta amanecía 60px fuera de la pantalla (banco, 2026-11-14).
   const vwNow = window.innerWidth;
   const cardW = Math.min(vwNow >= 768 ? 442 : 370, vwNow - 20);
-  const cardStyle: React.CSSProperties = hole ? {
-    left: Math.min(Math.max(10, hole.left + hole.width / 2 - cardW / 2), vwNow - cardW - 10),
-    ...(cardBelow ? { top: hole.top + hole.height + 14 } : { bottom: window.innerHeight - hole.top + 14 }),
+  /* LA TARJETA NUNCA SE CORTA POR ARRIBA NI POR ABAJO (defecto cazado por
+   * Faro en su verificación de la ley 15, 2026-11-14, y presente aquí con
+   * la misma forma): la regla «debajo si quedan más de 240px» suponía una
+   * tarjeta de ~240px, pero una leyenda larga la lleva a 300+ y el borde
+   * inferior se la comía; y anclada por `bottom` sobre un foco bajo, una
+   * tarjeta alta amanecía con el tope fuera de pantalla. La cura es la
+   * suya: la tarjeta mide su altura real (cardH, observada en cada
+   * render) y su sitio deseado se ABRAZA a la pantalla — se comprime
+   * hasta caber, jamás se sale. */
+  const vhNow = window.innerHeight;
+  const desiredTop = cardHole
+    ? cardBelow
+      ? cardHole.top + cardHole.height + 14
+      : cardHole.top - 14 - cardH
+    : 0;
+  const clampedTop = cardH > 0
+    ? Math.min(Math.max(8, desiredTop), Math.max(8, vhNow - cardH - 8))
+    : desiredTop;
+  const cardStyle: React.CSSProperties = cardHole ? {
+    left: Math.min(Math.max(10, cardHole.left + cardHole.width / 2 - cardW / 2), vwNow - cardW - 10),
+    top: clampedTop,
   } : { left: "50%", top: "38%", transform: "translateX(-50%)" };
 
   const jumpToScene = (idx: number) => {
@@ -882,8 +1004,10 @@ export function Presentacion() {
       {shieldRects.map((style, i) => (
         <div key={i} className="pres-shield" style={style} onPointerDown={onShieldTap} />
       ))}
-      {/* el velo difuminado: los mismos cuatro rectángulos que el escudo,
-          con el fondo desenfocado — el hueco, sin parche, queda nítido */}
+      {/* el velo: los mismos cuatro rectángulos que el escudo, con el
+          fondo oscurecido y levemente desaturado, sin desenfoque (ley
+          del velo, corrección de Oscar 2026-11-14) — el hueco, sin
+          parche, queda nítido */}
       {hole && !run.finished ? shieldRects.map((style, i) => (
         <div key={`blur-${i}`} className="pres-blurpatch" style={style} aria-hidden />
       )) : null}
@@ -935,7 +1059,7 @@ export function Presentacion() {
           </div>
         </div>
       ) : caption ? (
-        <div key={shaking} className={`pres-card${shaking ? " is-shake" : ""}`} style={cardStyle} aria-live="polite">
+        <div key={shaking} ref={cardRef} className={`pres-card${shaking ? " is-shake" : ""}`} style={cardStyle} aria-live="polite">
           {contexto ? <div key={`ctx-${run.sceneIdx}-${run.stepIdx}`} className="pres-contexto pres-beat" role="note">{contexto}</div> : null}
           <div className="pres-toprow">
             <p className="pres-kicker">

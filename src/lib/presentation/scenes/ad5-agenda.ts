@@ -119,6 +119,7 @@ export const AD5: Module = {
       keys: [["deshacer pospuesto", "undo postpone"], ["volver", "return"]],
       steps: [
         { kind: "show", anchor: "tarjeta-deshacer-pospuesto", caption: ["Un pospuesto puede volver a su día original.", "A postponed job can return to its original day."], contexto: ["Volver borra la razón; si ese día ya tiene su corte, avisa.", "Returning erases the reason; if that day has its cut, it warns."] },
+        { kind: "do", anchor: "tarjeta-deshacer-pospuesto", caption: ["Toca Volver: la visita regresa a su día original.", "Tap Return: the visit goes back to its original day."] },
         { kind: "ref", topic: "pasar-pendientes" },
       ],
     },
@@ -145,6 +146,7 @@ export const AD5: Module = {
       steps: [
         { kind: "show", anchor: "agenda-acumulado", caption: ["Trabajo acumulado junta el atraso de todo el libro.", "Accumulated work gathers lateness from the whole book."] },
         { kind: "show", anchor: "agenda-pasar-atrasados", caption: ["Pasar atrasados lo mueve todo a la fecha elegida.", "Move late shifts everything to the chosen date."], contexto: ["No es solo esta vista: es cada patio tarde que debes.", "Not just this view: it is every late yard you owe."] },
+        { kind: "do", anchor: "agenda-pasar-atrasados", caption: ["Toca Pasar atrasados: su diálogo pide la fecha elegida.", "Tap Move late: its dialog asks for the chosen date."] },
         { kind: "ref", topic: "pasar-pendientes" },
       ],
     },

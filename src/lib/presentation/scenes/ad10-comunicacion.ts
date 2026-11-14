@@ -125,7 +125,7 @@ export const AD10: Module = {
       id: "ad10-listas", chapter: "listos", anchors: ["compositor-listas"],
       keys: [["mensajes listos", "ready messages"], ["editar", "edit"]],
       steps: [
-        { kind: "show", anchor: "compositor-listas", caption: ["Mensajes listos: un toque y el texto entero cae en la caja.", "Ready messages: one tap and the whole text lands in the box."] },
+        { kind: "do", anchor: "compositor-listas", caption: ["Toca un mensaje listo: su texto entero cae en la caja.", "Tap a ready message: its whole text lands in the box."] },
         { kind: "show", anchor: "compositor-listas", caption: ["Edítalos a tu manera: hasta doce, con tus palabras de siempre.", "Edit them your way: up to twelve, in your usual words."] },
         { kind: "ref", topic: "mensajes" },
       ],
@@ -135,6 +135,7 @@ export const AD10: Module = {
       keys: [["nota", "note"], ["bloc", "notepad"]],
       steps: [
         { kind: "show", anchor: "compositor-nota", caption: ["Traer una nota pega lo del Bloc sin salir del mensaje.", "Bring a note pastes from the Pad without leaving the message."] },
+        { kind: "do", anchor: "compositor-nota", caption: ["Toca Traer una nota: el selector del Bloc se abre.", "Tap Bring a note: the Pad's picker opens."] },
         { kind: "show", anchor: "mensaje-texto", caption: ["La nota cae bajo tu texto: un solo mensaje, dos fuentes.", "The note lands below your text: one message, two sources."] },
         { kind: "ref", topic: "mensajes" },
       ],

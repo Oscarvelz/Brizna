@@ -100,13 +100,18 @@ export const Q3: Module = {
       steps: [
         { kind: "go", screen: "/" },
         { kind: "show", anchor: "parar-dia", caption: ["¿Lluvia? Parar el día pasa los patios y prepara los avisos.", "Rain? Stopping the day moves the yards and readies notices."], contexto: ["Se guarda la hora exacta y todo pasa al siguiente día abierto.", "The exact time is saved and everything moves to the next open day."] },
+        { kind: "do", anchor: "parar-dia", caption: ["Toca Parar el día: la puerta muestra adónde pasa todo.", "Tap Stop the day: the door shows where everything moves."] },
         { kind: "ref", topic: "parar-dia" },
       ],
     },
     {
       id: "q3-pasar", chapter: "mover", anchors: ["pasar-pendientes"],
       keys: [["pasar atrasados", "move late"], ["pendientes", "pending"]],
-      steps: [{ kind: "show", anchor: "pasar-pendientes", caption: ["Pasar pendientes mueve el día sin pararlo: día destino y razón.", "Move pending moves the day without stopping it: target day and reason."] }, { kind: "ref", topic: "pasar-pendientes" }],
+      steps: [
+        { kind: "show", anchor: "pasar-pendientes", caption: ["Pasar pendientes mueve el día sin pararlo: día destino y razón.", "Move pending moves the day without stopping it: target day and reason."] },
+        { kind: "do", anchor: "pasar-pendientes", caption: ["Toca Pasar pendientes: eliges día destino y razón en su hoja.", "Tap Move pending: you pick the target day and reason on its sheet."] },
+        { kind: "ref", topic: "pasar-pendientes" },
+      ],
     },
     {
       id: "q3-todos", chapter: "mover", anchors: ["todos"],

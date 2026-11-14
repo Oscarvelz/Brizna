@@ -61,6 +61,8 @@ export const AD14: Module = {
         { kind: "stage", build: "ruta-ajustes" },
         { kind: "go", screen: "/ajustes" },
         { kind: "show", anchor: "ajustes-buscar", caption: ["Buscar ajuste filtra los pliegues por palabras clave.", "Search settings filters the folds by keywords."], contexto: ["«Desplegar todo» abre todos a la vez; en pantalla grande nacen abiertos.", "“Expand all” opens them all; on big screens they start open."] },
+        { kind: "do", anchor: "ajustes-buscar", caption: ["Toca Buscar ajuste: el campo se abre arriba.", "Tap Search settings: the field opens at the top."] },
+        { kind: "type", anchor: "ajustes-buscar", text: ["copia", "backup"], caption: ["Escribe «copia»: solo quedan los pliegues que la nombran.", "Type “backup”: only the folds that name it stay."] },
         { kind: "ref", topic: "busca" },
       ],
     },

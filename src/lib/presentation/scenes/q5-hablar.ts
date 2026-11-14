@@ -48,7 +48,10 @@ export const Q5: Module = {
     {
       id: "q5-llamada", chapter: "botones", anchors: ["tarjeta-llamada"],
       keys: [["llamada", "call"], ["confirmar", "confirm"], ["teléfono", "phone"]],
-      steps: [{ kind: "show", anchor: "tarjeta-llamada", caption: ["Llamada, en azul: antes de marcar, pregunta por su nombre.", "Call, in blue: before dialing, it asks for their name."], contexto: ["Cada salto confirma con el nombre: así no contactas a otro cliente.", "Every jump confirms the name first: you never contact the wrong client."] }],
+      steps: [
+        { kind: "show", anchor: "tarjeta-llamada", caption: ["Llamada, en azul: antes de marcar, pregunta por su nombre.", "Call, in blue: before dialing, it asks for their name."], contexto: ["Cada salto confirma con el nombre: así no contactas a otro cliente.", "Every jump confirms the name first: you never contact the wrong client."] },
+        { kind: "do", anchor: "tarjeta-llamada", caption: ["Toca Llamada: la puerta pregunta por Don Aurelio antes de marcar.", "Tap Call: the door asks for Don Aurelio before dialing."] },
+      ],
     },
     {
       id: "q5-mapa", chapter: "mapa", anchors: ["tarjeta-mapa"],
@@ -75,9 +78,14 @@ export const Q5: Module = {
       steps: [{ kind: "type", anchor: "mensaje-texto", text: ["Hola, Don Aurelio. Hoy llego a las 10.", "Hello, Don Aurelio. I'll arrive at 10 today."], caption: ["Escribe como hablas: la app ordena el texto por ti.", "Write as you speak: the app tidies the text for you."] }, { kind: "ref", topic: "mensajes" }],
     },
     {
-      id: "q5-revisar", chapter: "escribir", anchors: ["mensaje-enviar"],
+      id: "q5-revisar", chapter: "escribir", anchors: ["mensaje-enviar", "mensaje-confirmar"],
       keys: [["enviar", "send"], ["revisar", "review"]],
-      steps: [{ kind: "show", anchor: "mensaje-enviar", caption: ["Antes de enviar, siempre revisas: la app nunca envía sola.", "Before sending, always review: the app never sends on its own."], contexto: ["Enviar pregunta una vez más a quién va: esa puerta evita el cliente equivocado.", "Sending asks once more who it goes to: that door avoids the wrong client."] }, { kind: "ref", topic: "mensajes" }],
+      steps: [
+        { kind: "show", anchor: "mensaje-enviar", caption: ["Antes de enviar, siempre revisas: la app nunca envía sola.", "Before sending, always review: the app never sends on its own."], contexto: ["Enviar pregunta una vez más a quién va: esa puerta evita el cliente equivocado.", "Sending asks once more who it goes to: that door avoids the wrong client."] },
+        { kind: "do", anchor: "mensaje-enviar", caption: ["Toca Enviar: la puerta de revisión se abre antes de salir.", "Tap Send: the review door opens before anything leaves."] },
+        { kind: "show", anchor: "mensaje-confirmar", caption: ["Aquí relees el mensaje y a quién va. Sin tu sí, nada sale.", "Here you re-read the message and its recipient. No yes, nothing leaves."] },
+        { kind: "ref", topic: "mensajes" },
+      ],
     },
     {
       id: "q5-cierre", chapter: "escribir", anchors: ["contact-row"],
