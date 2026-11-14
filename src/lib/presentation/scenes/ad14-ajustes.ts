@@ -61,6 +61,7 @@ export const AD14: Module = {
         { kind: "stage", build: "ruta-ajustes" },
         { kind: "go", screen: "/ajustes" },
         { kind: "show", anchor: "ajustes-buscar", caption: ["Buscar ajuste filtra los pliegues por palabras clave.", "Search settings filters the folds by keywords."], contexto: ["«Desplegar todo» abre todos a la vez; en pantalla grande nacen abiertos.", "“Expand all” opens them all; on big screens they start open."] },
+        { kind: "ref", topic: "busca" },
       ],
     },
     {
@@ -68,6 +69,7 @@ export const AD14: Module = {
       keys: [["pista", "hint"], ["manual", "manual"]],
       steps: [
         { kind: "show", anchor: "pista-boton", caption: ["Cada pliegue lleva su (?) con su tema exacto del Manual.", "Each fold carries its (?) with its exact Manual topic."] },
+        { kind: "ref", topic: "manual-uso" },
       ],
     },
     {
@@ -82,6 +84,7 @@ export const AD14: Module = {
       keys: [["nombre del negocio", "business name"], ["nombre", "name"]],
       steps: [
         { kind: "show", anchor: "aj-nombre", caption: ["Nombre del negocio: vacío vuelve al nombre de fábrica.", "Business name: leaving it empty restores the factory name."], contexto: ["El nombre también se toca arriba, en cualquier pantalla.", "The name is also tappable at the top, on any screen."] },
+        { kind: "ref", topic: "nombre-negocio" },
       ],
     },
     {
@@ -89,7 +92,8 @@ export const AD14: Module = {
       keys: [["tema", "theme"], ["tema de día", "day theme"], ["noche", "night"]],
       steps: [
         { kind: "show", anchor: "aj-pantalla", caption: ["Tema: Día, Noche o Automático, con paletas para cada modo.", "Theme: Day, Night, or Automatic, with palettes for each."], contexto: ["Automático: día desde las seis y media; noche, seis y media.", "Automatic: day from six-thirty; night at six-thirty."] },
-        { kind: "show", anchor: "aj-pantalla", caption: ["Ocho paletas de día y seis de noche; AMOLED manda de noche.", "Eight day palettes and six night ones; AMOLED leads at night."] },
+        { kind: "show", anchor: "aj-pantalla", caption: ["Cada paleta repinta la app entera; de noche, AMOLED es el negro profundo.", "Each palette repaints the whole app; at night, AMOLED is the deep black."] },
+        { kind: "ref", topic: "tema" },
       ],
     },
     {
@@ -97,6 +101,7 @@ export const AD14: Module = {
       keys: [["idioma", "language"], ["español", "spanish"], ["english", "english"]],
       steps: [
         { kind: "show", anchor: "aj-pantalla", caption: ["Idioma: Español o English, aplicado al instante.", "Language: Español or English, applied instantly."], contexto: ["Español es el idioma por defecto; la puerta de entrada tiene su propio selector.", "Spanish is the default language; the sign-in door has its own selector."] },
+        { kind: "ref", topic: "tema" },
       ],
     },
     {
@@ -104,6 +109,7 @@ export const AD14: Module = {
       keys: [["tableta", "tablet"], ["vista", "view"]],
       steps: [
         { kind: "show", anchor: "aj-tableta", caption: ["Modo tableta: interruptor manual sobre la detección automática.", "Tablet mode: a manual switch over automatic detection."], contexto: ["Nace encendido; de aquí salen la partida y la flotante.", "It starts on; the split and the floater come from here."] },
+        { kind: "ref", topic: "tableta" },
       ],
       verify: "Censo F V-2: el texto del pliegue habla de 2, 3 o 4 ventanas; el código declara 1 o 2. La escena no afirma el número.",
     },
@@ -112,6 +118,7 @@ export const AD14: Module = {
       keys: [["horas de trabajo", "work hours"], ["horas", "hours"]],
       steps: [
         { kind: "show", anchor: "aj-horas", caption: ["Horas de trabajo: entrada y salida de tu jornada.", "Work hours: when your workday starts and ends."], contexto: ["Alimentan la pregunta por ayer y tu precio por hora.", "They feed the yesterday question and your hourly rate."] },
+        { kind: "ref", topic: "horas" },
       ],
     },
     {
@@ -127,6 +134,7 @@ export const AD14: Module = {
       keys: [["espera", "waiting"], ["alto riesgo", "high risk"], ["límites", "limits"]],
       steps: [
         { kind: "show", anchor: "aj-espera", caption: ["Espera y riesgo: cuatro umbrales con su valor de partida.", "Waiting and risk: four thresholds, each with its starting value."], contexto: ["En espera, 45 días; riesgo: 21 días, $200 o 3 cortes.", "Waiting, 45 days; risk: 21 days, $200, or 3 cuts."] },
+        { kind: "ref", topic: "espera" },
       ],
     },
     {
@@ -134,6 +142,7 @@ export const AD14: Module = {
       keys: [["límites", "limits"], ["visitas", "visits"]],
       steps: [
         { kind: "show", anchor: "aj-espera", caption: ["Cambiar un umbral reclasifica a cada cliente en el acto.", "Changing a threshold reclassifies every client at once."], contexto: ["Y un caso en riesgo deja de recibir visitas nuevas.", "And a high-risk case stops receiving new visits."] },
+        { kind: "ref", topic: "espera" },
       ],
     },
     {
@@ -141,6 +150,7 @@ export const AD14: Module = {
       keys: [["recordatorios", "reminders"], ["avisos", "alerts"]],
       steps: [
         { kind: "show", anchor: "aj-recordatorios", caption: ["Recordatorios: avisos dentro de la app al abrirla.", "Reminders: alerts inside the app when you open it."], contexto: ["Confirman el día anterior y avisan antes de la llegada.", "They confirm yesterday and warn before arrival time."] },
+        { kind: "ref", topic: "recordatorios" },
       ],
     },
     {
@@ -148,6 +158,7 @@ export const AD14: Module = {
       keys: [["recordatorios", "reminders"], ["llegada", "arrival"]],
       steps: [
         { kind: "show", anchor: "aj-recordatorios", caption: ["Avisar antes de llegar: quince, treinta, una hora o dos.", "Warn before arrival: fifteen, thirty, one hour, or two."], contexto: ["Por defecto avisa una hora antes; confirmar ayer nace encendido.", "By default it warns one hour ahead; confirming yesterday starts on."] },
+        { kind: "ref", topic: "recordatorios" },
       ],
     },
     {
@@ -155,6 +166,7 @@ export const AD14: Module = {
       keys: [["notificaciones", "notifications"], ["avisos", "alerts"]],
       steps: [
         { kind: "show", anchor: "aj-notificaciones", caption: ["Notificaciones: el pliegue de avisos que solo existe en Android.", "Notifications: the alerts fold that only exists on Android."], contexto: ["Su lección entera vive en «Fuera de la app», sin tocar nada.", "Its whole lesson lives in “Outside the app”, touching nothing."] },
+        { kind: "ref", topic: "notificaciones" },
       ],
     },
     {
@@ -162,6 +174,7 @@ export const AD14: Module = {
       keys: [["temporada", "season"], ["ritmo", "pace"]],
       steps: [
         { kind: "show", anchor: "aj-temporada", caption: ["Temporada: un ritmo más lento para todos, cada año.", "Season: a slower pace for everyone, every year."], contexto: ["La temporada de un cliente manda sobre la general.", "A client's own season overrules the general one."] },
+        { kind: "ref", topic: "temporada" },
       ],
     },
     {
@@ -169,6 +182,7 @@ export const AD14: Module = {
       keys: [["horizonte", "horizon"], ["temporada", "season"], ["agenda", "schedule"]],
       steps: [
         { kind: "show", anchor: "aj-temporada", caption: ["El horizonte vive aquí dentro: hasta dónde llega la Agenda.", "The horizon lives in here: how far the Schedule reaches."], contexto: ["Guardar regenera la Agenda; lo movido a mano se queda.", "Saving regenerates the Schedule; hand-moved yards stay put."] },
+        { kind: "ref", topic: "frecuencia" },
       ],
     },
     {
@@ -177,6 +191,7 @@ export const AD14: Module = {
       steps: [
         { kind: "show", anchor: "aj-vacaciones", caption: ["Vacaciones: al activarlas, los patios del rango se reacomodan.", "Vacation: activating it rearranges the yards in range."], contexto: ["Quitarlas devuelve la Agenda a su sitio; su lección: Temporadas.", "Removing it puts the Schedule back; its lesson: Seasons."] },
         { kind: "show", anchor: "aj-vacaciones", caption: ["El aviso final cuenta cuántos patios se movieron, y cuántos días.", "The final notice counts how many yards moved, and days."] },
+        { kind: "ref", topic: "vacaciones" },
       ],
     },
     {
@@ -184,7 +199,8 @@ export const AD14: Module = {
       keys: [["exportar", "export"], ["imprimir", "print"]],
       steps: [
         { kind: "show", anchor: "aj-exportar", caption: ["Exportar e imprimir: seis atajos abren la hoja ya configurada.", "Export and print: six shortcuts open the sheet already set."], contexto: ["Tu última elección se recuerda en este aparato.", "Your last choice is remembered on this device."] },
-        { kind: "show", anchor: "aj-exportar", caption: ["La tarjeta dice tu última vez: preset y periodo usados.", "The card names your last time: preset and period used."] },
+        { kind: "show", anchor: "aj-exportar", caption: ["Repetir una exportación parte de tu última elección, sin rearmarla.", "Repeating an export starts from your last choice, no rebuilding it."] },
+        { kind: "ref", topic: "exportar" },
       ],
     },
     {
@@ -192,20 +208,23 @@ export const AD14: Module = {
       keys: [["ejemplo", "sample"], ["datos de ejemplo", "sample data"]],
       steps: [
         { kind: "show", anchor: "aj-ejemplo", caption: ["Datos de ejemplo: la vitrina de catorce clientes ficticios.", "Sample data: the showcase of fourteen fictional clients."], contexto: ["Cargarla y quitarla, sin tocar lo real: lección de Datos.", "Loading or removing it never touches real data: the Data lesson."] },
+        { kind: "ref", topic: "ejemplo" },
       ],
     },
     {
       id: "ad14-copia", chapter: "salidas", anchors: ["aj-copia"],
       keys: [["copia de seguridad", "backup"], ["copia", "copy"]],
       steps: [
-        { kind: "show", anchor: "aj-copia", caption: ["Copia de seguridad: estado, peso y tus copias guardadas.", "Backup: status, weight, and your saved copies."], contexto: ["Qué viaja y qué nunca viaja: lección entera de Datos.", "What travels and what never does: the whole Data lesson."] },
+        { kind: "show", anchor: "aj-copia", caption: ["Aquí compruebas que tu copia esté viva y al día.", "Here you check that your backup is alive and current."], contexto: ["Qué viaja y qué nunca viaja: lección entera de Datos.", "What travels and what never does: the whole Data lesson."] },
+        { kind: "ref", topic: "copia" },
       ],
     },
     {
       id: "ad14-manual", chapter: "salidas", anchors: ["aj-manual"],
       keys: [["manual", "manual"], ["ayuda", "help"]],
       steps: [
-        { kind: "show", anchor: "aj-manual", caption: ["El Manual cuenta sus capítulos y temas desde sus datos.", "The Manual counts its chapters and topics from its data."] },
+        { kind: "show", anchor: "aj-manual", caption: ["La puerta del Manual: cada (?) de la app abre aquí su tema exacto.", "The Manual's door: every (?) in the app opens its exact topic here."] },
+        { kind: "ref", topic: "manual-uso" },
       ],
     },
     {
@@ -214,6 +233,7 @@ export const AD14: Module = {
       steps: [
         { kind: "ask", anchor: "aj-rapidos", caption: ["¿Tres botones escondidos dentro del Manual? Ajustes rápidos.", "Three hidden buttons inside the Manual? Quick settings."] },
         { kind: "show", anchor: "aj-rapidos", caption: ["Semana normal, Cobro corto, Invierno lento: un toque pisa.", "Normal week, Short billing, Slow winter: one tap overwrites all."], contexto: ["Pisan horas, umbrales o temporada enteros, sin abrir sus pliegues.", "They overwrite whole hours, thresholds, or season, skipping their folds."] },
+        { kind: "ref", topic: "ajustes-usuales" },
       ],
     },
     {
@@ -222,6 +242,7 @@ export const AD14: Module = {
       steps: [
         { kind: "show", anchor: "aj-nube", caption: ["Nube: el estado de tu copia en palabras, sin adivinar.", "Cloud: your copy's status in words, no guessing."], contexto: ["Sesión terminada no es datos perdidos: «Entrar de nuevo» basta.", "Signed out is not lost data: “Sign in again” is enough."] },
         { kind: "show", anchor: "aj-nube", caption: ["«Sincronizar ahora» fuerza la pasada sin esperar a la siguiente.", "“Sync now” forces the pass without waiting for the next."] },
+        { kind: "ref", topic: "nube" },
       ],
     },
     {
@@ -229,14 +250,16 @@ export const AD14: Module = {
       keys: [["huella", "fingerprint"], ["huella", "fingerprint"]],
       steps: [
         { kind: "show", anchor: "aj-huella", caption: ["Huella: desbloqueo en este aparato, también sin internet.", "Fingerprint: unlocking on this device, even offline."], contexto: ["Su gracia se elige aquí; su lección entera: Fuera de la app.", "Its grace period is chosen here; its lesson: Outside the app."] },
-        { kind: "show", anchor: "aj-huella", caption: ["Al pie del pliegue, la cuenta con la que sincronizas.", "At the fold's foot, the account you sync with."] },
+        { kind: "show", anchor: "aj-huella", caption: ["Esa línea confirma la cuenta dueña de tu libro al sincronizar.", "That line confirms the account your book syncs to."] },
+        { kind: "ref", topic: "huella" },
       ],
     },
     {
       id: "ad14-salir", chapter: "cuenta", anchors: ["aj-salir"],
       keys: [["salir", "sign out"], ["cuenta", "account"]],
       steps: [
-        { kind: "show", anchor: "aj-salir", caption: ["Salir no es un pliegue: es la sección suelta final.", "Sign out is not a fold: it is the final loose section."], contexto: ["La cuenta y los clientes quedan en nube y aparato.", "The account and clients stay in the cloud and on this device."] },
+        { kind: "show", anchor: "aj-salir", caption: ["Salir solo cierra la sesión aquí: tu cuenta y tus clientes quedan guardados.", "Signing out only closes the session here: your account and clients stay saved."], contexto: ["La cuenta y los clientes quedan en nube y aparato.", "The account and clients stay in the cloud and on this device."] },
+        { kind: "ref", topic: "nube" },
       ],
     },
     {

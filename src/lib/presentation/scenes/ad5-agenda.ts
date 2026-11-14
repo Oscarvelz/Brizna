@@ -56,6 +56,7 @@ export const AD5: Module = {
         { kind: "go", screen: "/agenda" },
         { kind: "show", anchor: "agenda-periodos", caption: ["La Agenda es el futuro del negocio, día por día.", "The Schedule is the business's future, day by day."] },
         { kind: "show", anchor: "agenda-periodos", caption: ["Semana, Mes o Todo acotan cuánto futuro miras.", "Week, Month or All limits how much future you see."] },
+        { kind: "ref", topic: "agenda" },
       ],
     },
     {
@@ -64,6 +65,7 @@ export const AD5: Module = {
       steps: [
         { kind: "show", anchor: "agenda", caption: ["Cada visita nace sola, de la frecuencia de su cliente.", "Each visit is born by itself, from its client's frequency."], contexto: ["La frecuencia se ancla al día de inicio: ese día manda el ritmo.", "Frequency anchors to the start date: that day sets the pace."] },
         { kind: "show", anchor: "agenda", caption: ["Semanal cae cada siete días; quincenal, cada catorce.", "Weekly lands every seven days; biweekly, every fourteen."] },
+        { kind: "ref", topic: "frecuencia" },
       ],
     },
     {
@@ -72,6 +74,7 @@ export const AD5: Module = {
       steps: [
         { kind: "show", anchor: "agenda-conteo", caption: ["La siembra llega hasta el horizonte: meses por delante.", "The planting reaches the horizon: months ahead."], contexto: ["El horizonte vive en Ajustes, junto a Temporada; doce meses por defecto.", "The horizon lives in Settings, beside Season; twelve months by default."] },
         { kind: "show", anchor: "agenda-conteo", caption: ["Esta línea suma trabajos y dinero de la vista.", "This line adds up the view's jobs and money."], contexto: ["Todo más Pendiente vale si se hace todo: no es dinero cobrado.", "All plus Pending only counts if everything gets done: not money collected."] },
+        { kind: "ref", topic: "agenda-todo" },
       ],
     },
     {
@@ -80,6 +83,7 @@ export const AD5: Module = {
       steps: [
         { kind: "show", anchor: "tarjeta-estado", caption: ["Al cambiar un plan, la siembra se rehace sola.", "When a plan changes, the planting remakes itself."], contexto: ["Lo sembrado que ya no encaja se poda; nada viejo queda duplicado.", "Planted work that no longer fits is pruned; nothing old duplicates."] },
         { kind: "show", anchor: "tarjeta-estado", caption: ["Pero lo movido a mano queda fijo donde lo dejaste.", "But hand-moved work stays fixed where you left it."] },
+        { kind: "ref", topic: "frecuencia" },
       ],
     },
     {
@@ -88,6 +92,7 @@ export const AD5: Module = {
       steps: [
         { kind: "ask", anchor: "tarjeta-estado", caption: ["¿Dónde se guarda el estado Tarde de Carmen?", "Where is Carmen's Late state stored?"] },
         { kind: "show", anchor: "tarjeta-estado", caption: ["En ningún sitio: Tarde se calcula cada día.", "Nowhere: Late is computed every day."], contexto: ["Pendiente con fecha pasada es Tarde; al hacerlo o moverlo, deja de serlo.", "Pending with a past date is Late; doing or moving it ends that."] },
+        { kind: "ref", topic: "agenda" },
       ],
     },
     {
@@ -106,6 +111,7 @@ export const AD5: Module = {
       steps: [
         { kind: "show", anchor: "agenda", caption: ["Realizado guarda el historial del período, ya hecho.", "Done keeps the period's history, already finished."] },
         { kind: "show", anchor: "agenda", caption: ["Cancelado nace dentro de Posponer, con su razón.", "Cancelled is born inside Postpone, with its reason."], contexto: ["No hay botón de cancelar en la tarjeta: nunca lo hubo.", "There is no cancel button on the card: there never was."] },
+        { kind: "ref", topic: "agenda" },
       ],
     },
     {
@@ -113,6 +119,7 @@ export const AD5: Module = {
       keys: [["deshacer pospuesto", "undo postpone"], ["volver", "return"]],
       steps: [
         { kind: "show", anchor: "tarjeta-deshacer-pospuesto", caption: ["Un pospuesto puede volver a su día original.", "A postponed job can return to its original day."], contexto: ["Volver borra la razón; si ese día ya tiene su corte, avisa.", "Returning erases the reason; if that day has its cut, it warns."] },
+        { kind: "ref", topic: "pasar-pendientes" },
       ],
     },
     {
@@ -121,6 +128,7 @@ export const AD5: Module = {
       steps: [
         { kind: "do", anchor: "agenda-mover-dia", caption: ["Mover pasa todos los patios de un día.", "Move shifts every yard of one day."] },
         { kind: "show", anchor: "agenda-mover-fecha", caption: ["Eliges la fecha destino y todo el día viaja.", "You pick the target date and the whole day travels."], contexto: ["Mover es el día entero; Posponer, un solo patio desde su tarjeta.", "Move is the whole day; Postpone, one yard from its card."] },
+        { kind: "ref", topic: "pasar-pendientes" },
       ],
     },
     {
@@ -137,6 +145,7 @@ export const AD5: Module = {
       steps: [
         { kind: "show", anchor: "agenda-acumulado", caption: ["Trabajo acumulado junta el atraso de todo el libro.", "Accumulated work gathers lateness from the whole book."] },
         { kind: "show", anchor: "agenda-pasar-atrasados", caption: ["Pasar atrasados lo mueve todo a la fecha elegida.", "Move late shifts everything to the chosen date."], contexto: ["No es solo esta vista: es cada patio tarde que debes.", "Not just this view: it is every late yard you owe."] },
+        { kind: "ref", topic: "pasar-pendientes" },
       ],
     },
     {
@@ -144,6 +153,7 @@ export const AD5: Module = {
       keys: [["informe", "report"], ["no se trabajó", "not worked"]],
       steps: [
         { kind: "show", anchor: "agenda-informe-dia", caption: ["Bajo cada día, el informe dice por qué no se trabajó.", "Below each day, the report says why it was not worked."], contexto: ["Agrupa por razón y nombra a los clientes: Lluvia, Ana, Luis.", "It groups by reason and names the clients: Rain, Ana, Luis."] },
+        { kind: "ref", topic: "parar-dia" },
       ],
     },
     {
@@ -153,6 +163,7 @@ export const AD5: Module = {
         { kind: "show", anchor: "agenda-dias-libres", caption: ["Días libres marca fechas que el negocio descansa.", "Off days marks dates the business rests."] },
         { kind: "do", anchor: "agenda-dia-libre-chip", caption: ["Toca un día de esta semana para cambiarlo.", "Tap a day this week to change it."] },
         { kind: "show", anchor: "agenda-libre-confirmar", caption: ["Al cerrar un día, sus patios pasan solos al siguiente abierto.", "Closing a day moves its yards by itself to the next open day."], contexto: ["Al reabrirlo, los ya movidos se quedan donde están.", "Reopening it leaves already-moved yards where they are."] },
+        { kind: "ref", topic: "dias-libres" },
       ],
     },
     {
@@ -178,6 +189,7 @@ export const AD5: Module = {
         { kind: "do", anchor: "agenda-calendario", caption: ["Calendario cambia la lista por la rejilla del mes.", "Calendar swaps the list for the month grid."] },
         { kind: "show", anchor: "agenda-calendario", caption: ["Cada celda cuenta los patios de ese día.", "Each cell counts that day's yards."], contexto: ["Un toque elige el día; la lista de abajo pasa a ser ese día.", "One tap picks the day; the list below becomes that day."] },
         { kind: "show", anchor: "agenda-calendario", caption: ["El conteo se tiñe: rojo si pasó, verde si se hizo.", "The count is tinted: red if past, green if done."] },
+        { kind: "ref", topic: "agenda" },
       ],
     },
     {

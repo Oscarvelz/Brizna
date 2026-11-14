@@ -51,6 +51,7 @@ export const AD12: Module = {
         { kind: "go", screen: "/" },
         { kind: "show", anchor: "clima-pastilla", caption: ["La pastilla de la cabecera trae el cielo a cada pantalla.", "The header chip brings the sky to every screen."] },
         { kind: "show", anchor: "clima-pastilla", caption: ["Temperatura en °C y °F; un toque abre Clima entero.", "Temperature in °C and °F; one tap opens full Weather."] },
+        { kind: "ref", topic: "clima" },
       ],
     },
     {
@@ -61,6 +62,7 @@ export const AD12: Module = {
         { kind: "show", anchor: "clima-lugar", caption: ["El lugar manda en todo el clima; de fábrica, Miami.", "The place rules all weather; Miami by default."] },
         { kind: "show", anchor: "clima-lugar", caption: ["«Mi ubicación» pide el GPS solo cuando lo tocas.", "“My location” asks for GPS only when you tap it."], contexto: ["Nunca al abrir: tu lugar se busca por código postal o ciudad.", "Never on opening: your place is found by ZIP code or city."] },
         { kind: "show", anchor: "clima-lugar", caption: ["Cambiar el lugar avisa a toda la app: chip, cielo y Clima.", "Changing the place tells the whole app: chip, sky, and Weather."] },
+        { kind: "ref", topic: "clima" },
       ],
     },
     {
@@ -70,7 +72,8 @@ export const AD12: Module = {
       steps: [
         { kind: "ask", anchor: "clima", caption: ["¿Cortar, esperar o alerta? El héroe lo decide por ti.", "Mow, wait, or alert? The hero decides for you."] },
         { kind: "show", anchor: "clima", caption: ["Tormenta cercana es Alerta; pasto mojado, Esperar.", "A nearby storm is Alert; wet grass, Wait."], contexto: ["Lluvia cerca dice corta lo urgente; viento fuerte, el recorte vuela.", "Rain nearby says cut the urgent; strong wind, clippings fly."] },
-        { kind: "show", anchor: "clima", caption: ["Junto al veredicto: temperatura, sensación y máxima y mínima.", "Beside the verdict: temperature, feels-like, and high and low."] },
+        { kind: "show", anchor: "clima", caption: ["Esas cifras respaldan el veredicto: con ellas juzgas el llamado por ti mismo.", "Those figures back the verdict: with them you judge the call yourself."] },
+        { kind: "ref", topic: "clima" },
       ],
     },
     {
@@ -80,23 +83,26 @@ export const AD12: Module = {
         { kind: "show", anchor: "clima-plan", caption: ["El Plan de hoy cruza la ventana seca con tus patios.", "Today's plan crosses the dry window with your yards."] },
         { kind: "show", anchor: "clima-plan", caption: ["Cuenta unos 45 minutos por patio: caben todos, unos, o lo urgente.", "It counts about 45 minutes per yard: all fit, some, or the urgent."], contexto: ["La lluvia tras el anochecer no cambia el día: se corta ahí.", "Rain after nightfall does not change the day: the window ends there."] },
         { kind: "show", anchor: "clima-plan", caption: ["Su consejo cambia con el cielo: tormenta, pasto mojado, viento, calor.", "Its advice changes with the sky: storm, wet grass, wind, heat."] },
+        { kind: "ref", topic: "clima" },
       ],
     },
     {
       id: "ad12-hechos", chapter: "instrumentos", anchors: ["clima-hechos"],
       keys: [["lluvia", "rain"], ["viento", "wind"], ["humedad", "humidity"]],
       steps: [
-        { kind: "show", anchor: "clima-hechos", caption: ["Tres instrumentos dibujados: la gota, la manga y el anillo.", "Three drawn instruments: the drop, the windsock, and the ring."] },
+        { kind: "show", anchor: "clima-hechos", caption: ["Tres instrumentos: la gota, lluvia de la hora; la manga, viento; el anillo, humedad.", "Three gauges: the drop, this hour's rain; the windsock, wind; the ring, humidity."] },
         { kind: "show", anchor: "clima-hechos", caption: ["La manga es el dato: colgando, calma; horizontal, 35 o más.", "The windsock is the data: hanging, calm; horizontal, 35 or more."] },
         { kind: "show", anchor: "clima-hechos", caption: ["La gota se llena con la lluvia de la próxima hora.", "The drop fills with the rain of the next hour."] },
+        { kind: "ref", topic: "clima" },
       ],
     },
     {
       id: "ad12-horas", chapter: "instrumentos", anchors: ["clima-horas"],
       keys: [["próximas horas", "next hours"], ["lluvia", "rain"]],
       steps: [
-        { kind: "show", anchor: "clima-horas", caption: ["Las próximas 12 horas, en una frase llana y una tira.", "The next 12 hours, in one plain sentence and a strip."] },
+        { kind: "show", anchor: "clima-horas", caption: ["Las próximas 12 horas: cuándo llueve y cuándo escampa, para ubicar tus cortes.", "The next 12 hours: when it rains and when it clears, to place your cuts."] },
         { kind: "show", anchor: "clima-horas", caption: ["Curva de temperatura y barritas de lluvia, hora a hora.", "Temperature curve and rain bars, hour by hour."] },
+        { kind: "ref", topic: "clima" },
       ],
     },
     {
@@ -105,7 +111,8 @@ export const AD12: Module = {
       steps: [
         { kind: "show", anchor: "clima-radar", caption: ["El radar repite la última hora de lluvia, en bucle.", "The radar replays the last hour of rain, in a loop."] },
         { kind: "show", anchor: "clima-radar", caption: ["Pellizca, arrastra y centra: tu zona es el punto de tu color.", "Pinch, drag, and center: your area is the dot in your color."], contexto: ["Los puntos-momento saltan a un instante; tocar uno pausa el bucle.", "The moment dots jump to an instant; tapping one pauses the loop."] },
-        { kind: "show", anchor: "clima-radar", caption: ["Calles o Satélite arriba; la escala «ligera a fuerte», abajo.", "Streets or Satellite above; the “light to heavy” scale, below."] },
+        { kind: "show", anchor: "clima-radar", caption: ["La escala lee los colores del radar: cuánta lluvia trae cada mancha.", "The scale reads the radar's colors: how much rain each patch brings."] },
+        { kind: "ref", topic: "clima" },
       ],
     },
     {
@@ -115,6 +122,7 @@ export const AD12: Module = {
         { kind: "show", anchor: "clima-manana", caption: ["Mañana se recomienda contra hoy: recuperar patios, solo si conviene.", "Tomorrow is weighed against today: recover yards only if wise."] },
         { kind: "show", anchor: "clima-manana", caption: ["Sol fuerte y humedad alta traen su frase de trabajo, no solo datos.", "Strong sun and high humidity bring their work line, not just data."] },
         { kind: "show", anchor: "clima-manana", caption: ["Su barra de probabilidad dice la lluvia antes que el icono.", "Its probability bar tells the rain before the icon does."] },
+        { kind: "ref", topic: "clima" },
       ],
     },
     {
@@ -125,6 +133,7 @@ export const AD12: Module = {
         { kind: "show", anchor: "clima-pastilla", caption: ["El cielo de la lectura repinta el fondo de toda la app.", "The reading's sky repaints the background of the whole app."] },
         { kind: "show", anchor: "clima-pastilla", caption: ["Nubes, lluvia, niebla o nieve: la app viste el tiempo que hace.", "Clouds, rain, fog, or snow: the app dresses as the weather outside."], contexto: ["De noche, luciérnagas a la deriva, más grandes en Hoy y Cobros.", "At night, drifting fireflies, larger on Today and Payments."] },
         { kind: "show", anchor: "clima-pastilla", caption: ["Al abrir restaura la última lectura reciente; refresca cada 20 minutos.", "On opening it restores the last recent reading; refreshes every 20 minutes."] },
+        { kind: "ref", topic: "clima" },
       ],
     },
     {
@@ -135,6 +144,7 @@ export const AD12: Module = {
         { kind: "go", screen: "/clima" },
         { kind: "show", anchor: "clima-datos", caption: ["Si lo que ves es una copia, lo dice: «Datos de las…».", "If what you see is a copy, it says so: “Data from…”."] },
         { kind: "show", anchor: "clima-datos", caption: ["Sin conexión lo dice más claro aún, con su hora.", "Offline it says so even more clearly, with the time."], contexto: ["La copia dura hasta seis horas mientras llega la lectura fresca.", "The copy lasts up to six hours while the fresh reading arrives."] },
+        { kind: "ref", topic: "clima" },
       ],
     },
     {
@@ -144,6 +154,7 @@ export const AD12: Module = {
       steps: [
         { kind: "show", anchor: "clima-parar", caption: ["Con lluvia cerca, «Parar el día» se marca solo, aquí mismo.", "With rain near, “Stop the day” marks itself, right here."] },
         { kind: "show", anchor: "clima-parar", caption: ["Confirmas el motivo y los patios pasan al siguiente día abierto.", "You confirm the reason and yards move to the next open day."], contexto: ["Los mensajes a los afectados viven en Comunicación completa (AD10).", "The messages to those affected live in Complete communication (AD10)."] },
+        { kind: "ref", topic: "parar-dia" },
       ],
     },
     {

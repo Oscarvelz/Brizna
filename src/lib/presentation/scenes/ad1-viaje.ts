@@ -54,6 +54,7 @@ export const AD1: Module = {
       keys: [["pendiente", "pending"], ["estado", "status"]],
       steps: [
         { kind: "show", anchor: "tarjeta-estado", caption: ["Dice Pendiente: ese precio todavía no es deuda.", "It says Pending: that price is not debt yet."], contexto: ["El precio suma a la deuda solo al cerrarse pendiente.", "The price adds to the debt only when closed unpaid."] },
+        { kind: "ref", topic: "hecho" },
       ],
     },
     {
@@ -61,9 +62,10 @@ export const AD1: Module = {
       keys: [["clientes", "clients"], ["lista", "list"]],
       steps: [
         { kind: "go", screen: "/clientes" },
-        { kind: "show", anchor: "lista-clientes", caption: ["En Clientes es inventario: precio grande, ritmo y saldo.", "In Clients it is inventory: big price, rhythm and balance."] },
+        { kind: "show", anchor: "lista-clientes", caption: ["Clientes es tu inventario vivo: quién paga, quién debe y su ficha a un toque.", "Clients is your living inventory: who pays, who owes, and their file one tap away."] },
         { kind: "show", anchor: "lista-clientes", caption: ["Su precio grande es de inventario; en Hoy era neutro.", "Its big price belongs to inventory; in Today it was neutral."] },
         { kind: "show", anchor: "clientes-filtros", caption: ["Los filtros separan activos, con saldo, alto riesgo y vetados.", "The filters separate active, owing, high risk and blacklisted."] },
+        { kind: "ref", topic: "clientes-filtros" },
       ],
     },
     {
@@ -73,6 +75,7 @@ export const AD1: Module = {
         { kind: "go", screen: "/clientes/:aurelio" },
         { kind: "show", anchor: "ficha-deuda", caption: ["En su ficha, el trabajo ya hecho vive como saldo: $120.", "On his file, finished work lives as a balance: $120."] },
         { kind: "show", anchor: "movimientos", caption: ["Movimientos guarda cada dólar con su fecha y su medio.", "Movements keeps every dollar with its date and method."], contexto: ["Dos cortes pendientes y un extra hecho forman esos $120.", "Two unpaid cuts and one finished extra make those $120."] },
+        { kind: "ref", topic: "ficha-deuda" },
       ],
     },
     {
@@ -84,6 +87,7 @@ export const AD1: Module = {
         { kind: "show", anchor: "agenda", caption: ["No: es la misma visita, vista desde su fecha.", "No: it is the same visit, seen from its date."] },
         { kind: "show", anchor: "agenda", caption: ["Si mueves esta visita, Hoy mueve la misma, no otra.", "If you move this visit, Today moves the same one."] },
         { kind: "show", anchor: "agenda", caption: ["Su próxima visita también nació de su frecuencia quincenal.", "His next visit was also born from his biweekly frequency."], contexto: ["La frecuencia siembra el futuro; mover una fecha no rompe la regla.", "Frequency plants the future; moving one date breaks no rule."] },
+        { kind: "ref", topic: "agenda" },
       ],
     },
     {
@@ -92,6 +96,7 @@ export const AD1: Module = {
       steps: [
         { kind: "go", screen: "/cobros" },
         { kind: "show", anchor: "por-cobrar", caption: ["En Cobros, sus $120 se juntan con todos los que deben.", "In Payments, his $120 joins everyone who owes."] },
+        { kind: "ref", topic: "por-cobrar" },
       ],
     },
     {
@@ -99,6 +104,7 @@ export const AD1: Module = {
       keys: [["totales", "totals"], ["lista negra", "blacklist"]],
       steps: [
         { kind: "show", anchor: "por-cobrar", caption: ["La regla, dicha una vez: cuentan activos y no vetados.", "The rule, said once: active, non-blacklisted clients count."], contexto: ["Hugo debe $80 en su ficha, pero vetado no suma aquí.", "Hugo owes $80 on his file, but blacklisted clients never count here."] },
+        { kind: "ref", topic: "por-cobrar" },
       ],
     },
     {
@@ -107,6 +113,7 @@ export const AD1: Module = {
       steps: [
         { kind: "go", screen: "/clientes/:vetado" },
         { kind: "show", anchor: "ficha-deuda", caption: ["Su ficha sí enseña sus $80 reales, enteros.", "His file does show his real $80, in full."], contexto: ["No contar en totales no es perdonar ni borrar: sigue debiendo.", "Not counting in totals is not forgiving or deleting: he still owes."] },
+        { kind: "ref", topic: "ficha-deuda" },
       ],
     },
     {
@@ -126,6 +133,7 @@ export const AD1: Module = {
         { kind: "go", screen: "/estadisticas" },
         { kind: "show", anchor: "estudio-te-deben", caption: ["Estudio dice Te deben: reconócelo, es la misma cifra.", "Stats says You are owed: recognize it, the same figure."] },
         { kind: "show", anchor: "estudio-te-deben", caption: ["Ni Hugo ni ningún vetado o archivado entra aquí.", "Neither Hugo nor any blacklisted or archived client enters here."] },
+        { kind: "ref", topic: "quien-debe" },
       ],
     },
     {
@@ -135,6 +143,7 @@ export const AD1: Module = {
         { kind: "do", anchor: "estudio-vista-asesor", caption: ["Voltea a Asesor: otra lectura del mismo libro.", "Flip to the Advisor: another reading of the same book."] },
         { kind: "show", anchor: "asesor-heroe", caption: ["Su Te deben coincide con Cobros: comparten la regla.", "Its You are owed matches Payments: they share the rule."], contexto: ["Por eso su consejo de cobrar nunca nombra a Hugo.", "That is why its collection advice never names Hugo."] },
         { kind: "show", anchor: "asesor-heroe", caption: ["Si Aurelio paga, cada superficie baja el mismo dólar.", "If Aurelio pays, every surface lowers the same dollar."] },
+        { kind: "ref", topic: "asesor" },
       ],
     },
     {

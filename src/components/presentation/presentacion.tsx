@@ -18,8 +18,8 @@
  * mantiene él mismo en automático.
  */
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, ChevronLeft, ChevronRight, Gauge, Hand, List, Pause, Play, X } from "lucide-react";
-import { useNavigate } from "@tanstack/react-router";
+import { BookOpen, Check, ChevronLeft, ChevronRight, Gauge, Hand, List, Pause, Play, X } from "lucide-react";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useI18n, useTx } from "@/lib/i18n";
 import {
@@ -33,6 +33,8 @@ import {
 import { enterStage, exitStage, stageOn, STAGE_EVENT } from "@/lib/presentation/stage";
 import { resolveAnchor } from "@/lib/presentation/anchors";
 import { STAGE_SEEDS, stageCtx } from "@/lib/presentation/stage-seeds";
+import { findTopic } from "@/lib/manual/topics";
+import { rememberOrigin } from "@/lib/manual/nav";
 import { WidgetTheatre } from "./widget-theatre";
 import "./presentacion.css";
 
@@ -159,6 +161,11 @@ export function Presentacion() {
   const tx = useTx();
   const lang = locale;
   const navigate = useNavigate();
+  /* El puente al Manual (Oscar, 2026-11-14): mientras el alumno lee el
+   * Manual, el conductor se esconde entero y su reloj se detiene; al
+   * volver con Atrás, el mismo compás se rearma donde estaba. */
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const inManual = pathname === "/manual";
   const [run, setRun] = useState<RunState | null>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [shaking, setShaking] = useState(0);
@@ -388,6 +395,24 @@ export function Presentacion() {
     setRun({ ...r, stayOpen: false });
   }, []);
 
+  /* «Más en el manual» (Oscar, 2026-11-14): si la función de esta escena
+   * vive en el Manual, la tarjeta ofrece el salto a su tema exacto para
+   * investigar más; el viaje es una entrada real del historial, así que
+   * Atrás devuelve al alumno a este mismo compás, que el motor rearma al
+   * volver (la raíz se esconde y el reloj se detiene mientras lee). El
+   * tema se valida contra el Manual vivo antes de saltar: sin tema, no
+   * hay salto — la misma ley sin fantasmas que las anclas. */
+  const openManual = useCallback(() => {
+    const r = runRef.current;
+    if (!r) return;
+    const sc = r.mod.scenes[r.sceneIdx];
+    const ref = sc?.steps.find((s) => s.kind === "ref");
+    if (!ref || ref.kind !== "ref" || !findTopic(ref.topic)) return;
+    clearTimers();
+    rememberOrigin(pathname);
+    void navigate({ to: "/manual", search: { t: ref.topic } });
+  }, [clearTimers, navigate, pathname]);
+
   /** La ✕ PRIMERO pregunta (Oscar, 2026-11-14, desde su captura: al tocar
    * la X debe emerger una ventana de confirmación, para no salir de la
    * presentación sin querer): la ventana dice qué pasa después — el
@@ -421,9 +446,27 @@ export function Presentacion() {
     return () => window.clearTimeout(id);
   }, [runModId]);
 
+  /* LA TARJETA NACE DONDE VA A VIVIR (Oscar, 2026-11-14, desde su
+   * teléfono: al abrirse, la tarjeta aparecía primero en el centro de la
+   * pantalla y luego viajaba hasta la función — no dura lo bastante en el
+   * centro para leerse, así que parece un bug). Mientras el compás tiene
+   * ancla pero su rect aún no se ha medido, la tarjeta NO se pinta en el
+   * lugar provisional: la raíz viste is-unplaced y la tarjeta espera
+   * invisible; cuando el rect llega, la tarjeta ya está en su sitio y se
+   * enciende ahí — nace donde va a vivir. Los compases sin ancla no
+   * esperan: el parqueo central ES su lugar verdadero. */
+  const [cardShown, setCardShown] = useState(false);
+  const placePending = !!(step && "anchor" in step && step.anchor) && !rect;
+  useEffect(() => {
+    if (!run) { setCardShown(false); return; }
+    if (placePending) { setCardShown(false); return; }
+    const raf = requestAnimationFrame(() => setCardShown(true));
+    return () => cancelAnimationFrame(raf);
+  }, [run, placePending, run?.sceneIdx, run?.stepIdx]);
+
   /* ------------------------------ el motor de pasos ------------------------------ */
   useEffect(() => {
-    if (!run || !scene || !step || run.finished || run.chaptersOpen || run.speedOpen || run.stayOpen || run.exitOpen) return;
+    if (!run || !scene || !step || run.finished || run.chaptersOpen || run.speedOpen || run.stayOpen || run.exitOpen || inManual) return;
     const r = run;
     let cancelled = false;
     const speed = r.speed;
@@ -707,7 +750,7 @@ export function Presentacion() {
     void runStep();
     return () => { cancelled = true; clearTimers(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run?.sceneIdx, run?.stepIdx, run?.mode, run?.playing, run?.speed, run?.chaptersOpen, run?.speedOpen, run?.stayOpen, run?.exitOpen, run?.finished]);
+  }, [run?.sceneIdx, run?.stepIdx, run?.mode, run?.playing, run?.speed, run?.chaptersOpen, run?.speedOpen, run?.stayOpen, run?.exitOpen, run?.finished, inManual]);
 
   /* Esc: una capa a la vez (velocidad → capítulos → salir al índice). */
   useEffect(() => {
@@ -726,10 +769,18 @@ export function Presentacion() {
   }, [run, exitToIndex]);
 
   const stageActive = typeof window !== "undefined" && stageOn();
-  if (!stageActive || !run) return null;
+  if (!stageActive || !run || inManual) return null;
 
   const mod = run.mod;
   const chapter = scene ? mod.chapters.find((c) => c.id === scene.chapter) : null;
+  /* El tema del Manual de ESTA escena, si su función vive en el Manual:
+   * el paso `ref` de la escena lo declara y findTopic lo valida vivo —
+   * sin tema vivo no hay botón (Oscar: el botón, solo para las funciones
+   * que existen en el manual). La fila inferior lleva ahora solo el
+   * nombre corto del módulo a la izquierda (también Oscar, 2026-11-14:
+   * un resumen cortito, para que el botón nuevo respire a la derecha). */
+  const refStep = scene?.steps.find((s) => s.kind === "ref");
+  const manualTopic = refStep && refStep.kind === "ref" && findTopic(refStep.topic) ? refStep.topic : null;
   const totalScenes = mod.scenes.length;
   const caption = step && hasCaption(step) ? pick(step.caption, lang) : null;
   const contexto = step && hasCaption(step) && step.contexto ? pick(step.contexto, lang) : null;
@@ -825,7 +876,7 @@ export function Presentacion() {
   ] : [{ left: 0, top: 0, width: "100%", height: "100%" }];
 
   return (
-    <div className={`pres-root${entering ? " is-entering" : ""}${leaving ? " is-leaving" : ""}`} role="dialog" aria-modal="false" aria-label={pick(mod.title, lang)} data-skipped={run.skipped.join(" ")}>
+    <div className={`pres-root${entering ? " is-entering" : ""}${leaving ? " is-leaving" : ""}${!cardShown ? " is-unplaced" : ""}`} role="dialog" aria-modal="false" aria-label={pick(mod.title, lang)} data-skipped={run.skipped.join(" ")}>
       {/* el escudo rodea el recorte: ningún toque desvía el guion, y el objetivo del
           compás recibe el suyo de verdad, a través del hueco */}
       {shieldRects.map((style, i) => (
@@ -951,11 +1002,16 @@ export function Presentacion() {
             {run.won ? <Check className="pres-won" aria-hidden /> : null}
           </p>
           <div key={`bot-${run.sceneIdx}-${run.stepIdx}`} className="pres-botrow pres-beat">
-            <span className="pres-chapname">{pick(mod.title, lang)}{chapter ? ` · ${pick(chapter.title, lang)}` : ""}</span>
+            <span className="pres-chapname">{pick(mod.title, lang)}</span>
             <span className="pres-botlinks">
               {isGesture ? (
                 <button type="button" className="pres-showme" onClick={showMe}>
                   {tx("Muéstrame tú", "Show me")}
+                </button>
+              ) : null}
+              {manualTopic ? (
+                <button type="button" className="pres-manualbtn" onClick={openManual}>
+                  <BookOpen aria-hidden />{tx("Más en el manual", "More in the manual")}
                 </button>
               ) : null}
               <button type="button" className="pres-stay" onClick={openStay}>{tx("Quedarme aquí", "Stay here")}</button>

@@ -33,6 +33,12 @@
    nunca parpadee el velo. */
 .pres-root.is-entering .pres-blurpatch,
 .pres-root.is-entering .pres-hole { opacity: 0; }
+/* LA TARJETA NACE DONDE VA A VIVIR: mientras su lugar verdadero no se ha
+   medido, la tarjeta no se pinta en el lugar provisional (sin transición,
+   para que al llegar su rect nazca ya en su sitio y solo se encienda). */
+.pres-root.is-unplaced .pres-card { opacity: 0 !important; transition: none; }
+.pres-root.is-unplaced .pres-blurpatch,
+.pres-root.is-unplaced .pres-hole { opacity: 0; }
 .pres-root.is-leaving .pres-blurpatch,
 .pres-root.is-leaving .pres-hole,
 .pres-root.is-leaving .pres-card,
@@ -168,9 +174,9 @@
 .pres-ctl:active { transform: scale(.96); }
 .pres-ctl.hd { min-width: 30px; min-height: 30px; height: 30px; padding: 0 7px; font-size: .72rem; }
 .pres-ctl.hd svg { width: 13px; height: 13px; }
-.pres-botrow { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 7px; }
+.pres-botrow { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 7px; flex-wrap: wrap; }
 .pres-chapname { flex: 1; min-width: 0; color: var(--color-subtle); font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pres-botlinks { display: inline-flex; align-items: baseline; gap: 14px; flex: none; }
+.pres-botlinks { display: inline-flex; align-items: baseline; gap: 14px; flex: none; margin-left: auto; }
 .pres-showme {
   min-height: 30px; padding: 0 2px; border: 0; background: none; color: var(--color-accent);
   font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer;
@@ -203,6 +209,16 @@
   border: 0; background: none; color: var(--color-muted); font: inherit; font-size: .84rem;
   text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; white-space: nowrap;
 }
+/* «Más en el manual»: la puerta quieta junto a «Quedarme aquí» — misma
+   familia visual (punteada, callada), con su libro; una sola línea por
+   construcción, como manda la ley de controles que nunca se parten. */
+.pres-manualbtn {
+  min-height: 30px; padding: 0 2px;
+  border: 0; background: none; color: var(--color-muted); font: inherit; font-size: .84rem;
+  text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.pres-manualbtn svg { width: 13px; height: 13px; flex: none; transform: translateY(1px); }
 
 /* LOS BOTONES RESPIRAN, NUNCA CORTADOS (ley (11) de Oscar, 2026-11-14,
    nacida en Logos al ver la ✕ cortada por la esquina): cuando el ancho
@@ -225,6 +241,23 @@
   .pres-ctl.hd { min-width: 26px; min-height: 26px; height: 26px; padding: 0 3px; font-size: .66rem; }
   .pres-ctl.hd svg { width: 12px; height: 12px; }
   .pres-kicker { letter-spacing: .02em; }
+}
+
+/* La fila inferior con el puente al Manual (Oscar, 2026-11-14): cuando un
+   compás de gesto cae en una escena con tema, conviven TRES puertas —
+   «Muéstrame tú», «Más en el manual», «Quedarme aquí» — junto al nombre
+   corto. Medido en banco a 390px: la fila se salía 16px de la tarjeta.
+   La cura, por la misma ley (11): los controles se achican un escalón y,
+   si aun así no caben, el grupo de puertas baja ENTERO a su propia línea
+   (flex-wrap en .pres-botrow) — ninguna palabra se corta, ningún botón
+   se sale, y el nombre corto queda entero en su línea. */
+@media (max-width: 480px) {
+  .pres-botlinks { gap: 10px; }
+  .pres-showme, .pres-manualbtn, .pres-stay { font-size: .79rem; }
+}
+@media (max-width: 340px) {
+  .pres-botlinks { gap: 8px; }
+  .pres-showme, .pres-manualbtn, .pres-stay { font-size: .74rem; }
 }
 
 /* La ventana emergente de «Quedarme aquí»: pequeña, centrada sobre el velo,

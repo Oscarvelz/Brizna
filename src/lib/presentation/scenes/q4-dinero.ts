@@ -34,12 +34,13 @@ export const Q4: Module = {
         { kind: "stage", build: "ruta-dinero" },
         { kind: "go", screen: "/clientes/:aurelio" },
         { kind: "show", anchor: "ficha-deuda", caption: ["El saldo vive aquí: Don Aurelio debe $120.", "The balance lives here: Don Aurelio owes $120."] },
+        { kind: "ref", topic: "ficha-deuda" },
       ],
     },
     {
       id: "q4-de-que", chapter: "donde", anchors: ["ficha-deuda"],
       keys: [["cortes", "cuts"], ["extra", "extra"]],
-      steps: [{ kind: "show", anchor: "ficha-deuda", caption: ["¿De qué? Dos cortes de $40 y un extra de $40.", "From what? Two $40 cuts and one $40 extra."], contexto: ["Cada Hecho pendiente y cada extra hecho suma su precio a esta cifra.", "Every unpaid Done and every finished extra adds its price to this figure."] }],
+      steps: [{ kind: "show", anchor: "ficha-deuda", caption: ["¿De qué? Dos cortes de $40 y un extra de $40.", "From what? Two $40 cuts and one $40 extra."], contexto: ["Cada Hecho pendiente y cada extra hecho suma su precio a esta cifra.", "Every unpaid Done and every finished extra adds its price to this figure."] }, { kind: "ref", topic: "ficha-deuda" }],
     },
     {
       id: "q4-por-cobrar", chapter: "donde", anchors: ["por-cobrar"],
@@ -47,12 +48,13 @@ export const Q4: Module = {
       steps: [
         { kind: "go", screen: "/cobros" },
         { kind: "show", anchor: "por-cobrar", caption: ["En Cobros, Por cobrar junta a todos los que deben.", "In Payments, To collect gathers everyone who owes."], contexto: ["Los totales cuentan clientes activos y no vetados: una sola regla en toda la app.", "Totals count active, non-blacklisted clients: one single rule across the app."] },
+        { kind: "ref", topic: "por-cobrar" },
       ],
     },
     {
       id: "q4-cobrado", chapter: "donde", anchors: ["cobrado"],
       keys: [["cobrado", "collected"], ["adelanto", "advance"]],
-      steps: [{ kind: "show", anchor: "cobrado", caption: ["Cobrado lista cada pago y cada adelanto: totales y listas coinciden.", "Collected lists every payment and advance: totals and lists agree."] }],
+      steps: [{ kind: "show", anchor: "cobrado", caption: ["Cobrado lista cada pago y cada adelanto: totales y listas coinciden.", "Collected lists every payment and advance: totals and lists agree."] }, { kind: "ref", topic: "cobrado" }],
     },
     {
       id: "q4-sumar", chapter: "sumar", anchors: ["ficha-extra", "extra-titulo", "extra-precio"],
@@ -79,6 +81,7 @@ export const Q4: Module = {
       steps: [
         { kind: "ask", anchor: "ficha-abono", caption: ["¿Te entrega una parte? Eso es un abono.", "They hand you part of it? That is a partial payment."] },
         { kind: "do", anchor: "ficha-abono", caption: ["Toca Abono en su ficha.", "Tap Partial on their file."] },
+        { kind: "ref", topic: "ficha-deuda" },
       ],
     },
     {
@@ -87,12 +90,13 @@ export const Q4: Module = {
       steps: [
         { kind: "type", anchor: "pago-cantidad", text: ["200", "200"], caption: ["Hoy entrega $200: más de lo que debe.", "Today they hand you $200: more than they owe."] },
         { kind: "show", anchor: "pago-calculadora", caption: ["La calculadora suma por ti: 40 más 15, sin salir del cobro.", "The calculator adds for you: 40 plus 15, without leaving the payment."] },
+        { kind: "ref", topic: "ficha-deuda" },
       ],
     },
     {
       id: "q4-particion", chapter: "abonar", anchors: ["pago-cantidad"],
       keys: [["adelanto", "advance"], ["a la deuda", "to the debt"]],
-      steps: [{ kind: "show", anchor: "pago-cantidad", caption: ["Mira el reparto antes de confirmar: deuda y adelanto.", "Watch the split before confirming: debt and advance."], contexto: ["$160 pagan la deuda; los $40 sobrantes quedan de adelanto, no doble cobro.", "$160 pays the debt; the extra $40 stays as an advance, not a double charge."] }],
+      steps: [{ kind: "show", anchor: "pago-cantidad", caption: ["Mira el reparto antes de confirmar: deuda y adelanto.", "Watch the split before confirming: debt and advance."], contexto: ["$160 pagan la deuda; los $40 sobrantes quedan de adelanto, no doble cobro.", "$160 pays the debt; the extra $40 stays as an advance, not a double charge."] }, { kind: "ref", topic: "ficha-deuda" }],
     },
     {
       id: "q4-confirmar", chapter: "abonar", anchors: ["pago-confirmar", "ficha-deuda"],
@@ -100,6 +104,7 @@ export const Q4: Module = {
       steps: [
         { kind: "do", anchor: "pago-confirmar", caption: ["Confirma el cobro.", "Confirm the payment."] },
         { kind: "show", anchor: "ficha-deuda", caption: ["Saldo en cero y $40 de adelanto para su próximo corte.", "Balance at zero and a $40 advance for their next cut."], contexto: ["El adelanto se gasta solo en el próximo Hecho: nunca se cobra dos veces.", "The advance spends itself on the next Done: never collected twice."] },
+        { kind: "ref", topic: "ficha-deuda" },
       ],
     },
     {

@@ -74,8 +74,9 @@ export const AD2: Module = {
       steps: [
         { kind: "stage", build: "ficha-completa" },
         { kind: "go", screen: "/clientes/:aurelio" },
-        { kind: "show", anchor: "ficha-tarjeta", caption: ["Su tarjeta manda: frecuencia, desde cuándo y precio por corte.", "Their card leads: frequency, since when and price per cut."] },
-        { kind: "show", anchor: "ficha-fiabilidad", caption: ["Fiabilidad lo resume: estado, puntaje y días sin pagar.", "Reliability sums it up: status, score and days unpaid."], contexto: ["Es lectura calculada, no un campo: cambia con pagos y cortes.", "It is calculated reading, not a field: payments and cuts change it."] },
+        { kind: "show", anchor: "ficha-tarjeta", caption: ["Frecuencia planta las visitas; el precio por corte fija cada cobro.", "Frequency plants the visits; the price per cut sets each charge."] },
+        { kind: "show", anchor: "ficha-fiabilidad", caption: ["Fiabilidad se calcula sola: si paga y cuánto se atrasa, de un vistazo.", "Reliability computes itself: whether he pays and how late, at a glance."], contexto: ["Es lectura calculada, no un campo: cambia con pagos y cortes.", "It is calculated reading, not a field: payments and cuts change it."] },
+        { kind: "ref", topic: "frecuencia" },
       ],
     },
     {
@@ -84,6 +85,7 @@ export const AD2: Module = {
       steps: [
         { kind: "do", anchor: "ficha-editar", caption: ["Editar abre el mismo formulario del alta, ya cargado.", "Editing opens the same form as signup, already filled."] },
         { kind: "show", anchor: "alta-nombre", caption: ["Nombre, teléfono o dirección nuevos disparan otra vez los repetidos.", "A new name, phone or address triggers duplicates again."], contexto: ["La comprobación corre antes de guardar, sin contarse al propio cliente.", "The check runs before saving, without counting the client itself."] },
+        { kind: "ref", topic: "clientes-repetidos" },
       ],
     },
     {
@@ -92,6 +94,7 @@ export const AD2: Module = {
       steps: [
         { kind: "type", anchor: "ficha-pista", text: ["Casa azul", "Blue house"], caption: ["La pista distingue patios parecidos sin abrir la ficha.", "The cue tells similar yards apart without opening the file."] },
         { kind: "show", anchor: "ficha-pista", caption: ["Se lee en la lista y en la ficha, y también se busca.", "It shows on the list and the file, and is searchable too."] },
+        { kind: "ref", topic: "lista-clientes" },
       ],
     },
     {
@@ -108,6 +111,7 @@ export const AD2: Module = {
         { kind: "go", screen: "/clientes/:aurelio" },
         { kind: "show", anchor: "ficha-tarjeta", caption: ["Si cambió el horario, la agenda se rehace desde hoy.", "If the schedule changed, the agenda rebuilds from today."], contexto: ["El precio nuevo solo toca cortes de hoy en adelante.", "The new price only touches cuts from today onward."] },
         { kind: "show", anchor: "ficha-tarjeta", caption: ["Un corte atrasado conserva el precio acordado, no el nuevo.", "An overdue cut keeps the agreed price, not the new one."] },
+        { kind: "ref", topic: "precio" },
       ],
     },
     {
@@ -116,6 +120,7 @@ export const AD2: Module = {
       steps: [
         { kind: "show", anchor: "movimientos", caption: ["Movimientos es su libro: pagos, perdones y adelantos con fecha.", "Movements is their ledger: payments, forgiveness and advances, dated."] },
         { kind: "show", anchor: "movimientos", caption: ["Aquí compruebas a dónde fue a parar cada dólar.", "Here you check where every dollar ended up."] },
+        { kind: "ref", topic: "movimientos" },
       ],
     },
     {
@@ -124,6 +129,7 @@ export const AD2: Module = {
       steps: [
         { kind: "show", anchor: "historial", caption: ["Historial cuenta sus patios: hechos, pagado y años como cliente.", "History counts their yards: done, paid and years as client."] },
         { kind: "show", anchor: "historial-precio", caption: ["Toca un precio y la cuenta sigue el nuevo monto.", "Tap a price and the balance follows the new amount."], contexto: ["Si quedaría bajo cero, el sobrante pasa a adelanto.", "If it would go below zero, the excess becomes an advance."] },
+        { kind: "ref", topic: "precio" },
       ],
     },
     {
@@ -140,6 +146,7 @@ export const AD2: Module = {
       steps: [
         { kind: "show", anchor: "ficha-cambios", caption: ["Cambios hechos guarda cada versión guardada de la ficha.", "Changes made keeps every saved version of the file."] },
         { kind: "show", anchor: "ficha-cambios", caption: ["Restaurar una versión no toca pagos ni cortes hechos.", "Restoring a version touches neither payments nor finished cuts."] },
+        { kind: "ref", topic: "cambios-hechos" },
       ],
     },
     {
@@ -161,6 +168,7 @@ export const AD2: Module = {
         { kind: "go", screen: "/clientes/:unavez" },
         { kind: "show", anchor: "ficha-tarjeta", caption: ["Una clienta de una vez vive igual: deuda, pagos, historial.", "A one-time client lives the same: debt, payments, history."], contexto: ["Sin frecuencia: su único trabajo es su agenda entera.", "No frequency: her single job is her whole schedule."] },
         { kind: "show", anchor: "ficha-deuda", caption: ["Al quedar a cero y sin pendientes, se archiva sola.", "At zero with nothing pending, she is archived automatically."] },
+        { kind: "ref", topic: "tipo-cliente" },
       ],
     },
     {
@@ -170,6 +178,7 @@ export const AD2: Module = {
         { kind: "go", screen: "/clientes/:pausa" },
         { kind: "show", anchor: "ficha-deuda", caption: ["Lucía está en pausa y debe $80: siguen en Por cobrar.", "Lucía is paused and owes $80: it stays in To collect."] },
         { kind: "show", anchor: "ficha-continuar", caption: ["Continuar la devuelve a la agenda, desde hoy, con su ritmo.", "Continuing returns her to the schedule, from today, her rhythm."], contexto: ["Pausar canceló sus extras pendientes a la vista; no vuelven solos.", "Pausing visibly cancelled her pending extras; they never return by themselves."] },
+        { kind: "ref", topic: "pausa" },
       ],
     },
     {
@@ -179,6 +188,7 @@ export const AD2: Module = {
         { kind: "go", screen: "/clientes/:aurelio" },
         { kind: "show", anchor: "ficha-pausa", caption: ["Pausa la decides tú: sin cortes ni trabajos hasta Continuar.", "Pause is your call: no cuts or jobs until Continuing."] },
         { kind: "show", anchor: "ficha-pausa", caption: ["Mientras tanto, su caso queda marcado En espera, sin perdonarse.", "Meanwhile, their case sits marked as Waiting, unforgiven."] },
+        { kind: "ref", topic: "pausa" },
       ],
     },
     {
@@ -189,6 +199,7 @@ export const AD2: Module = {
         { kind: "show", anchor: "ficha-riesgo", caption: ["Serio no es un botón: el sistema congela por deuda vencida.", "Serious is not a button: the system freezes overdue debt."], contexto: ["Omar debe $240 y cruzó el monto de riesgo, $200.", "Omar owes $240 and crossed the risk amount, $200."] },
         { kind: "show", anchor: "ficha-deuda", caption: ["Su deuda no cambió: lo que cambió es si se le sigue trabajando.", "His debt did not change: what changed is whether he keeps getting service."] },
         { kind: "show", anchor: "ficha-seguir", caption: ["Seguir atendiendo deshiela su agenda si ya acordaste algo.", "Keep serving thaws his schedule if you already agreed on something."] },
+        { kind: "ref", topic: "espera" },
       ],
     },
     {
@@ -198,6 +209,7 @@ export const AD2: Module = {
         { kind: "go", screen: "/clientes/:vetado" },
         { kind: "show", anchor: "ficha-lista-negra", caption: ["Lista negra: vetado, sin agenda sola y fuera de totales.", "Blacklist: barred, no self-scheduling and out of totals."] },
         { kind: "show", anchor: "ficha-deuda", caption: ["Su ficha sigue enseñando sus $80 reales, enteros.", "His file still shows his real $80, in full."], contexto: ["Quitarlo del veto regenera su agenda y su deuda vuelve a contar.", "Unbarring rebuilds his schedule and his debt counts again."] },
+        { kind: "ref", topic: "lista-negra" },
       ],
     },
     {
@@ -217,6 +229,7 @@ export const AD2: Module = {
         { kind: "swipe", anchor: "tarjeta-cliente", caption: ["Desliza la tarjeta de Abel hacia la izquierda.", "Swipe Abel's card to the left."] },
         { kind: "show", anchor: "lista-baja", caption: ["Baja lo archiva: sale de la agenda, guardado entero.", "Archive moves him out: off the schedule, kept whole."] },
         { kind: "show", anchor: "lista-borrar", caption: ["Borrar lo destruye para siempre, con todo su historial.", "Delete destroys him forever, with all his history."] },
+        { kind: "ref", topic: "archivo" },
       ],
     },
     {
@@ -228,6 +241,7 @@ export const AD2: Module = {
         { kind: "do", anchor: "baja-confirmar", caption: ["Confirma con Mover a archivos.", "Confirm with Move to archive."] },
         { kind: "show", anchor: "lista-clientes", caption: ["Abel ya no está en la lista: Beto queda primero.", "Abel is gone from the list: Beto is first now."] },
         { kind: "show", anchor: "deshacer-barra", caption: ["Archivar deja Deshacer arriba, por si te arrepientes.", "Archiving leaves Undo on top, in case you regret it."], contexto: ["Reactivar también deja Deshacer. Borrar, nunca: recuerda la diferencia.", "Reactivating leaves Undo too. Deleting, never: remember the difference."] },
+        { kind: "ref", topic: "archivo" },
       ],
     },
     {
@@ -240,6 +254,7 @@ export const AD2: Module = {
         { kind: "show", anchor: "ficha-tarjeta", caption: ["Su ficha guarda todo: horario, cuenta e historial.", "His file keeps everything: schedule, account and history."] },
         { kind: "show", anchor: "historial", caption: ["Su extra pendiente quedó cancelado aquí: «Cliente archivado».", "His pending extra sits cancelled here: “Client archived.”"], contexto: ["Sus cortes generados pendientes desaparecieron al archivarlo.", "His generated pending cuts disappeared when he was archived."] },
         { kind: "show", anchor: "ficha-deuda", caption: ["Su deuda sigue en su ficha, entera: $80.", "His debt stays on his file, whole: $80."], contexto: ["Pero ya no suma en Por cobrar: cuentan los activos.", "But it no longer counts in To collect: active clients count."] },
+        { kind: "ref", topic: "archivo" },
       ],
     },
     {
@@ -252,6 +267,7 @@ export const AD2: Module = {
         { kind: "show", anchor: "ficha-archivar", caption: ["La ficha guarda la misma baja: Mover a archivos.", "The file holds the same archive door: Move to archive."], contexto: ["Es la puerta de la lista, también desde dentro.", "It is the list's door, also from inside."] },
         { kind: "go", screen: "/agenda" },
         { kind: "show", anchor: "agenda", caption: ["Su agenda volvió: cortes nuevos desde hoy, su ritmo.", "His schedule is back: new cuts from today, his pace."], contexto: ["El extra cancelado al archivar no volvió solo.", "The extra cancelled at archiving did not return by itself."] },
+        { kind: "ref", topic: "archivo" },
       ],
     },
     {
@@ -264,6 +280,7 @@ export const AD2: Module = {
         { kind: "show", anchor: "borrar-confirmar", caption: ["El desglose manda leer antes: debe $40.", "The breakdown demands reading first: he owes $40."], contexto: ["La ficha trae esta misma puerta, con este mismo desglose.", "The file carries this same door, with this same breakdown."] },
         { kind: "show", anchor: "borrar-confirmar", caption: ["Tiene $20 a favor: también se borrarían.", "He has $20 in advance: also deleted."] },
         { kind: "show", anchor: "borrar-confirmar", caption: ["Dos pagos y tres visitas se borrarán con él.", "Two payments and three visits will be deleted with him."], contexto: ["Es irreversible: se borra con todo su historial.", "It is irreversible: deleted with all his history."] },
+        { kind: "ref", topic: "archivo" },
       ],
     },
     {

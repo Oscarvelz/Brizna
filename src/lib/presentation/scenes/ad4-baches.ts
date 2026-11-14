@@ -64,6 +64,7 @@ export const AD4: Module = {
         { kind: "ask", anchor: "bache-varios", caption: ["¿Varios patios nuevos? No uno a uno: en tanda.", "Several new yards? Not one by one: in a batch."] },
         { kind: "show", anchor: "bache-contactos", caption: ["Del teléfono trae nombre, teléfono y dirección de tus contactos.", "From the phone it brings name, phone and address of your contacts."], contexto: ["Si el aparato no lee contactos, avisa honesto: escribe a mano.", "If the device cannot read contacts, it says so: type by hand."] },
         { kind: "show", anchor: "bache-varios", caption: ["Añadir varios es la otra puerta: pegar nombres.", "Add several is the other door: pasting names."], contexto: ["Esto suma clientes al libro; Restaurar, en cambio, lo reemplaza entero.", "This adds clients to the book; Restore, instead, replaces it entirely."] },
+        { kind: "ref", topic: "anadir-varios" },
       ],
     },
     {
@@ -74,6 +75,7 @@ export const AD4: Module = {
         { kind: "type", anchor: "bache-nombres", text: ["María León\nPedro Sosa\nDon Aurelio\nLuis Vega\nLuis Vegas", "María León\nPedro Sosa\nDon Aurelio\nLuis Vega\nLuis Vegas"], caption: ["Un nombre por línea: cinco, con sorpresas dentro.", "One name per line: five, with surprises inside."] },
         { kind: "show", anchor: "bache-nombres", caption: ["El tope es cuarenta por tanda, y se avisa.", "The cap is forty per batch, and it is announced."], contexto: ["Lo que pase de cuarenta queda fuera, dicho en voz alta.", "Whatever passes forty stays out, and the app says so."] },
         { kind: "do", anchor: "bache-continuar", caption: ["Continúa a la hoja de revisión.", "Continue to the review sheet."] },
+        { kind: "ref", topic: "anadir-varios" },
       ],
     },
     {
@@ -83,6 +85,7 @@ export const AD4: Module = {
         { kind: "show", anchor: "bache-revisar", caption: ["Revisar clientes: una tarjeta por nombre, nada guardado todavía.", "Review clients: one card per name, nothing saved yet."] },
         { kind: "show", anchor: "bache-revisar", caption: ["Por fila ajustas teléfono, precio, cortes al mes e inicio.", "Per row you adjust phone, price, cuts per month and start."], contexto: ["Cada fila nace con $30, dos cortes e inicio hoy.", "Each row is born with $30, two cuts, starting today."] },
         { kind: "show", anchor: "bache-revisar", caption: ["Salir con trabajo sin guardar pregunta antes de perderlo.", "Leaving with unsaved work asks before losing it."] },
+        { kind: "ref", topic: "anadir-varios" },
       ],
     },
     {
@@ -91,6 +94,7 @@ export const AD4: Module = {
       steps: [
         { kind: "do", anchor: "bache-copiar", caption: ["Copiar a todos lleva la primera fila a toda la tanda.", "Copy to all carries the first row to the whole batch."], contexto: ["Copia precio, ritmo, inicio y forma de pago, de un toque.", "It copies price, rhythm, start and payment method in one tap."] },
         { kind: "show", anchor: "bache-mismo-dia", caption: ["Paga el mismo día va por fila: cobrar al Hecho.", "Paying the same day is per row: collect at Done."] },
+        { kind: "ref", topic: "anadir-varios" },
       ],
     },
     {
@@ -109,6 +113,7 @@ export const AD4: Module = {
       keys: [["deuda", "debt"], ["guardar", "save"]],
       steps: [
         { kind: "show", anchor: "bache-guardar", caption: ["Sin monto en un marcado, guardar se niega y lo dice.", "With a marked row missing its amount, saving refuses and says why."] },
+        { kind: "ref", topic: "anadir-varios" },
       ],
     },
     {
@@ -117,6 +122,7 @@ export const AD4: Module = {
       steps: [
         { kind: "show", anchor: "bache-repetido-lista", caption: ["Repetido dentro de la tanda: Luis Vegas repite a Luis Vega.", "Duplicate inside the batch: Luis Vegas repeats Luis Vega."] },
         { kind: "do", anchor: "bache-quitar", caption: ["Quita esa fila: la tanda queda limpia.", "Remove that row: the batch is clean."] },
+        { kind: "ref", topic: "clientes-repetidos" },
       ],
     },
     {
@@ -127,6 +133,7 @@ export const AD4: Module = {
         { kind: "do", anchor: "bache-repetido-libro", caption: ["Abre la comparación de esa fila.", "Open that row's comparison."] },
         { kind: "show", anchor: "dup-comparar", caption: ["Es el mismo Aurelio del libro, no un cliente nuevo.", "It is the book's same Aurelio, not a new client."] },
         { kind: "do", anchor: "dup-usar", caption: ["Usar existente quita la fila: no se añade otra vez.", "Use existing removes the row: not added again."] },
+        { kind: "ref", topic: "clientes-repetidos" },
       ],
     },
     {
@@ -136,6 +143,7 @@ export const AD4: Module = {
         { kind: "ask", anchor: "bache-guardar", caption: ["¿Lista la tanda? El botón ya anuncia su resultado.", "Batch ready? The button already announces its result."] },
         { kind: "show", anchor: "bache-guardar", caption: ["Anuncia añadir tres, con uno con deuda, antes de tocarlo.", "It announces it will add three, one with debt, before you tap."] },
         { kind: "do", anchor: "bache-guardar", caption: ["Guarda la tanda entera de una sola vez.", "Save the whole batch in one go."] },
+        { kind: "ref", topic: "anadir-varios" },
       ],
     },
     {
@@ -144,6 +152,7 @@ export const AD4: Module = {
       steps: [
         { kind: "go", screen: "/clientes" },
         { kind: "show", anchor: "lista-clientes", caption: ["Aterrizas en Clientes: los nuevos ya viven en el libro.", "You land in Clients: the new ones already live in the book."], contexto: ["Cada uno nace con su agenda sembrada según su inicio.", "Each is born with their schedule planted from their start."] },
+        { kind: "ref", topic: "anadir-varios" },
       ],
     },
     {
@@ -152,6 +161,7 @@ export const AD4: Module = {
       steps: [
         { kind: "go", screen: "/cobros" },
         { kind: "show", anchor: "por-cobrar", caption: ["Y María ya debe sus $40 aquí, en Por cobrar.", "And María already owes her $40 here, in To collect."] },
+        { kind: "ref", topic: "deuda-anterior" },
       ],
     },
     {

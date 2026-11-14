@@ -73,6 +73,7 @@ export const AD13: Module = {
         { kind: "go", screen: "/" },
         { kind: "ask", anchor: "vistas", caption: ["¿Ya estás en Malla? Tócala otra vez.", "Already on Grid? Tap it again."] },
         { kind: "show", anchor: "vistas", caption: ["Cada toque extra cicla las columnas: dos, tres, cuatro, dos.", "Each extra tap cycles the columns: two, three, four, two."], contexto: ["El ciclo solo existe en el teléfono; en pantalla grande, siempre dos.", "The cycle exists only on the phone; on big screens, always two."] },
+        { kind: "ref", topic: "vistas" },
       ],
     },
     {
@@ -80,6 +81,7 @@ export const AD13: Module = {
       keys: [["vista", "view"], ["2 pantallas", "2 screens"]],
       steps: [
         { kind: "show", anchor: "vista-menu", caption: ["El menú Vista parte la pantalla y abre la ventana flotante.", "The View menu splits the screen and opens the floating window."] },
+        { kind: "ref", topic: "tableta" },
       ],
     },
     {
@@ -87,6 +89,7 @@ export const AD13: Module = {
       keys: [["barra del medio", "middle bar"], ["reparte el espacio", "shares the space"]],
       steps: [
         { kind: "show", anchor: "vista-menu", caption: ["Partida: arrastra el divisor central para repartir el espacio.", "Split: drag the center divider to share the space."], contexto: ["Las flechas del teclado mueven el divisor de cuatro en cuatro.", "The keyboard arrows move the divider four percent at a time."] },
+        { kind: "ref", topic: "tableta" },
       ],
     },
     {
@@ -95,6 +98,7 @@ export const AD13: Module = {
       steps: [
         { kind: "ask", anchor: "vista-menu", caption: ["¿Divisor desparejo? Doble toque sobre él.", "Divider uneven? Double-tap on it."] },
         { kind: "show", anchor: "vista-menu", caption: ["El doble toque en el divisor lo centra exactamente.", "Double-tapping the divider centers it exactly."] },
+        { kind: "ref", topic: "tableta" },
       ],
       verify: "Censo H V-3: el colapso de un panel a tira de iconos no se localizó en el código — esta escena no lo enseña.",
     },
@@ -103,6 +107,7 @@ export const AD13: Module = {
       keys: [["flotante", "floating"], ["ventana", "window"]],
       steps: [
         { kind: "show", anchor: "vista-menu", caption: ["La flotante se mueve por su barra y crece desde cualquier borde.", "The floater moves by its bar and grows from any edge."], contexto: ["Dentro lleva sus cinco pestañas; Alt más F la abre o la pliega.", "It carries its five tabs inside; Alt plus F opens or folds it."] },
+        { kind: "ref", topic: "tableta" },
       ],
     },
     {
@@ -111,6 +116,7 @@ export const AD13: Module = {
       steps: [
         { kind: "ask", anchor: "vista-menu", caption: ["¿Otro doble toque? Este vive en los bordes flotantes.", "Another double tap? This one lives on the floater's edges."] },
         { kind: "show", anchor: "vista-menu", caption: ["Doble toque en un borde: se expande; otro, vuelve.", "Double-tap an edge: it expands; again, it returns."], contexto: ["No es el doble toque del divisor: cada uno manda en su sitio.", "Not the divider's double tap: each rules its own place."] },
+        { kind: "ref", topic: "tableta" },
       ],
     },
     {
@@ -118,6 +124,7 @@ export const AD13: Module = {
       keys: [["burbuja", "bubble"], ["flotante", "floating"], ["plegar en burbuja", "fold into bubble"]],
       steps: [
         { kind: "show", anchor: "vista-menu", caption: ["El menos la pliega en burbuja; tocarla la despliega.", "The minus folds it into a bubble; tapping it unfolds it."], contexto: ["Su botón de transparencia cicla: entera, ochenta, sesenta, entera.", "Its transparency button cycles: full, eighty, sixty, full."] },
+        { kind: "ref", topic: "tableta" },
       ],
     },
     {
@@ -126,6 +133,7 @@ export const AD13: Module = {
       steps: [
         { kind: "go", screen: "/" },
         { kind: "show", anchor: "asa-ruta", caption: ["Mantén el asa de seis puntos y arrastra: reordenas la ruta.", "Hold the six-dot grip and drag: you reorder the route."], contexto: ["El orden nuevo se guarda solo al soltar la tarjeta.", "The new order saves by itself when you release the card."] },
+        { kind: "ref", topic: "hoy" },
       ],
     },
     {
@@ -192,6 +200,7 @@ export const AD13: Module = {
       keys: [["deshacer", "undo"], ["memoria", "memory"]],
       steps: [
         { kind: "show", anchor: "deshacer-barra", caption: ["Deshacer guarda veinte acciones, solo en esta apertura.", "Undo holds twenty actions, only in this opening."], contexto: ["Recargar vacía la pila: lo hecho queda hecho en el libro.", "Reloading empties the stack: what is done stays in the book."] },
+        { kind: "ref", topic: "deshacer" },
       ],
       verify: "Censo H V-2: la semilla decía que las flechas nunca se desactivan; el código no pinta la barra sin historial. Se enseña el código.",
     },

@@ -47,6 +47,7 @@ export const AD6: Module = {
         { kind: "go", screen: "/ajustes" },
         { kind: "show", anchor: "ajustes-temporada", caption: ["La temporada vive en Ajustes, no en Agenda.", "The season lives in Settings, not in Schedule."] },
         { kind: "show", anchor: "ajustes-temporada", caption: ["Es un ritmo distinto para todos, por un tramo.", "It is a different pace for everyone, for a stretch."] },
+        { kind: "ref", topic: "temporada" },
       ],
     },
     {
@@ -55,6 +56,7 @@ export const AD6: Module = {
       steps: [
         { kind: "show", anchor: "ajustes-temporada-fechas", caption: ["Las fechas son mes y día: valen cada año.", "The dates are month and day: they apply every year."] },
         { kind: "show", anchor: "ajustes-temporada-fechas", caption: ["Una temporada puede cruzar el fin de año.", "A season can cross the end of the year."] },
+        { kind: "ref", topic: "temporada" },
       ],
     },
     {
@@ -63,6 +65,7 @@ export const AD6: Module = {
       steps: [
         { kind: "show", anchor: "ajustes-temporada-ritmo", caption: ["Sin ritmo, las fechas solas no cambian nada.", "Without a pace, dates alone change nothing."], contexto: ["Temporada necesita las dos cosas: fechas y cada cuántos días.", "A season needs both: dates and how often, in days."] },
         { kind: "show", anchor: "ajustes-temporada-interruptor", caption: ["Este escenario ya la trae encendida: cada diez días.", "This scenario already has it on: every ten days."] },
+        { kind: "ref", topic: "temporada" },
       ],
     },
     {
@@ -72,6 +75,7 @@ export const AD6: Module = {
         { kind: "go", screen: "/agenda" },
         { kind: "show", anchor: "agenda", caption: ["Al guardar, la Agenda se rehace sola al nuevo ritmo.", "On saving, the Schedule remakes itself to the new pace."] },
         { kind: "show", anchor: "agenda", caption: ["Dentro de la ventana manda la temporada; fuera, el ritmo normal.", "Inside the window the season rules; outside, the normal pace."] },
+        { kind: "ref", topic: "temporada" },
       ],
     },
     {
@@ -82,6 +86,7 @@ export const AD6: Module = {
         { kind: "go", screen: "/clientes/:lucia" },
         { kind: "show", anchor: "ficha-temporada", caption: ["Lucía lleva su propia temporada en su ficha.", "Lucía carries her own season on her file."] },
         { kind: "show", anchor: "ficha-temporada", caption: ["Sus fechas y su número son solo suyos.", "Her dates and her number are hers alone."] },
+        { kind: "ref", topic: "temporada" },
       ],
     },
     {
@@ -90,6 +95,7 @@ export const AD6: Module = {
       steps: [
         { kind: "show", anchor: "ficha-temporada", caption: ["Encendida, su temporada sustituye a la de todos.", "When on, her season replaces everyone's."], contexto: ["Apagada, el cliente sigue la temporada global, si la hay.", "When off, the client follows the global season, if any."] },
         { kind: "show", anchor: "frecuencia", caption: ["Fuera de su ventana vuelve su frecuencia normal.", "Outside her window her normal frequency returns."] },
+        { kind: "ref", topic: "temporada" },
       ],
     },
     {
@@ -99,6 +105,7 @@ export const AD6: Module = {
         { kind: "go", screen: "/agenda" },
         { kind: "show", anchor: "agenda", caption: ["Al pasar la ventana, todo vuelve al ritmo normal.", "When the window passes, everything returns to normal pace."] },
         { kind: "show", anchor: "agenda", caption: ["Lo movido a mano no vuelve atrás: queda fijo.", "Hand-moved work does not go back: it stays fixed."], contexto: ["La regeneración respeta lo pospuesto, igual que en Agenda.", "Regeneration respects postponed work, just like in Schedule."] },
+        { kind: "ref", topic: "temporada" },
       ],
     },
     {
@@ -109,6 +116,7 @@ export const AD6: Module = {
         { kind: "go", screen: "/ajustes" },
         { kind: "show", anchor: "ajustes-vacaciones", caption: ["Las vacaciones también viven en Ajustes.", "Vacations also live in Settings."] },
         { kind: "show", anchor: "ajustes-vacaciones", caption: ["Desde y Hasta: el tramo entero que no trabajarás.", "From and To: the whole stretch you will not work."] },
+        { kind: "ref", topic: "vacaciones" },
       ],
     },
     {
@@ -118,6 +126,7 @@ export const AD6: Module = {
         { kind: "show", anchor: "ajustes-vacaciones-activar", caption: ["Activar corre cada patio del tramo lo que dura el viaje.", "Activating shifts each yard in the stretch by the trip's length."], contexto: ["El orden entre patios se conserva; nadie pierde su lugar.", "The order among yards is kept; nobody loses their place."] },
         { kind: "show", anchor: "ajustes-vacaciones-activar", caption: ["Lo atrasado de antes pasa al día del regreso.", "Work late from before moves to the return day."] },
         { kind: "show", anchor: "ajustes-vacaciones-activar", caption: ["Cambiar las fechas primero deshace el corrimiento anterior.", "Changing the dates first undoes the previous shift."] },
+        { kind: "ref", topic: "vacaciones" },
       ],
     },
     {
@@ -126,8 +135,9 @@ export const AD6: Module = {
       steps: [
         { kind: "stage", build: "vacaciones-activas" },
         { kind: "go", screen: "/agenda" },
-        { kind: "show", anchor: "agenda-vacaciones-aviso", caption: ["Agenda anuncia las vacaciones en lo alto, con palmera.", "Schedule announces vacations at the top, with a palm."] },
+        { kind: "show", anchor: "agenda-vacaciones-aviso", caption: ["Esa palmera anuncia vacaciones activas en ese tramo de la Agenda.", "That palm announces active vacations across that stretch of the Schedule."] },
         { kind: "show", anchor: "agenda-vacaciones-aviso", caption: ["Dice el tramo y que el trabajo se movió al regreso.", "It says the stretch and that work moved to the return."] },
+        { kind: "ref", topic: "vacaciones" },
       ],
     },
     {
@@ -140,6 +150,7 @@ export const AD6: Module = {
         { kind: "show", anchor: "ajustes-vacaciones-quitar", caption: ["Si moviste algo a mano, eso se queda como quedó.", "If you moved something by hand, it stays as it ended."] },
         { kind: "go", screen: "/agenda" },
         { kind: "show", anchor: "agenda", caption: ["Tras quitarlas, revisa la Agenda antes de prometer días.", "After removing them, check the Schedule before promising days."] },
+        { kind: "ref", topic: "vacaciones" },
       ],
     },
   ],

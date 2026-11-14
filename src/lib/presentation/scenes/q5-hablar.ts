@@ -38,12 +38,12 @@ export const Q5: Module = {
     {
       id: "q5-mensaje", chapter: "botones", anchors: ["tarjeta-mensaje"],
       keys: [["mensaje", "message"], ["color", "color"]],
-      steps: [{ kind: "show", anchor: "tarjeta-mensaje", caption: ["Mensaje, en mostaza: abre el compositor para escribirle aquí mismo.", "Message, in mustard: it opens the composer to write right here."] }],
+      steps: [{ kind: "show", anchor: "tarjeta-mensaje", caption: ["Mensaje, en mostaza: abre el compositor para escribirle aquí mismo.", "Message, in mustard: it opens the composer to write right here."] }, { kind: "ref", topic: "mensajes" }],
     },
     {
       id: "q5-whatsapp", chapter: "botones", anchors: ["tarjeta-whatsapp"],
       keys: [["whatsapp", "whatsapp"], ["verde", "green"]],
-      steps: [{ kind: "show", anchor: "tarjeta-whatsapp", caption: ["WhatsApp, en verde: se reconoce por sus letras WA.", "WhatsApp, in green: you know it by its WA letters."] }],
+      steps: [{ kind: "show", anchor: "tarjeta-whatsapp", caption: ["WhatsApp abre la conversación con este cliente para escribirle ahí.", "WhatsApp opens your conversation with this client so you can write to them there."] }],
     },
     {
       id: "q5-llamada", chapter: "botones", anchors: ["tarjeta-llamada"],
@@ -53,12 +53,12 @@ export const Q5: Module = {
     {
       id: "q5-mapa", chapter: "mapa", anchors: ["tarjeta-mapa"],
       keys: [["mapa", "map"], ["rojo", "red"], ["dirección", "address"]],
-      steps: [{ kind: "show", anchor: "tarjeta-mapa", caption: ["Mapa, en rojo: un toque abre Google Maps con su dirección.", "Map, in red: one tap opens Google Maps with their address."] }],
+      steps: [{ kind: "show", anchor: "tarjeta-mapa", caption: ["Mapa, en rojo: un toque abre Google Maps con su dirección.", "Map, in red: one tap opens Google Maps with their address."] }, { kind: "ref", topic: "hoy" }],
     },
     {
       id: "q5-direccion", chapter: "mapa", anchors: ["tarjeta-mapa"],
       keys: [["dirección", "address"], ["mantener", "press"]],
-      steps: [{ kind: "press", anchor: "tarjeta-mapa", ms: 550, caption: ["Mantén el mapa: su dirección secreta aparece bajo los botones.", "Hold the map button: their secret address appears under the buttons."], contexto: ["La tarjeta nunca enseña la calle: mantener es verla; tocar, ir a ella.", "The card never shows the street: holding shows it; tapping goes there."] }],
+      steps: [{ kind: "press", anchor: "tarjeta-mapa", ms: 550, caption: ["Mantén el mapa: su dirección secreta aparece bajo los botones.", "Hold the map button: their secret address appears under the buttons."], contexto: ["La tarjeta nunca enseña la calle: mantener es verla; tocar, ir a ella.", "The card never shows the street: holding shows it; tapping goes there."] }, { kind: "ref", topic: "hoy" }],
     },
     {
       id: "q5-abrir", chapter: "escribir", anchors: ["tarjeta-mensaje", "mensaje-compositor"],
@@ -66,24 +66,25 @@ export const Q5: Module = {
       steps: [
         { kind: "do", anchor: "tarjeta-mensaje", caption: ["Abre el mensaje de Don Aurelio.", "Open Don Aurelio's message."] },
         { kind: "show", anchor: "mensaje-compositor", caption: ["El compositor: escribes, dictas o pasas tu mensaje a inglés.", "The composer: you type, dictate, or turn your message into English."] },
+        { kind: "ref", topic: "mensajes" },
       ],
     },
     {
       id: "q5-texto", chapter: "escribir", anchors: ["mensaje-texto"],
       keys: [["escribir", "write"], ["mensaje", "message"]],
-      steps: [{ kind: "type", anchor: "mensaje-texto", text: ["Hola, Don Aurelio. Hoy llego a las 10.", "Hello, Don Aurelio. I'll arrive at 10 today."], caption: ["Escribe como hablas: la app ordena el texto por ti.", "Write as you speak: the app tidies the text for you."] }],
+      steps: [{ kind: "type", anchor: "mensaje-texto", text: ["Hola, Don Aurelio. Hoy llego a las 10.", "Hello, Don Aurelio. I'll arrive at 10 today."], caption: ["Escribe como hablas: la app ordena el texto por ti.", "Write as you speak: the app tidies the text for you."] }, { kind: "ref", topic: "mensajes" }],
     },
     {
       id: "q5-revisar", chapter: "escribir", anchors: ["mensaje-enviar"],
       keys: [["enviar", "send"], ["revisar", "review"]],
-      steps: [{ kind: "show", anchor: "mensaje-enviar", caption: ["Antes de enviar, siempre revisas: la app nunca envía sola.", "Before sending, always review: the app never sends on its own."], contexto: ["Enviar pregunta una vez más a quién va: esa puerta evita el cliente equivocado.", "Sending asks once more who it goes to: that door avoids the wrong client."] }],
+      steps: [{ kind: "show", anchor: "mensaje-enviar", caption: ["Antes de enviar, siempre revisas: la app nunca envía sola.", "Before sending, always review: the app never sends on its own."], contexto: ["Enviar pregunta una vez más a quién va: esa puerta evita el cliente equivocado.", "Sending asks once more who it goes to: that door avoids the wrong client."] }, { kind: "ref", topic: "mensajes" }],
     },
     {
       id: "q5-cierre", chapter: "escribir", anchors: ["contact-row"],
       keys: [["colores", "colors"], ["contacto", "contact"]],
       steps: [
         { kind: "go", screen: "/" },
-        { kind: "show", anchor: "contact-row", caption: ["Mostaza, verde, azul, rojo: cada color es un canal.", "Mustard, green, blue, red: each color is a channel."] },
+        { kind: "show", anchor: "contact-row", caption: ["Cada color, un canal con su oficio: escribir, WhatsApp, llamar, llegar.", "Each color, a channel with its job: write, WhatsApp, call, get there."] },
       ],
     },
   ],

@@ -32,12 +32,13 @@ export const Q6: Module = {
         { kind: "stage", build: "ruta-base" },
         { kind: "go", screen: "/ajustes" },
         { kind: "show", anchor: "aj-manual", caption: ["El Manual vive en Ajustes, en su propio pliegue.", "The Manual lives in Settings, in its own fold."] },
+        { kind: "ref", topic: "manual-uso" },
       ],
     },
     {
       id: "q6-abrir", chapter: "manual", anchors: ["manual-abrir"],
       keys: [["abrir el manual", "open the manual"], ["manual", "manual"]],
-      steps: [{ kind: "do", anchor: "manual-abrir", caption: ["Ábrelo: el Manual es la ayuda entera, en una pantalla.", "Open it: the Manual is the whole help, on one screen."] }],
+      steps: [{ kind: "do", anchor: "manual-abrir", caption: ["Ábrelo: el Manual es la ayuda entera, en una pantalla.", "Open it: the Manual is the whole help, on one screen."] }, { kind: "ref", topic: "manual-uso" }],
     },
     {
       id: "q6-portada", chapter: "manual", anchors: ["mn-doc"],
@@ -45,17 +46,18 @@ export const Q6: Module = {
       steps: [
         { kind: "go", screen: "/manual" },
         { kind: "show", anchor: "mn-doc", caption: ["Capítulos y temas numerados: todo Brizna, explicado una vez.", "Numbered chapters and topics: all of Brizna, explained once."] },
+        { kind: "ref", topic: "manual-uso" },
       ],
     },
     {
       id: "q6-tema", chapter: "manual", anchors: ["manual-tema"],
       keys: [["tema", "topic"], ["ejemplo", "example"]],
-      steps: [{ kind: "show", anchor: "manual-tema", caption: ["Cada tema trae cómo funciona, un ejemplo y qué pasa si…", "Each topic covers how it works, an example, and what if…"] }],
+      steps: [{ kind: "show", anchor: "manual-tema", caption: ["Cada tema trae cómo funciona, un ejemplo y qué pasa si…", "Each topic covers how it works, an example, and what if…"] }, { kind: "ref", topic: "manual-uso" }],
     },
     {
       id: "q6-ver", chapter: "salto", anchors: ["manual-ver-en-app"],
       keys: [["ver en la app", "see it in the app"], ["tema", "topic"]],
-      steps: [{ kind: "do", anchor: "manual-ver-en-app", caption: ["Toca «Ver en la app» en un tema.", "Tap “See it in the app” on a topic."] }],
+      steps: [{ kind: "do", anchor: "manual-ver-en-app", caption: ["Toca «Ver en la app» en un tema.", "Tap “See it in the app” on a topic."] }, { kind: "ref", topic: "manual-uso" }],
     },
     {
       id: "q6-anillo", chapter: "salto", anchors: ["hecho"],
@@ -69,6 +71,7 @@ export const Q6: Module = {
         { kind: "go", screen: "/" },
         { kind: "do", anchor: "pista-boton", caption: ["¿Prisa? Toca cualquier (?) junto a un título.", "In a hurry? Tap any (?) beside a title."] },
         { kind: "show", anchor: "pista-burbuja", caption: ["La burbuja dice lo mismo que el Manual: una sola fuente.", "The bubble says what the Manual says: one single source."] },
+        { kind: "ref", topic: "manual-uso" },
       ],
     },
     {

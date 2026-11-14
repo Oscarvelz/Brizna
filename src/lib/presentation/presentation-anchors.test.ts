@@ -29,6 +29,10 @@
  *       en orden, un paso stage o go ya ocurrió antes (en la misma
  *       escena o en una anterior del módulo): algo de la lección puso el
  *       mundo en ese estado antes de señalarlo.
+ *  F-7  el puente al Manual (Oscar, 2026-11-14): todo paso `ref` de toda
+ *       escena nombra un tema que EXISTE en el Manual vivo (findTopic lo
+ *       resuelve en MANUAL_TOPICS) — si un tema muere o se renombra, la
+ *       cerca se pone roja antes de publicar, jamás un botón fantasma.
  */
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -37,6 +41,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { ANCHORS, anchorById } from "./anchors.ts";
+import { findTopic } from "../manual/topics.ts";
 import { MODULES as ALL_MODULES } from "./guion.ts";
 import type { Module, Step } from "./guion.ts";
 
@@ -183,6 +188,20 @@ test("F-6: un ancla de estado solo se cita tras un stage o un go en su módulo",
             `${mod.id}/${scene.id}: cita «${a}» (${rec.presence}) antes de cualquier stage/go del módulo`,
           );
         }
+      }
+    }
+  }
+});
+
+test("F-7: todo paso ref nombra un tema vivo del Manual", () => {
+  for (const mod of MODULES) {
+    for (const scene of mod.scenes) {
+      for (const step of scene.steps) {
+        if (step.kind !== "ref") continue;
+        assert.ok(
+          findTopic(step.topic),
+          `${mod.id}/${scene.id}: el puente nombra el tema «${step.topic}», que no existe en el Manual`,
+        );
       }
     }
   }

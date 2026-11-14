@@ -52,6 +52,12 @@ export function keepScreens(client: QueryClient) {
   let timer = 0;
   const save = () => {
     timer = 0;
+    // Presentation seal (Cerca 0): while the stage book is the open one
+    // (__bzDb set by switchDatabase), the cache holds the fiction's answers.
+    // They must never reach this snapshot: after a hard death mid-lesson the
+    // next boot would paint the fiction's names on the real screens until
+    // fresh answers land. The last real snapshot simply stays as it was.
+    if ((globalThis as unknown as { __bzDb?: string }).__bzDb) return;
     try {
       const out: [unknown[], unknown][] = [];
       let total = 0;

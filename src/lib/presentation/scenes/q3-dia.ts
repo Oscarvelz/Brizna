@@ -34,6 +34,7 @@ export const Q3: Module = {
         { kind: "stage", build: "ruta-dia" },
         { kind: "go", screen: "/" },
         { kind: "show", anchor: "dia-hoy", caption: ["Este es tu día: los patios de hoy, en orden de ruta.", "This is your day: today's yards, in route order."] },
+        { kind: "ref", topic: "hoy" },
       ],
     },
     {
@@ -41,6 +42,7 @@ export const Q3: Module = {
       keys: [["fijados", "pinned"], ["atrasados", "late"]],
       steps: [
         { kind: "show", anchor: "en-la-mira", caption: ["Arriba viven los Fijados: atrasados y alto riesgo, hasta resolverlos.", "Pinned live at the top: late and high risk, until resolved."], contexto: ["El pin de un atrasado viene forzado: no se quita hasta hacer el patio.", "A late yard's pin is forced: it stays until the yard is done."] },
+        { kind: "ref", topic: "hoy" },
       ],
     },
     {
@@ -49,6 +51,7 @@ export const Q3: Module = {
       steps: [
         { kind: "ask", anchor: "hecho", caption: ["¿Terminaste un patio? Hecho pregunta cómo se cierra.", "Finished a yard? Done asks how it closes."] },
         { kind: "do", anchor: "hecho", caption: ["Toca Hecho en la primera tarjeta.", "Tap Done on the first card."] },
+        { kind: "ref", topic: "hecho" },
       ],
     },
     {
@@ -57,6 +60,7 @@ export const Q3: Module = {
       steps: [
         { kind: "do", anchor: "hecho-cobrado", caption: ["Elige Cobrado: te pagaron este corte hoy.", "Choose Paid: they paid you for this cut today."] },
         { kind: "do", anchor: "hecho-confirmar", caption: ["La segunda confirmación repite la consecuencia: confirma.", "The second confirmation repeats the consequence: confirm it."], contexto: ["Cobrado anota solo el pago de hoy: la deuda vieja sigue por cobrar.", "Paid records only today's payment: older debt stays in To collect."] },
+        { kind: "ref", topic: "hecho" },
       ],
     },
     {
@@ -66,6 +70,7 @@ export const Q3: Module = {
         { kind: "do", anchor: "hecho", caption: ["Siguiente patio: toca Hecho.", "Next yard: tap Done."] },
         { kind: "do", anchor: "hecho-pendiente", caption: ["Elige Pendiente: el corte se suma a su cuenta.", "Choose Unpaid: the cut is added to their balance."] },
         { kind: "do", anchor: "hecho-confirmar", caption: ["Confirma: su precio entra en Por cobrar.", "Confirm: its price goes into To collect."], contexto: ["Si tenía adelanto, el adelanto paga primero y la deuda crece menos.", "If they had an advance, it pays first and the debt grows less."] },
+        { kind: "ref", topic: "hecho" },
       ],
     },
     {
@@ -77,6 +82,7 @@ export const Q3: Module = {
         { kind: "show", anchor: "hecho-calculadora", caption: ["La calculadora pone el monto: chips rápidos o cuentas completas.", "The calculator sets the amount: quick chips or full calculations."] },
         { kind: "do", anchor: "hecho-abono-confirmar", caption: ["Confirma el abono escrito.", "Confirm the partial amount written."] },
         { kind: "do", anchor: "hecho-confirmar", caption: ["Y confirma el cierre: el resto sigue por cobrar.", "And confirm the close: the rest stays in To collect."], contexto: ["Abonado suma el corte entero y resta el abono: esa es su aritmética.", "Partial adds the whole cut, then subtracts the payment: that is its math."] },
+        { kind: "ref", topic: "hecho" },
       ],
     },
     {
@@ -85,6 +91,7 @@ export const Q3: Module = {
       steps: [
         { kind: "do", anchor: "tarjeta-posponer", caption: ["¿Un patio no se puede hoy? Toca Posponer.", "A yard cannot happen today? Tap Postpone."] },
         { kind: "show", anchor: "tarjeta-posponer", caption: ["Eliges día y razón; con Cancelado, el corte no vuelve.", "You pick day and reason; with Cancelled, the cut never returns."], contexto: ["Posponer mueve el patio entero: su precio y su deuda no cambian.", "Postponing moves the whole yard: its price and debt do not change."] },
+        { kind: "ref", topic: "pasar-pendientes" },
       ],
     },
     {
@@ -93,17 +100,18 @@ export const Q3: Module = {
       steps: [
         { kind: "go", screen: "/" },
         { kind: "show", anchor: "parar-dia", caption: ["¿Lluvia? Parar el día pasa los patios y prepara los avisos.", "Rain? Stopping the day moves the yards and readies notices."], contexto: ["Se guarda la hora exacta y todo pasa al siguiente día abierto.", "The exact time is saved and everything moves to the next open day."] },
+        { kind: "ref", topic: "parar-dia" },
       ],
     },
     {
       id: "q3-pasar", chapter: "mover", anchors: ["pasar-pendientes"],
       keys: [["pasar atrasados", "move late"], ["pendientes", "pending"]],
-      steps: [{ kind: "show", anchor: "pasar-pendientes", caption: ["Pasar pendientes mueve el día sin pararlo: día destino y razón.", "Move pending moves the day without stopping it: target day and reason."] }],
+      steps: [{ kind: "show", anchor: "pasar-pendientes", caption: ["Pasar pendientes mueve el día sin pararlo: día destino y razón.", "Move pending moves the day without stopping it: target day and reason."] }, { kind: "ref", topic: "pasar-pendientes" }],
     },
     {
       id: "q3-todos", chapter: "mover", anchors: ["todos"],
       keys: [["todos", "all"], ["quién pagó", "who paid"]],
-      steps: [{ kind: "show", anchor: "todos", caption: ["Todos cierra el día de una pasada: patio por patio, quién pagó.", "All closes the whole day at once: yard by yard, who paid."] }],
+      steps: [{ kind: "show", anchor: "todos", caption: ["Todos cierra el día de una pasada: patio por patio, quién pagó.", "All closes the whole day at once: yard by yard, who paid."] }, { kind: "ref", topic: "todos" }],
     },
     {
       id: "q3-hechos-hoy", chapter: "mover", anchors: ["hechos-hoy"],
@@ -111,6 +119,7 @@ export const Q3: Module = {
       steps: [
         { kind: "go", screen: "/" },
         { kind: "show", anchor: "hechos-hoy", caption: ["Lo cerrado hoy queda aquí; desde aquí también se deshace.", "What closed today stays here; from here it also undoes."] },
+        { kind: "ref", topic: "hecho" },
       ],
     },
   ],

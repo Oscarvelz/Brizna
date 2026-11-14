@@ -50,6 +50,7 @@ export const AD7: Module = {
         { kind: "go", screen: "/cobros" },
         { kind: "show", anchor: "por-cobrar", caption: ["Cobros es un tablero: quién debe, quién pagó, quién espera.", "Payments is a board: who owes, who paid, who waits."] },
         { kind: "show", anchor: "por-cobrar", caption: ["Por cobrar junta a todos los que deben hoy.", "To collect gathers everyone who owes today."] },
+        { kind: "ref", topic: "por-cobrar" },
       ],
     },
     {
@@ -57,7 +58,7 @@ export const AD7: Module = {
       keys: [["orden", "sort"], ["mayor saldo", "highest balance"]],
       steps: [
         { kind: "show", anchor: "cobros-orden", caption: ["La lista se ordena: mayor saldo primero, por defecto.", "The list sorts: largest balance first, by default."] },
-        { kind: "show", anchor: "cobros-orden", caption: ["También por nombre, último corte o atraso primero.", "Also by name, last cut, or lateness first."], contexto: ["Atraso usa su día fijo de pago: sin día fijo, no hay atraso.", "Lateness uses their fixed pay day: no fixed day, no lateness."] },
+        { kind: "show", anchor: "cobros-orden", caption: ["También por nombre o último corte; por atraso, el que urge va primero.", "Also by name or last cut; by lateness, the urgent one goes first."], contexto: ["Atraso usa su día fijo de pago: sin día fijo, no hay atraso.", "Lateness uses their fixed pay day: no fixed day, no lateness."] },
       ],
     },
     {
@@ -67,14 +68,16 @@ export const AD7: Module = {
         { kind: "show", anchor: "cobros-abonado", caption: ["Abonado vive dentro de Por cobrar: pagaron parte, deben resto.", "Partial paid lives inside To collect: they paid part, owe the rest."] },
         { kind: "show", anchor: "cobros-abonado", caption: ["Don Aurelio abonó $40 de $120: aquí sigue, debiendo $80.", "Don Aurelio paid $40 of $120: still here, owing $80."], contexto: ["La vista lee la palabra abono en la nota y que aún debe.", "The view reads the word for partial in the note, plus still owing."] },
         { kind: "show", anchor: "cobros-abonado", caption: ["Un adelanto por sobrepago no aparece en esta vista.", "An advance from overpaying does not appear in this view."] },
+        { kind: "ref", topic: "por-cobrar" },
       ],
     },
     {
       id: "ad7-cobrado", chapter: "vistas", anchors: ["cobrado"],
       keys: [["cobrado", "collected"], ["semana", "week"]],
       steps: [
-        { kind: "show", anchor: "cobrado", caption: ["Cobrado se despliega en Semana, Mes y Año.", "Collected unfolds into Week, Month, and Year."] },
+        { kind: "show", anchor: "cobrado", caption: ["Cada periodo muestra lo que entró: su total y la lista de pagos recibidos.", "Each period shows what came in: its total and the list of payments received."] },
         { kind: "show", anchor: "cobrado", caption: ["Julia pagó hoy sus $100: su fila vive aquí.", "Julia paid her $100 today: her row lives here."] },
+        { kind: "ref", topic: "cobrado" },
       ],
     },
     {
@@ -83,6 +86,7 @@ export const AD7: Module = {
       steps: [
         { kind: "show", anchor: "por-cobrar", caption: ["Los totales cuentan solo activos y no vetados.", "Totals count only active, non-blacklisted clients."], contexto: ["Es una sola regla en Hoy, Cobros, Estudio y widgets.", "It is one single rule in Today, Payments, Stats, and widgets."] },
         { kind: "show", anchor: "por-cobrar", caption: ["La ficha de cada persona siempre enseña su saldo real.", "Each person's file always shows their real balance."] },
+        { kind: "ref", topic: "por-cobrar" },
       ],
     },
     {
@@ -92,6 +96,7 @@ export const AD7: Module = {
         { kind: "show", anchor: "cobros-espera", caption: ["En espera guarda dinero que lleva días sin moverse.", "Waiting holds money that has sat unmoved for days."] },
         { kind: "show", anchor: "cobros-espera", caption: ["Carmen debe $40 desde hace cincuenta días: nivel espera.", "Carmen owes $40 from fifty days ago: waiting level."], contexto: ["La vista mezcla tres cosas: espera, alto riesgo y pausados.", "The view mixes three things: waiting, high risk, and paused."] },
         { kind: "show", anchor: "cobros-espera", caption: ["Marta está en pausa y también aparece aquí.", "Marta is paused and also appears here."], contexto: ["En espera no perdona ni pausa la deuda: sigue por cobrar.", "Waiting neither forgives nor pauses the debt: it stays collectible."] },
+        { kind: "ref", topic: "espera" },
       ],
     },
     {
@@ -101,6 +106,7 @@ export const AD7: Module = {
         { kind: "show", anchor: "cobros-riesgo", caption: ["Alto riesgo es naranja: Rodrigo debe $240.", "High risk is orange: Rodrigo owes $240."] },
         { kind: "show", anchor: "cobros-riesgo", caption: ["Basta un disparador: tiempo, monto o cortes sin pagar.", "One trigger is enough: time, amount, or unpaid cuts."], contexto: ["Tiempo cuenta tras la espera; monto, $200; cortes, tres por defecto.", "Time counts after waiting; amount, $200; cuts, three by default."] },
         { kind: "show", anchor: "cobros-riesgo", caption: ["Con saldo en cero, nunca hay riesgo.", "With a zero balance, there is never risk."] },
+        { kind: "ref", topic: "espera" },
       ],
     },
     {
@@ -111,6 +117,7 @@ export const AD7: Module = {
         { kind: "show", anchor: "agenda", caption: ["Alto riesgo congela la agenda: no nacen visitas nuevas.", "High risk freezes the schedule: no new visits are born."], contexto: ["Solo queda su próxima visita, clavada en Hoy como aviso.", "Only its next visit remains, pinned in Today as a warning."] },
         { kind: "go", screen: "/clientes/:riesgo" },
         { kind: "show", anchor: "ficha-deuda", caption: ["Se deshiela pagando, perdonando o con Seguir atendiendo.", "It thaws by paying, forgiving, or with Keep serving."] },
+        { kind: "ref", topic: "espera" },
       ],
     },
     {
@@ -118,8 +125,9 @@ export const AD7: Module = {
       keys: [["límites", "limits"], ["ajustes", "settings"]],
       steps: [
         { kind: "go", screen: "/ajustes" },
-        { kind: "show", anchor: "ajustes-espera", caption: ["Los cuatro umbrales viven en Ajustes: días, monto, cortes.", "The four thresholds live in Settings: days, amount, cuts."] },
+        { kind: "show", anchor: "ajustes-espera", caption: ["Cuatro umbrales deciden cuándo una deuda pasa a En espera o Alto riesgo.", "Four thresholds decide when a debt turns On hold or High risk."] },
         { kind: "show", anchor: "ajustes-espera", caption: ["Cambiarlos reclasifica a todos al instante, sin tocar saldos.", "Changing them reclassifies everyone instantly, touching no balances."] },
+        { kind: "ref", topic: "espera" },
       ],
     },
     {
@@ -130,6 +138,7 @@ export const AD7: Module = {
         { kind: "show", anchor: "cobrado", caption: ["Cobrado cuenta el dinero el día que entra.", "Collected counts money the day it comes in."] },
         { kind: "show", anchor: "cobros-hecho", caption: ["Trabajo hecho cuenta el precio el día trabajado.", "Work done counts the price on the day it was worked."], contexto: ["Un adelanto cuenta al entrar, aunque su corte sea después.", "An advance counts when it arrives, though its cut comes later."] },
         { kind: "show", anchor: "cobros-hecho", caption: ["Compararlos dice si la deuda se está acumulando.", "Comparing them tells whether debt is piling up."] },
+        { kind: "ref", topic: "cobrado" },
       ],
     },
     {
@@ -139,6 +148,7 @@ export const AD7: Module = {
         { kind: "go", screen: "/estadisticas" },
         { kind: "show", anchor: "estudio-antiguedad", caption: ["En Estudio, la deuda se ordena por antigüedad.", "In Stats, debt is sorted by age."] },
         { kind: "show", anchor: "estudio-antiguedad", caption: ["La deuda anterior vive en su cubo: Saldo inicial.", "Earlier debt lives in its own bucket: Opening balance."], contexto: ["Iván debe $90 de antes: no se disfraza de deuda viejísima.", "Iván owes $90 from before: not disguised as ancient debt."] },
+        { kind: "ref", topic: "quien-debe" },
       ],
     },
     {
@@ -149,6 +159,7 @@ export const AD7: Module = {
         { kind: "show", anchor: "cobros-tarjeta", caption: ["Cobra protegiendo el negocio: primero riesgo y atraso.", "Collect protecting the business: risk and lateness first."] },
         { kind: "show", anchor: "cobros-tarjeta", caption: ["Luego los saldos mayores; lo reciente puede esperar.", "Then the largest balances; recent debt can wait."] },
         { kind: "show", anchor: "cobros-grupo", caption: ["Cada tarjeta lleva casilla: varios saldos, un solo cobro.", "Each card has a checkbox: several balances, one collection."], contexto: ["Cobrar elegidos registra el saldo completo de cada elegido.", "Collect selected records each selected client's full balance."] },
+        { kind: "ref", topic: "por-cobrar" },
       ],
     },
   ],

@@ -106,7 +106,7 @@ export const AD16: Module = {
       id: "ad16-semana", chapter: "teatro", anchors: ["teatro-semana-tira"],
       keys: [["widget", "widget"], ["semana", "week"]],
       steps: [
-        th("semana", ["Semana: siete días desde hoy, con hoy resaltado.", "Week: seven days from today, with today highlighted."], ["Es el único widget sin Por cobrar: solo mira el ritmo.", "It is the only widget without To collect: rhythm only."]),
+        th("semana", ["La tira lee tu semana de un vistazo: siete días y la carga que viene.", "The strip reads your week at a glance: seven days and the load coming."], ["Es el único widget sin Por cobrar: solo mira el ritmo.", "It is the only widget without To collect: rhythm only."]),
       ],
     },
     {
@@ -181,13 +181,15 @@ export const AD16: Module = {
       steps: [
         { kind: "go", screen: "/ajustes" },
         { kind: "show", anchor: "aj-notificaciones", caption: ["Notificaciones vive solo en la app Android: tres permisos, Listo.", "Notifications lives only in the Android app: three permissions, Ready."], contexto: ["Hoy solo miramos: Permitir, Proteger y Probar no se tocan.", "Today we only look: Allow, Protect, and Test stay untouched."] },
+        { kind: "ref", topic: "notificaciones" },
       ],
     },
     {
       id: "ad16-notif-tipos", chapter: "avisos", anchors: ["aj-notificaciones"],
       keys: [["notificaciones", "notifications"], ["avisos", "alerts"]],
       steps: [
-        { kind: "show", anchor: "aj-notificaciones", caption: ["Cuatro avisos: mañana, pagos, riesgo y lluvia.", "Four alerts: tomorrow, payments, risk, and rain."], contexto: ["La hora de la noche se elige; las demás son fijas: 7:30.", "The evening hour is yours; the others are fixed: 7:30."] },
+        { kind: "show", anchor: "aj-notificaciones", caption: ["Cuatro avisos, cuatro cuidados: mañana tus patios, pagos por cobrar, riesgo y lluvia.", "Four alerts, four cares: tomorrow's yards, payments due, risk, and rain."], contexto: ["La hora de la noche se elige; las demás son fijas: 7:30.", "The evening hour is yours; the others are fixed: 7:30."] },
+        { kind: "ref", topic: "notificaciones" },
       ],
     },
     {
@@ -195,6 +197,7 @@ export const AD16: Module = {
       keys: [["hora exacta", "exact time"], ["alarma", "alarm"]],
       steps: [
         { kind: "show", anchor: "aj-notificaciones", caption: ["Con hora exacta, el aviso cae exacto; sin ella, algo tarde.", "With exact time, the alert lands exact; without, somewhat late."], contexto: ["La fila de hora exacta solo aparece cuando falta.", "The exact-time row only appears when it is missing."] },
+        { kind: "ref", topic: "notificaciones" },
       ],
       verify: "Censo G V-10: el permiso de alarma exacta varía por versión de Android y fabricante; no es probable en banco web.",
     },
@@ -204,6 +207,7 @@ export const AD16: Module = {
       steps: [
         { kind: "go", screen: "/agenda" },
         { kind: "show", anchor: "agenda", caption: ["El aviso de mañana aterriza en su día exacto de Agenda.", "Tomorrow's alert lands on its exact Schedule day."], contexto: ["Pagos cae en Cobros; lluvia y riesgo, en Hoy.", "Payments lands in Payments; rain and risk, in Today."] },
+        { kind: "ref", topic: "agenda" },
       ],
     },
     {
@@ -212,6 +216,7 @@ export const AD16: Module = {
       steps: [
         { kind: "go", screen: "/ajustes" },
         { kind: "show", anchor: "aj-recordatorios", caption: ["Dos sistemas, nombres parecidos: Recordatorios avisa con Brizna abierta.", "Two systems, alike names: Reminders alerts with Brizna open."], contexto: ["En Android, ese interruptor te manda a Notificaciones, justo debajo.", "On Android, that switch sends you to Notifications, just below."] },
+        { kind: "ref", topic: "recordatorios" },
       ],
     },
     {
@@ -219,6 +224,7 @@ export const AD16: Module = {
       keys: [["huella", "fingerprint"], ["huella", "fingerprint"]],
       steps: [
         { kind: "show", anchor: "aj-huella", caption: ["La huella se pide en este aparato y funciona sin internet.", "The fingerprint is requested on this device and works offline."], contexto: ["Hoy no se registra ninguna: solo miramos dónde vive.", "Today none is enrolled: we only look where it lives."] },
+        { kind: "ref", topic: "huella" },
       ],
     },
     {
@@ -226,6 +232,7 @@ export const AD16: Module = {
       keys: [["huella", "fingerprint"], ["cerrada más de", "away longer than"]],
       steps: [
         { kind: "show", anchor: "aj-huella", caption: ["La gracia decide cuándo vuelve a pedirla: hasta una hora.", "The grace period decides when it asks again: up to one hour."], contexto: ["Compartir, imprimir o descargar nunca cuentan como ausencia.", "Sharing, printing, or downloading never count as absence."] },
+        { kind: "ref", topic: "huella" },
       ],
     },
     {

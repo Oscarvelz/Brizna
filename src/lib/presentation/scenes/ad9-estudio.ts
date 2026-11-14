@@ -56,6 +56,7 @@ export const AD9: Module = {
         { kind: "go", screen: "/estadisticas" },
         { kind: "show", anchor: "estudio", caption: ["Dos vistas, una pestaña: Estudio cuenta; el Asesor aconseja.", "Two views, one tab: Stats counts; the Advisor advises."], contexto: ["Deslizar dentro de Estudio voltea la vista sin salir de la pestaña.", "Swiping inside Stats flips the view without leaving the tab."] },
         { kind: "show", anchor: "estudio-buscar", caption: ["La lupa filtra los bloques por palabra: escribe «deuda», quedan los tuyos.", "The search filters blocks by word: type “debt”, and yours stay."] },
+        { kind: "ref", topic: "estudio" },
       ],
     },
     {
@@ -65,6 +66,7 @@ export const AD9: Module = {
         { kind: "show", anchor: "cifras-orden", caption: ["Tus 16 bloques se reordenan aquí, flecha a flecha.", "Your 16 blocks reorder here, arrow by arrow."] },
         { kind: "show", anchor: "cifras-orden", caption: ["Guardar pregunta antes de aplicar tu orden nuevo.", "Saving asks before applying your new order."], contexto: ["«Orden de siempre» solo lo prepara: no se guarda hasta que confirmas.", "“Default order” only prepares it: nothing saves until you confirm."] },
         { kind: "show", anchor: "cif-pulso", caption: ["Tu orden vive en este aparato y manda en esta pantalla.", "Your order lives on this device and rules this screen."] },
+        { kind: "ref", topic: "estudio" },
       ],
     },
     {
@@ -73,6 +75,7 @@ export const AD9: Module = {
       steps: [
         { kind: "show", anchor: "cif-pulso", caption: ["Lee primero Este mes: anillo fuera, cobrado; dentro, trabajo hecho.", "Read This month first: outer ring, collected; inner, work done."] },
         { kind: "show", anchor: "cif-pulso", caption: ["Ambos anillos se miden contra lo esperado del mes.", "Both rings measure against the month's expected total."], contexto: ["Y pronostica: si haces lo que queda, el mes llega a tanto.", "And it forecasts the month's total if you finish what remains."] },
+        { kind: "ref", topic: "este-mes" },
       ],
     },
     {
@@ -81,6 +84,7 @@ export const AD9: Module = {
       steps: [
         { kind: "ask", anchor: "cif-pulso", caption: ["¿Quién entra en «Te deben»? Ya conoces la regla.", "Who counts in “Owed to you”? You know the rule."] },
         { kind: "show", anchor: "cif-pulso", caption: ["Solo saldos positivos de clientes activos y no vetados.", "Only positive balances of active, non-blacklisted clients."], contexto: ["Un saldo a favor no resta; archivados y lista negra no cuentan.", "A credit balance never subtracts; archived and blacklisted never count."] },
+        { kind: "ref", topic: "quien-debe" },
       ],
     },
     {
@@ -89,6 +93,7 @@ export const AD9: Module = {
       steps: [
         { kind: "show", anchor: "cif-meta", caption: ["Meta del mes: patios por día necesarios y tu ritmo.", "Monthly goal: yards per day needed and your pace."] },
         { kind: "show", anchor: "cif-esfuerzo", caption: ["Esfuerzo la alimenta: toca un día y editas su meta.", "Effort feeds it: tap a day and edit its goal."], contexto: ["La meta de cada día se guarda para las semanas siguientes.", "Each day's goal is kept for the following weeks."] },
+        { kind: "ref", topic: "meta-mes" },
       ],
     },
     {
@@ -97,6 +102,7 @@ export const AD9: Module = {
       steps: [
         { kind: "show", anchor: "cif-fijo", caption: ["Ingreso fijo: tu mes normal, sin extras ni una vez.", "Fixed income: your normal month, no extras or one-offs."], contexto: ["Cuenta fijos activos, sin pausa ni lista negra, por su frecuencia.", "It counts active regulars, not paused or blacklisted, by frequency."] },
         { kind: "show", anchor: "cif-hora", caption: ["$ por hora solo suma días de trabajo confirmados.", "$ per hour only adds confirmed work days."], contexto: ["Sin horas confirmadas, el bloque lo dice; no inventa tu hora.", "With no confirmed hours, the block says so; it invents nothing."] },
+        { kind: "ref", topic: "ingreso-fijo" },
       ],
     },
     {
@@ -106,6 +112,7 @@ export const AD9: Module = {
         { kind: "show", anchor: "cif-mes", caption: ["Mes a mes: toca el gráfico y fijas un mes entero.", "Month by month: tap the chart and pin a whole month."] },
         { kind: "show", anchor: "cif-semana", caption: ["Esta semana se compara con la pasada al mismo día.", "This week compares with last week at the same weekday."] },
         { kind: "show", anchor: "cif-calendario", caption: ["Días y temporadas: tu mejor día sale del mapa de calor.", "Days and seasons: your best day comes from the heat map."] },
+        { kind: "ref", topic: "ingresos-mes" },
       ],
     },
     {
@@ -114,6 +121,7 @@ export const AD9: Module = {
       steps: [
         { kind: "show", anchor: "cif-fiabilidad", caption: ["Quién te debe ordena la deuda por antigüedad, en cinco cubos.", "Who owes you sorts debt by age, in five buckets."] },
         { kind: "show", anchor: "cif-fiabilidad", caption: ["El saldo inicial tiene cubo propio: nunca se disfraza de viejo.", "Opening balance has its own bucket: never disguised as old."], contexto: ["Los niveles — al corriente, espera, alto riesgo — salen de tus Ajustes.", "The tiers — current, waiting, high risk — come from your Settings."] },
+        { kind: "ref", topic: "quien-debe" },
       ],
     },
     {
@@ -123,6 +131,7 @@ export const AD9: Module = {
         { kind: "show", anchor: "cif-mejores", caption: ["Mejores clientes: quién sostiene tu año, en trabajos y ticket.", "Best clients: who carries your year, in jobs and average ticket."] },
         { kind: "show", anchor: "cif-precio", caption: ["Precio por trabajo separa cortes, extras y una vez.", "Price per job separates cuts, extras, and one-offs."], contexto: ["Los cortes gratis, a $0, quedan fuera de los promedios.", "Free cuts, at $0, stay out of the averages."] },
         { kind: "show", anchor: "cif-clientes", caption: ["Toca una barra de altas o bajas y aterrizas en Clientes.", "Tap a new or lost bar and you land in Clients."] },
+        { kind: "ref", topic: "mejores-clientes" },
       ],
     },
     {
@@ -134,6 +143,7 @@ export const AD9: Module = {
         { kind: "show", anchor: "cif-horas", caption: ["Horas de trabajo cuenta también tus días parados y su motivo.", "Work hours also counts your stopped days and their reason."] },
         { kind: "show", anchor: "cif-anio", caption: ["Cada año guarda también lo de por vida: cobrado y cortes.", "Each year also holds the lifetime totals: collected and cuts."] },
         { kind: "show", anchor: "cif-pospuesto", caption: ["Si pospusiste alguna vez, aquí se cuentan los motivos.", "If you ever postponed, the reasons are counted here."] },
+        { kind: "ref", topic: "propina" },
       ],
     },
     {
@@ -142,14 +152,16 @@ export const AD9: Module = {
       steps: [
         { kind: "do", anchor: "estudio-ir-asesor", caption: ["Pasa al Asesor: mismas cifras, convertidas en consejo.", "Switch to the Advisor: same figures, turned into advice."] },
         { kind: "show", anchor: "asesor", caption: ["Su veredicto: un puntaje de 0 a 100 y su palabra.", "Its verdict: a score from 0 to 100 and its word."], contexto: ["Bien desde 75; Regular, 50 a 74; Atención, bajo 50.", "Good from 75; Fair, 50 to 74; Attention, under 50."] },
+        { kind: "ref", topic: "asesor" },
       ],
     },
     {
       id: "ad9-heroe", chapter: "asesor", anchors: ["asesor"],
       keys: [["te deben", "they owe you"], ["fijo al mes", "fixed monthly"], ["clientes", "clients"]],
       steps: [
-        { kind: "show", anchor: "asesor", caption: ["Su fila de tres: Te deben, Fijo al mes, Clientes.", "Its row of three: Owed to you, Fixed monthly, Clients."] },
+        { kind: "show", anchor: "asesor", caption: ["Tres cifras mandan el veredicto: lo que te deben, tu fijo mensual, tus clientes.", "Three figures drive the verdict: what you're owed, your monthly fixed, your clients."] },
         { kind: "show", anchor: "asesor", caption: ["Su «Te deben» es el de siempre: la misma población exacta.", "Its “Owed to you” is the usual one: the same exact population."], contexto: ["Activos, no vetados, solo saldos positivos: por eso coincide con Estudio.", "Active, not blacklisted, positive balances only: that is why it matches Stats."] },
+        { kind: "ref", topic: "asesor" },
       ],
     },
     {
@@ -158,6 +170,7 @@ export const AD9: Module = {
       steps: [
         { kind: "show", anchor: "asesor", caption: ["El Asesor no es una IA: son reglas escritas, siempre las mismas.", "The Advisor is not an AI: written rules, always the same."], contexto: ["Ninguna IA lo alimenta: lee tu libro y aplica umbrales del código.", "No AI feeds it: it reads your book and applies coded thresholds."] },
         { kind: "show", anchor: "asesor", caption: ["Sin base no se inventa: sin clientes ni trabajos, no hay puntaje.", "No basis, no invention: no clients or jobs, no score."], contexto: ["Cada consejo tiene su puerta: cobrar, por ejemplo, exige $20 atrasados.", "Every tip has its gate: collecting, for example, needs $20 overdue."] },
+        { kind: "ref", topic: "asesor" },
       ],
     },
     {
@@ -166,6 +179,7 @@ export const AD9: Module = {
       steps: [
         { kind: "show", anchor: "asesor-pasos", caption: ["«Lo que yo haría ahora»: tres consejos, ordenados por peso.", "“What I would do now”: three tips, ordered by weight."] },
         { kind: "show", anchor: "asesor-pasos", caption: ["Cada tarjeta trae su cifra de impacto y sus botones de hacer.", "Each card carries its impact figure and its action buttons."], contexto: ["«Ver a quién» abre la lista: cada persona, con su frase propia.", "“See who” opens the list: each person, with their own line."] },
+        { kind: "ref", topic: "asesor-pasos" },
       ],
     },
     {
@@ -175,6 +189,7 @@ export const AD9: Module = {
         { kind: "show", anchor: "asesor-grupos", caption: ["Cinco grupos y cada cliente en uno solo: el primero que toca.", "Five groups and each client in just one: the first that fits."], contexto: ["El orden manda: Morosos, En riesgo, Ocasionales, Estrellas, Fieles.", "The order rules: Late payers, At risk, One-offs, Stars, Faithful."] },
         { kind: "show", anchor: "asesor-chequeos", caption: ["Cinco chequeos forman el puntaje: una media con pesos.", "Five checks form the score: a weighted average."] },
         { kind: "show", anchor: "asesor-chequeos", caption: ["Cobro pesa 30; Clientes, 25; los demás, 15 cada uno.", "Collecting weighs 30; Clients, 25; the rest, 15 each."], contexto: ["Abre un chequeo: te dice qué es «lo sano» y cómo llegar.", "Open a check: it shows what “healthy” is and how to reach it."] },
+        { kind: "ref", topic: "asesor-grupos" },
       ],
     },
     {
@@ -182,7 +197,7 @@ export const AD9: Module = {
       keys: [["exportar", "export"], ["respaldo", "backup"]],
       steps: [
         { kind: "show", anchor: "estudio", caption: ["Para llevarte las cifras, el motor es el centro de exportación.", "To take figures with you, the engine is the export center."], contexto: ["El informe antiguo pegado al respaldo es otra pieza, más simple.", "The old report glued to the backup is another, simpler piece."] },
-        { kind: "ref", topic: "asesor" },
+        { kind: "ref", topic: "exportar" },
       ],
     },
   ],

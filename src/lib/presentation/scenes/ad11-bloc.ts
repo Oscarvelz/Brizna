@@ -86,8 +86,9 @@ export const AD11: Module = {
         { kind: "stage", build: "bloc-notas" },
         { kind: "go", screen: "/notas" },
         { kind: "show", anchor: "notas", caption: ["El Bloc es la memoria suelta del negocio: todo cabe aquí.", "The Pad is the business's loose memory: everything fits here."] },
-        { kind: "show", anchor: "nota-texto", caption: ["Escribes con formato: negrita, listas, título y color de texto.", "You write with formatting: bold, lists, heading, and text color."] },
+        { kind: "show", anchor: "nota-texto", caption: ["El formato ordena la nota para leerla de un vistazo en el patio.", "Formatting orders the note so you can read it at a glance in the yard."] },
         { kind: "show", anchor: "nota-texto", caption: ["Doble toque sobre lo leído entra a editar en ese punto.", "Double-tapping read text enters editing at that point."] },
+        { kind: "ref", topic: "notas" },
       ],
     },
     {
@@ -97,6 +98,7 @@ export const AD11: Module = {
         { kind: "do", anchor: "nota-nueva", caption: ["Toca «Nota nueva»: nace en blanco.", "Tap “New note”: it starts blank."] },
         { kind: "type", anchor: "nota-texto", text: ["Don Aurelio: revisar la cerca trasera el sábado", "Don Aurelio: check the back fence on Saturday"], caption: ["Escribe libre: ya nombra a Don Aurelio.", "Write freely: it already names Don Aurelio."], contexto: ["Al terminar, Guardar la archiva en su carpeta.", "When done, Save files it in its folder."] },
         { kind: "show", anchor: "nota-texto", caption: ["Mientras escribes, vive en el borrador protegido.", "While you write, it lives in the protected draft."], contexto: ["Su refugio: «El borrador, protegido» lo enseña.", "Its shelter: “The draft, protected” teaches it."] },
+        { kind: "ref", topic: "notas" },
       ],
     },
     {
@@ -105,6 +107,7 @@ export const AD11: Module = {
       steps: [
         { kind: "type", anchor: "nota-texto", text: ["@Don Aurelio: traer la sierra grande", "@Don Aurelio: bring the big saw"], caption: ["Con @ y su nombre, la nota queda también en su ficha.", "With @ and their name, the note also lands on their file."] },
         { kind: "show", anchor: "nota-texto", caption: ["El menú ofrece hasta seis clientes mientras escribes el nombre.", "The menu offers up to six clients while you type the name."], contexto: ["Al guardar manda el nombre más largo: «@Cris» no roba a «@Cristel».", "On saving the longest name wins: “@Cris” never steals “@Cristel”."] },
+        { kind: "ref", topic: "notas-cliente" },
       ],
     },
     {
@@ -113,6 +116,7 @@ export const AD11: Module = {
       steps: [
         { kind: "show", anchor: "nota-texto", caption: ["Deshacer va carácter a carácter; manténlo y salta por palabras.", "Undo goes character by character; hold it and jump by words."] },
         { kind: "show", anchor: "nota-buscar", caption: ["La lupa busca dentro de esta nota, no entre todas.", "The search looks inside this note, not among all of them."] },
+        { kind: "ref", topic: "notas" },
       ],
     },
     {
@@ -127,6 +131,7 @@ export const AD11: Module = {
         // elección que este pie nombra SE TOCA: «Quedarme» cierra el
         // diálogo y la nota sigue abierta, que es lo que el paseo necesita.
         { kind: "do", anchor: "nota-guardada-quedarme", caption: ["Toca «Quedarme»: sigues con tu nota abierta.", "Tap “Stay”: you keep working on your note."], contexto: ["Tras guardar eliges: volver, nota nueva o quedarte aquí.", "After saving you choose: go back, new note, or stay here."] },
+        { kind: "ref", topic: "notas" },
       ],
     },
     {
@@ -135,6 +140,7 @@ export const AD11: Module = {
       steps: [
         { kind: "show", anchor: "notas", caption: ["Mientras escribes, tu borrador se guarda solo en tres ranuras.", "While you write, your draft saves itself in three slots."], contexto: ["El Bloc, la nota de una carpeta y cada nota guardada: una ranura cada una.", "The Pad, a folder-started note, and each saved note: one slot each."] },
         { kind: "show", anchor: "notas", caption: ["Si sales a otra pestaña, una puerta pregunta: guardar o salir.", "If you leave for another tab, a door asks: save or leave."], contexto: ["Dentro del Bloc y el Fichero te mueves libre: la puerta no molesta.", "Inside Pad and File you move freely: the door never nags."] },
+        { kind: "ref", topic: "notas" },
       ],
     },
     {
@@ -143,6 +149,7 @@ export const AD11: Module = {
       steps: [
         { kind: "ask", anchor: "notas", caption: ["¿Y si cierras la app de verdad, sin guardar?", "And if you truly close the app, without saving?"] },
         { kind: "show", anchor: "notas", caption: ["El borrador muere con la sesión: eso sí se pierde.", "The draft dies with the session: that much is truly lost."], contexto: ["Lo guardado, jamás: notas y carpetas viven en tu libro.", "What is saved, never: notes and folders live in your book."] },
+        { kind: "ref", topic: "notas" },
       ],
     },
     {
@@ -154,6 +161,7 @@ export const AD11: Module = {
         { kind: "show", anchor: "nota-fijar", caption: ["Fijada se pinta de verde, relleno: su señal.", "Pinned turns green, filled in: that is its sign."] },
         { kind: "show", anchor: "notas-tira-fijadas", caption: ["Ya está en la tira, junto a la anterior.", "It is on the strip now, beside the earlier one."] },
         { kind: "show", anchor: "nota-mover", caption: ["El lector dice su carpeta y trae «Mover a…» a la vista.", "The reader names its folder and brings “Move to…” into view."] },
+        { kind: "ref", topic: "fichero" },
       ],
     },
     {
@@ -165,6 +173,7 @@ export const AD11: Module = {
         { kind: "go", screen: "/clientes/:aurelio" },
         { kind: "show", anchor: "notas-cliente", caption: ["Su ficha la trae de vuelta: sus enlazadas.", "His file brings it back: his linked notes."] },
         { kind: "do", anchor: "ficha-nota-enlace", caption: ["Toca la primera enlazada: esta nota, recién fijada.", "Tap the first linked one: this note, just pinned."] },
+        { kind: "ref", topic: "fichero" },
       ],
     },
     {
@@ -174,6 +183,7 @@ export const AD11: Module = {
         { kind: "do", anchor: "nota-fijar", caption: ["De vuelta en el Bloc, toca el pin verde.", "Back in the Pad, tap the green pin again."] },
         { kind: "do", anchor: "nota-desfijar-confirmar", caption: ["Pregunta antes de soltarla: confirma «Sí, quitar».", "It asks before letting go: confirm “Yes, unpin”."], contexto: ["Dice: deja Hoy y la tira; no se borra.", "It says: it leaves Today and the strip; never deleted."] },
         { kind: "show", anchor: "notas-tira-fijadas", caption: ["La tira vuelve a una; la nota sigue abierta.", "The strip is back to one; the note stays open."] },
+        { kind: "ref", topic: "fichero" },
       ],
     },
     {
@@ -182,6 +192,7 @@ export const AD11: Module = {
       steps: [
         { kind: "show", anchor: "nota-calculadora", caption: ["La calculadora flota, se arrastra y recuerda su sitio y tamaño.", "The calculator floats, drags, and remembers its place and size."] },
         { kind: "show", anchor: "nota-calculadora", caption: ["«En la nota» inserta la cuenta en tu cursor, sin perderlo.", "“Into the note” inserts the sum at your cursor, never losing it."], contexto: ["El Bloc custodia el cursor mientras tocas la calculadora: por eso acierta.", "The Pad guards the cursor while you use the calculator: that is why it works."] },
+        { kind: "ref", topic: "notas" },
       ],
     },
     {
@@ -189,7 +200,8 @@ export const AD11: Module = {
       keys: [["esta semana", "this week"], ["patios", "yards"], ["notas", "notes"]],
       steps: [
         { kind: "show", anchor: "notas-semana", caption: ["Bajo el editor, tu semana: toca un patio y vas a su ficha.", "Below the editor, your week: tap a yard and open its file."] },
-        { kind: "show", anchor: "notas", caption: ["En pantalla grande el Bloc es un escritorio de tres paneles.", "On a big screen the Pad is a three-panel desk."], contexto: ["Los divisores se arrastran y se recuerdan; doble toque los repone.", "Dividers drag and are remembered; a double tap resets them."] },
+        { kind: "show", anchor: "notas", caption: ["En pantalla grande: tus notas, el editor y la calculadora con tu semana.", "On a big screen: your notes, the editor, and the calculator with your week."], contexto: ["Los divisores se arrastran y se recuerdan; doble toque los repone.", "Dividers drag and are remembered; a double tap resets them."] },
+        { kind: "ref", topic: "notas" },
       ],
     },
     {
@@ -200,6 +212,7 @@ export const AD11: Module = {
         { kind: "show", anchor: "notas-cliente", caption: ["Cada cliente guarda sus notas en su propia ficha.", "Every client keeps their notes on their own file."] },
         { kind: "type", anchor: "ficha-nota-texto", text: ["La cerca trasera se revisa el sábado.", "The back fence gets checked on Saturday."], caption: ["Escribe aquí: esta nota vive solo en su ficha.", "Write here: this note lives only on his file."] },
         { kind: "show", anchor: "notas-cliente", caption: ["Su estado lo prueba: guarda al salir del texto.", "Its status proves it: saves when you leave the text."], contexto: ["Cada ficha tiene su borrador propio durante la sesión.", "Each file keeps its own draft during the session."] },
+        { kind: "ref", topic: "notas-cliente" },
       ],
     },
     {
@@ -209,6 +222,7 @@ export const AD11: Module = {
         { kind: "show", anchor: "notas-cliente", caption: ["Sus páginas del Bloc viven en esta sección.", "His Pad pages also live in this section."], contexto: ["Al unir —Repetidos lo enseña—, se mudan con él.", "On merging —Duplicates teaches it—, they move along with him."] },
         { kind: "do", anchor: "ficha-nota-enlace", caption: ["Toca una enlazada y se abre en el Bloc.", "Tap a linked one: it opens in the Pad."] },
         { kind: "show", anchor: "notas", caption: ["Ya estás en el Bloc, con esa página abierta.", "You are in the Pad, with that page open."] },
+        { kind: "ref", topic: "notas-cliente" },
       ],
     },
     {
@@ -218,15 +232,17 @@ export const AD11: Module = {
         { kind: "show", anchor: "notas-puerta", caption: ["Doble toque en Notas abre el Fichero; uno solo, el Bloc.", "A double tap on Notes opens the File; a single one, the Pad."], contexto: ["El toque simple espera un latido: por eso Notas «tarda» un poco.", "The single tap waits a beat: that is why Notes feels slow."] },
         { kind: "go", screen: "/fichero" },
         { kind: "show", anchor: "fichero", caption: ["El Fichero: tus carpetas, con sus notas contadas en la portada.", "The File: your folders, with their notes counted on the cover."] },
+        { kind: "ref", topic: "fichero" },
       ],
     },
     {
       id: "ad11-carpetas", chapter: "fichero", anchors: ["fichero"],
       keys: [["carpetas", "folders"], ["ver todo", "see all"], ["filtros", "filters"]],
       steps: [
-        { kind: "show", anchor: "fichero", caption: ["De fábrica: Trabajo por hacer, Materiales, Recordatorios, No especificada.", "From the factory: To do, Materials, Reminders, Unspecified."] },
+        { kind: "show", anchor: "fichero", caption: ["Las carpetas ordenan tus notas por tipo; sin elegir, caen en No especificada.", "Folders sort your notes by kind; pick none and it lands in Unspecified."] },
         { kind: "show", anchor: "fichero", caption: ["«Ver todo» junta las notas; Filtros ordena por fecha y carpeta.", "“See all” gathers the notes; Filters sorts by date and folder."] },
         { kind: "show", anchor: "fichero", caption: ["Una carpeta con notas aparece sola, aunque no esté en el mueble.", "A folder with notes appears by itself, even off the cabinet."] },
+        { kind: "ref", topic: "fichero" },
       ],
     },
     {
@@ -235,13 +251,15 @@ export const AD11: Module = {
       steps: [
         { kind: "show", anchor: "fichero", caption: ["Mover tiene gesto y botón: desliza la fila o usa su hoja.", "Moving has a gesture and a button: swipe the row or use its sheet."] },
         { kind: "show", anchor: "fichero", caption: ["En la ficha, buscar con @ encuentra por cliente; con #, por etiqueta.", "On the client file, @ searches by client; # by tag."], contexto: ["El buscador del Fichero es de texto simple: no confundas los dos.", "The File's search is plain text: do not confuse the two."] },
+        { kind: "ref", topic: "fichero" },
       ],
     },
     {
       id: "ad11-estilo", chapter: "fichero", anchors: ["fichero"],
       keys: [["carpeta", "folder"], ["color", "color"], ["marca", "mark"]],
       steps: [
-        { kind: "show", anchor: "fichero", caption: ["El engranaje da a cada carpeta color propio y ocho marcas.", "The gear gives each folder its own color and eight marks."], contexto: ["Carpeta y sus notas llevan estilos separados: dos miniaturas lo prevén.", "Folder and its notes carry separate styles: two previews show it."] },
+        { kind: "show", anchor: "fichero", caption: ["Color y marca propios: reconoces cada carpeta sin leer su nombre.", "Its own color and mark: you know each folder without reading its name."], contexto: ["Carpeta y sus notas llevan estilos separados: dos miniaturas lo prevén.", "Folder and its notes carry separate styles: two previews show it."] },
+        { kind: "ref", topic: "fichero" },
       ],
     },
     {

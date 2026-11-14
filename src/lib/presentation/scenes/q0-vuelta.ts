@@ -67,6 +67,7 @@ export const Q0: Module = {
       steps: [
         { kind: "go", screen: "/clientes" },
         { kind: "show", anchor: "lista-clientes", caption: ["Tus clientes viven aquí, en la lista: Aurelio y Carmen.", "Your clients live here, on the list: Aurelio and Carmen."] },
+        { kind: "ref", topic: "lista-clientes" },
       ],
     },
     {
@@ -76,6 +77,7 @@ export const Q0: Module = {
         { kind: "go", screen: "/clientes/:aurelio" },
         { kind: "show", anchor: "ficha-deuda", caption: ["Su ficha guarda su deuda: hoy empieza en cero.", "His file keeps his debt: today it is zero."] },
         { kind: "show", anchor: "movimientos", caption: ["Movimientos guarda cada dólar que entra y sale.", "Movements keeps every dollar that comes and goes."] },
+        { kind: "ref", topic: "ficha-deuda" },
       ],
     },
     {
@@ -84,6 +86,7 @@ export const Q0: Module = {
       steps: [
         { kind: "go", screen: "/" },
         { kind: "show", anchor: "dia-hoy", caption: ["Hoy trae su tarjeta: Don Aurelio corta hoy, $40.", "Today holds his card: Don Aurelio cuts today, $40."] },
+        { kind: "ref", topic: "hoy" },
       ],
     },
     {
@@ -93,6 +96,7 @@ export const Q0: Module = {
         { kind: "do", anchor: "hecho", caption: ["Terminas su patio: toca Hecho en su tarjeta.", "You finish his yard: tap Done on his card."] },
         { kind: "do", anchor: "hecho-pendiente", caption: ["Elige Pendiente: queda a deber este corte.", "Choose Unpaid: this cut stays owed."] },
         { kind: "do", anchor: "hecho-confirmar", caption: ["Confirma: nace su deuda de $40 en Por cobrar.", "Confirm: his $40 debt is born in To collect."] },
+        { kind: "ref", topic: "hecho" },
       ],
     },
     {
@@ -101,6 +105,7 @@ export const Q0: Module = {
       steps: [
         { kind: "do", anchor: "tarjeta-posponer", caption: ["¿Carmen no puede hoy? Toca Posponer su tarjeta.", "Carmen cannot today? Tap Postpone on her card."] },
         { kind: "show", anchor: "tarjeta-posponer", caption: ["Eliges día y razón: mañana sigue su ruta normal.", "You pick day and reason; tomorrow her route continues."] },
+        { kind: "ref", topic: "pasar-pendientes" },
       ],
     },
     {
@@ -109,6 +114,7 @@ export const Q0: Module = {
       steps: [
         { kind: "go", screen: "/cobros" },
         { kind: "show", anchor: "por-cobrar", caption: ["En Cobros, Por cobrar ya muestra sus $40.", "In Payments, To collect already shows his $40."], contexto: ["La deuda nació al cerrar Hecho pendiente en Hoy.", "The debt was born closing Done unpaid in Today."] },
+        { kind: "ref", topic: "por-cobrar" },
       ],
     },
     {
@@ -120,6 +126,7 @@ export const Q0: Module = {
         { kind: "type", anchor: "pago-cantidad", text: ["20", "20"], caption: ["Escribes $20: la mitad de lo que debe hoy.", "You type $20: half of what he owes today."] },
         { kind: "do", anchor: "pago-confirmar", caption: ["Confirma el abono de $20.", "Confirm the $20 partial payment."] },
         { kind: "show", anchor: "ficha-deuda", caption: ["Su saldo baja a $20: la otra mitad sigue viva.", "His balance drops to $20: the other half stays alive."] },
+        { kind: "ref", topic: "ficha-deuda" },
       ],
     },
     {
@@ -129,13 +136,14 @@ export const Q0: Module = {
         { kind: "go", screen: "/cobros" },
         { kind: "show", anchor: "por-cobrar", caption: ["Por cobrar bajó a $20: eso falta por entrar.", "To collect dropped to $20: that is still to come in."] },
         { kind: "show", anchor: "cobrado", caption: ["Cobrado muestra los $20 que entraron hoy.", "Collected shows the $20 that came in today."] },
+        { kind: "ref", topic: "cobrado" },
       ],
     },
     {
       id: "q0-puertas", chapter: "cierre", anchors: ["pestana-clientes"],
       keys: [["mensaje", "message"], ["bloc", "pad"], ["fichero", "file"]],
       steps: [
-        { kind: "show", anchor: "pestana-clientes", caption: ["Hablar con el cliente, Bloc y Fichero, Encontrar todo: profundiza ahí.", "Talking with the client, Pad and File, Finding everything: go deeper there."], contexto: ["Cada módulo enseña su pieza a fondo.", "Each ladder module teaches its piece in depth."] },
+        { kind: "show", anchor: "pestana-clientes", caption: ["Hablar escribe al cliente; Bloc guarda notas; Encontrar halla cada función y lección.", "Talking writes to the client; the Pad keeps notes; Finding locates every function and lesson."], contexto: ["Cada módulo enseña su pieza a fondo.", "Each ladder module teaches its piece in depth."] },
       ],
     },
     {

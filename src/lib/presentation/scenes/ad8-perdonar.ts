@@ -68,6 +68,7 @@ export const AD8: Module = {
         { kind: "go", screen: "/cobros" },
         { kind: "show", anchor: "cobros-perdonar", caption: ["Perdonar saca dinero de Por cobrar sin que entre nada.", "Forgiving removes money from To collect with nothing coming in."] },
         { kind: "do", anchor: "cobros-perdonar", caption: ["Toca Perdonar en la tarjeta de Don Aurelio.", "Tap Forgive on Don Aurelio's card."] },
+        { kind: "ref", topic: "perdonado" },
       ],
     },
     {
@@ -77,6 +78,7 @@ export const AD8: Module = {
         { kind: "type", anchor: "perdonar-cantidad", text: ["80", "80"], caption: ["Escribe $80 de sus $120: un perdón parcial.", "Write $80 of his $120: a partial forgiveness."] },
         { kind: "show", anchor: "perdonar-cantidad", caption: ["El diálogo lo dice antes: quedan debiendo $40.", "The dialog says it first: $40 still owing."] },
         { kind: "do", anchor: "perdonar-confirmar", caption: ["Confirma el perdón de $80.", "Confirm the $80 forgiveness."] },
+        { kind: "ref", topic: "perdonado" },
       ],
     },
     {
@@ -86,6 +88,7 @@ export const AD8: Module = {
         { kind: "go", screen: "/clientes/:aurelio" },
         { kind: "show", anchor: "ficha-deuda", caption: ["Su saldo bajó a $40: el resto sigue debiendo.", "His balance dropped to $40: the rest is still owed."] },
         { kind: "show", anchor: "movimientos", caption: ["En Movimientos, el perdón vive como fila tachada.", "In Movements, the forgiveness lives as a struck-through row."], contexto: ["Perdonar reinicia su reloj de atraso: los días cuentan desde hoy.", "Forgiving resets his lateness clock: days count from today."] },
+        { kind: "ref", topic: "perdonado" },
       ],
     },
     {
@@ -93,6 +96,7 @@ export const AD8: Module = {
       keys: [["el resto", "the rest"], ["por cobrar", "to collect"]],
       steps: [
         { kind: "show", anchor: "ficha-deuda", caption: ["Si paga el resto, entra por la vía normal.", "If he pays the rest, it enters the normal way."], contexto: ["Lo perdonado queda perdonado y lo pagado, pagado: dos filas separadas.", "Forgiven stays forgiven and paid stays paid: two separate rows."] },
+        { kind: "ref", topic: "perdonado" },
       ],
     },
     {
@@ -104,6 +108,7 @@ export const AD8: Module = {
         { kind: "show", anchor: "ficha-perdonar", caption: ["En su ficha, Perdonar también vive junto al saldo.", "On his file, Forgive also lives beside the balance."] },
         { kind: "do", anchor: "ficha-perdonar", caption: ["Toca Perdonar en la ficha.", "Tap Forgive on the file."] },
         { kind: "show", anchor: "ficha-perdonar-cantidad", caption: ["El campo nace vacío: vacío significa todo el saldo.", "The field is born empty: empty means the whole balance."] },
+        { kind: "ref", topic: "perdonado" },
       ],
     },
     {
@@ -114,6 +119,7 @@ export const AD8: Module = {
         { kind: "show", anchor: "ficha-deuda", caption: ["Saldo en cero. No es espera: decidiste no cobrarlo.", "Balance at zero. Not waiting: you decided not to collect it."] },
         { kind: "go", screen: "/cobros" },
         { kind: "show", anchor: "cobros-perdonado", caption: ["Lo perdonado queda anotado en Perdonado este mes.", "Forgiven money stays recorded in Forgiven this month."] },
+        { kind: "ref", topic: "perdonado" },
       ],
     },
     {
@@ -123,6 +129,7 @@ export const AD8: Module = {
         { kind: "go", screen: "/clientes/:aurelio" },
         { kind: "ask", anchor: "ficha-adelanto", caption: ["¿Y si mañana paga lo que perdonaste?", "And if tomorrow he pays what you forgave?"] },
         { kind: "show", anchor: "ficha-adelanto", caption: ["No hay botón con ese nombre: la puerta es Adelanto.", "No button has that name: the door is Advance."], contexto: ["Con saldo cero, Abono se apaga; Adelanto queda siempre abierto.", "With zero balance, Partial turns off; Advance stays always open."] },
+        { kind: "ref", topic: "ficha-deuda" },
       ],
     },
     {
@@ -133,17 +140,19 @@ export const AD8: Module = {
         { kind: "type", anchor: "pago-cantidad", text: ["120", "120"], caption: ["Escribe los $120 que trajo hoy.", "Write the $120 he brought today."] },
         { kind: "do", anchor: "pago-confirmar", caption: ["Confirma la declaración del pago.", "Confirm recording the payment."] },
         { kind: "show", anchor: "ficha-deuda", caption: ["El saldo no revive: los $120 quedan de adelanto.", "The balance does not revive: the $120 stay as advance."], contexto: ["Lo perdonado no se des-perdona: su fila tachada sigue entera.", "Forgiven is not un-forgiven: its struck row stays whole."] },
+        { kind: "ref", topic: "ficha-deuda" },
       ],
     },
     {
       id: "ad8-despues-lista", chapter: "despues", anchors: ["cobrado", "movimientos"],
       keys: [["cobrado", "collected"], ["adelanto", "advance"]],
-      verify: "VERIFICADO al fusionar (2026-11-14, sobre canon 1.5.71): AD8 caminado entero en banco — el adelanto de $120 se declara en escena y el panel Cobrado lo cuenta en Semana/Mes/Año ($120); el predicado de listas 1.5.69 (paid+prepaid, fila «Adelanto») está verbatim en el árbol fusionado.",
+      verify: "VERIFY-post-merge: la fila «Adelanto» en listas de Cobrado es verdad 1.5.69; re-verificar al fusionar sobre canon ≥1.5.69",
       steps: [
         { kind: "go", screen: "/cobros" },
         { kind: "show", anchor: "cobrado", caption: ["En Cobrado, su fila propia dice «Adelanto» y su método.", "In Collected, its own row says “Advance” and its method."], contexto: ["Totales y listas cuentan lo mismo: ningún dólar queda escondido.", "Totals and lists count the same: no dollar stays hidden."] },
         { kind: "go", screen: "/clientes/:aurelio" },
         { kind: "show", anchor: "movimientos", caption: ["En Movimientos conviven: Perdonado tachado y Adelanto nuevo.", "In Movements they live together: struck Forgiven and new Advance."] },
+        { kind: "ref", topic: "cobrado" },
       ],
     },
     {
@@ -152,6 +161,7 @@ export const AD8: Module = {
       steps: [
         { kind: "go", screen: "/" },
         { kind: "show", anchor: "hecho", caption: ["Ese adelanto se gasta solo en su próximo Hecho.", "That advance spends itself on his next Done."], contexto: ["El Hecho consume el adelanto antes de crear deuda nueva.", "Done consumes the advance before creating new debt."] },
+        { kind: "ref", topic: "hecho" },
       ],
     },
     {
@@ -163,6 +173,7 @@ export const AD8: Module = {
         { kind: "show", anchor: "cobros-grupo", caption: ["Tres vecinos deben $40, $50 y $60.", "Three neighbors owe $40, $50, and $60."] },
         { kind: "show", anchor: "cobros-grupo", caption: ["Marca sus casillas en Por cobrar, una por tarjeta.", "Check their boxes in To collect, one per card."] },
         { kind: "show", anchor: "cobros-perdonar-elegidos", caption: ["Con elegidos, aparece Perdonar elegidos.", "With selections, Forgive selected appears."] },
+        { kind: "ref", topic: "perdonado" },
       ],
     },
     {
@@ -172,6 +183,7 @@ export const AD8: Module = {
         { kind: "do", anchor: "cobros-perdonar-elegidos", caption: ["Toca Perdonar elegidos.", "Tap Forgive selected."] },
         { kind: "show", anchor: "cobros-grupo-confirmar", caption: ["La confirmación avisa: no se cuenta como cobrado.", "The confirmation warns: it does not count as collected."], contexto: ["En grupo no hay parciales: cada saldo se perdona entero.", "In bulk there are no partials: each balance is forgiven whole."] },
         { kind: "do", anchor: "cobros-grupo-confirmar", caption: ["Confirma con Perdonar saldos.", "Confirm with Forgive balances."] },
+        { kind: "ref", topic: "perdonado" },
       ],
     },
     {
@@ -181,6 +193,7 @@ export const AD8: Module = {
         { kind: "show", anchor: "deshacer-barra", caption: ["Todo perdón entra en Deshacer como un pago más.", "Every forgiveness enters Undo like any payment."] },
         { kind: "do", anchor: "deshacer-barra", caption: ["Toca Deshacer: la deuda del grupo vuelve exacta.", "Tap Undo: the group's debt returns exactly."] },
         { kind: "show", anchor: "deshacer-confirmar", caption: ["La confirmación cuenta qué se deshace antes de hacerlo.", "The confirmation lists what will be undone before doing it."] },
+        { kind: "ref", topic: "perdonado" },
       ],
     },
     {
@@ -191,6 +204,7 @@ export const AD8: Module = {
         { kind: "go", screen: "/clientes/:unavez" },
         { kind: "show", anchor: "ficha-perdonar", caption: ["Nora era de una vez y debe $40.", "Nora was one-time and owes $40."], contexto: ["Un perdón total la dejaría en cero, sin pendientes: se archivaría sola.", "A full forgiveness would leave her at zero, nothing pending: archived automatically."] },
         { kind: "show", anchor: "ficha-perdonar", caption: ["Perdonar a un permanente nunca archiva a nadie.", "Forgiving a regular client never archives anyone."] },
+        { kind: "ref", topic: "perdonado" },
       ],
     },
     {

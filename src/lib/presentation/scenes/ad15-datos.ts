@@ -52,7 +52,8 @@ export const AD15: Module = {
       steps: [
         { kind: "stage", build: "ruta-datos" },
         { kind: "go", screen: "/ajustes" },
-        { kind: "show", anchor: "aj-copia", caption: ["Aquí vive tu red: última copia, clientes, trabajos, peso.", "Your safety net lives here: last copy, clients, jobs, weight."] },
+        { kind: "show", anchor: "aj-copia", caption: ["Aquí vigilas tu red: que la última copia exista y esté al día.", "Here you watch your net: that the last copy exists and is current."] },
+        { kind: "ref", topic: "copia" },
       ],
     },
     {
@@ -61,6 +62,7 @@ export const AD15: Module = {
       steps: [
         { kind: "show", anchor: "aj-copia", caption: ["La copia se guarda sola: al cambiar datos y al salir.", "The copy saves itself: when data changes and on exit."], contexto: ["Una cada diez minutos como mucho; una idéntica no se repite.", "One every ten minutes at most; an identical one never repeats."] },
         { kind: "show", anchor: "aj-copia", caption: ["Se quedan ocho recientes, una por día y por semana.", "Eight recent ones stay, plus one daily and one weekly."] },
+        { kind: "ref", topic: "copia" },
       ],
     },
     {
@@ -69,6 +71,7 @@ export const AD15: Module = {
       steps: [
         { kind: "show", anchor: "copia-guardar", caption: ["Guardar ahora baja tres piezas: copia, informe y hoja.", "Save now downloads three pieces: copy, report, and sheet."], contexto: ["Hoy solo lo miramos: esta lección no descarga nada.", "Today we only look: this lesson downloads nothing."] },
         { kind: "show", anchor: "copia-guardar", caption: ["Con carpeta elegida quedan solo las cinco recientes por tipo.", "With a folder chosen, only the five newest per type stay."] },
+        { kind: "ref", topic: "copia" },
       ],
     },
     {
@@ -76,6 +79,7 @@ export const AD15: Module = {
       keys: [["suma de control", "checksum"], ["copia", "backup"]],
       steps: [
         { kind: "show", anchor: "aj-copia", caption: ["Formato seis: un archivo sellado con su suma de control.", "Format six: one sealed file with its checksum."], contexto: ["Viaja el libro entero: clientes, trabajos, pagos, notas, ajustes.", "The whole book travels: clients, jobs, payments, notes, settings."] },
+        { kind: "ref", topic: "copia" },
       ],
     },
     {
@@ -83,6 +87,7 @@ export const AD15: Module = {
       keys: [["copia", "backup"], ["aparato", "device"]],
       steps: [
         { kind: "show", anchor: "aj-copia", caption: ["También viaja tu aparato: tema, densidad, carpetas, órdenes.", "Your device travels too: theme, density, folders, orders."], contexto: ["Al restaurar se fusiona: lo tuyo de más no se borra.", "Restoring merges it: your extra things are not erased."] },
+        { kind: "ref", topic: "copia" },
       ],
     },
     {
@@ -91,13 +96,15 @@ export const AD15: Module = {
       steps: [
         { kind: "ask", anchor: "aj-copia", caption: ["¿Y qué nunca viaja en una copia? La valla tiene nombre.", "And what never travels in a copy? The fence has names."] },
         { kind: "show", anchor: "aj-copia", caption: ["Sesión, cola sin red, fotos y cuentas de este aparato.", "Session, offline queue, photos, and this device's accounts."], contexto: ["Un archivo hecho a mano tampoco puede plantarlos al restaurar.", "A handmade file cannot plant them on restore either."] },
+        { kind: "ref", topic: "copia" },
       ],
     },
     {
       id: "ad15-lista", chapter: "puertas", anchors: ["copia-restaurar"],
       keys: [["copias", "backups"], ["restaurar", "restore"], ["lista", "list"]],
       steps: [
-        { kind: "show", anchor: "copia-restaurar", caption: ["La lista enseña doce copias: fecha, clientes y trabajos.", "The list shows twelve copies: date, clients, and jobs."], contexto: ["Una copia perdedora de la nube lleva su etiqueta: «Nube · conflicto».", "A losing cloud copy carries its label: “Cloud · conflict”."] },
+        { kind: "show", anchor: "copia-restaurar", caption: ["Cada fila es una copia a la que puedes volver si algo sale mal.", "Each row is a copy you can roll back to if something goes wrong."], contexto: ["Una copia perdedora de la nube lleva su etiqueta: «Nube · conflicto».", "A losing cloud copy carries its label: “Cloud · conflict”."] },
+        { kind: "ref", topic: "copia" },
       ],
     },
     {
@@ -106,6 +113,7 @@ export const AD15: Module = {
       steps: [
         { kind: "show", anchor: "copia-restaurar", caption: ["Cuatro puertas rechazan una copia mala, en voz alta.", "Four doors refuse a bad copy, out loud."], contexto: ["Más nueva que tu Brizna, sin clientes, sello roto, vacía.", "Newer than your Brizna, no clients, broken seal, empty."] },
         { kind: "show", anchor: "copia-restaurar", caption: ["Una restauración fallida no cambia nada: todo o nada.", "A failed restore changes nothing: all or nothing."] },
+        { kind: "ref", topic: "copia" },
       ],
     },
     {
@@ -114,6 +122,7 @@ export const AD15: Module = {
       steps: [
         { kind: "show", anchor: "copia-restaurar", caption: ["Restaurar primero copia lo que hay: volver siempre es posible.", "Restoring first copies what exists: going back always works."], contexto: ["Hoy solo lo miramos: esta lección no restaura nada.", "Today we only look: this lesson restores nothing."] },
         { kind: "show", anchor: "copia-restaurar", caption: ["Dentro: una sola transacción y la Agenda se resiembra.", "Inside: one single transaction, and the Schedule reseeds."] },
+        { kind: "ref", topic: "copia" },
       ],
     },
     {
@@ -121,6 +130,7 @@ export const AD15: Module = {
       keys: [["restaurar archivo", "restore file"], ["archivo", "file"]],
       steps: [
         { kind: "show", anchor: "copia-archivo", caption: ["Un archivo que no es copia se rechaza en el selector.", "A file that is not a copy is refused at the picker."], contexto: ["Si la copia trae aparato nuevo, la app se recarga sola.", "If the copy brings a new device layer, the app reloads."] },
+        { kind: "ref", topic: "copia" },
       ],
     },
     {
@@ -129,6 +139,7 @@ export const AD15: Module = {
       steps: [
         { kind: "ask", anchor: "aj-copia", caption: ["¿Restaurar es como Añadir varios? No: son puertas opuestas.", "Is restoring like Add many? No: opposite doors."] },
         { kind: "show", anchor: "aj-copia", caption: ["Restaurar reemplaza el libro entero; Añadir varios solo suma.", "Restoring replaces the whole book; Add many only adds."] },
+        { kind: "ref", topic: "copia" },
       ],
     },
     {
@@ -138,6 +149,7 @@ export const AD15: Module = {
         { kind: "go", screen: "/ajustes" },
         { kind: "show", anchor: "aj-ejemplo", caption: ["La muestra: catorce clientes ficticios con dos meses de historia.", "The sample: fourteen fictional clients with two months of history."], contexto: ["Historia construida con la lógica real: no datos pintados.", "History built with the real logic: not painted data."] },
         { kind: "show", anchor: "aj-ejemplo", caption: ["Dentro: una en pausa, un perdón, un día de lluvia.", "Inside: one paused, one forgiveness, one rain day."] },
+        { kind: "ref", topic: "ejemplo" },
       ],
     },
     {
@@ -145,6 +157,7 @@ export const AD15: Module = {
       keys: [["quitar ejemplo", "remove sample"], ["ejemplo", "sample"]],
       steps: [
         { kind: "show", anchor: "ejemplo-quitar", caption: ["Quitarla borra solo lo marcado como ejemplo, nada tuyo.", "Removing it deletes only what is marked sample, nothing yours."], contexto: ["Antes de cargar y de quitar, se guarda una copia forzada.", "Before loading and removing, a forced copy is saved."] },
+        { kind: "ref", topic: "ejemplo" },
       ],
     },
     {
@@ -152,6 +165,7 @@ export const AD15: Module = {
       keys: [["ejemplo", "sample"], ["chip", "chip"]],
       steps: [
         { kind: "show", anchor: "aj-ejemplo", caption: ["El chip Ejemplo te trae a este pliegue de un toque.", "The Sample chip brings you to this fold in one tap."], contexto: ["La muestra es para explorarla solo; este escenario es otra cosa.", "The sample is explored alone; this stage is something else."] },
+        { kind: "ref", topic: "ejemplo" },
       ],
     },
     {
@@ -160,6 +174,7 @@ export const AD15: Module = {
       steps: [
         { kind: "show", anchor: "aj-nube", caption: ["Sin sesión ni red, tu libro abre provisional en tu aparato.", "With no session or network, your book opens provisionally here."], contexto: ["Lo provisional no sincroniza; la huella sigue guardando la puerta.", "Provisional work never syncs; the fingerprint still guards it."] },
         { kind: "show", anchor: "aj-nube", caption: ["Sin libro previo no hay provisional: la primera vez pide internet.", "With no prior book, there is no provisional: first time needs internet."] },
+        { kind: "ref", topic: "nube" },
       ],
     },
     {
@@ -168,6 +183,7 @@ export const AD15: Module = {
       steps: [
         { kind: "ask", anchor: "aj-nube", caption: ["¿Y cuando vuelve la red? La red observa antes de reescribir.", "And when the network returns? It observes before rewriting."] },
         { kind: "show", anchor: "aj-nube", caption: ["Si cambiaron los dos lados, se guardan ambas versiones.", "If both sides changed, both versions are saved."], contexto: ["La perdedora queda en tu lista como «Nube · conflicto».", "The losing one stays in your list as “Cloud · conflict”."] },
+        { kind: "ref", topic: "nube" },
       ],
     },
     {
@@ -175,6 +191,7 @@ export const AD15: Module = {
       keys: [["nube", "cloud"], ["foto", "photo"]],
       steps: [
         { kind: "show", anchor: "aj-nube", caption: ["La nube guarda una sola foto comprimida por cuenta.", "The cloud keeps one single compressed photo per account."], contexto: ["Tus copias y tus fotos nunca salen de este aparato.", "Your copies and your photos never leave this device."] },
+        { kind: "ref", topic: "nube" },
       ],
     },
     {
@@ -183,6 +200,7 @@ export const AD15: Module = {
       steps: [
         { kind: "go", screen: "/ajustes" },
         { kind: "show", anchor: "aj-copia", caption: ["Al restaurar, la cola sin red queda en cuarentena.", "On restore, the offline queue goes into quarantine."], contexto: ["Sus operaciones apuntaban al libro viejo: nunca caen sobre el nuevo.", "Its operations pointed at the old book: never onto the new."] },
+        { kind: "ref", topic: "copia" },
       ],
     },
     {
@@ -200,6 +218,7 @@ export const AD15: Module = {
         { kind: "ask", anchor: "aj-copia", caption: ["¿Miedo a estas puertas? Respeto: cada una anuncia y copia antes.", "Fear these doors? Respect: each announces and copies first."] },
         { kind: "show", anchor: "aj-copia", caption: ["Nada se pierde en silencio: ese es el diseño entero.", "Nothing is lost in silence: that is the whole design."] },
         { kind: "show", anchor: "aj-copia", caption: ["Cambiar de aparato: copia aquí, entra y restaura allí.", "Moving devices: copy here, sign in and restore there."] },
+        { kind: "ref", topic: "copia" },
       ],
     },
   ],
