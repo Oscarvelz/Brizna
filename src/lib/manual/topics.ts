@@ -206,6 +206,38 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         terms: [["¿Quién pagó hoy?", "Who paid today?"], ["Sonidos", "Sounds"], ["Ding", "Ding"]],
       },
       {
+        id: "deshacer",
+        title: ["Deshacer y Rehacer", "Undo and Redo"],
+        sum: ["Volver atrás un cambio reciente, sin cazarlo por la app.", "Taking back a recent change, without hunting through the app."],
+        what: [
+          "Las flechas de Deshacer y Rehacer, arriba, vuelven atrás el cambio más reciente y lo reaplican. Brizna guarda los últimos 20 cambios de la sesión.",
+          "The Undo and Redo arrows, at the top, take back the most recent change and apply it again. Brizna keeps the last 20 changes of the session.",
+        ],
+        how: [
+          "Haz un cambio: un pago, un cliente nuevo o editado, unir dos duplicados.\nToca la flecha de Deshacer, arriba: la ventana nombra el cambio que se va a deshacer.\nConfirma y el cambio se revierte.\nCon la otra flecha, Rehacer, el cambio vuelve tal como estaba.",
+          "Make a change: a payment, a new or edited client, merging two duplicates.\nTap the Undo arrow, at the top: the window names the change about to be undone.\nConfirm and the change is reversed.\nWith the other arrow, Redo, the change comes back just as it was.",
+        ],
+        calc: [
+          "La pila guarda 20 cambios y vive solo en la memoria de la sesión: si cierras la app, amanece vacía. Deshacer pregunta antes de actuar, salvo en Bloc y Fichero, donde las flechas actúan directo. Perdonar tiene su propio Deshacer en Cobros, aparte de esta pila.",
+          "The stack keeps 20 changes and lives only in the session's memory: close the app and it wakes up empty. Undo asks before acting, except in Notepad and File cabinet, where the arrows act directly. Forgive has its own Undo in Payments, apart from this stack.",
+        ],
+        example: [
+          "Registras un pago de $50 en el cliente equivocado. Tocas Deshacer, confirmas, y el pago se quita: la deuda vuelve a como estaba, sin abrir ninguna ficha. Si el equivocado eras tú al deshacer, Rehacer lo pone otra vez.",
+          "You record a $50 payment on the wrong client. You tap Undo, confirm, and the payment is removed: the debt goes back to how it was, without opening any file. If undoing was the mistake, Redo puts it back.",
+        ],
+        cases: [
+          "Cierras la app y la reabres: la pila está vacía; lo guardado se corrige en su sitio, no desde aquí.\nLo que dice «para siempre» (Eliminar, Vaciar papelera) no entra en la pila: no tiene vuelta.\nUn toque sin querer en Bloc: Deshacer actúa sin preguntar, para no estorbar la escritura.",
+          "You close the app and reopen it: the stack is empty; saved things get fixed in their place, not from here.\nAnything that says “forever” (Delete, Empty trash) never enters the stack: there is no way back.\nAn accidental tap in Notepad: Undo acts without asking, so it never gets in the way of writing.",
+        ],
+        mistake: [
+          "Creer que Deshacer es un historial eterno: son 20 cambios y solo de esta sesión; el rastro largo vive en Cambios hechos, en la ficha.",
+          "Thinking Undo is an eternal history: it is 20 changes and only from this session; the long trail lives in Changes made, on the file.",
+        ],
+        related: ["cambios-hechos", "perdonado", "movimientos"],
+        go: { to: "/", where: ["Arriba, junto al título", "At the top, next to the title"] },
+        terms: [["Deshacer", "Undo"], ["Rehacer", "Redo"]],
+      },
+      {
         id: "parar-dia",
         title: ["Parar el día y sus razones", "Stopping and reasons"],
         sum: ["Lluvia u otra razón: lo pendiente pasa al siguiente día abierto.", "Rain or another reason: what is pending moves to the next open day."],
@@ -402,6 +434,38 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         terms: [["Repetidos", "Duplicates"], ["Unir", "Merge"], ["Usar existente", "Use existing"], ["Es otro cliente", "Another client"]],
       },
       {
+        id: "anadir-varios",
+        title: ["Añadir varios", "Add several"],
+        sum: ["Dar de alta muchos clientes de una vez, nombre por nombre.", "Adding many clients at once, name by name."],
+        what: [
+          "Añadir varios da de alta hasta 40 clientes de una sentada: pegas los nombres, uno por línea, y luego completas los datos de cada uno en la lista.",
+          "Add several enters up to 40 clients in one sitting: you paste the names, one per line, then fill in each one's details in the list.",
+        ],
+        how: [
+          "En Cliente nuevo, toca Añadir varios.\nEscribe o pega un nombre por línea, hasta 40.\nToca Continuar: Brizna arma una lista con todos; cada fila nace con precio $30 e inicio hoy.\nCompleta cada fila: teléfono, dirección, precio, cortes al mes y deuda anterior si trae.\nAl guardar, entran todos de una vez y la agenda los siembra como a cualquier cliente nuevo.",
+          "In New client, tap Add several.\nType or paste one name per line, up to 40.\nTap Continue: Brizna builds a list with all of them; each row starts with a $30 price and today as the start.\nFill in each row: phone, address, price, cuts per month, and earlier debt if they bring any.\nOn save, they all go in at once and the schedule seeds them like any new client.",
+        ],
+        calc: [
+          "El tope es 40 por tanda para que la lista se pueda revisar nombre a nombre. Los nombres repetidos dentro de lo pegado entran una sola vez. La lista revisa cada fila contra tus clientes, igual que el alta de uno solo.",
+          "The cap is 40 per batch so the list can be checked name by name. Repeated names inside what you paste go in only once. The list checks every row against your clients, just like a single sign-up.",
+        ],
+        example: [
+          "Te pasan 12 vecinos nuevos en un mensaje. Los pegas en Añadir varios, tocas Continuar, ajustas el precio de tres que no son $30 y guardas: los 12 quedan dados de alta y su primer corte ya tiene día.",
+          "Someone sends you 12 new neighbors in a message. You paste them into Add several, tap Continue, adjust the price on three that are not $30, and save: all 12 are entered and their first cut already has a day.",
+        ],
+        cases: [
+          "Pegas 45 nombres: entran los primeros 40 y el aviso dice que el resto quedó fuera; añádelos en otra tanda.\nUna fila se parece a un cliente que ya tienes: Brizna lo marca como posible repetido para que decidas tú.\nSales a mitad de la tanda: Brizna pregunta si sales sin guardar; lo no guardado se pierde.",
+          "You paste 45 names: the first 40 go in and a notice says the rest were left out; add them in another batch.\nA row looks like a client you already have: Brizna flags it as a possible duplicate so you decide.\nYou leave in the middle of the batch: Brizna asks if you are leaving without saving; unsaved work is lost.",
+        ],
+        mistake: [
+          "Pegar nombre, teléfono y dirección en la misma línea: la caja es solo de nombres, uno por línea; lo demás va en cada fila de la lista.",
+          "Pasting name, phone, and address on the same line: the box is for names only, one per line; the rest goes in each row of the list.",
+        ],
+        related: ["clientes-repetidos", "tipo-cliente", "frecuencia"],
+        go: { to: "/nuevo", where: ["Cliente nuevo, Añadir varios", "New client, Add several"] },
+        terms: [["Añadir varios", "Add several"], ["En baches", "In batches"], ["Importar clientes", "Import clients"]],
+      },
+      {
         id: "lista-clientes",
         title: ["La lista de clientes", "The client list"],
         sum: ["Llamar, escribir o ir con un toque.", "Call, text, or go there in one tap."],
@@ -590,6 +654,70 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         terms: [["En cada visita", "On each visit"], ["Notas del cliente", "Client notes"]],
       },
       {
+        id: "mensajes",
+        title: ["Mensajes al cliente", "Messages to the client"],
+        sum: ["La caja para escribirle a un cliente: texto listo, traducción y envío en dos pasos.", "The box for writing to a client: ready text, translation, and a two-step send."],
+        what: [
+          "La caja de mensaje de cada cliente: escribes o eliges un mensaje listo, y al enviar se abre WhatsApp o Mensajes con el texto puesto. Brizna nunca envía por ti.",
+          "Each client's message box: you type or pick a ready message, and on send WhatsApp or Messages opens with the text in place. Brizna never sends for you.",
+        ],
+        how: [
+          "Toca el botón de mensaje (WA o el globo) en la tarjeta o en la ficha del cliente.\nEscribe en la caja, elige un Mensaje listo o dicta con Dictar.\nCon A inglés traduces lo escrito; bajo la caja queda el nombre del motor que tradujo.\nCorregir revisa ortografía y acentos y te dice cuántos arreglos hizo; la goma de borrar vacía la caja de un toque.\nToca Enviar: Brizna pregunta primero (la doble puerta) y después abre WhatsApp o la app de mensajes con el texto listo. El envío final es tu toque allí.",
+          "Tap the message button (WA or the bubble) on the client's card or file.\nType in the box, pick a Ready message, or dictate with Dictate.\nWith To English you translate what you wrote; under the box stays the name of the engine that translated.\nFix checks spelling and accents and tells you how many fixes it made; the eraser empties the box in one tap.\nTap Send: Brizna asks first (the double door) and then opens WhatsApp or the messages app with the text ready. The final send is your tap there.",
+        ],
+        calc: [
+          "A inglés prueba en orden: Microsoft (sin llave ni cuenta, con un pase anónimo), el traductor afinado de Brizna, Google y el motor del teléfono. El primero que responde pone su nombre bajo la caja. Sin conexión solo queda el motor del teléfono, y la caja lo dice igual.",
+          "To English tries in order: Microsoft (no key, no account, with an anonymous pass), Brizna's tuned translator, Google, and the phone's engine. The first that answers puts its name under the box. With no connection only the phone's engine remains, and the box says so just the same.",
+        ],
+        example: [
+          "Dictas: «Hoy no llego por la lluvia, paso mañana». Tocas A inglés y sale en inglés natural, con la nota «Traducido con Microsoft». Tocas Enviar, Brizna pregunta «¿Abrir WhatsApp de Luis?» y al decir que sí, WhatsApp abre con el texto listo para tu toque final.",
+          "You dictate in Spanish: “Hoy no llego por la lluvia, paso mañana.” You tap To English and out comes natural English — “I won't be able to arrive today because of the rain, but I may arrive tomorrow” — with the note “Translated with Microsoft.” You tap Send, Brizna asks “Open WhatsApp for Luis?” and when you say yes, WhatsApp opens with the text ready for your final tap.",
+        ],
+        cases: [
+          "El cliente no tiene un número válido: el botón de mensaje ni siquiera aparece.\nLe escribes por WhatsApp a quien no usa WhatsApp: el mensaje no llega; usa el globo para SMS.\nLos Mensajes listos se editan en la propia caja (Editar): hasta 12 textos tuyos, y sirven para todos los clientes.",
+          "The client has no valid number: the message button does not even appear.\nYou WhatsApp someone who does not use WhatsApp: the message never arrives; use the bubble for SMS.\nReady messages are edited in the box itself (Edit): up to 12 texts of your own, and they work for every client.",
+        ],
+        mistake: [
+          "Creer que el mensaje ya se envió al tocar Enviar en Brizna: falta tu toque dentro de WhatsApp o Mensajes.",
+          "Thinking the message is sent when you tap Send in Brizna: your tap inside WhatsApp or Messages is still missing.",
+        ],
+        related: ["dictado", "recordatorios", "notas-cliente"],
+        go: { to: "/clientes", where: ["La tarjeta y la ficha del cliente, botón de mensaje", "The client card and file, message button"] },
+        terms: [["Mensaje", "Message"], ["Mensajes listos", "Ready messages"], ["Traducir", "Translate"], ["WhatsApp", "WhatsApp"]],
+      },
+      {
+        id: "dictado",
+        title: ["Dictar", "Dictation"],
+        sum: ["Hablar en vez de escribir, con servicios de voz que se relevan solos.", "Speaking instead of typing, with voice services that relieve each other on their own."],
+        what: [
+          "Dictar escucha tu voz y escribe lo que dices, con sus puntos y signos. Si un servicio de voz falla, Brizna prueba el siguiente sin que hagas nada.",
+          "Dictation hears your voice and writes what you say, with its punctuation. If one voice service fails, Brizna tries the next one without you doing anything.",
+        ],
+        how: [
+          "Toca Dictar en la caja de mensaje o en una nota y habla cerca del teléfono.\nAl terminar, el texto entra ya ordenado: mayúscula inicial, punto final, y los ¿? y ¡! si preguntaste o exclamaste.\nSi dictas en la caja de mensaje, A inglés traduce lo dictado como cualquier texto escrito.",
+          "Tap Dictate in the message box or in a note and speak close to the phone.\nWhen you finish, the text comes in already tidied: a capital at the start, a period at the end, and the ¿? and ¡! if you asked or exclaimed.\nIf you dictate in the message box, To English translates what you dictated like any typed text.",
+        ],
+        calc: [
+          "La escalera de servicios, en orden: el servicio de voz del teléfono sin conexión, el mismo servicio con conexión y, al final, la pantalla de voz del sistema. Si un paso falla porque el idioma no está descargado, la escalera no lo repite: salta a los pasos con conexión. Si todo falla, el aviso trae los códigos de cada intento.",
+          "The ladder of services, in order: the phone's voice service offline, the same service online, and, at the end, the system's own voice screen. If a step fails because the language is not downloaded, the ladder does not repeat it: it skips to the online steps. If everything fails, the notice carries the codes of every attempt.",
+        ],
+        example: [
+          "Dictas «mañana llego a las once» y entra «Mañana llego a las once». Dictas preguntando y entra con sus signos: «¿Puedo pasar el jueves?». No tocaste ni una tecla.",
+          "You dictate “I'll arrive tomorrow at eleven” and in comes “I'll arrive tomorrow at eleven.” You dictate a question and it comes in with its marks: “Can I come by on Thursday?” You did not touch a single key.",
+        ],
+        cases: [
+          "Sin internet y sin el idioma descargado: los pasos sin conexión fallan y se abre la pantalla de voz del sistema.\nEl aviso dice «No se pudo dictar» con números entre paréntesis: son los códigos de error de cada servicio que lo intentó.\nEn el navegador, sin la app de Android: dicta el micrófono del navegador, sin escalera.",
+          "No internet and the language not downloaded: the offline steps fail and the system's voice screen opens.\nThe notice says “Could not dictate” with numbers in parentheses: they are the error codes of each service that tried.\nIn the browser, without the Android app: the browser's microphone dictates, with no ladder.",
+        ],
+        mistake: [
+          "Dictar lejos del teléfono o con ruido de fondo: el texto sale con huecos o palabras cambiadas. Acércate, habla claro y revisa antes de enviar.",
+          "Dictating far from the phone or over background noise: the text comes out with gaps or changed words. Get closer, speak clearly, and check before sending.",
+        ],
+        related: ["mensajes", "notas"],
+        go: { to: "/clientes", where: ["La caja de mensaje, Dictar", "The message box, Dictate"] },
+        terms: [["Dictar", "Dictate"], ["Voz", "Voice"], ["Micrófono", "Microphone"]],
+      },
+      {
         id: "ficha-deuda",
         title: ["Deuda, abono y adelanto", "Debt, partial, and advance"],
         sum: ["Lo que debe un cliente, y cómo lo baja.", "What a client owes, and how it goes down."],
@@ -684,6 +812,38 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         related: ["espera", "perdonado", "asesor-grupos"],
         go: { to: "/cobros", search: { view: "espera" }, where: ["Cobros, En espera", "Payments, Waiting"] },
         terms: [["Pausa", "Pause"], ["Continuar", "Play"]],
+      },
+      {
+        id: "lista-negra",
+        title: ["Lista negra", "Blacklist"],
+        sum: ["El castigo completo: sin agenda, sin totales, con la deuda guardada en su ficha.", "The full penalty: no schedule, no totals, with the debt kept on their file."],
+        what: [
+          "Lista negra apaga a un cliente por completo: se borran sus cortes futuros, su deuda sale de todos los totales y no se agenda solo. Su ficha guarda la deuda.",
+          "The blacklist shuts a client off completely: their future cuts are deleted, their debt leaves every total, and they are not scheduled on their own. Their file keeps the debt.",
+        ],
+        how: [
+          "Abre la ficha del cliente.\nBaja hasta Pasar a lista negra y tócalo.\nSus cortes de hoy en adelante se borran; los atrasados quedan cancelados a la vista, con la razón «Lista negra».\nPara revertirlo: en su ficha, Quitar de la lista negra. La agenda vuelve a armar sus cortes desde hoy.",
+          "Open the client's file.\nGo down to Add to the blacklist and tap it.\nTheir cuts from today on are deleted; late ones are cancelled in plain sight, with the reason “Blacklist.”\nTo reverse it: on their file, Remove from the blacklist. The schedule builds their cuts again from today.",
+        ],
+        calc: [
+          "La regla de totales de Brizna cuenta la deuda solo de clientes activos y fuera de la lista negra. Por eso su deuda desaparece de Por cobrar, de En espera y de Estudio sin borrarse: sigue escrita en su ficha y en el filtro Lista negra de Clientes.",
+          "Brizna's totals rule counts debt only from active clients who are not blacklisted. That is why their debt disappears from To collect, Waiting, and Stats without being erased: it stays written on their file and in the Blacklist filter in Clients.",
+        ],
+        example: [
+          "Un cliente te debe $120 y dejó de responder hace meses. Lo pasas a lista negra: Por cobrar baja $120 ese mismo día y sus cortes dejan de salir. Un año después aparece y paga: lo quitas de la lista, su agenda vuelve, y su ficha había guardado los $120 todo ese tiempo.",
+          "A client owes you $120 and stopped answering months ago. You blacklist them: To collect drops $120 that same day and their cuts stop appearing. A year later they show up and pay: you remove them from the list, their schedule returns, and their file had kept the $120 all that time.",
+        ],
+        cases: [
+          "Dudas entre Pausa y lista negra: con Pausa la deuda sigue en Por cobrar y el caso en En espera; con lista negra sale de todos los totales.\nTenía un corte atrasado: queda cancelado a la vista con su razón, no desaparece del historial.\nNo sale en Con saldo: búscalo en el filtro Lista negra de Clientes.",
+          "Choosing between Pause and the blacklist: with Pause the debt stays in To collect and the case in Waiting; with the blacklist it leaves every total.\nThey had a late cut: it is cancelled in plain sight with its reason, it does not vanish from the history.\nThey do not show under With balance: look in the Blacklist filter in Clients.",
+        ],
+        mistake: [
+          "Pasar a lista negra para «perdonar» una deuda: la deuda no se borra, solo sale de los totales; para borrarla está Perdonar.",
+          "Blacklisting to “forgive” a debt: the debt is not erased, it only leaves the totals; to erase it there is Forgive.",
+        ],
+        related: ["pausa", "perdonado", "archivo", "por-cobrar"],
+        go: { to: "/clientes", where: ["La ficha del cliente, abajo", "The client file, at the bottom"] },
+        terms: [["Lista negra", "Blacklist"]],
       },
       {
         id: "movimientos",
