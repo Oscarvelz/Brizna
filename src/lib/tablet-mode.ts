@@ -2,6 +2,11 @@ const ENABLED = "ols-tablet-mode";
 const LAYOUT = "ols-tablet-layout";
 const FLOAT = "ols-float-window";
 
+/** Presentación (B6): the View menu's data-present anchor value. Both Vista
+ * triggers (rail menu and phone button) emit this one value; the literal
+ * lives here, with the tablet/view state it belongs to. */
+export const VISTA_MENU_PRESENT = "vista-menu";
+
 export const TABLET_TABS = ["/", "/agenda", "/clientes", "/cobros", "/estadisticas"] as const;
 export type TabletTab = (typeof TABLET_TABS)[number];
 

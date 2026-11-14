@@ -148,7 +148,7 @@ function PulseSection({ data, query }: { data: CifrasInsights; query: string }) 
         </div>
       </div>
       <div className="cif-tiles cif-rise" style={{ animationDelay: "80ms" }}>
-        <Link to="/cobros" className="cif-tile cif-tile-link">
+        <Link to="/cobros" className="cif-tile cif-tile-link" data-present="estudio-te-deben">
           <span className="cif-tile-label">{tx("Te deben", "Owed to you")}</span>
           <CountUp className={cn("cif-tile-value", p.outstanding > 0 && "text-hold")} value={p.outstanding} format={money} />
           <span className="cif-tile-note">{p.owingPeople} {tx(p.owingPeople === 1 ? "persona" : "personas", p.owingPeople === 1 ? "person" : "people")}<ChevronRight aria-hidden /></span>
@@ -356,7 +356,7 @@ function DebtsSection({ data, query }: { data: CifrasInsights; query: string }) 
               return amt > 0 ? <span key={b.key} className={b.cls} style={{ flexGrow: arrived ? amt : 0.0001 }} /> : null;
             })}
           </div>
-          <ul className="cif-age-legend">
+          <ul className="cif-age-legend" data-present="estudio-antiguedad">
             {BUCKETS.map((b) => {
               const row = d.buckets.find((x) => x.key === b.key);
               if (b.key === "inicial" && !(row && row.amount > 0)) return null;

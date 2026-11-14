@@ -3,6 +3,7 @@
 import { exclusive } from "@/lib/db";
 import { withChecksum } from "@/lib/backup-plan";
 import { PHOTOS_ENABLED } from "@/lib/photos-flag";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import { supabase, getUser } from "./cloud";
 import { afterSplash } from "./splash-ready";
 import { HASH_V, SCHEMA, hashView, snapshotMeta } from "./sync-logic";
@@ -254,6 +255,10 @@ export function markDirty() {
 }
 
 export function syncNow(force = false): Promise<void> {
+  // Presentation seal (Cerca 0): while sealed, the open book is the stage —
+  // nothing syncs out of it and no cloud copy may be pulled over it. Every
+  // caller (the 60 s tick, visibility, online, markDirty's timer) funnels here.
+  if (sealedOn()) return Promise.resolve();
   if (!uid) return Promise.resolve();
   if (running) { again = true; return running; }
   running = (async () => {

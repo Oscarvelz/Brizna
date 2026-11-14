@@ -93,7 +93,7 @@ export function DupCompare({
   return createPortal(
     <div className="fixed inset-0 z-[100] grid place-items-end overflow-y-auto p-3 sm:place-items-center sm:p-4">
       <button type="button" aria-label={tx("Cerrar", "Close")} className="absolute inset-0 bz-scrim" onClick={onClose} />
-      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="bz-dialog bz-dup relative my-auto w-full min-w-0 bg-surface">
+      <div role="dialog" aria-modal="true" data-present="dup-comparar" aria-labelledby={titleId} className="bz-dialog bz-dup relative my-auto w-full min-w-0 bg-surface">
         <h2 id={titleId} className="bz-dialog-title has-chip font-display">
           <span className="bz-dialog-chip" aria-hidden="true"><Users /></span>
           <span className="bz-dialog-tblock min-w-0 flex-1">
@@ -130,23 +130,24 @@ export function DupCompare({
             ? tx(`Unir: lo nuevo (teléfono, dirección, deuda) pasa a ${other.name} y no queda un cliente doble. Se puede deshacer.`, `Merge: what is new (phone, address, debt) goes to ${other.name}, with no double client left. It can be undone.`)
             : tx(`Unir: queda ${keepName}. Cortes, pagos, fotos y notas de ${goneName} pasan a ${keepName}; ${goneName} va a Archivos. Se puede deshacer.`, `Merge: ${keepName} stays. Cuts, payments, photos and notes of ${goneName} move to ${keepName}; ${goneName} goes to the archive. It can be undone.`)}
           {mode !== "new" && mineId != null ? (
-            <button type="button" className="bz-dup-swap" onClick={() => setKeepMine((v) => !v)}>
+            <button type="button" className="bz-dup-swap" data-present="dup-cambiar" onClick={() => setKeepMine((v) => !v)}>
               <ArrowLeftRight aria-hidden />{tx("Cambiar", "Swap")}
             </button>
           ) : null}
         </p>
         <div className="bz-dialog-actions">
           {mode !== "scan" && onUse ? (
-            <Button type="button" disabled={pending} onClick={() => onUse(other)}>
+            <Button type="button" data-present="dup-usar" disabled={pending} onClick={() => onUse(other)}>
               {mode === "edit" ? tx(`Ir a ${firstWord(other.name)}`, `Open ${firstWord(other.name)}`) : tx("Usar existente", "Use existing")}
             </Button>
           ) : null}
           <div className="bz-dialog-pair">
-            <Button type="button" variant="secondary" className="bz-dialog-quiet" disabled={pending} onClick={() => onOther(other)}>
+            <Button type="button" variant="secondary" className="bz-dialog-quiet" data-present="dup-otro" disabled={pending} onClick={() => onOther(other)}>
               {tx("Es otro cliente", "Another client")}
             </Button>
             <Button
               type="button"
+              data-present="dup-unir"
               variant={mode === "scan" ? "primary" : "secondary"}
               className={cn(mode !== "scan" && "bz-dup-merge")}
               disabled={pending}
@@ -287,7 +288,7 @@ export function DupScanLine() {
   return (
     <>
       {n ? (
-        <button type="button" className="bz-inv-dups" data-ref="inv-dups" onClick={() => setOpen(true)}>
+        <button type="button" className="bz-inv-dups" data-present="dup-escanear" data-ref="inv-dups" onClick={() => setOpen(true)}>
           <Users aria-hidden />
           <span className="min-w-0">{tx(`${n} ${n === 1 ? "posible cliente repetido" : "posibles clientes repetidos"}`, `${n} possible duplicate ${n === 1 ? "client" : "clients"}`)}</span>
           <span className="bz-inv-dups-go">{tx("Revisar", "Review")}<ChevronRight aria-hidden /></span>
@@ -307,7 +308,7 @@ export function DupScanLine() {
                 </h2>
                 <div className="bz-dup-list">
                   {groups.map((g) => (
-                    <button key={g.members.map((m) => m.id).join("-")} type="button" className="bz-dup-group" onClick={() => setPair({ a: g.members[0], others: g.members.slice(1) })}>
+                    <button key={g.members.map((m) => m.id).join("-")} type="button" className="bz-dup-group" data-present="dup-grupo" onClick={() => setPair({ a: g.members[0], others: g.members.slice(1) })}>
                       <span className="bz-dup-group-names">
                         {g.members.map((m) => m.name).join(" · ")}
                         <span className="bz-dup-group-why">{whyWords(g.why, tx)}</span>

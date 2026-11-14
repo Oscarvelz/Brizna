@@ -4,6 +4,7 @@ import { native } from "@/spa/native";
 import { buildSchedule, buildWidget, readNotifyPrefs } from "@/lib/native-plan";
 import { getNativePlan } from "@/lib/server/lawn";
 import { onSyncStatus } from "@/spa/sync";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import { readAppearance } from "@/lib/theme";
 
 /**
@@ -17,6 +18,11 @@ let running = false;
 let again = false;
 
 async function refresh() {
+  // Presentation seal (Cerca 0): refresh pushes the open book's plan OUT to the
+  // native reminders and the home-screen widget, automatically (open, every
+  // data write, visibility, midnight). While sealed that book is the stage —
+  // its fiction must never reach the widget or the reminder schedule.
+  if (sealedOn()) return;
   const n = native();
   if (!n?.setSchedule || !n.setWidget) return;
   if (running) { again = true; return; }

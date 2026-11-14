@@ -36,6 +36,7 @@ export function OffDayDialog({
   return (
     <ConfirmDialog
       open={Boolean(iso && kind)}
+      presentConfirm="agenda-dia-raro"
       title={
         sunday
           ? tx("¿Trabajar este domingo?", "Work this Sunday?")

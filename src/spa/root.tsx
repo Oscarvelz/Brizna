@@ -6,14 +6,20 @@ import { WeatherSky } from "@/components/weather-sky";
 import { NavHost } from "@/components/nav-host";
 import { TapBloom } from "@/components/tap-bloom";
 import { NativeHost } from "@/components/native-host";
+import { Presentacion, StageHost } from "@/components/presentation/presentacion";
+import { PresentationOffer } from "@/components/presentation/presentation-offer";
 
 export const Route = createRootRoute({
   component: () => (
     <AppProviders>
       <WeatherSky />
-      <Outlet />
+      <StageHost>
+        <Outlet />
+      </StageHost>
+      <Presentacion />
       <FloatHost />
       <FingerprintOffer />
+      <PresentationOffer />
       <NavHost />
       <TapBloom />
       <NativeHost />

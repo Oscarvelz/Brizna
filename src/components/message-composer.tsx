@@ -47,11 +47,14 @@ export function MessageComposer({
   initialText,
   label,
   className,
+  present,
 }: {
   phone: string;
   name: string;
   compact?: boolean;
   tight?: boolean;
+  /** Presentación (B6): data-present anchor for the opener button, minted by the caller. */
+  present?: string;
   /** 1.5.12 (spec 2026-11-04): a wide band-shaped button that shares a row with call/map (work card). */
   wide?: boolean;
   channel?: "sms" | "whatsapp";
@@ -280,6 +283,7 @@ export function MessageComposer({
   const confirm = (
     <ConfirmDialog
       open={ask}
+      presentConfirm="mensaje-confirmar"
       title={
         channel === "whatsapp"
           ? tx(`¿Abrir WhatsApp de ${name}?`, `Open WhatsApp for ${name}?`)
@@ -315,6 +319,7 @@ export function MessageComposer({
       <>
         <button
           type="button"
+          data-present={present}
           aria-label={
             channel === "whatsapp"
               ? tx(`WhatsApp a ${name}`, `WhatsApp to ${name}`)
@@ -398,6 +403,7 @@ function ComposerSheet({
       <div
         role="dialog"
         aria-modal="true"
+        data-present="mensaje-compositor"
         className="relative my-auto w-full min-w-0 max-w-md rounded-xl bg-surface p-4 shadow-card sm:p-5"
       >
         <h2 className="font-display text-xl font-semibold">{tx(`Mensaje a ${name}`, `Message to ${name}`)}</h2>
@@ -420,6 +426,7 @@ function ComposerSheet({
         <div className="relative mt-3">
           <textarea
             ref={areaRef}
+            data-present="mensaje-texto"
             value={text}
             onChange={(e) => { setText(e.target.value); setFixNote(""); }}
             rows={4}
@@ -442,6 +449,7 @@ function ComposerSheet({
             ) : null}
             <button
               type="button"
+              data-present="compositor-corregir"
               className="px-1 py-0.5 text-xs font-semibold text-soil"
               onClick={() => {
                 const current = text.trim();
@@ -499,6 +507,7 @@ function ComposerSheet({
           </button>
           <button
             type="button"
+            data-present="compositor-dictar"
             onClick={onListen}
             className={cn(
               "flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-md bg-sun text-xs font-semibold",
@@ -510,6 +519,7 @@ function ComposerSheet({
           </button>
           <button
             type="button"
+            data-present="compositor-ingles"
             onClick={onTranslate}
             className={cn(
               "flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-md bg-sun text-xs font-semibold",
@@ -527,7 +537,7 @@ function ComposerSheet({
           <Button type="button" variant="secondary" onClick={onClose}>
             {tx("Atrás", "Back")}
           </Button>
-          <Button type="button" disabled={!text.trim()} onClick={onSend}>
+          <Button type="button" disabled={!text.trim()} onClick={onSend} data-present="mensaje-enviar">
             {tx("Enviar", "Send")}
           </Button>
         </div>
@@ -550,6 +560,7 @@ function NotePicker({ onInsert }: { onInsert: (block: string) => void }) {
     <div className="mt-2">
       <button
         type="button"
+        data-present="compositor-nota"
         onClick={() => setOpen((v) => !v)}
         className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-sun text-sm font-semibold"
       >
@@ -590,12 +601,15 @@ export function WhatsAppButton({
   tight,
   wide,
   initialText,
+  present,
 }: {
   phone: string;
   name: string;
   tight?: boolean;
   wide?: boolean;
   initialText?: string;
+  /** Presentación (B6): data-present anchor for the opener button, minted by the caller. */
+  present?: string;
 }) {
   return (
     <MessageComposer
@@ -606,6 +620,7 @@ export function WhatsAppButton({
       wide={wide}
       channel="whatsapp"
       initialText={initialText}
+      present={present}
     />
   );
 }
@@ -626,7 +641,7 @@ function PresetRow({ onPick }: { onPick: (text: string) => void }) {
     },
   });
   return (
-    <div className="mt-3">
+    <div className="mt-3" data-present="compositor-listas">
       <div className="mb-1 flex items-center justify-between">
         <p className="text-xs font-semibold tracking-wide text-muted uppercase">{tx("Mensajes listos", "Ready messages")}</p>
         <button

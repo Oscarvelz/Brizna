@@ -63,8 +63,9 @@ export function NativeSelect({
   children,
   disabled,
   id,
+  present,
   "aria-label": ariaLabel,
-}: SelectHTMLAttributes<HTMLSelectElement>) {
+}: SelectHTMLAttributes<HTMLSelectElement> & { present?: string }) {
   const options = readOptions(children);
   const current = options.find((item) => item.value === String(value ?? "")) ?? options[0];
   const [open, setOpen] = useState(false);
@@ -107,6 +108,7 @@ export function NativeSelect({
       <button
         type="button"
         id={id}
+        data-present={present}
         disabled={disabled}
         aria-label={ariaLabel}
         aria-haspopup="listbox"

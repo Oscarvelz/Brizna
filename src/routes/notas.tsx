@@ -548,6 +548,7 @@ function PadBody({
           ) : null}
           <button
             type="button"
+            data-present="nota-fijar"
             disabled={!page}
             aria-pressed={Boolean(page?.pinned)}
             aria-label={page?.pinned ? t("notes.unpin") : t("notes.pin")}
@@ -576,6 +577,7 @@ function PadBody({
           ) : null}
           <button
             type="button"
+            data-present="nota-buscar"
             aria-pressed={noteFindOn}
             aria-label={tx("Buscar en esta nota", "Search this note")}
             onClick={() => setNoteFindOn((value) => !value)}
@@ -584,7 +586,7 @@ function PadBody({
             <Search className="size-5" />
           </button>
         </div>
-        {calcOn && !calcDocked ? <QuickPad onClose={() => setCalcOn(false)} /> : null}
+        {calcOn && !calcDocked ? <QuickPad present="nota-calculadora" onClose={() => setCalcOn(false)} /> : null}
         {/* 1.5.65 (censo de botones, oleada 3): en el teléfono el lector no decía en qué
             carpeta vive la nota ni ofrecía moverla sin el gesto del Fichero. Esta línea
             dice la carpeta y trae el botón «Mover a…». En el escritorio no hace falta:
@@ -595,6 +597,7 @@ function PadBody({
             <span className="min-w-0 flex-1 truncate text-muted">{homeName}</span>
             <button
               type="button"
+              data-present="nota-mover"
               onClick={() => setAskMove(true)}
               className="inline-flex shrink-0 items-center gap-1 font-semibold text-primary"
             >
@@ -604,7 +607,7 @@ function PadBody({
           </div>
         ) : null}
         {pinned.length > 0 ? (
-          <div className="mb-3">
+          <div className="mb-3" data-present="notas-tira-fijadas">
             <p className="mb-1 text-xs font-semibold text-muted">{tx("Fijadas", "Pinned")}</p>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {pinned.map((item) => (
@@ -711,6 +714,7 @@ function PadBody({
           <Button
             type="button"
             size="sm"
+            data-present="nota-guardar"
             disabled={!draftOn && !page}
             onClick={() => {
               if (draftOn) {
@@ -776,6 +780,7 @@ function PadBody({
         confirmLabel={tx("Vuelve a la carpeta", "Back to the folder")}
         extraLabel={tx("Nota nueva", "New note")}
         cancelLabel={tx("Quedarme", "Stay")}
+        presentCancel="nota-guardada-quedarme"
         onConfirm={() => {
           const folder = afterFolder;
           setAfterFolder(null);
@@ -889,6 +894,7 @@ function PadBody({
       {stayDialogs}
       <ConfirmDialog
         open={askUnpin}
+        presentConfirm="nota-desfijar-confirmar"
         title={tx("¿Quitar esta nota de fijadas?", "Unpin this note?")}
         description={tx(
           "Deja de salir en Hoy y arriba del bloc. La nota no se borra.",
@@ -931,6 +937,7 @@ function PadBody({
       {mode ? null : (
       <button
         type="button"
+        data-present="nota-nueva"
         onClick={() => startBlank()}
         className="fixed right-4 bottom-[calc(5.25rem+var(--bz-chin))] z-20 grid size-14 place-items-center rounded-full bg-primary text-primary-fg shadow-card md:bottom-6"
         aria-label={t("notes.new")}
@@ -1255,7 +1262,7 @@ function WeekAccordion({
   });
   const shown = pinned || sectionOpen;
   return (
-    <section className="rounded-xl bg-surface p-2 shadow-card">
+    <section className="rounded-xl bg-surface p-2 shadow-card" data-present="notas-semana">
       <div className="flex items-center gap-1 px-2 pt-2">
         <button
           type="button"

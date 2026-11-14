@@ -323,6 +323,7 @@ export function ClientForm({
         <Button
           type="button"
           variant="outline"
+          data-present="bache-contactos"
           onClick={() => void importContact(Boolean(onPickMany))}
           disabled={picking}
         >
@@ -340,6 +341,7 @@ export function ClientForm({
       <Field label={tx("Nombre", "Name")}>
         <Input
           required
+          data-present="alta-nombre"
           value={value.name}
           onChange={(e) => set("name", e.target.value)}
           placeholder={tx("Fiódor Dostoyevski", "Fyodor Dostoevsky")}
@@ -407,6 +409,7 @@ export function ClientForm({
           <Input
             type="tel"
             inputMode="tel"
+            data-present="alta-telefono"
             value={value.phone}
             onChange={(e) => set("phone", e.target.value)}
             placeholder="305 555 1234"
@@ -423,6 +426,7 @@ export function ClientForm({
               step="0.01"
               inputMode="decimal"
               className="pl-7"
+              data-present="alta-precio"
               value={value.pricePerCut}
               onChange={(e) => set("pricePerCut", e.target.value)}
               required
@@ -442,6 +446,7 @@ export function ClientForm({
       >
         <div className="flex gap-2">
           <Input
+            data-present="alta-direccion"
             value={value.address}
             onChange={(e) => set("address", e.target.value)}
             placeholder={tx("Calle, número, ciudad", "Street, number, city")}
@@ -567,6 +572,7 @@ export function ClientForm({
             topic="frecuencia"
           >
             <NativeSelect
+              present="alta-frecuencia"
               value={value.frequencyMode}
               onChange={(e) => {
                 const mode = e.target.value as FrequencyMode;
@@ -850,7 +856,7 @@ export function ClientForm({
         />
       </Field>
 
-      <Button type="submit" size="lg" disabled={pending} className="mt-1 w-full">
+      <Button type="submit" size="lg" disabled={pending} className="mt-1 w-full" data-present="alta-guardar">
         {pending ? tx("Guardando", "Saving") : submitLabel}
       </Button>
       <OffDayDialog
@@ -1541,7 +1547,7 @@ function CueField({ value, onChange, presets }: { value: string; onChange: (next
   }
 
   return (
-    <div className="relative z-30">
+    <div className="relative z-30" data-present="ficha-pista">
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}

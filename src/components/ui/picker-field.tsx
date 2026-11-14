@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 const fieldClass =
   "h-12 w-full rounded-sm bg-surface px-3 text-fg shadow-card transition-[box-shadow] duration-150 disabled:opacity-50";
 
-type Props = InputHTMLAttributes<HTMLInputElement> & { type: "time" | "date"; noYear?: boolean };
+type Props = InputHTMLAttributes<HTMLInputElement> & { type: "time" | "date"; noYear?: boolean; /** Presentación (B6): data-present anchor for the trigger, minted by the caller. */ "data-present"?: string };
 
 function fakeEvent(value: string) {
   const target = { value } as HTMLInputElement;
@@ -58,7 +58,7 @@ function dateLabel(v: string, en: boolean, long = false, noYear = false) {
   return new Intl.DateTimeFormat(en ? "en-US" : "es-US", long ? (noYear ? { day: "numeric", month: "long" } : { weekday: "long", day: "numeric", month: "long" }) : short).format(d);
 }
 
-export function PickerField({ type, noYear, value, defaultValue, onChange, onBlur, min, max, className, disabled, required, id, "aria-label": ariaLabel }: Props) {
+export function PickerField({ type, noYear, value, defaultValue, onChange, onBlur, min, max, className, disabled, required, id, "aria-label": ariaLabel, "data-present": dataPresent }: Props) {
   const { locale } = useI18n();
   const en = locale === "en";
   const controlled = value !== undefined;
@@ -83,6 +83,7 @@ export function PickerField({ type, noYear, value, defaultValue, onChange, onBlu
       <button
         type="button"
         id={id}
+        data-present={dataPresent}
         disabled={disabled}
         aria-label={ariaLabel}
         aria-haspopup="dialog"

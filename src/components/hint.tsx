@@ -107,6 +107,7 @@ export function Hint({
       <button
         ref={btn}
         type="button"
+        data-present="pista-boton"
         aria-label={aria}
         aria-expanded={open}
         aria-controls={id}
@@ -129,6 +130,7 @@ export function Hint({
             <span
               id={id}
               role="tooltip"
+              data-present="pista-burbuja"
               data-side={box.below ? "below" : "above"}
               style={{
                 top: box.below ? box.top : undefined,

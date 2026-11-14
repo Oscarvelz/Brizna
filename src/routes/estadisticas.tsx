@@ -52,13 +52,13 @@ function StudyToggle({ view, onChange }: { view: StudyView; onChange: (v: StudyV
        Estudio <-> Asesor used to drag the whole capsule away with the page and slide it back in.
        The pill now stands still like the header; the only thing that moves is its green thumb,
        which already glides on its own CSS transition when the view flips. */
-    <div data-fixed data-spot="estudio" className={`as-toggle${view === "asesor" ? " is-right" : ""}`} role="tablist" aria-label={tx("Vista", "View")}>
+    <div data-fixed data-spot="estudio" data-present="estudio-vista-asesor" className={`as-toggle${view === "asesor" ? " is-right" : ""}`} role="tablist" aria-label={tx("Vista", "View")}>
       <span className="as-toggle-thumb" aria-hidden />
       <button type="button" role="tab" aria-selected={view === "estudio"} className={view === "estudio" ? "is-on" : undefined} onClick={() => onChange("estudio")}>
         <BarChart3 aria-hidden />
         {tx("Estudio", "Stats")}
       </button>
-      <button type="button" role="tab" aria-selected={view === "asesor"} className={view === "asesor" ? "is-on" : undefined} onClick={() => onChange("asesor")}>
+      <button type="button" role="tab" data-present="estudio-ir-asesor" aria-selected={view === "asesor"} className={view === "asesor" ? "is-on" : undefined} onClick={() => onChange("asesor")}>
         <Compass aria-hidden />
         {tx("Asesor", "Advisor")}
       </button>
@@ -242,6 +242,7 @@ function EstadisticasPage() {
           onChange={setNeedle}
           placeholder={tx("Buscar cifra", "Search")}
           label={tx("Buscar en Estudio", "Search Stats")}
+          present="estudio-buscar"
         />}
           <span className="mr-2 grid w-10 shrink-0 place-items-center">
             <DayNightSwitch />

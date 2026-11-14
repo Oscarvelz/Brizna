@@ -171,7 +171,7 @@ function Home() {
         head={
           <>
       {pins.data && pins.data.length > 0 ? (
-        <section className="mb-4 rounded-xl border-l-4 border-primary bg-surface px-3 py-2 shadow-card">
+        <section data-present="hoy-nota-fijada" className="mb-4 rounded-xl border-l-4 border-primary bg-surface px-3 py-2 shadow-card">
           <p className="text-xs font-semibold tracking-wide text-muted uppercase">{tx("Notas fijadas", "Pinned notes")}</p>
           <ul>
             {pins.data.map((note) => {

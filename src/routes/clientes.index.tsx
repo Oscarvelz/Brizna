@@ -452,6 +452,7 @@ function ClientesPage() {
             to="/clientes"
             search={{ filter: "inactive" }}
             data-ref="inv-archive"
+            data-present="clientes-archivos"
             aria-current={filter === "inactive" ? "true" : undefined}
             className={cn("bz-inv-tile is-soil rounded-sm bg-soil-bg px-1.5 py-1.5 text-center", filter === "inactive" && "is-active")}
           >
@@ -751,6 +752,7 @@ function ClientListCard({
             {client.isActive ? (
               <button
                 type="button"
+                data-present="lista-baja"
                 onClick={() => setAskOff(true)}
                 className="flex flex-1 flex-col items-center justify-center gap-1 bg-pending text-xs font-semibold text-primary-fg"
               >
@@ -769,6 +771,7 @@ function ClientListCard({
             )}
             <button
               type="button"
+              data-present="lista-borrar"
               onClick={() => setAskDel(true)}
               className="flex flex-1 flex-col items-center justify-center gap-1 bg-late text-xs font-semibold text-primary-fg"
             >
@@ -987,6 +990,7 @@ function ClientListCard({
           "They leave the schedule. They stay saved in Archive with all their data until you bring them back or delete them. Their pending extras and one-time jobs are cancelled in plain sight (they stay in the history, not deleted).",
         )}
         confirmLabel={tx("Mover a archivos", "Move to archive")}
+        presentConfirm="baja-confirmar"
         pending={deactivate.isPending}
         onConfirm={() => deactivate.mutate()}
         onCancel={() => setAskOff(false)}
@@ -1015,6 +1019,7 @@ function ClientListCard({
               )
         }
         confirmLabel={tx("Eliminar", "Delete")}
+        presentConfirm="borrar-confirmar"
         danger
         pending={remove.isPending}
         onConfirm={() => remove.mutate()}

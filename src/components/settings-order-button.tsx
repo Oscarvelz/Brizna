@@ -40,6 +40,7 @@ export function SettingsOrderButton() {
     <>
       <button
         type="button"
+        data-present="ajustes-orden"
         aria-label={tx("Orden de los ajustes", "Order of the settings")}
         onClick={start}
         className="grid size-9 shrink-0 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"

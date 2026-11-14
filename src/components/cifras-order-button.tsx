@@ -48,6 +48,7 @@ export function CifrasOrderButton() {
     <>
       <button
         type="button"
+        data-present="cifras-orden"
         aria-label={tx("Orden de las cifras", "Order of the figures")}
         onClick={start}
         className="grid size-9 shrink-0 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"

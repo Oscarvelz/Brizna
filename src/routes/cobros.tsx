@@ -268,6 +268,7 @@ function CobrosPage() {
             <Link
               to="/cobros"
               data-ref="abonos"
+              data-present="cobros-abonado"
               search={{ view: "abonos" }}
               resetScroll={false}
               className={cn("-mx-1 block rounded-lg px-2 py-1.5 touch-manipulation", view === "abonos" && "bz-due-on bg-surface/70")}
@@ -386,6 +387,7 @@ function CobrosPage() {
                 value={sort}
                 onChange={(e) => setSort(e.target.value as OwingSort)}
                 className="max-w-xs"
+                present="cobros-orden"
               >
                 <option value="amount">{tx("Mayor saldo", "Highest balance")}</option>
                 <option value="name">{tx("Nombre A–Z", "Name A–Z")}</option>
@@ -405,7 +407,7 @@ function CobrosPage() {
             {picked.length > 0 && (
               <div className="mb-3 grid grid-cols-2 gap-2">
                 <Button onClick={() => setAskBulk("paid")}>{tx("Cobrar elegidos", "Collect selected")}</Button>
-                <Button variant="outline" onClick={() => setAskBulk("waived")}>
+                <Button variant="outline" data-present="cobros-perdonar-elegidos" onClick={() => setAskBulk("waived")}>
                   {tx("Perdonar elegidos", "Forgive selected")}
                 </Button>
               </div>
@@ -564,6 +566,7 @@ function CobrosPage() {
       />
       <ConfirmDialog
         open={askBulk === "waived"}
+        presentConfirm="cobros-grupo-confirmar"
         title={tx(
           picked.length === 1 ? "¿Perdonar 1 saldo?" : `¿Perdonar ${picked.length} saldos?`,
           picked.length === 1 ? "Forgive 1 balance?" : `Forgive ${picked.length} balances?`,
@@ -1180,18 +1183,13 @@ function Waive({ client, icon }: { client: ClientRow; icon?: boolean }) {
   });
   return (
     <>
-      {icon ? (
-        <button type="button" className="bz-cact is-forgive is-icon" disabled={mut.isPending} onClick={() => setOpen(true)} aria-label={tx(`Perdonar a ${client.name}`, `Forgive ${client.name}`)}>
-          <HandHeart aria-hidden />
-        </button>
-      ) : (
-        <button type="button" className="bz-cact is-forgive" disabled={mut.isPending} onClick={() => setOpen(true)}>
-          <HandHeart aria-hidden />
-          <span className="bz-cact-l">{tx("Perdonar", "Forgive")}</span>
-        </button>
-      )}
+      <button type="button" className={icon ? "bz-cact is-forgive is-icon" : "bz-cact is-forgive"} data-present="cobros-perdonar" disabled={mut.isPending} onClick={() => setOpen(true)} aria-label={icon ? tx(`Perdonar a ${client.name}`, `Forgive ${client.name}`) : undefined}>
+        <HandHeart aria-hidden />
+        {icon ? null : <span className="bz-cact-l">{tx("Perdonar", "Forgive")}</span>}
+      </button>
       <ConfirmDialog
         open={open}
+        presentConfirm="perdonar-confirmar"
         icon={<HandHeart />}
         iconTone="late"
         title={
@@ -1212,6 +1210,7 @@ function Waive({ client, icon }: { client: ClientRow; icon?: boolean }) {
               <label className="text-sm font-medium text-fg" htmlFor={`waive-amt-${client.id}`}>{tx("Cantidad a perdonar", "Amount to forgive")}</label>
               <input
                 id={`waive-amt-${client.id}`}
+                data-present="perdonar-cantidad"
                 type="number"
                 min={0}
                 step="0.01"
@@ -1242,7 +1241,7 @@ function Waive({ client, icon }: { client: ClientRow; icon?: boolean }) {
 /** 1.4.78 (Oscar): a selection box with the .bz-pick look (tint, fine outline, inline check). */
 function PickBox({ on, onToggle, label, className }: { on: boolean; onToggle: () => void; label: string; className?: string }) {
   return (
-    <button type="button" role="checkbox" aria-checked={on} aria-label={label} onClick={onToggle} className={cn("bz-cpick", on && "is-on", className)}>
+    <button type="button" role="checkbox" data-present="cobros-grupo" aria-checked={on} aria-label={label} onClick={onToggle} className={cn("bz-cpick", on && "is-on", className)}>
       <span className="bz-cpick-box">{on ? <Check aria-hidden /> : null}</span>
     </button>
   );
@@ -1295,7 +1294,7 @@ function OwingCard({
     );
   if (c.highRisk && !(quad && cols > 2))
     chips.push(
-      <span key="risk" className="bz-state is-hold is-xs">
+      <span key="risk" className="bz-state is-hold is-xs" data-present="cobros-riesgo">
         <ShieldAlert aria-hidden />
         {tx("Alto riesgo", "High risk")}
       </span>,
@@ -1397,7 +1396,7 @@ function OwingCard({
   }
 
   return (
-    <li className={cn("bz-ocard bz-ccard min-w-0 overflow-hidden rounded-xl border-l-4 bg-surface shadow-card", "is-grande px-3.5 pt-3 pb-3.5", tone, on && "is-picked")}>
+    <li data-present="cobros-tarjeta" className={cn("bz-ocard bz-ccard min-w-0 overflow-hidden rounded-xl border-l-4 bg-surface shadow-card", "is-grande px-3.5 pt-3 pb-3.5", tone, on && "is-picked")}>
       <div className="flex min-w-0 items-start gap-2.5">
         <PickBox on={on} onToggle={onToggle} label={pickLabel} className="mt-0.5" />
         <Link to="/clientes/$id" params={{ id: String(c.id) }} className="min-w-0 flex-1">

@@ -119,6 +119,7 @@ export function SampleSettings() {
         <button
           type="button"
           className="bz-sample-btn is-remove"
+          data-present="ejemplo-quitar"
           disabled={!on || removing}
           onClick={() => ask("remove")}
         >

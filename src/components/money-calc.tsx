@@ -123,7 +123,7 @@ function insertCuenta(expr: string, preview: number) {
   window.setTimeout(() => placeCuenta(expr, preview), 60);
 }
 
-export function QuickPad({ onClose }: { onClose: () => void }) {
+export function QuickPad({ onClose, present }: { onClose: () => void; /** Presentación (B6): data-present anchor for this pad, minted by the caller. */ present?: string }) {
   const memory = useState(readCalcMemory)[0];
   const [expr, setExpr] = useState("");
   const [spot, setSpot] = useState<{ x: number; y: number } | null>(() => {
@@ -252,6 +252,7 @@ export function QuickPad({ onClose }: { onClose: () => void }) {
   const pad = (
     <div
       ref={padRef}
+      data-present={present}
       data-no-swipe
       onPointerDownCapture={(e) => {
         rememberCaret();
@@ -482,11 +483,14 @@ export function MoneyCalc({
   onChange,
   presets = DEFAULT_ABONO_PRESETS,
   guardPreset,
+  present,
 }: {
   value: string;
   onChange: (next: string) => void;
   presets?: number[];
   guardPreset?: (amount: number, apply: () => void) => void;
+  /** Presentación (B6): data-present anchor for this calculator, minted by the caller. */
+  present?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [expr, setExpr] = useState(value);
@@ -521,7 +525,7 @@ export function MoneyCalc({
   const keys = ["7", "8", "9", "÷", "×", "4", "5", "6", "-", "+", "1", "2", "3", "C", "⌫", "0", ".", "="];
 
   return (
-    <div>
+    <div data-present={present}>
       {/* 1.4.75: presets and Calculadora fill their rows evenly (Calculadora takes the free slots of the
           last row, never a row of its own); one row when the box is wide. */}
       <div className="bz-mcalc mt-3" style={mcalcStyle(presets.length)}>

@@ -1335,7 +1335,7 @@ function GearSheet({
             />
           ))}
         </ul>
-        <div className="mt-5 border-t border-border/80 pt-4">
+        <div className="mt-5 border-t border-border/80 pt-4" data-present="fichero-papelera">
           <p className="font-display text-lg font-semibold">{tx("Papelera", "Trash")}</p>
           <label className="mt-2 flex items-center justify-between gap-2 text-sm text-muted">
             <span>{tx("Borrar del todo a los", "Delete for good after")}</span>

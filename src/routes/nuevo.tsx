@@ -385,6 +385,7 @@ function NuevoPage() {
       />
       <ConfirmDialog
         open={Boolean(pendingValue) && dupes.length === 0}
+        presentConfirm="alta-confirmar"
         title={tx("¿Añadir este cliente?", "Add this client?")}
         description={<p>{previewWithDebt}</p>}
         confirmLabel={tx("Sí, guardar", "Yes, save")}
@@ -408,7 +409,7 @@ function NuevoPage() {
             aria-label={tx("Cerrar", "Close")}
             onClick={requestLeaveBulk}
           />
-          <div role="dialog" aria-modal="true" aria-label={tx("Revisar clientes", "Review clients")} className={cn("bz-dialog bz-bulk relative w-full min-w-0 bg-surface", bulk.length > 1 && "is-wide")}>
+          <div role="dialog" aria-modal="true" data-present="bache-revisar" aria-label={tx("Revisar clientes", "Review clients")} className={cn("bz-dialog bz-bulk relative w-full min-w-0 bg-surface", bulk.length > 1 && "is-wide")}>
             <h2 className="bz-dialog-title font-display">
               <span className="min-w-0 flex-1">{tx("Revisar clientes", "Review clients")}</span>
               <span className="bz-dialog-aside tabular-nums">{bulk.length}</span>
@@ -419,7 +420,7 @@ function NuevoPage() {
                 "Adjust the price and date. If someone already owed you, mark it on their card: that amount goes to To collect.",
               )}
             </p>
-            <div className="bz-bulk-box mt-3">
+            <div className="bz-bulk-box mt-3" data-present="bache-deuda">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-sm font-semibold">{tx("Deuda de antes", "Earlier debt")}</p>
                 <p className="text-xs text-muted">
@@ -475,6 +476,7 @@ function NuevoPage() {
                     {i === 0 && bulk.length > 1 ? (
                       <button
                         type="button"
+                        data-present="bache-copiar"
                         className="min-h-10 shrink-0 px-1 text-xs font-semibold text-primary"
                         onClick={() =>
                           setBulk((prev) => {
@@ -494,13 +496,13 @@ function NuevoPage() {
                   </div>
                   {row.address ? <p className="mt-0.5 text-xs text-muted">{row.address}</p> : null}
                   {rep >= 0 ? (
-                    <div className="bz-bulk-dup">
+                    <div className="bz-bulk-dup" data-present="bache-repetido-lista">
                       <Users aria-hidden />
                       <span className="min-w-0">{tx("Repetido en esta lista:", "Repeated in this list:")} <b>{bulk[rep].name}</b></span>
-                      <button type="button" className="bz-bulk-dup-go" onClick={() => removeRow(i)}>{tx("Quitar", "Remove")}</button>
+                      <button type="button" className="bz-bulk-dup-go" data-present="bache-quitar" onClick={() => removeRow(i)}>{tx("Quitar", "Remove")}</button>
                     </div>
                   ) : like && !row.dupState ? (
-                    <button type="button" className="bz-bulk-dup" onClick={() => setRowCompare(i)}>
+                    <button type="button" className="bz-bulk-dup" data-present="bache-repetido-libro" onClick={() => setRowCompare(i)}>
                       <Users aria-hidden />
                       <span className="min-w-0">
                         {tx("Se parece a", "Looks like")} <b>{like.name}</b>
@@ -530,6 +532,7 @@ function NuevoPage() {
                   />
                   <button
                     type="button"
+                    data-present="bache-ya-debe"
                     onClick={() => toggleOwing(i, !owing.includes(i))}
                     className="mt-2 flex h-10 w-full items-center gap-2 rounded-full bg-surface px-2 text-left"
                   >
@@ -554,6 +557,7 @@ function NuevoPage() {
                       <Input
                         type="number"
                         min={0}
+                        data-present="bache-monto"
                         inputMode="decimal"
                         className="pl-7"
                         placeholder="0"
@@ -625,7 +629,7 @@ function NuevoPage() {
                         }
                       />
                     </div>
-                    <label className="col-span-2 flex min-h-11 items-center gap-2 text-sm font-medium">
+                    <label className="col-span-2 flex min-h-11 items-center gap-2 text-sm font-medium" data-present="bache-mismo-dia">
                       <input
                         type="checkbox"
                         checked={row.paySameDay}
@@ -652,6 +656,7 @@ function NuevoPage() {
                   {tx("Cancelar", "Cancel")}
                 </Button>
                 <Button
+                  data-present="bache-guardar"
                   disabled={bulkMut.isPending}
                   onClick={() => {
                     if (owing.some((index) => !(Number(bulk[index]?.openingBalance) > 0))) {
@@ -718,7 +723,7 @@ function NuevoPage() {
               else setNameDraft(null);
             }}
           />
-          <div className="relative w-full max-w-md rounded-xl bg-surface p-5 shadow-card">
+          <div className="relative w-full max-w-md rounded-xl bg-surface p-5 shadow-card" data-present="bache-varios">
             <h2 className="font-display text-xl font-semibold">{tx("Añadir varios", "Add several")}</h2>
             <p className="mt-1 text-sm text-muted">
               {tx(
@@ -727,6 +732,7 @@ function NuevoPage() {
               )}
             </p>
             <textarea
+              data-present="bache-nombres"
               value={nameDraft}
               onChange={(e) => setNameDraft(e.target.value)}
               rows={8}
@@ -756,6 +762,7 @@ function NuevoPage() {
                   setOwing([]);
                   openBulk(rows);
                 }}
+                data-present="bache-continuar"
               >
                 {tx("Continuar", "Continue")}
               </Button>

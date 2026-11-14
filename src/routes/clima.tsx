@@ -314,7 +314,7 @@ function ClimaPage() {
   return (
     <AppShell title={tx("Clima", "Weather")}>
       <div className="clx">
-        <div className="clx-rise mb-3" style={rise(0)}>
+        <div className="clx-rise mb-3" style={rise(0)} data-present="clima-lugar">
           <div className="flex flex-wrap items-center gap-2">
             <p className="flex min-w-0 basis-full items-center gap-1.5 text-sm text-muted">
               <MapPin className="size-3.5 shrink-0" />
@@ -375,7 +375,7 @@ function ClimaPage() {
           {/* 1.5.50 (C2): a cached pack never poses as current — its reading time rides
               under the verdict, and stays (louder) when the renewal failed. */}
           {pack && packAt ? (
-            <p className="clx-sub">
+            <p className="clx-sub" data-present="clima-datos">
               {failed
                 ? tx(`Sin conexión · datos de las ${packAtLabel}`, `Offline · data from ${packAtLabel}`)
                 : tx(`Datos de las ${packAtLabel}`, `Data from ${packAtLabel}`)}
@@ -383,7 +383,7 @@ function ClimaPage() {
           ) : null}
 
           {pack && next12.length ? (
-            <div className="clx-plan">
+            <div className="clx-plan" data-present="clima-plan">
               <p className="clx-kicker">{tx("Plan de hoy", "Today's plan")}</p>
               <DayStrip slots={slots} marks={marks} />
               <ul className="clx-plan-list">
@@ -409,13 +409,13 @@ function ClimaPage() {
           <GrassEdge mow={tone === "go" && Boolean(pack)} />
         </section>
 
-        <button type="button" className={cn("clx-stop clx-rise", rainNear && "is-near")} style={rise(2)} onClick={() => setAskRain(true)}>
+        <button type="button" data-present="clima-parar" className={cn("clx-stop clx-rise", rainNear && "is-near")} style={rise(2)} onClick={() => setAskRain(true)}>
           <CloudRain className="size-5" />
           <span>{t("stop.button")}</span>
           {rainNear ? <small>{storm ? tx("tormenta", "storm") : wetNow ? tx("llueve ahora", "raining now") : tx("lluvia cerca", "rain near")}</small> : null}
         </button>
         {rainReady && rainReady.people.length > 0 ? (
-          <section className="mt-3 rounded-xl border-l-4 border-hold bg-hold-bg p-3">
+          <section className="mt-3 rounded-xl border-l-4 border-hold bg-hold-bg p-3" data-present="clima-mensajes">
             <p className="font-semibold text-hold">{tx("Mensajes listos", "Messages ready")}</p>
             <p className="mt-1 text-sm text-muted">
               {tx(
@@ -449,7 +449,7 @@ function ClimaPage() {
           </section>
         ) : null}
 
-        <div className="clx-facts clx-rise" style={rise(3)}>
+        <div className="clx-facts clx-rise" style={rise(3)} data-present="clima-hechos">
           <Fact
             gauge={<DropGauge pct={soon[0]?.pop ?? 0} />}
             label={tx("Lluvia", "Rain")}
@@ -468,7 +468,7 @@ function ClimaPage() {
         </div>
 
         {next12.length > 0 ? (
-          <section className="clx-card clx-rise" style={rise(4)}>
+          <section className="clx-card clx-rise" style={rise(4)} data-present="clima-horas">
             <div className="clx-card-head">
               <h2 className="clx-h2">{tx("Próximas horas", "Next hours")}</h2>
             </div>
@@ -477,7 +477,7 @@ function ClimaPage() {
           </section>
         ) : null}
 
-        <section className="clx-card clx-rise" style={rise(5)}>
+        <section className="clx-card clx-rise" style={rise(5)} data-present="clima-radar">
           <div className="clx-card-head">
             <h2 className="clx-h2">{tx("Radar", "Radar")}</h2>
             <p className="clx-live">
@@ -527,7 +527,7 @@ function ClimaPage() {
         </section>
 
         {tomorrow ? (
-          <section className="clx-card clx-tomorrow clx-rise" style={rise(6)}>
+          <section className="clx-card clx-tomorrow clx-rise" style={rise(6)} data-present="clima-manana">
             <WxIcon code={tomorrow.code} className="clx-tm-icon" />
             <div className="min-w-0 flex-1">
               <p className="clx-kicker-m">{tx("Mañana", "Tomorrow")}</p>

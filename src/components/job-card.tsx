@@ -314,6 +314,7 @@ export function JobCard({
   const pinButton = (
     <button
       type="button"
+      data-present="tarjeta-pin"
       aria-label={job.pinned ? tx("Quitar de fijados", "Unpin") : tx("Fijar en Hoy", "Pin on Today")}
       onClick={onPin}
       className={cn(
@@ -334,6 +335,9 @@ export function JobCard({
       <ConfirmDialog
         open={askDone}
         stack
+        presentConfirm="hecho-cobrado"
+        presentExtra="hecho-pendiente"
+        presentAlt="hecho-abonado"
         title={<>{tx("¿Cómo cerrar a ", "Close ")}<span className="bz-dialog-who"><span className="bz-dialog-name">{job.clientName}</span>{tx("?", "'s cut?")}</span></>}
         aside={<>{tx("Corte", "Cut")} <b>{money(job.amount)}</b></>}
         description={
@@ -390,6 +394,7 @@ export function JobCard({
       />
       <ConfirmDialog
         open={askAbono}
+        presentConfirm="hecho-abono-confirmar"
         title={<>{tx("¿Abono de ", "Partial payment for ")}<span className="bz-dialog-who"><span className="bz-dialog-name">{job.clientName}</span>?</span></>}
         aside={<>{tx("Corte", "Cut")} <b>{money(job.amount)}</b></>}
         description={
@@ -407,6 +412,7 @@ export function JobCard({
                 setAbonoError(false);
               }}
               presets={DEFAULT_ABONO_PRESETS}
+              present="hecho-calculadora"
             />
             {abonoError ? (
               <p className="bz-msg bz-msg-error" role="alert">
@@ -442,6 +448,7 @@ export function JobCard({
       />
       <ConfirmDialog
         front
+        presentConfirm="hecho-confirmar"
         open={sure != null}
         title={
           sure === "owe"
@@ -767,6 +774,7 @@ export function JobCard({
           <span
             className={cn("grid size-8 shrink-0 place-items-center rounded-sm text-muted -ml-2", dragHandle && pending && "touch-none", !media && "bz-grip-lg")}
             {...(dragHandle && pending ? { "data-drag-handle": true } : {})}
+            data-present={dragHandle && pending ? "asa-ruta" : "asa-quieta"}
             aria-hidden
           >
             {/* 1.5.22 (Oscar): same logic as the pin's -mr-2 — the grip leans 8 px left (-ml-2 above) so
@@ -779,6 +787,7 @@ export function JobCard({
             <Link
               to="/clientes/$id"
               params={{ id: String(job.clientId) }}
+              data-present="tarjeta-nombre"
               className={cn(
                 "min-w-0 font-display font-semibold hover:underline",
                 media ? "text-[1.25rem] leading-none" : "text-[1.3rem] leading-snug",
@@ -796,6 +805,7 @@ export function JobCard({
               it floats on the card's top border at the right, above this price (see the wrapper). */}
           <span
             data-price
+            data-present="tarjeta-precio"
             className={cn(
               "shrink-0 font-display font-semibold leading-none tabular-nums text-fg/70",
               media ? "text-[1.0625rem] -translate-y-px" : "text-[1.1875rem]",
@@ -838,13 +848,14 @@ export function JobCard({
         <div className={cn("flex min-w-0 flex-wrap items-center", media ? "mt-2 gap-1.5" : "mt-3 gap-2")} data-contact-row>
           {job.clientPhone ? (
             <>
-              <MessageComposer phone={job.clientPhone} name={job.clientName} compact />
-              <WhatsAppButton phone={job.clientPhone} name={job.clientName} />
+              <MessageComposer phone={job.clientPhone} name={job.clientName} compact present="tarjeta-mensaje" />
+              <WhatsAppButton phone={job.clientPhone} name={job.clientName} present="tarjeta-whatsapp" />
               {telHref(job.clientPhone) ? (
                 <ConfirmLink
                   href={telHref(job.clientPhone)!}
                   kind="call"
                   name={job.clientName}
+                  present="tarjeta-llamada"
                   className="bz-tone bz-tone-call grid size-11 shrink-0 place-items-center rounded-sm"
                 >
                   <Phone className="size-[18px]" />
@@ -858,6 +869,7 @@ export function JobCard({
               href={mapsHref(job.clientAddress)}
               kind="maps"
               name={job.clientName}
+              present="tarjeta-mapa"
               onLongPress={() => setShowAddr((v) => !v)}
               className="bz-tone bz-tone-map grid size-11 shrink-0 place-items-center rounded-sm"
             >
@@ -867,6 +879,7 @@ export function JobCard({
           ) : null}
           <button
             type="button"
+            data-present="tarjeta-estado"
             className="ml-auto shrink-0 cursor-pointer transition active:scale-[0.97]"
             onClick={() => setShowStatus(true)}
             aria-label={tx(`Detalles del estado de ${job.clientName}`, `${job.clientName}: status details`)}
@@ -908,7 +921,7 @@ export function JobCard({
             {tx("Hecho", "Done")}
           </Button>
           {/* 1.4.61 (Oscar): Posponer is a real button in the action row, not a loose line under it */}
-          <Button variant="outline" onClick={() => setAskPost(true)} className={cn("bz-tone bz-tone-post min-w-0 flex-1 whitespace-nowrap", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
+          <Button variant="outline" data-present="tarjeta-posponer" onClick={() => setAskPost(true)} className={cn("bz-tone bz-tone-post min-w-0 flex-1 whitespace-nowrap", !media && "gap-1.5 px-2 text-[15px] [&_svg]:size-[18px]")} size={media ? "sm" : "md"}>
             <Clock />
             {tx("Posponer", "Postpone")}
           </Button>
@@ -917,7 +930,7 @@ export function JobCard({
       )}
 
       {postponed && !compact && (
-        <Button variant="outline" className="mt-1.5 h-9 w-full" size="sm" onClick={() => setAskReturn(true)}>
+        <Button variant="outline" data-present="tarjeta-deshacer-pospuesto" className="mt-1.5 h-9 w-full" size="sm" onClick={() => setAskReturn(true)}>
           <RotateCcw />
           {tx("Deshacer pospuesto", "Undo postpone")}
         </Button>

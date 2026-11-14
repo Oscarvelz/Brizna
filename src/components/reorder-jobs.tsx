@@ -83,7 +83,7 @@ export function ReorderableJobs({
   }
 
   return (
-    <div className={grid}>
+    <div className={grid} data-present="agenda-reordenar">
       {density === "dense" ? null : (
         <p className="col-span-full text-xs font-medium text-muted">
           {tx("Mantén el asa a la izquierda y mueve con el dedo para ordenar la ruta.", "Hold the handle on the left and drag to order the route.")}

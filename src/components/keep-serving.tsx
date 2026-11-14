@@ -48,6 +48,7 @@ export function KeepServing({
     <span className="inline-flex items-center gap-0.5">
       <button
         type="button"
+        data-present="ficha-seguir"
         aria-pressed={keepServing}
         aria-label={
           keepServing

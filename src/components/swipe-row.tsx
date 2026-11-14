@@ -84,7 +84,7 @@ export function SwipeRow({
     // 1.4.77 (Oscar): the action layers sit under the card's rounded corners; at rest their colour bled through the
     // anti-aliased corner pixels as a red/amber arc on the right edge. They are hidden until the card moves
     // (and stay visible until it has slid back: .bz-swipe-act hides after the 180 ms return).
-    <div className={cn("bz-swipe relative overflow-hidden rounded-xl touch-pan-y", x !== 0 && "is-open", className)} data-swipe-own>
+    <div className={cn("bz-swipe relative overflow-hidden rounded-xl touch-pan-y", x !== 0 && "is-open", className)} data-swipe-own data-present="tarjeta-cliente">
       {leftActions ? (
         <div className="bz-swipe-act absolute inset-y-0 left-0 flex w-36 items-stretch">{leftActions}</div>
       ) : null}

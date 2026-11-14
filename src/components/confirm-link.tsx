@@ -11,6 +11,7 @@ export function ConfirmLink({
   className,
   children,
   onLongPress,
+  present,
 }: {
   href: string;
   kind: "call" | "maps" | "sms";
@@ -18,6 +19,8 @@ export function ConfirmLink({
   label?: string;
   className?: string;
   children: ReactNode;
+  /** Presentación (B6): data-present anchor for this button, minted by the caller. */
+  present?: string;
   /** 1.5.18 (Oscar): optional press-and-hold action (the job card's map button reveals the hidden
    * address). When it fires, the click that ends the press is swallowed — the confirm never opens. */
   onLongPress?: () => void;
@@ -59,6 +62,7 @@ export function ConfirmLink({
       <button
         type="button"
         aria-label={label}
+        data-present={present}
         className={cn("text-left", className)}
         onClick={() => {
           if (longFired.current) {

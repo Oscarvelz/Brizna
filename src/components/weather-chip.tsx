@@ -92,6 +92,7 @@ export function WeatherChip({ className }: { className?: string } = {}) {
   return (
     <Link
       to="/clima"
+      data-present="clima-pastilla"
       className={cn("max-w-[13rem] shrink-0 truncate text-right text-sm font-semibold text-soil", className)}
       aria-label={tx("Ver el clima del día", "See the day's weather")}
     >

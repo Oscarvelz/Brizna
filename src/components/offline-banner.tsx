@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { invalidateLawn } from "@/components/job-card";
 import { useTx } from "@/lib/i18n";
 import { addFailed, clearFailed, isOfflineError, readOutbox, removeOutbox, useFailed, type FailedOp, type OutboxOp } from "@/lib/offline-queue";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import { completeJob, rescheduleJob, saveDayNote } from "@/lib/server/lawn";
 
 /** Applies one queued op. Returns "gone" when the server refused it because the job is
@@ -68,6 +69,8 @@ export function OfflineBanner() {
     let stop = false;
     async function flush() {
       if (flushing || stop) return;
+      // Presentation seal (Cerca 0): never flush while sealed (see offline-queue's readOutbox gate).
+      if (sealedOn()) return;
       if (typeof navigator !== "undefined" && navigator.onLine === false) return;
       const ops = readOutbox();
       if (!ops.length) return;

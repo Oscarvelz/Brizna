@@ -305,7 +305,7 @@ function ClientDetailPage() {
             sideFirst={false}
             side={
               painted ? <>
-          <section className="bz-cl-tone mt-4 rounded-xl border-l-4 border-hold bg-hold-bg p-4 shadow-card">
+          <section className="bz-cl-tone mt-4 rounded-xl border-l-4 border-hold bg-hold-bg p-4 shadow-card" data-present="ficha-fiabilidad">
             <h2 className="font-display text-lg font-semibold text-hold">{tx("Fiabilidad", "Reliability")}</h2>
             <p className="mt-1 text-sm">
               {emphasize(
@@ -368,12 +368,14 @@ function ClientDetailPage() {
           <div className="mt-10 grid gap-2">
             <Button
               variant="secondary"
+              data-present={client.isActive ? "ficha-archivar" : "ficha-reactivar"}
               onClick={() => (client.isActive ? setAskOff(true) : setAskOn(true))}
             >
               {client.isActive ? tx("Mover a archivos", "Move to archive") : tx("Reactivar", "Reactivate")}
             </Button>
             <Button
               variant="outline"
+              data-present="ficha-lista-negra"
               onClick={() => {
                 void setBlacklist({ data: { id: client.id, blacklisted: !client.blacklisted } }).then(async () => {
                   toast(client.blacklisted ? tx("Salió de la lista negra", "Left the blacklist") : tx("Pasó a la lista negra", "Added to the blacklist"));
@@ -383,7 +385,7 @@ function ClientDetailPage() {
             >
               {client.blacklisted ? tx("Quitar de la lista negra", "Remove from the blacklist") : tx("Pasar a lista negra", "Add to the blacklist")}
             </Button>
-            <Button variant="ghost" className="text-late" onClick={() => setAskDelete(true)}>
+            <Button variant="ghost" className="text-late" data-present="ficha-borrar" onClick={() => setAskDelete(true)}>
               {tx("Eliminar para siempre", "Delete forever")}
             </Button>
           </div>
@@ -391,7 +393,7 @@ function ClientDetailPage() {
               </> : null
             }
           >
-          <section className="bz-cl-card min-w-0 max-w-full overflow-hidden rounded-xl bg-surface p-4 shadow-card">
+          <section className="bz-cl-card min-w-0 max-w-full overflow-hidden rounded-xl bg-surface p-4 shadow-card" data-present="ficha-tarjeta">
             {/* 1.4.75 (Oscar: "ajusta finamente, con mejor contraste y organización"): header = frequency chip + since
                 meta on the left, price on the right; the rest of the facts share one strip of tone chips. */}
             <div className="flex min-w-0 items-start justify-between gap-3">
@@ -563,6 +565,7 @@ function ClientDetailPage() {
                       key={o.k}
                       type="button"
                       role="radio"
+                      data-present={o.k === "full" ? "ficha-pagado" : o.k === "abono" ? "ficha-abono" : "ficha-adelanto"}
                       aria-checked={o === live}
                       className={cn("bz-seg-btn", o === live && "is-sel")}
                       disabled={o.off}
@@ -580,6 +583,7 @@ function ClientDetailPage() {
             <div className="bz-debt-row mt-3">
               <button
                 type="button"
+                data-present="ficha-extra"
                 aria-expanded={showExtra}
                 className={cn("bz-actbtn is-extra", showExtra && "is-on")}
                 onClick={() => setShowExtra((v) => !v)}
@@ -638,7 +642,7 @@ function ClientDetailPage() {
           <ClientNotes key={client.id} clientId={client.id} clientName={client.name} initial={client.richNotes} />
 
           <div className="mt-4">
-            <button type="button" className="bz-actbtn is-edit" onClick={() => setEditing(true)}>
+            <button type="button" className="bz-actbtn is-edit" data-present="ficha-editar" onClick={() => setEditing(true)}>
               <Pencil aria-hidden />
               {tx("Editar ficha", "Edit file")}
             </button>
@@ -693,12 +697,14 @@ function ClientDetailPage() {
               "They return to the schedule with their times and their account.",
             )}
             confirmLabel={tx("Sí, reactivar", "Yes, reactivate")}
+            presentConfirm="reactivar-confirmar"
             pending={toggleActive.isPending}
             onConfirm={() => toggleActive.mutate()}
             onCancel={() => setAskOn(false)}
           />
           <ConfirmDialog
             open={askDelete}
+            presentConfirm="ficha-borrar-confirmar"
             title={<>{tx("¿Eliminar a ", "Delete ")}<span className="bz-dialog-who"><span className="bz-dialog-name is-late">{client.name}</span>?</span></>}
             description={
               deleteSummaryQ.data
@@ -767,7 +773,7 @@ function ChangeHistory({ clientId }: { clientId: number }) {
                 </span>
                 {c.snapshot.includes('"bzMerge"') ? (
                   mergeOpen(c, q.data ?? []) ? (
-                    <Button variant="ghost" size="sm" disabled={undoing} onClick={() => setUndoId(mergeIdOf(c))}>
+                    <Button variant="ghost" size="sm" data-present="dup-deshacer" disabled={undoing} onClick={() => setUndoId(mergeIdOf(c))}>
                       {tx("Deshacer unión", "Undo merge")}
                     </Button>
                   ) : null
@@ -1093,7 +1099,7 @@ function ClientNotes({
         <ul className="mb-3 grid gap-2">
           {pages.map((page) => (
             <li key={page.id} className="bz-pad-link rounded-md px-3 py-2">
-              <Link to="/notas" search={{ page: page.id, back: `cliente:${clientId}` }} className="font-semibold text-primary">
+              <Link to="/notas" search={{ page: page.id, back: `cliente:${clientId}` }} data-present="ficha-nota-enlace" className="font-semibold text-primary">
                 {page.pinned ? "• " : ""}
                 {page.title || t("notes.title")}
               </Link>
@@ -1105,6 +1111,7 @@ function ClientNotes({
       ) : null}
       <RichNotes
         cornerUndo
+        present="ficha-nota-texto"
         draftKey={draftKey}
         value={html}
         onDraft={() => {
@@ -1139,7 +1146,7 @@ function RiskBanner({ days }: { days: number | null }) {
       ? tx(`Lleva ${days} ${days === 1 ? "día" : "días"} sin pagar.`, `${days} ${days === 1 ? "day" : "days"} without paying.`)
       : tx("La deuda lleva tiempo sin pagarse.", "The debt has gone unpaid for a while.");
   return (
-    <div className="bz-risk" role="note">
+    <div className="bz-risk" role="note" data-present="ficha-riesgo">
       <span className="bz-risk-ic" aria-hidden>
         <ShieldAlert />
       </span>
@@ -1190,6 +1197,7 @@ function WaiveButton({ clientId, balance, name }: { clientId: number; balance: n
       <button
         type="button"
         className="bz-actbtn is-forgive bz-waive"
+        data-present="ficha-perdonar"
         disabled={balance <= 0 || mut.isPending}
         aria-label={tx("Perdonar la deuda", "Forgive the debt")}
         onClick={() => setOpen(true)}
@@ -1199,6 +1207,7 @@ function WaiveButton({ clientId, balance, name }: { clientId: number; balance: n
       </button>
       <ConfirmDialog
         open={open}
+        presentConfirm="ficha-perdonar-confirmar"
         title={
           name ? (
             <>
@@ -1228,6 +1237,7 @@ function WaiveButton({ clientId, balance, name }: { clientId: number; balance: n
               <label className="text-sm font-medium text-fg" htmlFor="waive-amt-ficha">{tx("Cantidad a perdonar", "Amount to forgive")}</label>
               <input
                 id="waive-amt-ficha"
+                data-present="ficha-perdonar-cantidad"
                 type="number"
                 min={0}
                 step="0.01"
@@ -1311,6 +1321,7 @@ function ExtraForm({ clientId, onDone }: { clientId: number; onDone: () => void 
       <div>
         <Label>{tx("¿Qué hay que hacer?", "What needs to be done?")}</Label>
         <Input
+          data-present="extra-titulo"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={tx("Poda, limpieza, fertilizante", "Trim, cleanup, fertilizer")}
@@ -1333,6 +1344,7 @@ function ExtraForm({ clientId, onDone }: { clientId: number; onDone: () => void 
               min={0}
               step="0.01"
               placeholder="0"
+              data-present="extra-precio"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               required
@@ -1356,11 +1368,12 @@ function ExtraForm({ clientId, onDone }: { clientId: number; onDone: () => void 
         <Label>{tx("Nota", "Note")}</Label>
         <Textarea rows={3} className="min-h-0" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
-      <Button type="submit" className="bz-xf-add" disabled={mut.isPending}>
+      <Button type="submit" className="bz-xf-add" disabled={mut.isPending} data-present="extra-guardar">
         {mut.isPending ? tx("Guardando", "Saving") : tx("Añadir extra", "Add extra")}
       </Button>
       <ConfirmDialog
         open={ask}
+        presentConfirm="extra-confirmar"
         title={tx(`¿Añadir extra de ${money(n)}?`, `Add an extra of ${money(n)}?`)}
         description={
           doneNow
@@ -1658,6 +1671,7 @@ function JobHistory({ jobs }: { jobs: JobRow[] }) {
                 {!dense && !quad ? <StatusBadge status={job.computedStatus} /> : null}
                 <button
                   type="button"
+                  data-present="historial-precio"
                   className="text-sm font-semibold tabular-nums"
                   onClick={() => setPrice({ id: job.id, value: String(job.amount) })}
                 >
@@ -1692,6 +1706,7 @@ function JobHistory({ jobs }: { jobs: JobRow[] }) {
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
+                  data-present="ficha-foto-corte"
                   className="text-xs font-semibold text-primary"
                   onClick={() => {
                     void getJobPhoto({ data: { id: job.id } }).then((res) => {

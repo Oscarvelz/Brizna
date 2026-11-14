@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { AppProviders } from "@/components/providers";
+import { Presentacion, StageHost } from "@/components/presentation/presentacion";
 import appCss from "../styles.css?url";
 import { APPEARANCE_BOOT_SCRIPT } from "@/lib/theme";
 
@@ -71,7 +72,10 @@ export const Route = createRootRoute({
         <PreviewHostBridge />
         <AuthProvider>
           <AppProviders>
-            <Outlet />
+            <StageHost>
+              <Outlet />
+            </StageHost>
+            <Presentacion />
           </AppProviders>
         </AuthProvider>
         <Scripts />

@@ -1,0 +1,306 @@
+/* La Presentación Guiada — el conductor y el índice.
+   Todo viste las variables del tema activo de Brizna (--color-*): el marcador
+   es el acento de la casa, nunca el feedback por defecto del sistema
+   (gramática premium del plan). La tarjeta es la C′ de Faro, diseño cerrado
+   (PLAN §0.3): 370px junto al foco, controles callados de ~30px con iconos de
+   ~13px, hilo de progreso de 3px, hueco que respira en un velo .55. */
+
+.pres-root { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
+.pres-shield { position: fixed; pointer-events: auto; }
+
+.pres-hole {
+  position: fixed;
+  border-radius: 16px;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 9999px rgb(0 0 0 / .55),
+    0 0 0 2px var(--color-accent),
+    0 0 26px 2px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  transition: left .42s cubic-bezier(.22, 1, .36, 1), top .42s cubic-bezier(.22, 1, .36, 1),
+    width .42s cubic-bezier(.22, 1, .36, 1), height .42s cubic-bezier(.22, 1, .36, 1), box-shadow .3s;
+}
+.pres-hole.is-won {
+  box-shadow:
+    0 0 0 9999px rgb(0 0 0 / .55),
+    0 0 0 2px var(--color-done),
+    0 0 26px 2px color-mix(in srgb, var(--color-done) 50%, transparent);
+}
+
+.pres-thread { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: color-mix(in srgb, var(--color-border) 55%, transparent); pointer-events: none; }
+.pres-thread i { display: block; height: 100%; background: var(--color-accent); transition: width .45s cubic-bezier(.22, 1, .36, 1); }
+
+.pres-card {
+  position: fixed;
+  width: min(370px, calc(100vw - 20px));
+  background: var(--color-surface);
+  color: var(--color-fg);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 15px 14px 13px;
+  box-shadow: 0 18px 44px rgb(0 0 0 / .28);
+  pointer-events: auto;
+  font-family: var(--font-sans);
+}
+.pres-card.is-shake { animation: pres-shake .32s cubic-bezier(.22, 1, .36, 1); }
+.pres-serif { font-family: var(--font-display); }
+.pres-num { font-variant-numeric: tabular-nums; }
+/* La ventanita de contexto (PLAN §0.4): arribita de la tarjeta, pequeña, solo
+   cuando el pie y la pantalla no bastan. Mismo material del tema que la C′. */
+.pres-contexto {
+  /* La ventanita solo explica: jamás come un toque. Cuando la tarjeta queda
+     bajo el foco, la ventanita puede caer sobre el botón de la escena (p. ej.
+     la presión larga del mapa en Q5) y la presión del alumno no llegaría
+     nunca al control — probado en banco con elementFromPoint. */
+  pointer-events: none;
+  position: absolute; bottom: calc(100% + 9px); left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: min(302px, 84vw);
+  background: var(--color-surface); color: var(--color-muted);
+  border: 1px solid var(--color-border); border-radius: 13px;
+  padding: 7px 11px; font-size: .8rem; line-height: 1.4; text-align: center;
+  box-shadow: 0 10px 26px rgb(0 0 0 / .22);
+}
+.pres-contexto::after {
+  content: ""; position: absolute; top: 100%; left: 50%; width: 9px; height: 9px;
+  transform: translate(-50%, -5px) rotate(45deg);
+  background: var(--color-surface); border-right: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border);
+}
+@keyframes pres-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  55% { transform: translateX(5px); }
+  80% { transform: translateX(-3px); }
+}
+
+.pres-kicker {
+  display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0;
+  margin: 0; color: var(--color-muted); font-size: .72rem; font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.pres-kicker span { white-space: nowrap; }
+.pres-toprow { display: flex; align-items: center; gap: 4px; }
+.pres-speedrow { display: flex; gap: 4px; margin-top: 9px; }
+.pres-speedopt {
+  flex: 1; min-height: 32px; border: 1px solid var(--color-border); border-radius: 10px;
+  background: var(--color-surface); color: var(--color-muted); font: inherit; font-size: .82rem;
+  font-weight: 560; cursor: pointer;
+}
+.pres-speedopt.is-on { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-primary-fg); font-weight: 700; }
+.pres-caption { margin: 11px 0 4px; font-size: 1.16rem; line-height: 1.52; display: flex; align-items: baseline; gap: 8px; }
+.pres-caption.is-ask { font-family: var(--font-display); font-size: 1.26rem; }
+.pres-dot {
+  flex: none; width: 10px; height: 10px; border-radius: 999px; background: var(--color-accent);
+  align-self: center; animation: pres-pulse 1.15s ease-in-out infinite;
+}
+.pres-dot.is-won { background: var(--color-done); animation: none; }
+@keyframes pres-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.45); opacity: .55; } }
+.pres-won { flex: none; width: 18px; height: 18px; color: var(--color-done); align-self: center; }
+
+.pres-ctl {
+  min-width: 36px; min-height: 36px; padding: 0 8px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface);
+  color: var(--color-fg); font: inherit; font-size: .8rem; font-weight: 560; cursor: pointer;
+  white-space: nowrap;
+}
+.pres-ctl svg { width: 15px; height: 15px; }
+.pres-ctl:active { transform: scale(.96); }
+.pres-ctl.hd { min-width: 30px; min-height: 30px; height: 30px; padding: 0 7px; font-size: .72rem; }
+.pres-ctl.hd svg { width: 13px; height: 13px; }
+.pres-botrow { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 7px; }
+.pres-chapname { flex: 1; min-width: 0; color: var(--color-subtle); font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pres-botlinks { display: inline-flex; align-items: baseline; gap: 14px; flex: none; }
+.pres-showme {
+  min-height: 30px; padding: 0 2px; border: 0; background: none; color: var(--color-accent);
+  font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+}
+.pres-showme svg { width: 14px; height: 14px; flex: none; }
+/* La pareja ◁ ▷ de Interactivo, en la cabecera a la izquierda del botón
+   de modo (Oscar la subió desde la fila inferior, 2026-11-14): iconos
+   solos, callados como el resto de la
+   fila; el ◁ deshabilitado en el primer compás se lee apagado, no ausente. */
+.pres-navpair { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.pres-navbtn {
+  width: 30px; height: 30px; padding: 0; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 8px; background: none; color: var(--color-accent);
+  cursor: pointer;
+  transition: transform .08s ease, background-color .08s ease;
+}
+.pres-navbtn svg { width: 17px; height: 17px; flex: none; }
+/* El toque de selección (ley de Oscar, 2026-11-14): al tocarlos, la pareja
+   responde en el acto — fondo teñido del acento y un punto de encogida —
+   para que el toque del usuario tenga feedback visible, nunca silencio. */
+.pres-navbtn:active:not(:disabled) {
+  transform: scale(.93);
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+.pres-navbtn:disabled { color: var(--color-subtle); opacity: .45; cursor: default; }
+.pres-stay {
+  min-height: 30px; padding: 0 2px;
+  border: 0; background: none; color: var(--color-muted); font: inherit; font-size: .84rem;
+  text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; white-space: nowrap;
+}
+
+/* LOS BOTONES RESPIRAN, NUNCA CORTADOS (ley (11) de Oscar, 2026-11-14,
+   nacida en Logos al ver la ✕ cortada por la esquina): cuando el ancho
+   escasea, se achican LOS CONTROLES — tamaño y huecos — nunca las palabras
+   ni la forma de la tarjeta. Medido en banco: a 360px la cabecera cabía
+   con holgura CERO y a 320px la ✕ salía 15px fuera del borde interior;
+   con estos dos escalones la fila entera queda dentro, con respiro, al
+   ancho menor que la app sirve. */
+@media (max-width: 380px) {
+  .pres-toprow { gap: 2px; }
+  .pres-navbtn { width: 26px; height: 26px; }
+  .pres-navbtn svg { width: 15px; height: 15px; }
+  .pres-ctl.hd { min-width: 28px; min-height: 28px; height: 28px; padding: 0 5px; font-size: .7rem; }
+}
+@media (max-width: 340px) {
+  .pres-toprow { gap: 1px; }
+  .pres-navpair { gap: 1px; }
+  .pres-navbtn { width: 22px; height: 22px; }
+  .pres-navbtn svg { width: 13px; height: 13px; }
+  .pres-ctl.hd { min-width: 26px; min-height: 26px; height: 26px; padding: 0 3px; font-size: .66rem; }
+  .pres-ctl.hd svg { width: 12px; height: 12px; }
+  .pres-kicker { letter-spacing: .02em; }
+}
+
+/* La ventana emergente de «Quedarme aquí»: pequeña, centrada sobre el velo,
+   en el material del tema; dice qué pasa después antes de disolver nada. */
+.pres-stayveil {
+  position: fixed; inset: 0; z-index: 5;
+  display: grid; place-items: center; padding: 20px;
+  background: rgb(0 0 0 / .25); pointer-events: auto;
+}
+.pres-staynote {
+  width: min(340px, calc(100vw - 32px));
+  background: var(--color-surface); color: var(--color-fg);
+  border: 1px solid var(--color-border); border-radius: 16px;
+  padding: 18px 18px 14px;
+  box-shadow: 0 18px 44px rgb(0 0 0 / .28);
+  font-family: var(--font-sans);
+}
+.pres-staynote p { margin: 0 0 8px; font-size: .92rem; line-height: 1.52; }
+.pres-stayacts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; flex-wrap: nowrap; }
+
+/* Botones propios de la tarjeta final (Brizna no tiene una clase .btn global). */
+.pres-btn {
+  min-height: 38px; padding: 0 16px; border-radius: 999px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: 1px solid var(--color-primary); background: var(--color-primary); color: var(--color-primary-fg);
+  font: inherit; font-size: .88rem; font-weight: 600; white-space: nowrap;
+}
+.pres-btn.ghost { background: var(--color-surface); color: var(--color-fg); border-color: var(--color-border); }
+.pres-btn:active { transform: scale(.97); }
+
+.pres-card.is-done { display: grid; justify-items: center; text-align: center; gap: 8px; padding: 22px 20px 18px; }
+.pres-card.is-done strong { font-size: 1.3rem; }
+.pres-card.is-done p { margin: 0; color: var(--color-muted); line-height: 1.45; }
+.pres-done-check {
+  width: 46px; height: 46px; border-radius: 999px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--color-done) 16%, var(--color-surface)); color: var(--color-done);
+  border: 1.5px solid var(--color-done);
+}
+.pres-done-check svg { width: 22px; height: 22px; }
+.pres-done-note { color: var(--color-pending) !important; font-size: .86rem; }
+.pres-done-acts { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; justify-content: center; }
+
+.pres-panel {
+  position: fixed; left: 50%; top: 8%; transform: translateX(-50%);
+  width: min(360px, calc(100vw - 24px)); max-height: 76dvh; overflow: auto;
+  background: var(--color-surface); color: var(--color-fg); border: 1px solid var(--color-border);
+  border-radius: 20px; padding: 14px 16px; box-shadow: 0 18px 44px rgb(0 0 0 / .28);
+  pointer-events: auto; font-family: var(--font-sans);
+}
+.pres-panel-head { display: flex; justify-content: space-between; align-items: center; }
+.pres-panel-head strong { font-size: 1.2rem; }
+.pres-panel-kicker { margin: 14px 0 4px; color: var(--color-muted); font-size: .72rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+.pres-panel-scene {
+  display: flex; align-items: baseline; gap: 9px; width: 100%; text-align: left;
+  min-height: 44px; padding: 8px 6px; border: 0; border-bottom: 1px solid var(--color-border);
+  background: none; color: var(--color-fg); font: inherit; font-size: .92rem; line-height: 1.35; cursor: pointer;
+}
+.pres-panel-scene .pres-num { color: var(--color-subtle); font-size: .8rem; flex: none; }
+.pres-panel-scene.is-now { color: var(--color-accent); font-weight: 600; }
+.pres-panel-scene em { margin-left: auto; color: var(--color-pending); font-size: .78rem; font-style: normal; flex: none; }
+
+/* ------------------------------- el índice ------------------------------- */
+
+.pres-index { display: grid; gap: 4px; margin-top: 6px; }
+.pres-mod { padding: 12px 2px 10px; border-bottom: 1px solid var(--color-border); }
+.pres-mod:last-of-type { border-bottom: 0; }
+.pres-mod-head { display: flex; align-items: baseline; gap: 9px; }
+.pres-mod-n {
+  flex: none; width: 24px; height: 24px; border-radius: 999px; display: inline-grid; place-items: center;
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface)); color: var(--color-accent);
+  font-size: .78rem; font-weight: 700; align-self: center;
+}
+.pres-mod-head strong { font-size: 1.08rem; flex: 1; min-width: 0; }
+.pres-mod-dur { color: var(--color-subtle); font-size: .8rem; }
+.pres-mod-done { display: inline-flex; align-items: center; gap: 4px; color: var(--color-done); font-size: .8rem; font-weight: 600; }
+.pres-mod-done svg { width: 14px; height: 14px; }
+.pres-mod-promise { margin: 5px 0 0 33px; color: var(--color-muted); font-size: .9rem; line-height: 1.4; }
+.pres-mod-acts { display: flex; gap: 8px; margin: 9px 0 0 33px; flex-wrap: wrap; }
+.pres-play svg { width: 16px; height: 16px; }
+.pres-mod-soon { margin: 6px 0 0 33px; color: var(--color-subtle); font-size: .82rem; }
+.pres-note { margin: 10px 0 2px; color: var(--color-subtle); font-size: .82rem; line-height: 1.45; }
+
+/* --------------------------- el teatro de widgets --------------------------- */
+/* La pantalla de inicio de mentira de AD16: un marco de teléfono sobre el que
+ * viven las piezas reales del widget. Nunca come toques (la lección de la
+ * Ola 1): el alumno toca a través de ella; las zonas solo se resaltan. */
+.pres-theatre {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -54%);
+  width: min(430px, calc(100vw - 24px)); max-height: calc(100dvh - 190px);
+  overflow: auto; pointer-events: none; z-index: 3;
+  background: color-mix(in srgb, var(--color-ink) 88%, black);
+  border: 1px solid var(--color-border); border-radius: 26px;
+  padding: 18px 14px; color: #fff;
+  box-shadow: 0 24px 60px rgb(0 0 0 / .45);
+}
+.pres-theatre .wt-piece { display: grid; gap: 8px; }
+.pres-theatre .wt-card {
+  background: color-mix(in srgb, var(--color-surface) 92%, white);
+  color: var(--color-ink); border-radius: 18px; padding: 12px 14px;
+  display: grid; gap: 6px;
+}
+.pres-theatre .wt-title { font-weight: 700; font-size: .95rem; display: flex; justify-content: space-between; gap: 8px; }
+.pres-theatre .wt-title span { color: var(--color-subtle); font-weight: 500; font-size: .8rem; }
+.pres-theatre .wt-row { display: flex; justify-content: space-between; gap: 10px; font-size: .88rem; }
+.pres-theatre .wt-row b { font-weight: 600; }
+.pres-theatre .wt-muted { color: var(--color-subtle); font-size: .82rem; }
+.pres-theatre .wt-alert { color: var(--color-alert, #b45309); font-size: .82rem; font-weight: 600; }
+.pres-theatre .wt-zone { border-radius: 12px; padding: 6px 8px; margin: -6px -8px; }
+.pres-theatre .wt-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.pres-theatre .wt-day { text-align: center; border-radius: 10px; padding: 5px 0; font-size: .78rem; background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
+.pres-theatre .wt-day.is-today { background: var(--color-accent); color: #fff; font-weight: 700; }
+.pres-theatre .wt-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pres-theatre .wt-sizes { display: flex; gap: 6px; justify-content: center; }
+.pres-theatre .wt-sizes button {
+  pointer-events: auto; border: 1px solid rgb(255 255 255 / .35); color: #fff; background: transparent;
+  border-radius: 999px; padding: 3px 10px; font-size: .78rem; cursor: pointer;
+}
+.pres-theatre .wt-sizes button.is-on { background: #fff; color: #111; font-weight: 700; }
+
+/* Pantallas con sitio (ley de Oscar, 2026-11-14, proporciones de la línea
+   Cadence: ancho ×1.20, relleno ×1.18, explicación ×1.10): desde el ancho
+   de tableta de la propia app (48rem) la tarjeta crece para leerse de un
+   vistazo en un monitor — presencia notable, no excesiva — y NINGÚN texto
+   de la tarjeta se corta con «…»: el nombre «Módulo · Capítulo» se envuelve
+   entero en dos líneas. En el teléfono la C′ queda exactamente como se
+   cerró: 370px y la elipsis de esa única línea es su diseño. */
+@media (width >= 48rem) {
+  .pres-card { width: min(442px, calc(100vw - 20px)); padding: 18px 17px 15px; }
+  .pres-card.is-done { padding: 26px 24px 21px; }
+  .pres-caption { font-size: 1.28rem; }
+  .pres-caption.is-ask { font-size: 1.39rem; }
+  .pres-botrow { align-items: center; }
+  .pres-chapname { white-space: normal; overflow: visible; text-overflow: clip; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pres-hole { transition: none; }
+  .pres-dot { animation: none; }
+  .pres-card.is-shake { animation: none; }
+  .pres-thread i { transition: none; }
+}

@@ -51,6 +51,7 @@ export function ServicePause({
         type="button"
         aria-pressed={paused}
         data-spot="pausa"
+        data-present={paused ? "ficha-continuar" : "ficha-pausa"}
         data-ref={paused ? "continuar" : undefined}
         aria-label={paused ? tx(`Reanudar a ${name}`, `Resume ${name}`) : tx(`Pausar a ${name}`, `Pause ${name}`)}
         onClick={() => setOpen(true)}

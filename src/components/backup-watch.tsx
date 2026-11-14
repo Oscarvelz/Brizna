@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { saveBackupNow } from "@/lib/server/lawn";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import { whenIdle } from "@/lib/study-warm";
 
 const GAP = 20_000;
@@ -21,6 +22,10 @@ export function BackupWatch() {
     let lastEpoch: number | null = null;
     const epoch = () => Number((globalThis as { __bzWriteEpoch?: number }).__bzWriteEpoch ?? 0);
     const run = (force = false) => {
+      // Presentation seal (Cerca 0): no automatic backup while sealed — a copy
+      // of the stage book must never land among the real book's backups. This
+      // covers the interval tick and the hide/pagehide forced runs alike.
+      if (sealedOn()) return;
       const now = Date.now();
       if (now - last < GAP) return;
       if (!force && lastEpoch !== null && epoch() === lastEpoch) return;

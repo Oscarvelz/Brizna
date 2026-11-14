@@ -391,7 +391,7 @@ function AgendaPage() {
   const viewBar = (
       <div className="mb-3">
         <DensityToggle />
-        <p className="bz-tally mt-2">
+        <p className="bz-tally mt-2" data-present="agenda-conteo">
           {tx(
             `${jobs.length} ${jobs.length === 1 ? "trabajo" : "trabajos"} · ${money(total)}${filter === "done" ? " realizados" : ""}`,
             `${jobs.length} ${jobs.length === 1 ? "job" : "jobs"} · ${money(total)}${filter === "done" ? " done" : ""}`,
@@ -408,9 +408,10 @@ function AgendaPage() {
       title={tx("Agenda", "Schedule")}
       titleTight
       action={
-        <div className="bz-ag-views ml-auto flex min-w-0 items-center gap-0.5">
+        <div className="bz-ag-views ml-auto flex min-w-0 items-center gap-0.5" data-present="agenda-periodos">
           <button
             type="button"
+            data-present="agenda-calendario"
             onClick={() => {
               setCal(true);
               setCalCursor(now);
@@ -447,7 +448,7 @@ function AgendaPage() {
     >
 
       {vacationOn ? (
-        <div className="mb-3 flex items-start gap-2 rounded-xl border-l-4 border-pending bg-pending-bg p-3">
+        <div className="mb-3 flex items-start gap-2 rounded-xl border-l-4 border-pending bg-pending-bg p-3" data-present="agenda-vacaciones-aviso">
           <Palmtree className="mt-0.5 size-5 shrink-0 text-pending" />
           <div className="min-w-0">
             <p className="font-semibold text-pending">{tx("Modo vacaciones", "Vacation mode")}</p>
@@ -609,6 +610,7 @@ function AgendaPage() {
                   <button
                     key={date}
                     type="button"
+                    data-present="agenda-dia-libre-chip"
                     onClick={() => askDate(date, `${wd?.short ?? ""} ${date.slice(8)}`)}
                     className={cn("bz-ag-daychip h-10 min-w-12 rounded-full px-3 text-sm font-semibold", on && "is-on", date === today && "is-today", on ? "bg-late-bg text-late" : "bg-sun text-muted")}
                   >
@@ -617,7 +619,7 @@ function AgendaPage() {
                 );
               })}
             </div>
-            <p className="bz-ag-libres-sub mt-3 flex items-center gap-1 text-sm font-semibold">
+            <p className="bz-ag-libres-sub mt-3 flex items-center gap-1 text-sm font-semibold" data-present="agenda-casi-nunca">
               {tx("Días que casi nunca se trabajan", "Days that are almost never worked")}
               <Hint topic="dia-casi-nunca" />
             </p>
@@ -641,14 +643,14 @@ function AgendaPage() {
       </section>
 
       {overdueCount > 0 || (filter === "pending" && jobs.some((job) => job.scheduledDate === today)) ? (
-        <section className="mb-3 rounded-xl border-l-4 border-soil bg-soil-bg p-3">
+        <section className="mb-3 rounded-xl border-l-4 border-soil bg-soil-bg p-3" data-present="agenda-acumulado">
           <p className="flex items-center gap-1 font-semibold text-soil">
             {tx("Trabajo acumulado", "Accumulated work")}
             <Hint topic="trabajo-acumulado" />
           </p>
           <div className="bz-acc-acts mt-2 grid grid-cols-2 gap-2">
             {/* 1.4.72: same tone controls as Hoy (icon + tone hairline; calm disabled state). */}
-            <button type="button" className="bz-actbtn is-late" disabled={overdueCount === 0} onClick={() => setAskAcc("overdue")}>
+            <button type="button" className="bz-actbtn is-late" data-present="agenda-pasar-atrasados" disabled={overdueCount === 0} onClick={() => setAskAcc("overdue")}>
               <AlertTriangle aria-hidden />
               {tx("Pasar atrasados", "Move late ones")}
             </button>
@@ -748,6 +750,7 @@ function AgendaPage() {
                         {filter === "pending" && items.length > 0 && !onlyMoved ? (
                           <button
                             type="button"
+                            data-present="agenda-mover-dia"
                             onClick={() => {
                               setMoveFrom(date);
                               setMoveTo(addDaysISO(date, 1));
@@ -796,7 +799,7 @@ function AgendaPage() {
                 `All pending yards for ${moveFrom ? formatDay(moveFrom, "EEEE d") : ""} move to the date you choose. If you choose Sunday, they stay that day.`,
               )}
             </p>
-            <Input type="date" value={moveTo} onChange={(e) => setMoveTo(e.target.value)} />
+            <Input type="date" data-present="agenda-mover-fecha" value={moveTo} onChange={(e) => setMoveTo(e.target.value)} />
           </div>
         }
         confirmLabel={tx("Sí, mover", "Yes, move")}
@@ -845,6 +848,7 @@ function AgendaPage() {
       />
       <ConfirmDialog
         open={Boolean(askOff)}
+        presentConfirm="agenda-libre-confirmar"
         title={tx("¿Cambiar este día?", "Change this day?")}
         description={
           askOff?.kind === "date" ? (
@@ -935,7 +939,7 @@ function DayReport({ rows }: { rows: { reason: string; name: string }[] }) {
   }
   if (groups.size === 0) return null;
   return (
-    <div className="mt-2 min-w-0 rounded-md bg-surface-2 px-3 py-2.5 text-fg ring-1 ring-border">
+    <div className="mt-2 min-w-0 rounded-md bg-surface-2 px-3 py-2.5 text-fg ring-1 ring-border" data-present="agenda-informe-dia">
       <div className="flex min-w-0 items-start gap-1">
         <p className="min-w-0 flex-1 text-sm font-semibold leading-snug">{tx("¿Por qué no se trabajó este día?", "Why was this day not worked?")}</p>
         <Hint compact topic="agenda-dia" />

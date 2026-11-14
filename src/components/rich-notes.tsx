@@ -144,6 +144,7 @@ export function RichNotes({
   find = "",
   clients,
   cornerUndo,
+  present,
 }: {
   value: string;
   onChange: (text: string) => void;
@@ -155,6 +156,8 @@ export function RichNotes({
   clients?: MentionClient[];
   find?: string;
   cornerUndo?: boolean;
+  /** Presentación (B6): data-present anchor for this editor, minted by the caller. */
+  present?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -525,6 +528,7 @@ export function RichNotes({
         <div
           ref={ref}
           data-note-editor="1"
+          data-present={present ?? "nota-texto"}
           contentEditable
           role="textbox"
           aria-multiline="true"

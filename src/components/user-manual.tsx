@@ -74,12 +74,12 @@ export function UserManual({
           `${MANUAL_CHAPTERS.length} chapters, ${MANUAL_TOPICS.length} topics. Every (?) in the app opens its exact topic here.`,
         )}
       </p>
-      <Button type="button" className="mt-3 w-full sm:w-auto" onClick={open}>
+      <Button type="button" className="mt-3 w-full sm:w-auto" onClick={open} data-present="manual-abrir">
         {tx("Abrir el manual", "Open the manual")}
         <ArrowRight />
       </Button>
       <p className="mt-4 text-xs font-semibold tracking-wide text-muted uppercase">{tx("Ajustes rápidos", "Quick settings")}</p>
-      <div className="mt-2 flex flex-wrap gap-2">
+      <div className="mt-2 flex flex-wrap gap-2" data-present="aj-rapidos">
         <Button
           type="button"
           size="sm"

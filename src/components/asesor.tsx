@@ -237,7 +237,7 @@ function Hero({ r }: { r: AdvisorReading }) {
   const tx = useTx();
   const v = verdict(r, tx);
   return (
-    <section data-spot="asesor" className={cn("as-card as-hero", TONE_CLASS[r.tone])} data-masonry-full style={{ "--i": 0 } as CSSProperties}>
+    <section data-spot="asesor" data-present="asesor-heroe" className={cn("as-card as-hero", TONE_CLASS[r.tone])} data-masonry-full style={{ "--i": 0 } as CSSProperties}>
       <div className="as-hero-top">
         <div className="min-w-0 flex-1">
           <p className="as-kicker"><Sprout aria-hidden />{tx("Tu negocio, en claro", "Business, in short")}</p>

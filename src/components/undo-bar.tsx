@@ -22,6 +22,7 @@ export function UndoBar({ compact = false, confirm = true }: { compact?: boolean
       <div className={cn("flex items-center", compact ? "gap-0" : "gap-0.5")}>
         <button
           type="button"
+          data-present="deshacer-barra"
           aria-label={last ? tx(`Deshacer: ${last.label}`, `Undo: ${last.label}`) : tx("Deshacer", "Undo")}
           disabled={busy || past.length === 0}
           onClick={() => {
@@ -60,6 +61,7 @@ export function UndoBar({ compact = false, confirm = true }: { compact?: boolean
       {confirm ? (
       <ConfirmDialog
         open={ask != null}
+        presentConfirm="deshacer-confirmar"
         title={ask === "redo" ? tx("¿Rehacer este cambio?", "Redo this change?") : tx("¿Deshacer este cambio?", "Undo this change?")}
         description={
           ask === "redo"

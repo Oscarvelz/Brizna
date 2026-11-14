@@ -133,6 +133,7 @@ export function PayDialog({
   return (
     <ConfirmDialog
       open={open}
+      presentConfirm="pago-confirmar"
       title={title}
       description={
         <div className="grid gap-2">
@@ -160,10 +161,11 @@ export function PayDialog({
               min={0}
               step="0.01"
               inputMode="decimal"
+              data-present="pago-cantidad"
               value={amount}
               onChange={(e) => changeAmount(e.target.value)}
             />
-            <MoneyCalc value={amount} onChange={changeAmount} presets={presets} />
+            <MoneyCalc value={amount} onChange={changeAmount} presets={presets} present="pago-calculadora" />
             {amountError ? (
               <p className="bz-msg bz-msg-error" role="alert">
                 <TriangleAlert aria-hidden />

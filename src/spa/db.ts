@@ -136,6 +136,31 @@ export function flushDb(): Promise<void> {
   return next;
 }
 
+/**
+ * Presentation seal (Cerca 0): point every later open at another store — the
+ * stage book — or back at the real one (name = null). The pending real write
+ * is flushed FIRST, while the real store is still the open one, so no real
+ * change can land in the stage; then the open PGlite is closed and the cached
+ * promises are dropped, so the next getSql() reopens on the new name (dbName()
+ * already honours the __bzDb override this sets). The query lane is kept: it
+ * only serialises work, and the next handle queues behind the old one.
+ */
+export async function switchDatabase(name: string | null): Promise<void> {
+  await flushDb();
+  if (flushTimer) { clearTimeout(flushTimer); flushTimer = 0; }
+  const openPg = pgPromise;
+  pgPromise = null;
+  sqlPromise = null;
+  realSync = null;
+  needFlush = false;
+  if (name) (globalThis as any).__bzDb = name;
+  else delete (globalThis as any).__bzDb;
+  if (openPg) {
+    const pg = await openPg.catch(() => null);
+    if (pg) await pg.close().catch(() => undefined);
+  }
+}
+
 if (typeof document !== "undefined") {
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") void flushDb(); });
   window.addEventListener("pagehide", () => void flushDb());

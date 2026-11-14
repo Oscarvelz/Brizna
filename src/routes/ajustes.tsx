@@ -26,6 +26,7 @@ import { MORNING, readNotifyPrefs, writeNotifyPrefs, type NotifyPrefs } from "@/
 import { refreshNativeSoon } from "@/components/native-host";
 import { useUndo } from "@/lib/undo";
 import { UserManual } from "@/components/user-manual";
+import { PresentacionesFold } from "@/components/presentation/presentaciones";
 import { addDaysISO, todayISO } from "@/lib/dates";
 import { formatDay, formatStamp } from "@/lib/format";
 import { emphasize, useI18n, useTx } from "@/lib/i18n";
@@ -102,6 +103,7 @@ function NumberRow({
   max,
   step,
   onCommit,
+  present,
 }: {
   label: string;
   sub?: string;
@@ -112,6 +114,8 @@ function NumberRow({
   max: number;
   step: number;
   onCommit: (n: number) => unknown;
+  /** Presentación (B6): data-present anchor for this row, minted by the caller. */
+  present?: string;
 }) {
   const [draft, setDraft] = useState(String(value));
   useEffect(() => setDraft(String(value)), [value]);
@@ -127,7 +131,7 @@ function NumberRow({
   };
   const cur = Number(draft) || value;
   return (
-    <div className="aj-num">
+    <div className="aj-num" data-present={present}>
       <div className="min-w-0 flex-1">
         <p className="aj-num-label">{label}</p>
         {sub ? <p className="aj-num-sub">{sub}</p> : null}
@@ -440,6 +444,7 @@ function AjustesPage() {
           placeholder={tx("Buscar ajuste", "Search")}
           label={tx("Buscar en Ajustes", "Search settings")}
           spot="busca"
+          present="ajustes-buscar"
         />
         </span>
       }
@@ -840,6 +845,7 @@ function AjustesPage() {
           </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             <Button
+              data-present="ajustes-vacaciones-activar"
               disabled={vacMut.isPending}
               onClick={() => {
                 const start = vacStart || settings?.vacationStart || todayISO();
@@ -852,7 +858,7 @@ function AjustesPage() {
               {settings?.vacationStart ? tx("Actualizar fechas", "Update dates") : tx("Activar vacaciones", "Turn on time off")}
             </Button>
             {settings?.vacationStart ? (
-              <Button variant="outline" disabled={vacOff.isPending} onClick={() => vacOff.mutate()}>
+              <Button variant="outline" data-present="ajustes-vacaciones-quitar" disabled={vacOff.isPending} onClick={() => vacOff.mutate()}>
                 {tx("Quitar vacaciones", "Remove time off")}
               </Button>
             ) : null}
@@ -930,7 +936,7 @@ function AjustesPage() {
             </p>
           ) : null}
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <Button onClick={() => backupNow.mutate()} disabled={backupNow.isPending}>
+            <Button data-present="copia-guardar" onClick={() => backupNow.mutate()} disabled={backupNow.isPending}>
               {tx("Guardar copia ahora", "Save a copy now")}
             </Button>
             <Button variant="outline" onClick={() => download.mutate()} disabled={download.isPending}>
@@ -956,7 +962,7 @@ function AjustesPage() {
             >
               {tx("Elegir carpeta", "Choose folder")}
             </Button>
-            <Button variant="outline" onClick={() => fileRef.current?.click()}>
+            <Button variant="outline" data-present="copia-archivo" onClick={() => fileRef.current?.click()}>
               <Upload />
               {tx("Restaurar archivo", "Restore file")}
             </Button>
@@ -998,7 +1004,7 @@ function AjustesPage() {
                       </span>
                     ) : null}
                   </p>
-                  <Button variant="ghost" size="sm" onClick={() => setRestoreTarget(b)}>
+                  <Button variant="ghost" size="sm" data-present="copia-restaurar" onClick={() => setRestoreTarget(b)}>
                     <RotateCcw />
                     {tx("Restaurar", "Restore")}
                   </Button>
@@ -1031,6 +1037,9 @@ function AjustesPage() {
           onConfirm={() => restoreJson && restoreFile.mutate(restoreJson)}
           onCancel={() => setRestoreJson(null)}
         />
+        {!query || smartHit(query, "presentaciones módulos aprender tutorial presentations modules learn") ? (
+          <PresentacionesFold />
+        ) : null}
         {!query || smartHit(query, "manual ayuda usuario user guide") ? (
           <UserManual onLocale={setLocale} forceOpen={Boolean(query)} />
         ) : null}
@@ -1041,7 +1050,7 @@ function AjustesPage() {
         </div>
         ) : null}
         {!query || smartHit(query, "salir cerrar sesion cuenta sign out huella fingerprint nube sincronizar sync cloud") ? (
-        <section className="order-14 rounded-xl" data-spot-alt="nube huella">
+        <section className="order-14 rounded-xl" data-spot-alt="nube huella" data-present="aj-salir">
           <SignOutControl full />
           <p className="mt-2 text-center text-xs text-muted">
             {tx("La cuenta y los clientes quedan en la nube y en este equipo. Entras otra vez con el mismo correo.", "The account and the clients stay in the cloud and on this device. Sign in again with the same email.")}
@@ -1051,7 +1060,7 @@ function AjustesPage() {
       </Masonry>
       {/* 1.5.59 (Oscar): the app version at the very bottom of Settings, so any screenshot or
           report can say exactly which build the device is running. */}
-      <p className="mt-6 pb-2 text-center text-xs text-muted">
+      <p className="mt-6 pb-2 text-center text-xs text-muted" data-present="aj-version">
         Brizna · {tx("versión", "version")} {APP_VERSION}
       </p>
     </AppShell>
@@ -1242,13 +1251,13 @@ function SeasonBlock({ settings, query }: { settings?: AppSettings; query: strin
             <p className="aj-num-label">{tx("Usar temporada", "Use a season")}</p>
             <p className="aj-num-sub">{tx("El mismo ritmo para todos", "The same pace for everyone")}</p>
           </div>
-          <button type="button" role="switch" aria-checked={on} onClick={() => setOn(!on)} className={cn("aj-switch", on && "is-on")}>
+          <button type="button" role="switch" data-present="ajustes-temporada-interruptor" aria-checked={on} onClick={() => setOn(!on)} className={cn("aj-switch", on && "is-on")}>
             <span />
           </button>
         </div>
         {on ? (
           <>
-            <div className="aj-num">
+            <div className="aj-num" data-present="ajustes-temporada-fechas">
               <div className="min-w-0 flex-1">
                 <p className="aj-num-label">{tx("Empieza", "Starts")}</p>
                 <p className="aj-num-sub">{tx("Cada año, ese día", "Every year, that day")}</p>
@@ -1263,6 +1272,7 @@ function SeasonBlock({ settings, query }: { settings?: AppSettings; query: strin
               <PickerField type="date" noYear className="aj-pf" value={mdToIso(end)} onChange={(e) => e.target.value && setEnd(e.target.value.slice(5))} required />
             </div>
             <NumberRow
+              present="ajustes-temporada-ritmo"
               label={tx("Cada cuántos días", "Every how many days")}
               sub={tx("Durante la temporada", "During the season")}
               value={Number(every) || 21}

@@ -61,6 +61,7 @@ import {
   tabletTabLabel,
   writeTabletLayout,
   TABLET_TABS,
+  VISTA_MENU_PRESENT,
   type TabletLayout,
   type TabletTab,
 } from "@/lib/tablet-mode";
@@ -74,6 +75,15 @@ const nav = [
   { to: "/cobros", label: "nav.payments", icon: CircleDollarSign },
   { to: "/estadisticas", label: "nav.stats", icon: BarChart3 },
 ] as const;
+
+/** Presentación (B6): data-present anchor per tab, keyed by route. */
+const TAB_PRESENT: Record<string, string> = {
+  "/": "pestana-hoy",
+  "/agenda": "pestana-agenda",
+  "/clientes": "pestana-clientes",
+  "/cobros": "pestana-cobros",
+  "/estadisticas": "pestana-estudio",
+};
 
 /** Width of the page's content column (main), so screens can lay out for large screens. 0 = unknown. */
 const PageWidthContext = createContext(0);
@@ -95,6 +105,7 @@ export function TitleSearch({
   placeholder,
   label,
   spot,
+  present,
 }: {
   open: boolean;
   onToggle: () => void;
@@ -104,6 +115,8 @@ export function TitleSearch({
   label: string;
   /** Manual topic this magnifier is the place for ("Ver en la app"). */
   spot?: string;
+  /** Presentación (B6): data-present anchor for this magnifier, minted by the caller. */
+  present?: string;
 }) {
   // Open: the magnifier steps aside and the field takes its place (icon inside, × to close).
   return (
@@ -145,6 +158,7 @@ export function TitleSearch({
           aria-pressed={open}
           aria-label={label}
           data-spot={spot}
+          data-present={present}
           onClick={onToggle}
           className="grid size-10 shrink-0 place-items-center rounded-full text-fg"
         >
@@ -569,6 +583,7 @@ export function AppShell({
                   to={item.to}
                   icon={item.icon}
                   label={t(item.label)}
+                  present={TAB_PRESENT[item.to]}
                   on={railOn(item.to)}
                   onPick={split ? () => openTab(item.to as TabletTab) : undefined}
                 />
@@ -708,7 +723,7 @@ export function AppShell({
 
         <nav ref={setDockEl} className={cn("pod-dock pointer-events-auto fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[color-mix(in_srgb,var(--color-primary)_32%,var(--color-border))] bg-surface px-0.5 pt-1 text-fg print:hidden md:hidden pb-[var(--bz-chin)]", (embedded || split || keyboard) && "hidden")}>
           {nav.map((item) => (
-            <NavLink key={item.to} to={item.to} icon={item.icon} label={t(item.label)} compact />
+            <NavLink key={item.to} to={item.to} icon={item.icon} label={t(item.label)} present={TAB_PRESENT[item.to]} compact />
           ))}
         </nav>
       </div>
@@ -723,11 +738,14 @@ function RailItem({
   label,
   on,
   onPick,
+  present,
 }: {
   to: ShellTo;
   icon: typeof Home;
   label: string;
   on: boolean;
+  /** Presentación (B6): data-present anchor for this tab. */
+  present?: string;
   /** Split view: put this tab in the active window instead of navigating. */
   onPick?: () => void;
 }) {
@@ -741,13 +759,13 @@ function RailItem({
   );
   if (onPick) {
     return (
-      <button type="button" onClick={onPick} aria-pressed={on} className={cn("bz-rail-item alive-nav", on && "is-on")}>
+      <button type="button" onClick={onPick} aria-pressed={on} data-present={present} className={cn("bz-rail-item alive-nav", on && "is-on")}>
         {inner}
       </button>
     );
   }
   return (
-    <Link to={to} aria-current={on ? "page" : undefined} className={cn("bz-rail-item alive-nav", on && "is-on")}>
+    <Link to={to} aria-current={on ? "page" : undefined} data-present={present} className={cn("bz-rail-item alive-nav", on && "is-on")}>
       {inner}
     </Link>
   );
@@ -846,6 +864,7 @@ function TabletViewMenu({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        data-present={VISTA_MENU_PRESENT}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={tx("Vista: pantallas y ventana flotante", "View: screens and floating window")}
@@ -889,6 +908,7 @@ function PaneBar({
           <button
             key={item.to}
             type="button"
+            data-present={TAB_PRESENT[item.to]}
             aria-label={t(item.label)}
             aria-pressed={on}
             onClick={() => onPick(item.to as TabletTab)}
@@ -1078,26 +1098,14 @@ function NotesDoor({ iconOnly, rail }: { iconOnly?: boolean; rail?: boolean }) {
     }, 320);
   }
 
-  if (rail) {
-    return (
-      <button
-        type="button"
-        onClick={press}
-        title={tx("Notas. Doble toque abre el Fichero.", "Notes. Double tap opens the cabinet.")}
-        aria-label={tx("Notas. Doble toque abre el Fichero.", "Notes. Double tap opens the cabinet.")}
-        className={cn("bz-rail-tool", active && "is-on")}
-      >
-        <NotebookPen className="size-5" strokeWidth={active ? 1.9 : 1.6} />
-      </button>
-    );
-  }
   return (
     <button
       type="button"
       onClick={press}
-      title={tx("Doble toque abre el Fichero", "Double tap opens the cabinet")}
+      data-present="notas-puerta"
+      title={rail ? tx("Notas. Doble toque abre el Fichero.", "Notes. Double tap opens the cabinet.") : tx("Doble toque abre el Fichero", "Double tap opens the cabinet")}
       aria-label={tx("Notas. Doble toque abre el Fichero.", "Notes. Double tap opens the cabinet.")}
-      className={cn(
+      className={rail ? cn("bz-rail-tool", active && "is-on") : cn(
         iconOnly
           ? "grid size-10 place-items-center rounded-sm text-muted hover:bg-surface-2 hover:text-fg"
           : "flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm font-semibold transition-colors duration-150",
@@ -1105,8 +1113,8 @@ function NotesDoor({ iconOnly, rail }: { iconOnly?: boolean; rail?: boolean }) {
         iconOnly && active && "text-primary",
       )}
     >
-      <NotebookPen className={cn("size-5 shrink-0", active && "text-primary")} strokeWidth={active ? 2.3 : 1.9} />
-      {iconOnly ? null : <span className="truncate">{t("nav.notes")}</span>}
+      <NotebookPen className={rail ? "size-5" : cn("size-5 shrink-0", active && "text-primary")} strokeWidth={rail ? (active ? 1.9 : 1.6) : (active ? 2.3 : 1.9)} />
+      {rail || iconOnly ? null : <span className="truncate">{t("nav.notes")}</span>}
     </button>
   );
 }
@@ -1116,17 +1124,21 @@ function NavLink({
   label,
   icon: Icon,
   compact,
+  present,
 }: {
   to: ShellTo;
   label: string;
   icon: typeof Home;
   compact?: boolean;
+  /** Presentación (B6): data-present anchor for this tab. */
+  present?: string;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const active = to === "/" ? pathname === "/" : pathname === to || pathname.startsWith(`${to}/`);
   return (
     <Link
       to={to}
+      data-present={present}
       className={cn(
         "alive-nav flex min-w-0 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors duration-150",
         compact ? "min-h-14 flex-col justify-center gap-1 px-1 py-2 text-xs" : "min-h-12 py-3",
@@ -1309,6 +1321,7 @@ function PhoneViewButton({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        data-present="vista-menu"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={tx("Vista: pantallas y ventana flotante", "View: screens and floating window")}

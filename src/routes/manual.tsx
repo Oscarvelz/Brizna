@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ScrollTop } from "@/components/scroll-top";
-import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, Calculator, ChevronDown, CircleHelp, Link2, ListOrdered, Printer, SearchX, Sparkles, Workflow } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, Calculator, ChevronDown, CircleHelp, Link2, ListOrdered, Play, Printer, SearchX, Sparkles, Workflow } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AppShell, TitleSearch } from "@/components/app-shell";
 import { richText } from "@/components/hint";
@@ -8,6 +8,10 @@ import { fold } from "@/lib/fuzzy";
 import { useI18n } from "@/lib/i18n";
 import { canGoBack, glow, justPopped, readOrigin, rememberScroll, requestFocus, screenName } from "@/lib/manual/nav";
 import { alphaIndex, findTopic, MANUAL_CHAPTERS, MANUAL_TOPICS, pick, topicBody, topicText, type L, type Numbered } from "@/lib/manual/topics";
+import { launchPresentation } from "@/components/presentation/presentacion";
+import { moduleById } from "@/lib/presentation/guion";
+import { matchPresentations, type PresSearchEntry } from "@/lib/presentation/search";
+import { stageOn } from "@/lib/presentation/stage";
 import { cn } from "@/lib/utils";
 import "@/manual.css";
 
@@ -169,6 +173,9 @@ function ManualPage() {
     },
     [query, words, locale],
   );
+  // La misma lupa encuentra las lecciones: el registro se deriva de los guiones
+  // (solo módulos listos) y comparte las palabras plegadas de los temas.
+  const presResults = useMemo(() => (query ? matchPresentations(words).slice(0, 8) : []), [query, words]);
   const alpha = useMemo(() => alphaIndex(locale), [locale]);
   const searching = Boolean(query);
   useEffect(() => {
@@ -242,6 +249,18 @@ function ManualPage() {
     const path = go.to;
     requestFocus({ topic: topic.id, id: go.focus, path });
     void navigate({ to: path, search: (go.search ?? {}) as never });
+  }
+
+  /* Los dos aterrizajes de una lección (la ley de la búsqueda): dejarte en la
+   * escena, sobre el escenario sellado, o ir derecho a la función real. */
+  function openScene(entry: PresSearchEntry) {
+    if (stageOn()) return; // dentro de una presentación no se lanza otra (como el índice)
+    const sceneId = entry.sceneId ?? moduleById(entry.moduleId)?.scenes[0]?.id;
+    launchPresentation(entry.moduleId, sceneId);
+  }
+
+  function openFunction(entry: PresSearchEntry) {
+    void navigate({ to: entry.goScreen as never });
   }
 
   function goBack() {
@@ -329,20 +348,25 @@ function ManualPage() {
         </div>
 
         {query ? (
+          <>
           <section className="mn-results print-hide" aria-live="polite">
             <p className="mn-results-count">
-              {results.length === 0
+              {results.length === 0 && presResults.length === 0
                 ? tx("Nada con esas palabras.", "Nothing with those words.")
-                : tx(
-                    `${results.length} ${results.length === 1 ? "resultado" : "resultados"}`,
-                    `${results.length} ${results.length === 1 ? "result" : "results"}`,
-                  )}
+                : results.length === 0
+                  ? tx("Sin temas con esas palabras.", "No topics with those words.")
+                  : tx(
+                      `${results.length} ${results.length === 1 ? "resultado" : "resultados"}`,
+                      `${results.length} ${results.length === 1 ? "result" : "results"}`,
+                    )}
             </p>
             {results.length === 0 ? (
-              <div className="mn-empty">
-                <SearchX aria-hidden />
-                <span>{tx("Prueba otra palabra, como cobro, meta o huella.", "Try another word, like payment, goal, or fingerprint.")}</span>
-              </div>
+              presResults.length === 0 ? (
+                <div className="mn-empty">
+                  <SearchX aria-hidden />
+                  <span>{tx("Prueba otra palabra, como cobro, meta o huella.", "Try another word, like payment, goal, or fingerprint.")}</span>
+                </div>
+              ) : null
             ) : (
               <ul className="mn-hits">
                 {results.map((tp) => {
@@ -365,6 +389,49 @@ function ManualPage() {
               </ul>
             )}
           </section>
+          {presResults.length ? (
+            <section className="mn-results print-hide" aria-live="polite">
+              <h2 className="mn-toc-title">{tx("Lecciones", "Lessons")}</h2>
+              <p className="mn-results-count">
+                {tx(
+                  `${presResults.length} ${presResults.length === 1 ? "lección" : "lecciones"}`,
+                  `${presResults.length} ${presResults.length === 1 ? "lesson" : "lessons"}`,
+                )}
+              </p>
+              <ul className="mn-hits">
+                {presResults.map((entry) => {
+                  const mod = moduleById(entry.moduleId);
+                  const isModule = entry.kind === "module";
+                  const text = isModule && mod ? say(mod.promise) : say(entry.moduleTitle);
+                  return (
+                    <li key={`${entry.moduleId}:${entry.sceneId ?? "modulo"}`}>
+                      <div className="mn-hit">
+                        <span className="mn-hit-num">{mod?.n ?? ""}</span>
+                        <span className="mn-hit-main">
+                          <span className="mn-hit-title">{marked(say(entry.title), words)}</span>
+                          <span className="mn-hit-text">{marked(snippet(text, words), words)}</span>
+                          <span className="mn-hit-ch">
+                            {mod?.floor === "advanced" ? tx("Avanzado", "Advanced") : tx("Piso rápido", "Quick floor")}
+                          </span>
+                          <span className="mn-go-row">
+                            <button type="button" className="mn-go" onClick={() => openScene(entry)}>
+                              <Play aria-hidden />
+                              {tx("Ver la escena", "See the scene")}
+                            </button>
+                            <button type="button" className="mn-go" onClick={() => openFunction(entry)}>
+                              {tx("Ir a la función", "Go to the function")}
+                              <ArrowRight aria-hidden />
+                            </button>
+                          </span>
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+          </>
         ) : null}
 
         <div className={cn("mn-body", query && "is-hidden")}>
@@ -485,7 +552,7 @@ function ManualPage() {
               {ch.topics.map((tp, ti) => {
                 const num = `${ci + 1}.${ti + 1}`;
                 return (
-                  <article key={tp.id} id={`mn-${tp.id}`} className={cn("mn-entry", urlTopic && findTopic(urlTopic)?.id === tp.id && "is-current")}>
+                  <article key={tp.id} id={`mn-${tp.id}`} data-present="manual-tema" className={cn("mn-entry", urlTopic && findTopic(urlTopic)?.id === tp.id && "is-current")}>
                     <h3 className="mn-entry-title">
                       <span className="mn-num">{num}</span>
                       <span>{say(tp.title)}</span>
@@ -522,6 +589,7 @@ function ManualPage() {
                         <button
                           type="button"
                           className="mn-go print-hide"
+                          data-present="manual-ver-en-app"
                           onClick={() => void openInApp(MANUAL_TOPICS.find((x) => x.id === tp.id)!)}
                         >
                           {tx("Ver en la app", "See it in the app")}

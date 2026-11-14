@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { todayISO } from "@/lib/dates";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import type { ComputedStatus, JobStatus } from "@/lib/types";
 
 export type OutboxOp =
@@ -143,6 +144,11 @@ export function useFailed(): FailedOp[] {
 }
 
 export function readOutbox(): OutboxOp[] {
+  // Presentation seal (Cerca 0): the network flush (offline-banner) reads the
+  // queue through here, so while sealed it sees an empty queue — real ops
+  // queued against the real book can never flush into the stage book, and
+  // they stay queued, untouched, for when the seal lifts.
+  if (sealedOn()) return [];
   return read();
 }
 

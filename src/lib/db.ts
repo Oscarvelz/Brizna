@@ -108,6 +108,10 @@ function createNeonSql(): Promise<Sql> {
   return globalRef.__pgSqlPromise__;
 }
 
+/** Presentation seal (Cerca 0), server twin of src/spa/db.ts's switchDatabase:
+ *  while set, the PGLite fallback opens this directory instead of the real one. */
+let pgliteDirOverride: string | null = null;
+
 async function createPgliteSql(): Promise<Sql> {
   // Embedded Postgres, imported on demand so it never loads on the Neon path.
   // One instance per process, shared across HMR. Data lives on disk at
@@ -117,7 +121,7 @@ async function createPgliteSql(): Promise<Sql> {
     const { mkdirSync } = await import("node:fs");
     // Persist on disk so accounts, cortes and sessions survive a process restart
     // in the live preview. Deployed apps use Neon (DATABASE_URL) and never hit this.
-    const dataDir = "/workspace/.data/pglite";
+    const dataDir = pgliteDirOverride ?? "/workspace/.data/pglite";
     mkdirSync(dataDir, { recursive: true });
     const pg = new PGlite(dataDir, {
       parsers: {
@@ -201,6 +205,29 @@ export function getSql(): Promise<Sql> {
     throw err;
   });
   return sqlPromise;
+}
+
+/**
+ * Presentation seal (Cerca 0): same contract as src/spa/db.ts — point later
+ * opens at the stage store (name != null) or back at the real one (null). On
+ * the PGLite fallback the stage is a sibling directory; on Neon there is no
+ * stage at all, because a presentation must never run against a shared cloud
+ * database, so this refuses loudly instead of switching.
+ */
+export async function switchDatabase(name: string | null): Promise<void> {
+  if (dbSource === "neon") {
+    throw new Error("switchDatabase: presentations never stage against a shared cloud database (Neon)");
+  }
+  const openPg = globalRef.__pgliteInstance__;
+  globalRef.__pgliteInstance__ = undefined;
+  globalRef.__pgSqlPromise__ = undefined;
+  globalRef.__pgliteMigrateChain__ = undefined;
+  sqlPromise = null;
+  pgliteDirOverride = name ? "/workspace/.data/pglite-stage" : null;
+  if (openPg) {
+    const pg = await openPg.catch(() => null);
+    if (pg) await pg.close().catch(() => undefined);
+  }
 }
 
 /**
