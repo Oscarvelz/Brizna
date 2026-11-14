@@ -94,6 +94,10 @@ type RunState = {
    * ventana le dice al alumno que podrá continuar donde quedó (ley de
    * Oscar, 2026-11-14). */
   stayOpen: boolean;
+  /** La ventana de confirmación de salida está abierta (la ✕ pregunta
+   * antes de disolver nada, Oscar 2026-11-14): el reloj se detiene igual
+   * que con la de «Quedarme aquí». */
+  exitOpen: boolean;
   skipped: string[];
   /** La pila de retorno de «Anterior»: las posiciones CON PIE que el alumno
    * ya ocupó, en orden. Retroceder es volver a una posición vivida — nunca
@@ -158,6 +162,14 @@ export function Presentacion() {
   const [run, setRun] = useState<RunState | null>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [shaking, setShaking] = useState(0);
+  /** La entrada del módulo en curso: el velo y el hueco nacen apagados y
+   * se encienden en 300ms (la clase vive un respiro en la raíz). */
+  const [entering, setEntering] = useState(false);
+  /** La salida está en su fundido de 200ms: la raíz lleva la clase y las
+   * salidas de verdad (índice / quedarme) esperan a que el velo se apague
+   * antes de disolver el escenario — salir nunca es un corte. */
+  const [leaving, setLeaving] = useState(false);
+  const leavingRef = useRef(false);
   /** El conductor no remonta con el Outlet (vive junto a los anfitriones):
    * escucha el evento del escenario para repintarse y para recoger la
    * intención de lanzamiento cuando el escenario se enciende. */
@@ -223,7 +235,7 @@ export function Presentacion() {
       setRun({
         mod, sceneIdx: startIdx, stepIdx: 0,
         mode: prefs.mode, speed: prefs.speed,
-        playing: true, won: false, finished: false, chaptersOpen: false, speedOpen: false, stayOpen: false, skipped: [], back: [],
+        playing: true, won: false, finished: false, chaptersOpen: false, speedOpen: false, stayOpen: false, exitOpen: false, skipped: [], back: [],
       });
       // El módulo queda marcado como el último en uso desde el arranque:
       // si el alumno sale sin terminarlo (o la app muere), su ficha abrirá
@@ -318,25 +330,42 @@ export function Presentacion() {
     }
   }, [clearTimers, saveProgress]);
 
+  /** Toda salida pasa por el fundido (investigación de movimiento,
+   * 2026-11-14): la raíz viste is-leaving, el velo y la tarjeta se apagan
+   * en 200ms — menos que los 300ms de la entrada — y SOLO entonces se
+   * disuelve el escenario. Con movimiento reducido, la salida es inmediata. */
+  const leaveDelay = () =>
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 200;
+
   const exitToIndex = useCallback(() => {
-    const r = runRef.current;
-    if (r) saveProgress(r, r.finished);
-    setStay({ path: "/ajustes", openPres: true });
-    setRun(null);
-    // Se navega ANTES de disolver: al remontar, el usuario ya está en
-    // Ajustes y el pliegue lee el openPres y se abre solo.
-    void navigate({ to: "/ajustes" as never });
-    void exitStage();
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    setLeaving(true);
+    window.setTimeout(() => {
+      const r = runRef.current;
+      if (r) saveProgress(r, r.finished);
+      setStay({ path: "/ajustes", openPres: true });
+      setRun(null);
+      // Se navega ANTES de disolver: al remontar, el usuario ya está en
+      // Ajustes y el pliegue lee el openPres y se abre solo.
+      void navigate({ to: "/ajustes" as never });
+      void exitStage();
+    }, leaveDelay());
   }, [navigate, saveProgress]);
 
   const stayHere = useCallback(() => {
-    const r = runRef.current;
-    if (r) saveProgress(r, r.finished);
-    setStay({ path: window.location.pathname });
-    setRun(null);
-    // exitStage conserva la ruta: el escenario se disuelve y StageHost
-    // remonta los datos reales bajo este mismo lugar.
-    void exitStage();
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    setLeaving(true);
+    window.setTimeout(() => {
+      const r = runRef.current;
+      if (r) saveProgress(r, r.finished);
+      setStay({ path: window.location.pathname });
+      setRun(null);
+      // exitStage conserva la ruta: el escenario se disuelve y StageHost
+      // remonta los datos reales bajo este mismo lugar.
+      void exitStage();
+    }, leaveDelay());
   }, [saveProgress]);
 
   /** «Quedarme aquí» PRIMERO pregunta (ley de Oscar, 2026-11-14): una
@@ -359,9 +388,42 @@ export function Presentacion() {
     setRun({ ...r, stayOpen: false });
   }, []);
 
+  /** La ✕ PRIMERO pregunta (Oscar, 2026-11-14, desde su captura: al tocar
+   * la X debe emerger una ventana de confirmación, para no salir de la
+   * presentación sin querer): la ventana dice qué pasa después — el
+   * módulo queda guardado justo donde va y su ficha abrirá el índice — y
+   * solo su «Salir» disuelve el escenario. En la tarjeta final no hay
+   * ventana: el módulo ya terminó y salir es simplemente salir. */
+  const openExit = useCallback(() => {
+    const r = runRef.current;
+    if (!r || r.finished) { exitToIndex(); return; }
+    clearTimers();
+    setRun({ ...r, exitOpen: true });
+  }, [clearTimers, exitToIndex]);
+
+  const closeExit = useCallback(() => {
+    const r = runRef.current;
+    if (!r) return;
+    setRun({ ...r, exitOpen: false });
+  }, []);
+
+  /* La entrada suave del módulo: al nacer un recorrido la raíz viste
+   * is-entering un respiro — velo y hueco se encienden en 300ms, nunca a
+   * opacidad plena en el primer fotograma — y cualquier resto de una
+   * salida anterior se limpia para el próximo módulo. */
+  const runModId = run?.mod.id;
+  useEffect(() => {
+    if (!runModId) return;
+    leavingRef.current = false;
+    setLeaving(false);
+    setEntering(true);
+    const id = window.setTimeout(() => setEntering(false), 400);
+    return () => window.clearTimeout(id);
+  }, [runModId]);
+
   /* ------------------------------ el motor de pasos ------------------------------ */
   useEffect(() => {
-    if (!run || !scene || !step || run.finished || run.chaptersOpen || run.speedOpen || run.stayOpen) return;
+    if (!run || !scene || !step || run.finished || run.chaptersOpen || run.speedOpen || run.stayOpen || run.exitOpen) return;
     const r = run;
     let cancelled = false;
     const speed = r.speed;
@@ -645,7 +707,7 @@ export function Presentacion() {
     void runStep();
     return () => { cancelled = true; clearTimers(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run?.sceneIdx, run?.stepIdx, run?.mode, run?.playing, run?.speed, run?.chaptersOpen, run?.speedOpen, run?.stayOpen, run?.finished]);
+  }, [run?.sceneIdx, run?.stepIdx, run?.mode, run?.playing, run?.speed, run?.chaptersOpen, run?.speedOpen, run?.stayOpen, run?.exitOpen, run?.finished]);
 
   /* Esc: una capa a la vez (velocidad → capítulos → salir al índice). */
   useEffect(() => {
@@ -654,7 +716,8 @@ export function Presentacion() {
       if (e.key !== "Escape") return;
       const cur = runRef.current;
       if (!cur) return;
-      if (cur.speedOpen) setRun({ ...cur, speedOpen: false });
+      if (cur.exitOpen) setRun({ ...cur, exitOpen: false });
+      else if (cur.speedOpen) setRun({ ...cur, speedOpen: false });
       else if (cur.chaptersOpen) setRun({ ...cur, chaptersOpen: false });
       else exitToIndex();
     };
@@ -673,10 +736,21 @@ export function Presentacion() {
   const isGesture = step?.kind === "do" || step?.kind === "press" || step?.kind === "swipe";
   /** Hay atrás solo si la pila de retorno guarda alguna posición vivida. */
   const canGoBack = run.back.length > 0;
-  const hole = rect ? {
-    left: Math.max(4, rect.left - 10), top: Math.max(4, rect.top - 10),
-    width: rect.width + 20, height: rect.height + 20,
-  } : null;
+  // El hueco respira 10px alrededor del foco — y el anillo NUNCA se corta
+  // (Oscar, 2026-11-14, desde el recorte de la pestaña Cobros: el anillo
+  // verde se salía por el borde inferior del teléfono). La geometría
+  // anterior solo protegía arriba y a la izquierda: contra el borde
+  // inferior y el derecho el aire se comía el anillo. Ahora el rectángulo
+  // entero se contiene en la pantalla con 4px de margen: donde hay sitio,
+  // el aire es 10px; donde no, se comprime el aire — jamás el anillo.
+  const hole = rect ? (() => {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const left = Math.max(4, rect.left - 10);
+    const top = Math.max(4, rect.top - 10);
+    const right = Math.min(vw - 4, rect.right + 10);
+    const bottom = Math.min(vh - 4, rect.bottom + 10);
+    return { left, top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+  })() : null;
   const cardBelow = hole ? (window.innerHeight - (hole.top + hole.height)) > 240 : true;
   // La tarjeta se centra sobre el foco y se abraza a los bordes — con SU
   // ancho real en cada ancho de pantalla (370 bajo 48rem; 442 desde ahí;
@@ -751,12 +825,17 @@ export function Presentacion() {
   ] : [{ left: 0, top: 0, width: "100%", height: "100%" }];
 
   return (
-    <div className="pres-root" role="dialog" aria-modal="false" aria-label={pick(mod.title, lang)} data-skipped={run.skipped.join(" ")}>
+    <div className={`pres-root${entering ? " is-entering" : ""}${leaving ? " is-leaving" : ""}`} role="dialog" aria-modal="false" aria-label={pick(mod.title, lang)} data-skipped={run.skipped.join(" ")}>
       {/* el escudo rodea el recorte: ningún toque desvía el guion, y el objetivo del
           compás recibe el suyo de verdad, a través del hueco */}
       {shieldRects.map((style, i) => (
         <div key={i} className="pres-shield" style={style} onPointerDown={onShieldTap} />
       ))}
+      {/* el velo difuminado: los mismos cuatro rectángulos que el escudo,
+          con el fondo desenfocado — el hueco, sin parche, queda nítido */}
+      {hole && !run.finished ? shieldRects.map((style, i) => (
+        <div key={`blur-${i}`} className="pres-blurpatch" style={style} aria-hidden />
+      )) : null}
       {hole && !run.finished ? (
         <div className={`pres-hole${run.won ? " is-won" : ""}`} style={{ left: hole.left, top: hole.top, width: hole.width, height: hole.height }} aria-hidden />
       ) : null}
@@ -806,7 +885,7 @@ export function Presentacion() {
         </div>
       ) : caption ? (
         <div key={shaking} className={`pres-card${shaking ? " is-shake" : ""}`} style={cardStyle} aria-live="polite">
-          {contexto ? <div className="pres-contexto" role="note">{contexto}</div> : null}
+          {contexto ? <div key={`ctx-${run.sceneIdx}-${run.stepIdx}`} className="pres-contexto pres-beat" role="note">{contexto}</div> : null}
           <div className="pres-toprow">
             <p className="pres-kicker">
               <span className="pres-num">{run.sceneIdx + 1} / {totalScenes}</span>
@@ -851,7 +930,7 @@ export function Presentacion() {
                 {run.playing ? <Pause aria-hidden /> : <Play aria-hidden />}
               </button>
             ) : null}
-            <button type="button" className="pres-ctl hd" aria-label={tx("Salir", "Exit")} onClick={exitToIndex}><X aria-hidden /></button>
+            <button type="button" className="pres-ctl hd" aria-label={tx("Salir", "Exit")} onClick={openExit}><X aria-hidden /></button>
           </div>
           {run.speedOpen ? (
             <div className="pres-speedrow" role="group" aria-label={tx("Velocidad", "Speed")}>
@@ -866,12 +945,12 @@ export function Presentacion() {
               ))}
             </div>
           ) : null}
-          <p className={`pres-caption${step?.kind === "ask" ? " is-ask" : ""}${isGesture ? " is-do" : ""}`}>
+          <p key={`cap-${run.sceneIdx}-${run.stepIdx}`} className={`pres-caption pres-beat${step?.kind === "ask" ? " is-ask" : ""}${isGesture ? " is-do" : ""}`}>
             {isGesture ? <i className={`pres-dot${run.won ? " is-won" : ""}`} aria-hidden /> : null}
             {caption}
             {run.won ? <Check className="pres-won" aria-hidden /> : null}
           </p>
-          <div className="pres-botrow">
+          <div key={`bot-${run.sceneIdx}-${run.stepIdx}`} className="pres-botrow pres-beat">
             <span className="pres-chapname">{pick(mod.title, lang)}{chapter ? ` · ${pick(chapter.title, lang)}` : ""}</span>
             <span className="pres-botlinks">
               {isGesture ? (
@@ -906,6 +985,37 @@ export function Presentacion() {
             <div className="pres-stayacts">
               <button type="button" className="pres-btn ghost" onClick={closeStay}>{tx("Seguir viendo", "Keep watching")}</button>
               <button type="button" className="pres-btn" onClick={stayHere}>{tx("Quedarme aquí", "Stay here")}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {run.exitOpen && !run.finished ? (
+        /* La ventana de confirmación de la ✕ (Oscar, 2026-11-14): nadie
+           sale de la presentación por un toque equivocado. Dice qué pasa
+           después — el módulo queda guardado donde va y su ficha abrirá el
+           índice — y solo su «Salir» disuelve el escenario; «Seguir
+           viendo» cierra la ventana y la lección continúa. */
+        <div className="pres-stayveil">
+          <div className="pres-staynote" role="dialog" aria-label={tx("Salir de la lección", "Leave the lesson")}>
+            <p className="pres-note-title">
+              {tx("¿Salir de la lección?", "Leave the lesson?")}
+            </p>
+            <p>
+              {tx(
+                "Podrás seguir justo desde aquí: el módulo queda guardado.",
+                "You can pick up right from here: the module is saved.",
+              )}
+            </p>
+            <p>
+              {tx(
+                "Su ficha será la primera en Ajustes → Presentaciones.",
+                "Its card will be the first in Settings → Presentations.",
+              )}
+            </p>
+            <div className="pres-stayacts">
+              <button type="button" className="pres-btn ghost" onClick={closeExit}>{tx("Seguir viendo", "Keep watching")}</button>
+              <button type="button" className="pres-btn" onClick={exitToIndex}>{tx("Salir", "Leave")}</button>
             </div>
           </div>
         </div>
