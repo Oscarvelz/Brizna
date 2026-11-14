@@ -951,8 +951,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Collected: sum of payments, partials, and advances by the day they came in. The week runs Monday to Sunday. It leaves out tips, earlier debt, and forgiven amounts.\nWork already done: sum of the prices of yards marked Done, by the yard's date.",
         ],
         example: [
-          "Esta semana hiciste 40 patios a $45: trabajo hecho $1.800. Cobrado de la semana: $1.950, porque Robert te pagó $240 de dos semanas atrasadas y te faltan $90 de esta. Por eso Cobrado puede ser mayor o menor que el trabajo hecho.",
-          "This week you did 40 yards at $45: work done $1,800. Collected this week: $1,950, because Robert paid $240 for two past weeks and $90 from this week is still owed. That's why Collected can be above or below work done.",
+          "Esta semana hiciste 40 patios a $45: trabajo hecho $1.800. Pero te faltan $90 de esta semana y Robert te pagó $240 de dos semanas atrasadas: Cobrado = 1.800 − 90 + 240 = $1.950. Por eso Cobrado puede ser mayor o menor que el trabajo hecho.",
+          "This week you did 40 yards at $45: work done $1,800. But $90 from this week is still owed and Robert paid $240 for two past weeks: Collected = 1,800 − 90 + 240 = $1,950. That's why Collected can be above or below work done.",
         ],
         cases: [
           "Un adelanto que entra hoy: cuenta en Cobrado hoy, aunque el corte sea la semana que viene.\nDeshaces un Hecho y cobrado: sale de las dos cifras.\nUn patio movido a la semana que viene y hecho allí: cuenta en esa semana.\nLas listas del año enseñan hasta 2.500 filas: si tu año tiene más, el final de la lista lo dice con «+N más»; los totales de arriba siempre cuentan todo el año.\nLos adelantos también salen en las listas de Cobrado, cada uno con la marca «Adelanto» y su método: la lista y el total de arriba cuentan lo mismo.",
@@ -1112,8 +1112,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Expected = work done this month + what is pending from today to month end + this month's late work.\nCollected = payments, partials, and advances from the 1st to today.\nCollection rate = collected ÷ work done over the last 90 days. It can pass 100% because advances count when they come in.",
         ],
         example: [
-          "Día 15. Agendado del mes: $4.000 (hecho $2.100, por hacer $1.800, atrasado $100). Cobraste $1.700. El anillo grande va al 43% y el de adentro al 53%. La brecha de $400 entre hecho y cobrado es deuda nueva del mes.",
-          "The 15th. The month's schedule: $4,000 (done $2,100, to do $1,800, late $100). You collected $1,700. The big ring is at 43% and the inner one at 53%. The $400 gap between done and collected is new debt this month.",
+          "Día 15. Esperado del mes: $4.000 (hecho $2.100, por hacer $1.800, atrasado $100). Cobraste $1.700. El anillo grande es lo cobrado de lo esperado: 1.700 de 4.000 = 43%. El de adentro, el trabajo hecho: 2.100 de 4.000 = 53%. La brecha de $400 entre hecho y cobrado es deuda nueva del mes.",
+          "The 15th. Expected this month: $4,000 (done $2,100, to do $1,800, late $100). You collected $1,700. The big ring is collected out of expected: 1,700 of 4,000 = 43%. The inner one is work done: 2,100 of 4,000 = 53%. The $400 gap between done and collected is new debt this month.",
         ],
         cases: [
           "Un día de lluvia mueve patios al mes siguiente: lo esperado de este mes baja.\nCobras deuda vieja este mes: el anillo de cobrado puede adelantarse al de trabajo.",
@@ -1325,8 +1325,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Average = sum of prices ÷ number of jobs, by kind. $0 jobs (courtesies) do not count. The monthly line = the month's cut value ÷ priced cuts that month.",
         ],
         example: [
-          "En marzo subes a 6 clientes de $40 a $45. La línea pasa de $46 a $48 en abril. Le regalas un corte a un vecino ($0): el promedio no baja.",
-          "In March you raise 6 clients from $40 to $45. The line goes from $46 to $48 in April. You give a neighbor a free cut ($0): the average does not drop.",
+          "En marzo tienes 10 cortes: 6 a $40 y 4 a $50. La suma es $440 y el promedio, $44. En abril subes los de $40 a $45: la suma pasa a $470 y el promedio a $47. Le regalas un corte a un vecino ($0): el promedio no baja, porque las cortesías no cuentan.",
+          "In March you have 10 cuts: 6 at $40 and 4 at $50. The sum is $440 and the average $44. In April you raise the $40 ones to $45: the sum goes to $470 and the average to $47. You give a neighbor a free cut ($0): the average does not drop, because courtesy cuts don't count.",
         ],
         related: ["precio", "asesor-chequeos", "mejores-clientes"],
         go: { to: "/estadisticas", view: "estudio", focus: "cif-precio", where: ["Estudio, Precio por trabajo", "Stats, Price per job"] },
@@ -1396,8 +1396,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "The score weighs the Five checks: Paid on time 30%, Clients leaving 25%, Your prices 15%, Full week 15%, and Fixed income 15%. Each check gives 0 to 1 and is added with its weight.",
         ],
         example: [
-          "Cobras a tiempo 0,8, Clientes que se van 1, Tus precios 0,75, Semana llena 0,9 e Ingreso fijo 0,7. Puntaje = 100 × (0,8×0,30 + 1×0,25 + 0,75×0,15 + 0,9×0,15 + 0,7×0,15) = 84: va bien. Si tres clientes se atrasan, baja Cobras a tiempo y el puntaje con él.",
-          "Paid on time 0.8, Clients leaving 1, Your prices 0.75, Full week 0.9, and Fixed income 0.7. Score = 100 × (0.8×0.30 + 1×0.25 + 0.75×0.15 + 0.9×0.15 + 0.7×0.15) = 84: doing well. If three clients fall behind, Paid on time drops and the score with it.",
+          "Un mes bueno: Cobras a tiempo 0,8, Clientes que se van 1, Tus precios 0,8, Semana llena 0,8 e Ingreso fijo 0,6. Cada chequeo suma con su peso: 24 + 25 + 12 + 12 + 9 = 82. Si tres clientes se atrasan y Cobras a tiempo cae a 0,4, ese chequeo da 12 en vez de 24 y el puntaje baja a 70.",
+          "A good month: Paid on time 0.8, Clients leaving 1, Your prices 0.8, Full week 0.8, and Fixed income 0.6. Each check adds up with its weight: 24 + 25 + 12 + 12 + 9 = 82. If three clients fall behind and Paid on time drops to 0.4, that check gives 12 instead of 24 and the score falls to 70.",
         ],
         cases: [
           "Sin trabajos hechos todavía: Asesor espera a tener datos.\nUn cliente en la lista negra: no cuenta en nada del Asesor.",
