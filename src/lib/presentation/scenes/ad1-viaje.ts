@@ -143,7 +143,7 @@ export const AD1: Module = {
       verify: "La coincidencia widget↔app sale del código (D-56: getWorkSummary usa el mismo predicado D-40); la foto real del widget en un aparato Android no se contrastó en esta línea — por eso aquí solo se nombra, sin escenificarla (su escena actuada es de AD16).",
       steps: [
         { kind: "go", screen: "/cobros" },
-        { kind: "show", anchor: "por-cobrar", caption: ["Fuera de la app, el widget enseña esta misma cifra.", "Outside the app, the widget shows this same figure."], contexto: ["Su Por cobrar toca y abre Cobros: coinciden porque es una regla.", "Its To collect opens Payments: they match because the rule is one."] },
+        { kind: "show", anchor: "por-cobrar", caption: ["Fuera de la app, el widget enseña esta misma cifra.", "Outside the app, the widget shows this same figure."], contexto: ["Tocas su Por cobrar y abre Cobros: coinciden porque la regla es una.", "Tap its To collect and Payments opens: they match because the rule is one."] },
       ],
     },
     {

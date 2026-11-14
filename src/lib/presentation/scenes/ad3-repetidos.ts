@@ -130,7 +130,7 @@ export const AD3: Module = {
       id: "ad3-despues-corte", chapter: "unir", anchors: ["historial", "lista-clientes"],
       keys: [["historial", "history"], ["archivo", "archive"]],
       steps: [
-        { kind: "show", anchor: "historial", caption: ["Un corte del mismo día no pasó: quedó contado en Archivos.", "One same-day cut did not move: it stayed counted in Archive."], contexto: ["Ambos cortaron ese día: el día ya tenía corte en Vega.", "Both cut that day: the day already had a cut in Vega."] },
+        { kind: "show", anchor: "historial", caption: ["Un corte del mismo día no pasó: quedó contado en Archivos.", "One same-day cut did not move: it stayed counted in Archive."], contexto: ["Ambos cortaron ese día: ese día ya tenía un corte de Vega.", "Both cut that day: that day already had one of Vega's cuts."] },
         { kind: "go", screen: "/clientes" },
         { kind: "show", anchor: "lista-clientes", caption: ["Ya no hay dos Luis: uno quedó, el otro en Archivos.", "No more two Luis: one stayed, the other in Archive."], contexto: ["El que se va no se borra: queda archivado con lo no movido.", "The one who leaves is not deleted: archived with what did not move."] },
       ],

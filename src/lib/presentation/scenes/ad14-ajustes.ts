@@ -96,7 +96,7 @@ export const AD14: Module = {
       id: "ad14-idioma", chapter: "base", anchors: ["aj-pantalla"],
       keys: [["idioma", "language"], ["español", "spanish"], ["english", "english"]],
       steps: [
-        { kind: "show", anchor: "aj-pantalla", caption: ["Idioma: Español o English, aplicado al instante.", "Language: Español or English, applied instantly."], contexto: ["Español es el defecto; la puerta de entrada tiene su propio selector.", "Spanish is the default; the sign-in door has its own selector."] },
+        { kind: "show", anchor: "aj-pantalla", caption: ["Idioma: Español o English, aplicado al instante.", "Language: Español or English, applied instantly."], contexto: ["Español es el idioma por defecto; la puerta de entrada tiene su propio selector.", "Spanish is the default language; the sign-in door has its own selector."] },
       ],
     },
     {
@@ -126,7 +126,7 @@ export const AD14: Module = {
       id: "ad14-espera", chapter: "trabajo", anchors: ["aj-espera"],
       keys: [["espera", "waiting"], ["alto riesgo", "high risk"], ["límites", "limits"]],
       steps: [
-        { kind: "show", anchor: "aj-espera", caption: ["Espera y riesgo: cuatro umbrales con sus defectos honestos.", "Waiting and risk: four thresholds with honest defaults."], contexto: ["En espera, 45 días; riesgo: 21 días, $200 o 3 cortes.", "Waiting, 45 days; risk: 21 days, $200, or 3 cuts."] },
+        { kind: "show", anchor: "aj-espera", caption: ["Espera y riesgo: cuatro umbrales con su valor de partida.", "Waiting and risk: four thresholds, each with its starting value."], contexto: ["En espera, 45 días; riesgo: 21 días, $200 o 3 cortes.", "Waiting, 45 days; risk: 21 days, $200, or 3 cuts."] },
       ],
     },
     {
@@ -147,7 +147,7 @@ export const AD14: Module = {
       id: "ad14-recordatorios-tiempos", chapter: "trabajo", anchors: ["aj-recordatorios"],
       keys: [["recordatorios", "reminders"], ["llegada", "arrival"]],
       steps: [
-        { kind: "show", anchor: "aj-recordatorios", caption: ["Avisar antes de llegar: quince, treinta, una hora o dos.", "Warn before arrival: fifteen, thirty, one hour, or two."], contexto: ["Una hora es el defecto; confirmar ayer nace encendido.", "One hour is the default; confirming yesterday starts on."] },
+        { kind: "show", anchor: "aj-recordatorios", caption: ["Avisar antes de llegar: quince, treinta, una hora o dos.", "Warn before arrival: fifteen, thirty, one hour, or two."], contexto: ["Por defecto avisa una hora antes; confirmar ayer nace encendido.", "By default it warns one hour ahead; confirming yesterday starts on."] },
       ],
     },
     {

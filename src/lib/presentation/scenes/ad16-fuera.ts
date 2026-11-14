@@ -55,7 +55,7 @@ export const AD16: Module = {
   title: ["Fuera de la app", "Outside the app"],
   promise: [
     "Podrás poner los widgets, recibir los avisos en el día exacto y rescatar la app si un día no abre.",
-    "You will be able to place the widgets, receive alerts on the exact day, and rescue the app if one day it will not open.",
+    "You will be able to place the widgets, receive alerts on the exact day, and rescue the app if one day it does not open.",
   ],
   ready: true,
   chapters: [

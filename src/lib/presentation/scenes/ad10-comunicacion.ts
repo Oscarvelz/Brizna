@@ -101,7 +101,7 @@ export const AD10: Module = {
       keys: [["a inglés", "to english"], ["traductor", "translator"], ["conexión", "connection"]],
       steps: [
         { kind: "type", anchor: "mensaje-texto", text: ["El jardín se corta mañana por la mañana.", "The yard will be cut tomorrow morning."], caption: ["Escribe en español primero: «A inglés» trabaja sobre tu texto.", "Write in Spanish first: “To English” works on your text."] },
-        { kind: "show", anchor: "compositor-ingles", caption: ["Con conexión traduce el traductor en línea de Google.", "With a connection, it translates with Google's online translator."], contexto: ["Sin red manda el motor del teléfono: el mensaje no se queda preso.", "Offline the phone's engine rules: the message is never trapped."] },
+        { kind: "show", anchor: "compositor-ingles", caption: ["Con conexión traduce en línea, y la caja nombra el motor.", "With a connection it translates online, and the box names the engine."], contexto: ["Sin red manda el motor del teléfono: el mensaje no se queda preso.", "Offline the phone's engine rules: the message is never trapped."] },
         { kind: "show", anchor: "compositor-ingles", caption: ["Su glosario es de jardinería: jardín sale «yard», nunca «garden».", "Its glossary is gardening: jardín comes out “yard”, never “garden”."] },
       ],
     },

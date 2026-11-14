@@ -83,7 +83,7 @@ export const AD2: Module = {
       keys: [["editar", "edit"], ["ficha", "file"]],
       steps: [
         { kind: "do", anchor: "ficha-editar", caption: ["Editar abre el mismo formulario del alta, ya cargado.", "Editing opens the same form as signup, already filled."] },
-        { kind: "show", anchor: "alta-nombre", caption: ["Nombre, teléfono o dirección nuevos disparan otra vez los repetidos.", "A new name, phone or address triggers duplicates again."], contexto: ["La comprobación corre antes de guardar, excluyéndose a sí mismo.", "The check runs before saving, excluding the client itself."] },
+        { kind: "show", anchor: "alta-nombre", caption: ["Nombre, teléfono o dirección nuevos disparan otra vez los repetidos.", "A new name, phone or address triggers duplicates again."], contexto: ["La comprobación corre antes de guardar, sin contarse al propio cliente.", "The check runs before saving, without counting the client itself."] },
       ],
     },
     {
@@ -178,7 +178,7 @@ export const AD2: Module = {
       steps: [
         { kind: "go", screen: "/clientes/:aurelio" },
         { kind: "show", anchor: "ficha-pausa", caption: ["Pausa la decides tú: sin cortes ni trabajos hasta Continuar.", "Pause is your call: no cuts or jobs until Continuing."] },
-        { kind: "show", anchor: "ficha-pausa", caption: ["Mientras tanto, su caso queda en En espera, sin perdonarse.", "Meanwhile, their case sits in Waiting, unforgiven."] },
+        { kind: "show", anchor: "ficha-pausa", caption: ["Mientras tanto, su caso queda marcado En espera, sin perdonarse.", "Meanwhile, their case sits marked as Waiting, unforgiven."] },
       ],
     },
     {
@@ -187,7 +187,7 @@ export const AD2: Module = {
       steps: [
         { kind: "go", screen: "/clientes/:serio" },
         { kind: "show", anchor: "ficha-riesgo", caption: ["Serio no es un botón: el sistema congela por deuda vencida.", "Serious is not a button: the system freezes overdue debt."], contexto: ["Omar debe $240 y cruzó el monto de riesgo, $200.", "Omar owes $240 and crossed the risk amount, $200."] },
-        { kind: "show", anchor: "ficha-deuda", caption: ["Su deuda no cambió: cambió si se le sigue trabajando.", "His debt did not change: whether he keeps getting service did."] },
+        { kind: "show", anchor: "ficha-deuda", caption: ["Su deuda no cambió: lo que cambió es si se le sigue trabajando.", "His debt did not change: what changed is whether he keeps getting service."] },
         { kind: "show", anchor: "ficha-seguir", caption: ["Seguir atendiendo deshiela su agenda si ya acordaste algo.", "Keep serving thaws his schedule if you already agreed on something."] },
       ],
     },

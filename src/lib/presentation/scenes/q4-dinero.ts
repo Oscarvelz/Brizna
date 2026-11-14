@@ -17,8 +17,8 @@ export const Q4: Module = {
   floor: "quick",
   title: ["El dinero sin miedo", "Money without fear"],
   promise: [
-    "Podrás sumar un cargo, abonar una parte con la calculadora y entender el saldo de cualquier cliente",
-    "You will be able to add a charge, record a part payment with the calculator, and understand any client's balance",
+    "Podrás sumar un cargo, abonar una parte con la calculadora y entender el saldo de cualquier cliente.",
+    "You will be able to add a charge, record a part payment with the calculator, and understand any client's balance.",
   ],
   ready: true,
   chapters: [
