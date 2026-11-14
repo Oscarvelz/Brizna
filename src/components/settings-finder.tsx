@@ -45,7 +45,7 @@ export function SoundSettings({ query = "" }: { query?: string }) {
         onClick={() => save({ ...prefs, on: !prefs.on })}
         className={cn(
           "mt-4 flex h-12 w-full items-center justify-between rounded-md px-3 text-sm font-semibold",
-          prefs.on ? "bg-done-bg text-done" : "bg-surface-2 text-muted",
+          prefs.on ? "bz-choice-on is-done" : "bg-surface-2 text-muted",
         )}
       >
         {prefs.on ? tx("Sonidos encendidos", "Sounds on") : tx("Sonidos apagados", "Sounds off")}

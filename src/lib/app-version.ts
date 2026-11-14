@@ -1,2 +1,2 @@
 // Written by scripts/bz-version.mjs from package.json "version" — do not edit by hand.
-export const APP_VERSION = "1.5.78";
+export const APP_VERSION = "1.5.79";
