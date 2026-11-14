@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Languages, MessageSquare, Mic, NotebookPen, Type } from "lucide-react";
+import { Eraser, Languages, MessageSquare, Mic, NotebookPen, Type } from "lucide-react";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { smsHref, waHref } from "@/lib/format";
 import { useTx, useI18n } from "@/lib/i18n";
 import { getPad, getSettings, polishYardText, translateYardSms, updateSettings } from "@/lib/server/lawn";
-import { polishEnglish, translateToEnglish, viaGoogle, type TrState } from "@/lib/translate";
+import { polishEnglish, translateToEnglish, viaGoogle, getDeeplKey, viaDeepL, type TrState } from "@/lib/translate";
+import { correctOnline, guessTextLang } from "@/lib/correct";
 import { dictMessage, openDictationSettings, startDictation, type DictSession } from "@/lib/dictate";
 import { DEFAULT_MESSAGE_PRESETS } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -150,6 +151,13 @@ export function MessageComposer({
   // for the field (no connection, translator unavailable), finished by polishEnglish as before.
   async function translateSmart(text: string, onState?: (s: TrState) => void) {
     const t = text.trim();
+    // 1.5.70 (Oscar): DeepL first when his own key is pasted in Ajustes → Traductor — «es mucho más
+    // fiel que Google». No key, bad key or no connection: the chain below runs exactly as in 1.5.69.
+    const deeplKey = getDeeplKey();
+    if (deeplKey && t) {
+      const d = await viaDeepL(t, deeplKey);
+      if (d && d.ok) return { ...d, text: polishEnglish(t, d.text) };
+    }
     if (t && t.length <= 800) {
       try {
         const r = await translateYardSms({ data: { text: t } });
@@ -358,6 +366,8 @@ function ComposerSheet({
   const tx = useTx();
   const { locale } = useI18n();
   const [fixing, setFixing] = useState(false);
+  // 1.5.70: what «Corregir» just did, said out loud (Oscar: «ni siquiera sé qué hace o qué corrige»).
+  const [fixNote, setFixNote] = useState("");
   if (typeof document === "undefined") return null;
   return createPortal(
     <div className="fixed inset-0 z-[70] grid place-items-end overflow-y-auto p-3 sm:place-items-center sm:p-4">
@@ -388,35 +398,66 @@ function ComposerSheet({
           <textarea
             ref={areaRef}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => { setText(e.target.value); setFixNote(""); }}
             rows={4}
             spellCheck
             lang={locale}
             placeholder={tx("Hoy llego a las 10. El corte queda en 40.", "I arrive at 10 today. The cut is 40.")}
             className="w-full rounded-lg border border-border bg-sun px-3 py-2.5 pb-9 text-sm shadow-card focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
-          <button
-            type="button"
-            className="absolute right-2 bottom-2 px-1 py-0.5 text-xs font-semibold text-soil"
-            onClick={() => {
-              const current = text.trim();
-              if (!current) return;
-              setFixing(true);
-              void polishYardText({ data: { text: current, lang: locale } })
-                .then((res) => {
-                  if (res.text) setText(res.text);
-                })
-                .finally(() => setFixing(false));
-            }}
-          >
-            {fixing ? tx("Corrigiendo…", "Fixing…") : tx("Corregir", "Fix")}
-          </button>
+          <div className="absolute right-2 bottom-2 flex items-center gap-1">
+            {/* 1.5.70 (Oscar): el borradorcito — one tap wipes the whole box, no selecting. */}
+            {text ? (
+              <button
+                type="button"
+                aria-label={tx("Borrar todo el texto", "Clear all the text")}
+                className="p-1 text-muted"
+                onClick={() => { setText(""); setFixNote(""); areaRef.current?.focus(); }}
+              >
+                <Eraser className="size-4" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="px-1 py-0.5 text-xs font-semibold text-soil"
+              onClick={() => {
+                const current = text.trim();
+                if (!current) return;
+                setFixing(true);
+                setFixNote("");
+                void (async () => {
+                  // 1.5.70: Corregir checks spelling, accents, capitals and punctuation online
+                  // (LanguageTool, free) in the text's own language, applying only sure fixes —
+                  // and says what it did. Offline it falls back to the local polish as before.
+                  const online = await correctOnline(current, guessTextLang(current));
+                  if (online) {
+                    if (online.fixes > 0 && online.text !== current) {
+                      setText(online.text);
+                      setFixNote(tx(`Corregido: ${online.fixes} ${online.fixes === 1 ? "arreglo" : "arreglos"}`, `Fixed: ${online.fixes} ${online.fixes === 1 ? "correction" : "corrections"}`));
+                    } else {
+                      setFixNote(tx("El texto ya está bien", "The text already looks good"));
+                    }
+                    return;
+                  }
+                  const res = await polishYardText({ data: { text: current, lang: locale } });
+                  if (res.text) {
+                    setText(res.text);
+                    setFixNote(res.text !== current ? tx("Corregido", "Fixed") : tx("El texto ya está bien", "The text already looks good"));
+                  }
+                })().finally(() => setFixing(false));
+              }}
+            >
+              {fixing ? tx("Corrigiendo…", "Fixing…") : tx("Corregir", "Fix")}
+            </button>
+          </div>
         </div>
-        {trDownload || micWhy ? (
+        {trDownload || fixNote || micWhy ? (
           <p role="status" className="mt-2 min-w-0 text-xs font-semibold text-muted">
             {trDownload
               ? tx("Descargando el traductor", "Downloading the translator")
-              : tx("El micrófono se usa solo mientras dictas", "The microphone is used only while you dictate")}
+              : fixNote
+                ? fixNote
+                : tx("El micrófono se usa solo mientras dictas", "The microphone is used only while you dictate")}
           </p>
         ) : null}
         <div className="mt-3 grid grid-cols-3 gap-2">

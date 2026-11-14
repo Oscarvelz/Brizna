@@ -2,7 +2,7 @@ import { Masonry } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScrollTop } from "@/components/scroll-top";
 import { createFileRoute } from "@tanstack/react-router";
-import { BatteryCharging, Bell, BellRing, Check, ChevronDown, ChevronsUpDown, CalendarRange, Clock, FlaskConical, Download, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
+import { BatteryCharging, Bell, BellRing, Check, ChevronDown, ChevronsUpDown, CalendarRange, Clock, FlaskConical, Download, HardDrive, Hourglass, Languages, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell, SignOutControl, TitleSearch } from "@/components/app-shell";
@@ -25,6 +25,7 @@ import { inAndroidApp, native, nativeNotifyStatus, type NativeNotifyStatus } fro
 import { MORNING, readNotifyPrefs, writeNotifyPrefs, type NotifyPrefs } from "@/lib/native-plan";
 import { refreshNativeSoon } from "@/components/native-host";
 import { useUndo } from "@/lib/undo";
+import { getDeeplKey, setDeeplKey } from "@/lib/translate";
 import { UserManual } from "@/components/user-manual";
 import { addDaysISO, todayISO } from "@/lib/dates";
 import { formatDay, formatStamp } from "@/lib/format";
@@ -155,6 +156,55 @@ function NumberRow({
           <span aria-hidden>+</span>
         </button>
       </div>
+    </div>
+  );
+}
+
+/** 1.5.70 (Oscar): his own DeepL key for «A inglés» — kept only in this phone, never in the book. */
+function DeeplKeyField() {
+  const tx = useTx();
+  const [value, setValue] = useState(() => getDeeplKey());
+  const [saved, setSaved] = useState(false);
+  return (
+    <div>
+      <p className="text-sm text-muted">
+        {tx(
+          "«A inglés» traduce con Google. Con tu llave gratuita de DeepL traduce DeepL, que es más fiel. La llave se guarda solo en este teléfono: no entra en tu libro ni en las copias.",
+          "“To English” translates with Google. With your free DeepL key it translates with DeepL, which is more faithful. The key is kept only on this phone: it never enters your book or your backups.",
+        )}
+      </p>
+      <Label className="mt-3">{tx("Tu llave de DeepL", "Your DeepL key")}</Label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => { setValue(e.target.value); setSaved(false); }}
+        placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:fx"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        className="mt-1 w-full rounded-lg border border-border bg-sun px-3 py-2.5 text-sm shadow-card focus:outline-none focus:ring-2 focus:ring-primary/50"
+      />
+      <button
+        type="button"
+        className="mt-3 flex h-11 w-full items-center justify-center rounded-md bg-surface-2 px-3 text-sm font-semibold"
+        onClick={() => {
+          setDeeplKey(value);
+          setSaved(true);
+          toast.success(value.trim() ? tx("Llave guardada. «A inglés» usará DeepL.", "Key saved. “To English” will use DeepL.") : tx("Llave borrada. «A inglés» usará Google.", "Key removed. “To English” will use Google."));
+        }}
+      >
+        {tx("Guardar llave", "Save key")}
+      </button>
+      {saved && !value.trim() ? null : saved ? (
+        <p className="mt-2 text-xs font-semibold text-muted">{tx("Guardada en este teléfono.", "Saved on this phone.")}</p>
+      ) : null}
+      <p className="mt-3 text-sm text-muted">
+        {tx("¿No tienes llave? ", "No key yet? ")}
+        <a className="font-semibold text-primary underline" href="https://www.deepl.com/pro-api" target="_blank" rel="noreferrer">
+          {tx("Consíguela gratis en deepl.com (DeepL API, plan gratuito)", "Get one free at deepl.com (DeepL API, free plan)")}
+        </a>
+        {tx(", pégala aquí y listo.", ", paste it here and you're set.")}
+      </p>
     </div>
   );
 }
@@ -799,6 +849,21 @@ function AjustesPage() {
             <option value={60}>{tx("1 hora", "1 hour")}</option>
             <option value={120}>{tx("2 horas", "2 hours")}</option>
           </NativeSelect>
+        </SettingFold>
+
+        <SettingFold
+          id="aj-traductor"
+          order="order-6"
+          query={query}
+          blob="traductor deepl ingles llave api translator english key"
+          title={
+            <span className="flex items-center gap-2">
+              <Languages className="size-5 shrink-0 text-primary" />
+              {tx("Traductor", "Translator")}
+            </span>
+          }
+        >
+          <DeeplKeyField />
         </SettingFold>
 
         {inAndroidApp() ? <NotifyFold query={query} /> : null}

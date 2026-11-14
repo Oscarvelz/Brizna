@@ -10,7 +10,7 @@
 import { native } from "@/spa/native";
 
 export type TrState = "download" | "work";
-export type TrResult = { ok: true; text: string; via: "ai" | "google" | "device" | "chrome" | "web" } | { ok: false; error: string };
+export type TrResult = { ok: true; text: string; via: "deepl" | "ai" | "google" | "device" | "chrome" | "web" } | { ok: false; error: string };
 
 const es = () => typeof document === "undefined" || document.documentElement.lang !== "en";
 const msg = {
@@ -182,6 +182,52 @@ export async function viaGoogle(text: string): Promise<TrResult | null> {
   }
   const joined = parts.join(" ").trim();
   return joined ? { ok: true, text: joined, via: "google" } : null;
+}
+
+/* ---------- DeepL (1.5.70, Oscar: «es mucho más fiel que Google») ----------
+ * DeepL needs a personal key, so the key is Oscar's own: pasted once in Ajustes → Traductor and
+ * kept ONLY in this phone's localStorage (brizna.deepl-key) — it never enters the book, a backup
+ * or the code. Free keys end in ":fx" and talk to api-free.deepl.com; others to api.deepl.com.
+ * No key, bad key or no connection → null, and the chain falls through to Google as before. */
+const DEEPL_KEY_STORE = "brizna.deepl-key";
+export function getDeeplKey(): string {
+  try { return (localStorage.getItem(DEEPL_KEY_STORE) ?? "").trim(); } catch { return ""; }
+}
+export function setDeeplKey(key: string) {
+  try {
+    if (key.trim()) localStorage.setItem(DEEPL_KEY_STORE, key.trim());
+    else localStorage.removeItem(DEEPL_KEY_STORE);
+  } catch { /* ignore */ }
+}
+export async function viaDeepL(text: string, key: string): Promise<TrResult | null> {
+  if (!key || (typeof navigator !== "undefined" && navigator.onLine === false)) return null;
+  const host = key.endsWith(":fx") ? "https://api-free.deepl.com" : "https://api.deepl.com";
+  const parts: string[] = [];
+  for (const q of pieces(text)) {
+    try {
+      const ctl = new AbortController();
+      const t = window.setTimeout(() => ctl.abort(), 15_000);
+      const res = await fetch(`${host}/v2/translate`, {
+        method: "POST",
+        signal: ctl.signal,
+        credentials: "omit",
+        referrerPolicy: "no-referrer",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json", Authorization: `DeepL-Auth-Key ${key}` },
+        body: JSON.stringify({ text: [q], source_lang: "ES", target_lang: "EN-US" }),
+      });
+      window.clearTimeout(t);
+      if (!res.ok) return null;
+      const body = (await res.json()) as { translations?: { text?: string }[] };
+      const out = (body.translations?.[0]?.text ?? "").trim();
+      if (!out) return null;
+      parts.push(out);
+    } catch {
+      return null;
+    }
+  }
+  const joined = parts.join(" ").trim();
+  return joined ? { ok: true, text: joined, via: "deepl" } : null;
 }
 
 /** Spanish message → English. onState("download") while the phone fetches its translator the first time. */
