@@ -2739,7 +2739,7 @@ export const listBalances = createServerFn({ method: "GET" })
     }>(
       `select
          (select count(*) from payments
-           where user_id = $1 and kind = 'paid' and not (coalesce(note,'') = 'Propina' and amount = 0)
+           where user_id = $1 and kind in ('paid','prepaid') and not (coalesce(note,'') = 'Propina' and amount = 0)
              and paid_at >= $6::date and paid_at < ($7::date + interval '1 day')) as payments_paid_year,
          (select count(*) from payments
            where user_id = $1 and kind = 'waived' and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')) as waived_month_n,

@@ -10,7 +10,7 @@
 import { native } from "@/spa/native";
 
 export type TrState = "download" | "work";
-export type TrResult = { ok: true; text: string; via: "ai" | "device" | "chrome" | "web" } | { ok: false; error: string };
+export type TrResult = { ok: true; text: string; via: "ai" | "google" | "device" | "chrome" | "web" } | { ok: false; error: string };
 
 const es = () => typeof document === "undefined" || document.documentElement.lang !== "en";
 const msg = {
@@ -151,6 +151,37 @@ function decodeEntities(s: string): string {
   const ta = document.createElement("textarea");
   ta.innerHTML = s;
   return ta.value;
+}
+
+/* ---------- Google Translate online (free, no key) — 1.5.69, at Oscar's request ----------
+ * The public gtx endpoint: the same engine as Google Translate in the browser. Far better sentence
+ * quality than the phone's on-device model («the rain I stopped me» was ML Kit). Only the message
+ * text is sent. Used by the composer when there is a connection; offline keeps the device chain. */
+export async function viaGoogle(text: string): Promise<TrResult | null> {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
+  const parts: string[] = [];
+  for (const q of pieces(text)) {
+    try {
+      const ctl = new AbortController();
+      const t = window.setTimeout(() => ctl.abort(), 15_000);
+      const res = await fetch(
+        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=es&tl=en&dt=t&q=${encodeURIComponent(q)}`,
+        { signal: ctl.signal, credentials: "omit", referrerPolicy: "no-referrer", cache: "no-store" },
+      );
+      window.clearTimeout(t);
+      if (!res.ok) return null;
+      const body = (await res.json()) as [Array<[string, ...unknown[]]> | null, ...unknown[]];
+      const segs = body?.[0];
+      if (!Array.isArray(segs)) return null;
+      const out = segs.map((s) => (Array.isArray(s) ? String(s[0] ?? "") : "")).join("").trim();
+      if (!out) return null;
+      parts.push(out);
+    } catch {
+      return null;
+    }
+  }
+  const joined = parts.join(" ").trim();
+  return joined ? { ok: true, text: joined, via: "google" } : null;
 }
 
 /** Spanish message → English. onState("download") while the phone fetches its translator the first time. */

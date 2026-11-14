@@ -955,8 +955,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "This week you did 40 yards at $45: work done $1,800. Collected this week: $1,950, because Robert paid $240 for two past weeks and $90 from this week is still owed. That's why Collected can be above or below work done.",
         ],
         cases: [
-          "Un adelanto que entra hoy: cuenta en Cobrado hoy, aunque el corte sea la semana que viene.\nDeshaces un Hecho y cobrado: sale de las dos cifras.\nUn patio movido a la semana que viene y hecho allí: cuenta en esa semana.\nLas listas del año enseñan hasta 2.500 filas: si tu año tiene más, el final de la lista lo dice con «+N más»; los totales de arriba siempre cuentan todo el año.",
-          "An advance that comes in today: counts in Collected today, even if the cut is next week.\nYou undo a Done and paid: it leaves both figures.\nA yard moved to next week and done there: counts in that week.\nThe year lists show up to 2,500 rows: if your year has more, the end of the list says so with “+N more”; the totals at the top always count the whole year.",
+          "Un adelanto que entra hoy: cuenta en Cobrado hoy, aunque el corte sea la semana que viene.\nDeshaces un Hecho y cobrado: sale de las dos cifras.\nUn patio movido a la semana que viene y hecho allí: cuenta en esa semana.\nLas listas del año enseñan hasta 2.500 filas: si tu año tiene más, el final de la lista lo dice con «+N más»; los totales de arriba siempre cuentan todo el año.\nLos adelantos también salen en las listas de Cobrado, cada uno con la marca «Adelanto» y su método: la lista y el total de arriba cuentan lo mismo.",
+          "An advance that comes in today: counts in Collected today, even if the cut is next week.\nYou undo a Done and paid: it leaves both figures.\nA yard moved to next week and done there: counts in that week.\nThe year lists show up to 2,500 rows: if your year has more, the end of the list says so with “+N more”; the totals at the top always count the whole year.\nAdvances also appear in the Collected lists, each labeled “Advance” with its method: the list and the total above tell the same story.",
         ],
         related: ["por-cobrar", "ingresos-mes", "propina", "este-mes"],
         go: { to: "/cobros", where: ["Cobros, arriba a la derecha", "Payments, top right"] },
@@ -1015,8 +1015,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Doña Carmen, 82, owes $35 for an August cut and is struggling to pay. You tap Forgive: To collect drops $35 and Forgiven this month rises $35. Her next cut is charged as usual.",
         ],
         cases: [
-          "Te equivocaste de cliente: Deshacer devuelve la deuda completa.\nSolo quieres perdonar una parte: escribe solo esa cantidad al perdonar; el resto se queda debiendo.\nQuieres darlo de baja: perdona primero si no vas a cobrar; así su deuda no queda colgando en Por cobrar.",
-          "Wrong client: Undo brings the whole debt back.\nYou only want to forgive part: type just that amount when forgiving; the rest stays owed.\nYou want to take them off: forgive first if you won't collect, so the debt does not linger in To collect.",
+          "Te equivocaste de cliente: Deshacer devuelve la deuda completa.\nSolo quieres perdonar una parte: escribe solo esa cantidad al perdonar; el resto se queda debiendo.\nQuieres darlo de baja: perdona primero si no vas a cobrar; así su deuda no queda colgando en Por cobrar.\nSi después te paga lo que le perdonaste: en su ficha toca Adelanto (o escribe la cantidad y toca Pagado). Ese dinero queda a su favor para sus próximos cortes y aparece en Cobrado con la marca «Adelanto»: ya no se esconde en el total.",
+          "Wrong client: Undo brings the whole debt back.\nYou only want to forgive part: type just that amount when forgiving; the rest stays owed.\nYou want to take them off: forgive first if you won't collect, so the debt does not linger in To collect.\nIf they later pay what you forgave: on their file tap Advance (or type the amount and tap Paid). That money stays in their favor for their next cuts and appears in Collected labeled “Advance”: it no longer hides in the total.",
         ],
         mistake: [
           "Confundir perdonar con esperar: un atraso que sí vas a cobrar se queda en En espera, no se perdona.",

@@ -192,8 +192,12 @@ function CobrosPage() {
     setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
+  // 1.5.69 (Oscar, vía el censo de la Presentación H-D2): las listas de Cobrado enseñan también los
+  // adelantos — los totales de cabecera siempre los sumaron (paid + prepaid), pero la lista filtraba
+  // solo 'paid', así que un adelanto (y el pago tardío de un cliente perdonado, que entra como
+  // adelanto) subía el total sin fila que lo enseñara. Ahora lista y total cuentan lo mismo.
   const paid = (data?.payments ?? []).filter(
-    (p) => p.kind === "paid" && !((p.note ?? "") === "Propina" && p.amount === 0),
+    (p) => (p.kind === "paid" || p.kind === "prepaid") && !((p.note ?? "") === "Propina" && p.amount === 0),
   );
   const abonoPays = (data?.payments ?? []).filter((p) => {
     if (!(p.note ?? "").toLowerCase().includes("abono")) return false;
@@ -879,7 +883,15 @@ function PayList({
         const day = stampDay(p.paidAt);
         const tipOnly = p.amount === 0 && (p.tip ?? 0) > 0;
         const amount = money(tipOnly ? (p.tip ?? 0) : p.amount);
-        const how = p.kind === "waived" ? tx("Perdonado", "Forgiven") : tipOnly ? tx("Propina", "Tip") : methodLabel(p.method);
+        const how = p.kind === "waived"
+          ? tx("Perdonado", "Forgiven")
+          : tipOnly
+            ? tx("Propina", "Tip")
+            : p.kind === "prepaid"
+              ? methodLabel(p.method)
+                ? `${tx("Adelanto", "Advance")}${FREQ_SEP}${methodLabel(p.method)}`
+                : tx("Adelanto", "Advance")
+              : methodLabel(p.method);
         const kind = p.kind === "waived" ? "is-waived" : tipOnly ? "is-tip" : `is-${(p.method ?? "otro").split(":")[0]}`;
         const shortDay = formatDay(day, "EEE d MMM");
         const tinyDay = formatDay(day, "d MMM");

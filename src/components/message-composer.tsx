@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { smsHref, waHref } from "@/lib/format";
 import { useTx, useI18n } from "@/lib/i18n";
 import { getPad, getSettings, polishYardText, translateYardSms, updateSettings } from "@/lib/server/lawn";
-import { polishEnglish, translateToEnglish, type TrState } from "@/lib/translate";
+import { polishEnglish, translateToEnglish, viaGoogle, type TrState } from "@/lib/translate";
 import { dictMessage, openDictationSettings, startDictation, type DictSession } from "@/lib/dictate";
 import { DEFAULT_MESSAGE_PRESETS } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -154,7 +154,16 @@ export function MessageComposer({
       try {
         const r = await translateYardSms({ data: { text: t } });
         if (r.ok && r.text) return { ok: true as const, text: polishEnglish(t, r.text), via: "ai" as const };
-      } catch { /* the on-device chain below still tries */ }
+      } catch { /* the online translator below still tries */ }
+    }
+    // 1.5.69 (Oscar): the tuned server translator answered «not available» on his phone (its key is
+    // not set on the server) and 1.5.68 silently fell back to the phone's literal engine — his capture
+    // proved it («the rain I stopped me»). At his request the composer now connects Google Translate
+    // online, free and keyless, for exactly this: dictated or written, «A inglés» goes through it
+    // whenever there is a connection. The on-device chain remains the offline fallback.
+    if (t) {
+      const g = await viaGoogle(t);
+      if (g && g.ok) return { ...g, text: polishEnglish(t, g.text) };
     }
     return translateToEnglish(text, onState);
   }
