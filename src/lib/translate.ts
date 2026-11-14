@@ -10,7 +10,7 @@
 import { native } from "@/spa/native";
 
 export type TrState = "download" | "work";
-export type TrResult = { ok: true; text: string; via: "device" | "chrome" | "web" } | { ok: false; error: string };
+export type TrResult = { ok: true; text: string; via: "ai" | "device" | "chrome" | "web" } | { ok: false; error: string };
 
 const es = () => typeof document === "undefined" || document.documentElement.lang !== "en";
 const msg = {
@@ -37,7 +37,9 @@ export function polishEnglish(src: string, out: string): string {
   const wantX = /!\s*$/.test(s) || /^¡/.test(s);
   if (wantQ && !/\?$/.test(t)) t = t.replace(/[.!]+$/, "") + "?";
   else if (wantX && !/!$/.test(t)) t = t.replace(/[.?]+$/, "") + "!";
-  else if (!/[.?!…]$/.test(t) && /[.]\s*$/.test(s)) t += ".";
+  // 1.5.68: a plain statement ends with a period even when the Spanish was dictated without one —
+  // the same finishing every other text in the app gets (punctuateUtterance's law).
+  else if (!/[.?!…]$/.test(t)) t += ".";
   return t;
 }
 

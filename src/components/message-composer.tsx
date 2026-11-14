@@ -7,8 +7,8 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { smsHref, waHref } from "@/lib/format";
 import { useTx, useI18n } from "@/lib/i18n";
-import { getPad, getSettings, polishYardText, updateSettings } from "@/lib/server/lawn";
-import { translateToEnglish } from "@/lib/translate";
+import { getPad, getSettings, polishYardText, translateYardSms, updateSettings } from "@/lib/server/lawn";
+import { polishEnglish, translateToEnglish, type TrState } from "@/lib/translate";
 import { dictMessage, openDictationSettings, startDictation, type DictSession } from "@/lib/dictate";
 import { DEFAULT_MESSAGE_PRESETS } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -94,7 +94,7 @@ export function MessageComposer({
         if (translate) {
           setText(base);
           setTranslating(true);
-          void translateToEnglish(piece, (st) => { if (st === "download") setTrDownload(true); })
+          void translateSmart(piece, (st) => { if (st === "download") setTrDownload(true); })
             .then((res) => {
               if (res.ok) setText((prev) => join(prev, res.text));
               else toast.error(res.error);
@@ -143,6 +143,22 @@ export function MessageComposer({
     recRef.current = session;
   }
 
+  // 1.5.68 (Oscar: the on-device translation «salió bastante tonta» — literal, sin contexto ni formato):
+  // «A inglés» speaks through the tuned translator first. translateYardSms was built for exactly these
+  // messages (lawn-service context, grammar and format fixed) but was never wired into the composer,
+  // which used only the phone's literal on-device translator. The on-device chain stays as the fallback
+  // for the field (no connection, translator unavailable), finished by polishEnglish as before.
+  async function translateSmart(text: string, onState?: (s: TrState) => void) {
+    const t = text.trim();
+    if (t && t.length <= 800) {
+      try {
+        const r = await translateYardSms({ data: { text: t } });
+        if (r.ok && r.text) return { ok: true as const, text: polishEnglish(t, r.text), via: "ai" as const };
+      } catch { /* the on-device chain below still tries */ }
+    }
+    return translateToEnglish(text, onState);
+  }
+
   function translateText() {
     recRef.current?.cancel();
     setListening(false);
@@ -154,7 +170,7 @@ export function MessageComposer({
     }
     setMode("tr");
     setTranslating(true);
-    void translateToEnglish(current, (st) => { if (st === "download") setTrDownload(true); })
+    void translateSmart(current, (st) => { if (st === "download") setTrDownload(true); })
       .then((res) => {
         if (res.ok) setText(res.text);
         else toast.error(res.error);
