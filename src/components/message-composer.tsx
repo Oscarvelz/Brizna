@@ -368,7 +368,7 @@ function ComposerSheet({
             spellCheck
             lang={locale}
             placeholder={tx("Hoy llego a las 10. El corte queda en 40.", "I arrive at 10 today. The cut is 40.")}
-            className="w-full rounded-md bg-bg px-3 py-2 pb-9 text-sm shadow-card focus:outline-none"
+            className="w-full rounded-lg border border-border bg-sun px-3 py-2.5 pb-9 text-sm shadow-card focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
           <button
             type="button"
@@ -557,7 +557,7 @@ function PresetRow({ onPick }: { onPick: (text: string) => void }) {
               value={line}
               maxLength={180}
               onChange={(e) => setDraft((prev) => prev.map((item, idx) => (idx === i ? e.target.value : item)))}
-              className="h-10 w-full rounded-sm bg-bg px-2 text-sm"
+              className="h-10 w-full rounded-md border border-border bg-sun px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           ))}
           <div className="grid grid-cols-2 gap-2">

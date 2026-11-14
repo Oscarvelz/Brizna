@@ -19,6 +19,9 @@
     <queries>
         <!-- Android 11+ hides other apps' services: the phone's speech recognizer must be declared to be reachable. -->
         <intent><action android:name="android.speech.RecognitionService" /></intent>
+        <!-- android-10: without this line, Android 11+ hides the system's speech screen too —
+             resolveActivity() answered null and Dictate's last rung (the system screen) never opened. -->
+        <intent><action android:name="android.speech.action.RECOGNIZE_SPEECH" /></intent>
         <intent><action android:name="android.media.action.IMAGE_CAPTURE" /></intent>
         <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="https" /></intent>
         <intent><action android:name="android.intent.action.DIAL" /></intent>

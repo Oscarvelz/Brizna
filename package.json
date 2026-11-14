@@ -1,7 +1,7 @@
 {
   "name": "app-builder-workspace",
   "private": true,
-  "version": "1.5.66",
+  "version": "1.5.67",
   "sideEffects": false,
   "type": "module",
   "overrides": {

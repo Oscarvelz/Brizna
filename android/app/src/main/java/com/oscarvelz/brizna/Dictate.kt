@@ -37,6 +37,15 @@ import org.json.JSONObject
  * whole chain ({..., attempts:"google:11, default:11"}) — one bare last code hid which services died.
  * The on-device gate also drops from API 33 to 31, where createOnDeviceSpeechRecognizer actually arrived.
  *
+ * android-10 (web 1.5.67): Oscar's phone reported the chain 13 · 13 · 11 and no system screen ever
+ * opened, though rung 5 had existed since android-8. The cause was in the manifest: <queries> declared
+ * the RecognitionService intent but never the RECOGNIZE_SPEECH intent, so on Android 11+
+ * Intent.resolveActivity() answered null and launchSpeechUi() declined in silence — the last rung was
+ * unreachable from the day it shipped. The manifest declares it now. Second wound in the same chain:
+ * both offline steps died with 13 (the es-US on-device language pack is not downloaded on that phone),
+ * so once an offline step reports the language unavailable (12/13) the remaining offline steps are
+ * poisoned and skipped — the ladder reaches the online service and the system screen sooner.
+ *
  * Order of recognizers, best first; the next one is tried only when one fails before it heard anything
  * (language pack missing, service gone):
  *   1. Android 12+: the on-device recognizer (createOnDeviceSpeechRecognizer), nothing leaves the phone.
@@ -67,6 +76,8 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
     /** android-8: MainActivity opens the system's speech screen when set; returns false when the phone has none. */
     var systemFallback: ((id: String, lang: String) -> Boolean)? = null
     private var triedSystem = false
+    /** android-10: an offline step died with language-unavailable (12/13) — every other offline step would die the same way. */
+    private var offlinePoisoned = false
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
 
     /** "yes" when the phone has any speech recognizer, else "no". */
@@ -78,7 +89,7 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
         cancel()
         id = newId
         lang = language.ifBlank { "es-US" }
-        heard = false; stopping = false; busyRetry = false; lastCode = 0; attempts.clear(); triedSystem = false
+        heard = false; stopping = false; busyRetry = false; lastCode = 0; attempts.clear(); triedSystem = false; offlinePoisoned = false
         plan = ArrayList()
         if (Build.VERSION.SDK_INT >= 31 && runCatching { SpeechRecognizer.isOnDeviceRecognitionAvailable(ctx) }.getOrDefault(false)) plan.add(Step(null, onDevice = true, offline = true, label = "device"))
         if (SpeechRecognizer.isRecognitionAvailable(ctx)) {
@@ -131,6 +142,8 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
 
     private fun next() {
         val cur = id ?: return
+        // android-10: skip offline steps poisoned by an earlier language-unavailable (12/13).
+        while (plan.isNotEmpty() && offlinePoisoned && (plan[0].offline || plan[0].onDevice)) plan.removeAt(0)
         if (plan.isEmpty()) {
             // android-8: one rung left — the system's own speech screen, but only when nothing was ever
             // heard (a service that heard speech and then failed keeps its own honest ending).
@@ -173,6 +186,7 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
                 if (id != cur) return
                 lastCode = code
                 attempts.add("${step.label}:$code")
+                if ((step.offline || step.onDevice) && (code == SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED || code == SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE)) offlinePoisoned = true
                 when (code) {
                     SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> finish(fail("no-speech"))
                     SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> finish(fail("denied"))
