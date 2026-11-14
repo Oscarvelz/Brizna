@@ -55,7 +55,7 @@ export const AD8: Module = {
   chapters: [
     { id: "parcial", title: ["Perdonar una parte", "Forgiving a part"] },
     { id: "total", title: ["Perdonar todo", "Forgiving it all"] },
-    { id: "despues", title: ["Y después: paga lo perdonado", "And after: they pay the forgiven"] },
+    { id: "despues", title: ["El pago tardío", "The late payment"] },
     { id: "grupo", title: ["En grupo y Deshacer", "In bulk and Undo"] },
     { id: "limites", title: ["Los límites honestos", "The honest limits"] },
   ],
