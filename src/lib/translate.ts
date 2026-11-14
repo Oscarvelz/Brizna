@@ -10,7 +10,7 @@
 import { native } from "@/spa/native";
 
 export type TrState = "download" | "work";
-export type TrResult = { ok: true; text: string; via: "deepl" | "ai" | "google" | "device" | "chrome" | "web" } | { ok: false; error: string };
+export type TrResult = { ok: true; text: string; via: "microsoft" | "ai" | "google" | "device" | "chrome" | "web" } | { ok: false; error: string };
 
 const es = () => typeof document === "undefined" || document.documentElement.lang !== "en";
 const msg = {
@@ -184,42 +184,57 @@ export async function viaGoogle(text: string): Promise<TrResult | null> {
   return joined ? { ok: true, text: joined, via: "google" } : null;
 }
 
-/* ---------- DeepL (1.5.70, Oscar: «es mucho más fiel que Google») ----------
- * DeepL needs a personal key, so the key is Oscar's own: pasted once in Ajustes → Traductor and
- * kept ONLY in this phone's localStorage (brizna.deepl-key) — it never enters the book, a backup
- * or the code. Free keys end in ":fx" and talk to api-free.deepl.com; others to api.deepl.com.
- * No key, bad key or no connection → null, and the chain falls through to Google as before. */
-const DEEPL_KEY_STORE = "brizna.deepl-key";
-export function getDeeplKey(): string {
-  try { return (localStorage.getItem(DEEPL_KEY_STORE) ?? "").trim(); } catch { return ""; }
-}
-export function setDeeplKey(key: string) {
+/* ---------- Microsoft Translator (1.5.71, Oscar: «busca un traductor sin llave») ----------
+ * DeepL came in 1.5.70 and leaves in 1.5.71 by Oscar's order: its key was friction for the user.
+ * The keyless field was surveyed whole (LibreTranslate mirrors dead, Yandex session-gated, DeepL's
+ * web endpoint rejects old clients): the one serious keyless engine left is Microsoft's, reached
+ * the way Edge's own translator reaches it — an anonymous token from edge.microsoft.com/translate/
+ * auth (no account, no key, no signup), then api-edge.cognitive.microsofttranslator.com. The token
+ * is cached ~8 minutes. Any failure → null and the chain falls through, and the composer SAYS which
+ * engine translated (no more silent fallbacks — the 1.5.68 lesson). */
+let msToken: { value: string; at: number } | null = null;
+async function microsoftToken(force = false): Promise<string | null> {
+  if (!force && msToken && Date.now() - msToken.at < 8 * 60_000) return msToken.value;
   try {
-    if (key.trim()) localStorage.setItem(DEEPL_KEY_STORE, key.trim());
-    else localStorage.removeItem(DEEPL_KEY_STORE);
-  } catch { /* ignore */ }
+    const ctl = new AbortController();
+    const t = window.setTimeout(() => ctl.abort(), 10_000);
+    const res = await fetch("https://edge.microsoft.com/translate/auth", { signal: ctl.signal, credentials: "omit", referrerPolicy: "no-referrer", cache: "no-store" });
+    window.clearTimeout(t);
+    if (!res.ok) return null;
+    const value = (await res.text()).trim();
+    if (!value) return null;
+    msToken = { value, at: Date.now() };
+    return value;
+  } catch {
+    return null;
+  }
 }
-export async function viaDeepL(text: string, key: string): Promise<TrResult | null> {
-  if (!key || (typeof navigator !== "undefined" && navigator.onLine === false)) return null;
-  const host = key.endsWith(":fx") ? "https://api-free.deepl.com" : "https://api.deepl.com";
+export async function viaMicrosoft(text: string): Promise<TrResult | null> {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
+  let token = await microsoftToken();
+  if (!token) return null;
   const parts: string[] = [];
   for (const q of pieces(text)) {
     try {
-      const ctl = new AbortController();
-      const t = window.setTimeout(() => ctl.abort(), 15_000);
-      const res = await fetch(`${host}/v2/translate`, {
-        method: "POST",
-        signal: ctl.signal,
-        credentials: "omit",
-        referrerPolicy: "no-referrer",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json", Authorization: `DeepL-Auth-Key ${key}` },
-        body: JSON.stringify({ text: [q], source_lang: "ES", target_lang: "EN-US" }),
-      });
-      window.clearTimeout(t);
+      const call = (tok: string) =>
+        fetch("https://api-edge.cognitive.microsofttranslator.com/translate?from=es&to=en&api-version=3.0", {
+          method: "POST",
+          credentials: "omit",
+          referrerPolicy: "no-referrer",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
+          body: JSON.stringify([{ Text: q }]),
+        });
+      let res = await call(token);
+      if (res.status === 401 || res.status === 403) {
+        const fresh = await microsoftToken(true);
+        if (!fresh) return null;
+        token = fresh;
+        res = await call(token);
+      }
       if (!res.ok) return null;
-      const body = (await res.json()) as { translations?: { text?: string }[] };
-      const out = (body.translations?.[0]?.text ?? "").trim();
+      const body = (await res.json()) as { translations?: { text?: string }[] }[];
+      const out = (body?.[0]?.translations?.[0]?.text ?? "").trim();
       if (!out) return null;
       parts.push(out);
     } catch {
@@ -227,7 +242,7 @@ export async function viaDeepL(text: string, key: string): Promise<TrResult | nu
     }
   }
   const joined = parts.join(" ").trim();
-  return joined ? { ok: true, text: joined, via: "deepl" } : null;
+  return joined ? { ok: true, text: joined, via: "microsoft" } : null;
 }
 
 /** Spanish message → English. onState("download") while the phone fetches its translator the first time. */

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { smsHref, waHref } from "@/lib/format";
 import { useTx, useI18n } from "@/lib/i18n";
 import { getPad, getSettings, polishYardText, translateYardSms, updateSettings } from "@/lib/server/lawn";
-import { polishEnglish, translateToEnglish, viaGoogle, getDeeplKey, viaDeepL, type TrState } from "@/lib/translate";
+import { polishEnglish, translateToEnglish, viaGoogle, viaMicrosoft, type TrState } from "@/lib/translate";
 import { correctOnline, guessTextLang } from "@/lib/correct";
 import { dictMessage, openDictationSettings, startDictation, type DictSession } from "@/lib/dictate";
 import { DEFAULT_MESSAGE_PRESETS } from "@/lib/types";
@@ -70,6 +70,8 @@ export function MessageComposer({
   const [translating, setTranslating] = useState(false);
   // 1.5.04: the first translation on the phone downloads its translator once (one line under the text)
   const [trDownload, setTrDownload] = useState(false);
+  // 1.5.71: which engine translated last, named in the sheet's status line.
+  const [trNote, setTrNote] = useState("");
   // 1.5.05: the first time in the Android app, one line says why the microphone is asked for
   const [micWhy, setMicWhy] = useState(false);
   const recRef = useRef<DictSession | null>(null);
@@ -149,14 +151,32 @@ export function MessageComposer({
   // messages (lawn-service context, grammar and format fixed) but was never wired into the composer,
   // which used only the phone's literal on-device translator. The on-device chain stays as the fallback
   // for the field (no connection, translator unavailable), finished by polishEnglish as before.
+  // 1.5.71: the chain's result is wrapped so the sheet can SAY which engine translated —
+  // no silent fallbacks ever again (the 1.5.68 lesson, learned at Oscar's expense).
   async function translateSmart(text: string, onState?: (s: TrState) => void) {
+    const r = await translateChain(text, onState);
+    if (r.ok) {
+      const label = {
+        microsoft: tx("Traducido con Microsoft", "Translated with Microsoft"),
+        google: tx("Traducido con Google", "Translated with Google"),
+        ai: tx("Traducido con el afinado", "Translated with the tuned translator"),
+        device: tx("Traducido en el teléfono (sin conexión)", "Translated on the phone (offline)"),
+        chrome: tx("Traducido con Chrome", "Translated with Chrome"),
+        web: tx("Traducido con MyMemory", "Translated with MyMemory"),
+      }[r.via];
+      setTrNote(label);
+    }
+    return r;
+  }
+
+  async function translateChain(text: string, onState?: (s: TrState) => void) {
     const t = text.trim();
-    // 1.5.70 (Oscar): DeepL first when his own key is pasted in Ajustes → Traductor — «es mucho más
-    // fiel que Google». No key, bad key or no connection: the chain below runs exactly as in 1.5.69.
-    const deeplKey = getDeeplKey();
-    if (deeplKey && t) {
-      const d = await viaDeepL(t, deeplKey);
-      if (d && d.ok) return { ...d, text: polishEnglish(t, d.text) };
+    // 1.5.71 (Oscar): DeepL is OUT (its key was friction). Head of the chain is now Microsoft
+    // Translator — no key, no account: the anonymous Edge token. Then the tuned server translator,
+    // then Google, then the phone's own chain for the field.
+    if (t) {
+      const m = await viaMicrosoft(t);
+      if (m && m.ok) return { ...m, text: polishEnglish(t, m.text) };
     }
     if (t && t.length <= 800) {
       try {
@@ -225,6 +245,7 @@ export function MessageComposer({
       listening={listening}
       translating={translating}
       trDownload={trDownload}
+      trNote={trNote}
       micWhy={micWhy}
       areaRef={areaRef}
       channel={channel}
@@ -338,6 +359,7 @@ function ComposerSheet({
   listening,
   translating,
   trDownload,
+  trNote,
   micWhy,
   areaRef,
   onType,
@@ -354,6 +376,7 @@ function ComposerSheet({
   listening: boolean;
   translating: boolean;
   trDownload: boolean;
+  trNote: string;
   micWhy: boolean;
   areaRef: RefObject<HTMLTextAreaElement | null>;
   onType: () => void;
@@ -451,13 +474,15 @@ function ComposerSheet({
             </button>
           </div>
         </div>
-        {trDownload || fixNote || micWhy ? (
+        {trDownload || fixNote || trNote || micWhy ? (
           <p role="status" className="mt-2 min-w-0 text-xs font-semibold text-muted">
             {trDownload
               ? tx("Descargando el traductor", "Downloading the translator")
               : fixNote
                 ? fixNote
-                : tx("El micrófono se usa solo mientras dictas", "The microphone is used only while you dictate")}
+                : trNote
+                  ? trNote
+                  : tx("El micrófono se usa solo mientras dictas", "The microphone is used only while you dictate")}
           </p>
         ) : null}
         <div className="mt-3 grid grid-cols-3 gap-2">
