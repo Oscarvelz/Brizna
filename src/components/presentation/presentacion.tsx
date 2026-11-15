@@ -1084,16 +1084,19 @@ export function Presentacion() {
    * render) y su sitio deseado se ABRAZA a la pantalla — se comprime
    * hasta caber, jamás se sale. */
   const vhNow = window.innerHeight;
-  /* LAS VISTAS SE MIRAN, NO SE TAPAN (Oscar, 2026-11-14 23:47, sobre la
-   * 1.5.80): al demostrar el selector de vistas, la tarjeta se sentaba
-   * bajo el selector y ocultaba las tarjetas cuyo cambio de tamaño era
-   * la lección misma. En esos compases la tarjeta se integra ABAJO,
-   * sobre la barra de pestañas: el selector y las primeras filas de
-   * tarjetas quedan a la vista, que es donde vive la demostración. El
-   * foco (hueco y anillo) sigue en el selector, como manda la ley. */
-  const seatBottom = !!(step && "anchor" in step && typeof step.anchor === "string" && step.anchor.startsWith("vistas"));
-  const desiredTop = seatBottom
-    ? vhNow - cardH - 70
+  /* LA TARJETA NO TAPA LA FUNCIÓN NI SU EFECTO (Oscar, 2026-11-14 23:47
+   * y reforzado 2026-11-15 10:42, sobre su teléfono): al demostrar el
+   * selector de vistas, la tarjeta se sentaba sobre las tarjetas cuyo
+   * cambio de tamaño ERA la lección — primero al centro, luego abajo
+   * (mi cura de la 1.5.85, equivocada: dejaba ver el selector pero tapaba
+   * las tarjetas, que son el efecto). La demostración de una función es
+   * el control MÁS la región donde su efecto se representa; en las
+   * vistas el efecto vive ABAJO (la lista que se achica y crece), así
+   * que la tarjeta SUBE: arriba del todo, donde no vive nada de la
+   * lección. El foco (hueco y anillo) sigue en el selector. */
+  const seatTop = !!(step && "anchor" in step && typeof step.anchor === "string" && step.anchor.startsWith("vistas"));
+  const desiredTop = seatTop
+    ? 10
     : cardHole
       ? cardBelow
         ? cardHole.top + cardHole.height + 14
@@ -1229,7 +1232,7 @@ export function Presentacion() {
           </div>
         </div>
       ) : caption ? (
-        <div key={shaking} ref={cardRef} className={`pres-card${shaking ? " is-shake" : ""}`} style={cardStyle} aria-live="polite">
+        <div key={shaking} ref={cardRef} className={`pres-card${shaking ? " is-shake" : ""}${seatTop ? " is-topseat" : ""}`} style={cardStyle} aria-live="polite">
           {contexto ? <div key={`ctx-${run.sceneIdx}-${run.stepIdx}`} className="pres-contexto pres-beat" role="note">{contexto}</div> : null}
           <div className="pres-toprow">
             <p className="pres-kicker">

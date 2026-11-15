@@ -118,6 +118,9 @@
 .pres-num { font-variant-numeric: tabular-nums; }
 /* La ventanita de contexto (PLAN §0.4): arribita de la tarjeta, pequeña, solo
    cuando el pie y la pantalla no bastan. Mismo material del tema que la C′. */
+/* Con la tarjeta arriba del todo (el asiento de las vistas), la ventanita
+   de contexto cuelga BAJO la tarjeta: sobre ella no hay pantalla. */
+.pres-card.is-topseat .pres-contexto { bottom: auto; top: calc(100% + 9px); }
 .pres-contexto {
   /* La ventanita solo explica: jamás come un toque. Cuando la tarjeta queda
      bajo el foco, la ventanita puede caer sobre el botón de la escena (p. ej.
