@@ -63,6 +63,21 @@
     width .42s cubic-bezier(.22, 1, .36, 1), height .42s cubic-bezier(.22, 1, .36, 1), box-shadow .3s,
     opacity .3s ease-out;
 }
+/* El recuadro de la región nombrada (principio 11 reforzado, Oscar
+   2026-11-15): la misma familia visual del hueco — anillo y halo en el
+   acento — a escala de región y más suave: marca la huella entera a la
+   que el diálogo se refiere sin competir con el anillo del control. */
+.pres-regionframe {
+  position: fixed;
+  border-radius: 20px;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-accent) 55%, transparent),
+    0 0 34px 2px color-mix(in srgb, var(--color-accent) 22%, transparent);
+  transition: left .42s cubic-bezier(.22, 1, .36, 1), top .42s cubic-bezier(.22, 1, .36, 1),
+    width .42s cubic-bezier(.22, 1, .36, 1), height .42s cubic-bezier(.22, 1, .36, 1), box-shadow .3s,
+    opacity .3s ease-out;
+}
 .pres-hole.is-won {
   box-shadow:
     0 0 0 2px var(--color-done),
@@ -453,6 +468,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pres-hole { transition: none; }
+  .pres-regionframe { transition: none; }
   .pres-dot { animation: none; }
   .pres-card.is-shake { animation: none; }
   .pres-thread i { transition: none; }

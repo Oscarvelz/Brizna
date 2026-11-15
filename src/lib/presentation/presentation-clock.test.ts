@@ -9,7 +9,7 @@
  *       no baja del doble del suelo.
  *  C-2  lo anunciado es lo que el motor corre: las constantes de stepMs
  *       para los gestos automáticos son las del motor (do: pie + 650 de
- *       asentamiento; type: pie + 500; tap: 720 = 300 + 420), llevadas a
+ *       asentamiento; type: pie + 500; tap: 950 = 300 + 650), llevadas a
  *       la escala recalibrada (÷ PACE), para que la duración del índice
  *       nunca mienta.
  *  C-3  la escala misma: effSpeed(1) = 0.5 — la etiqueta 1 corre al
@@ -44,7 +44,7 @@ test("C-2: stepMs anuncia exactamente lo que el motor corre en los gestos", () =
   const typeStep: Step = { kind: "type", anchor: "buscar", caption: cap, text: ["x", "x"] };
   assert.equal(stepMs(typeStep, "es"), Math.round((base + 500) / PACE), "type = (pie + 500) ÷ PACE");
   const tapStep: Step = { kind: "tap", anchor: "vistas-malla" };
-  assert.equal(stepMs(tapStep, "es"), Math.round(720 / PACE), "tap = (300 hasta el toque + 420 de asentamiento) ÷ PACE");
+  assert.equal(stepMs(tapStep, "es"), Math.round(950 / PACE), "tap = (300 hasta el toque + 650 de asentamiento, principio 9) ÷ PACE");
   const pressStep: Step = { kind: "press", anchor: "hecho", caption: cap, ms: 550 };
   assert.equal(stepMs(pressStep, "es"), Math.round((base + 550 + 800) / PACE), "press = (pie + presión entera + respiro y asentamiento) ÷ PACE");
 });

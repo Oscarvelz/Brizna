@@ -175,7 +175,7 @@ export function stepMs(step: Step, lang: string): number {
       case "go":
         return 1400; // el viaje y el asentamiento
       case "tap":
-        return 720; // 300 hasta el toque + 420 de asentamiento, como corre el motor
+        return 950; // 300 hasta el toque + 650 de asentamiento (principio 9), como corre el motor
       case "stage":
         return 600; // sembrar y seguir
       case "ref":

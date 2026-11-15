@@ -351,7 +351,11 @@ export function Presentacion() {
     }
     const done = { ...r, finished: true, won: false, back };
     setRun(done);
-    saveProgress(done, true);
+    // LA LECCIÓN QUE NO PUDO ENSEÑARSE LO DICE (principio 17): si alguna
+    // escena se saltó, la tarjeta final ya lo declara — y el registro lo
+    // honra: el módulo NO se anota como aprendido; queda en curso, con
+    // su lugar guardado, hasta que una pasada limpia lo complete.
+    saveProgress(done, done.skipped.length === 0);
   }, [clearTimers, saveProgress]);
 
   /** Un compás atrás (orden de Oscar, 2026-11-14: en Interactivo hay
@@ -388,7 +392,7 @@ export function Presentacion() {
     } else {
       const done = { ...r, finished: true, won: false, skipped };
       setRun(done);
-      saveProgress(done, true);
+      saveProgress(done, skipped.length === 0); // principio 17: con escenas saltadas no se anota como aprendido
     }
   }, [clearTimers, saveProgress]);
 
@@ -813,7 +817,21 @@ export function Presentacion() {
         : 0;
 
       if (step.kind === "tap") {
-        later(() => { if (!cancelled) { tapEl(el); later(() => { if (!cancelled) advance(); }, 420 / speed); } }, 300 / speed);
+        // Un micro-toque de maquinaria: el tipo tap no lleva pie propio,
+        // así que el principio 16 no le pide lectura — no hay leyenda que
+        // la acción pudiera pisar. Sí le piden el 9 (su efecto asienta
+        // como todo efecto: 650) y el 14 (si una pausa lo interrumpió
+        // tras caer, no se repite).
+        if (r.won) {
+          later(() => { if (!cancelled) advance(); }, 650 / speed);
+        } else if (r.playing) {
+          later(() => {
+            if (cancelled) return;
+            tapEl(el);
+            setRun((cur) => (cur ? { ...cur, won: true } : cur));
+            later(() => { if (!cancelled) advance(); }, 650 / speed);
+          }, 300 / speed);
+        }
         return;
       }
       if (step.kind === "type") {
@@ -899,6 +917,12 @@ export function Presentacion() {
           // el gesto espera la vida COMPLETA del pie y luego asienta, y el
           // total del motor es exactamente lo que stepMs anuncia.
           const beat = capDwell / speed;
+          if (r.won) {
+            // El gesto ya se ejecutó antes de una pausa: no se repite
+            // (principio 14 — reanudar nunca deshace lo mostrado).
+            later(() => { if (!cancelled) advance(); }, 650 / speed);
+            return;
+          }
           later(() => {
             if (cancelled) return;
             // La presión mostrada dura los `ms` REALES del compás (+ un
@@ -955,6 +979,12 @@ export function Presentacion() {
           timers.current.push(window.setTimeout(cleanup, 120_000) as unknown as number);
         } else if (r.playing) {
           const beat = capDwell / speed;
+          if (r.won) {
+            // El gesto ya se ejecutó antes de una pausa: no se repite
+            // (principio 14 — reanudar nunca deshace lo mostrado).
+            later(() => { if (!cancelled) advance(); }, 650 / speed);
+            return;
+          }
           later(() => {
             if (cancelled) return;
             swipeEl(el, () => {
@@ -979,6 +1009,13 @@ export function Presentacion() {
         timers.current.push(window.setTimeout(() => document.removeEventListener("pointerdown", onTap, true), 120_000) as unknown as number);
       } else if (r.playing) {
         const beat = capDwell / speed;
+        if (r.won) {
+          // El toque ya cayó antes de una pausa: no se repite (principio
+          // 14 — reanudar nunca deshace lo mostrado; en un interruptor,
+          // repetirlo lo apagaría).
+          later(() => { if (!cancelled) advance(); }, 650 / speed);
+          return;
+        }
         later(() => {
           if (cancelled) return;
           tapEl(el);
@@ -1007,6 +1044,32 @@ export function Presentacion() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [run, exitToIndex]);
+
+  /* LA LECCIÓN NUNCA ATRAPA AL ALUMNO (principio 14): si la app pasa a
+   * segundo plano a mitad de compás — entra una llamada, llega un aviso,
+   * el teléfono va al bolsillo — el reloj se detiene donde está, sin
+   * velo congelado ni compás a medias. Al volver, el compás sigue SOLO
+   * si estaba corriendo: una pausa del propio alumno jamás se deshace
+   * sola. (La muerte de la app ya la cubren el escenario efímero, el
+   * barrido de arranque y el guardián de preferencias.) */
+  const hiddenPauseRef = useRef(false);
+  useEffect(() => {
+    const onVis = () => {
+      const cur = runRef.current;
+      if (document.visibilityState === "hidden") {
+        if (cur && cur.playing && !cur.finished) {
+          hiddenPauseRef.current = true;
+          setRun({ ...cur, playing: false });
+        }
+      } else if (hiddenPauseRef.current) {
+        hiddenPauseRef.current = false;
+        const now = runRef.current;
+        if (now && !now.finished) setRun({ ...now, playing: true });
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
 
   /* LA VENTANA DE APERTURA (Oscar, 2026-11-14 23:47): pregunta grande —
    * el módulo — y explicación corta: las dos maneras de aprenderla y los
@@ -1236,6 +1299,15 @@ export function Presentacion() {
       )) : null}
       {hole && !run.finished ? (
         <div className={`pres-hole${run.won ? " is-won" : ""}`} style={{ left: hole.left, top: hole.top, width: hole.width, height: hole.height }} aria-hidden />
+      ) : null}
+      {/* LO NOMBRADO QUEDA SEÑALADO (Oscar, 2026-11-15 11:19, refuerzo
+          del principio 11): cuando el diálogo se refiere a una REGIÓN —
+          la huella de una demostración — no basta con que vaya sin velo:
+          un recuadro visible la ata a las palabras, para que el alumno
+          vea exactamente a qué «eso» se refiere la leyenda. El anillo
+          sigue sobre el control; el marco, sobre lo nombrado. */}
+      {hole && seatTop && clearHole && !run.finished ? (
+        <div className="pres-regionframe" style={{ left: 6, top: clearHole.top + 2, width: Math.max(0, clearHole.width - 12), height: Math.max(0, clearHole.height - 8) }} aria-hidden />
       ) : null}
       <div className="pres-thread" aria-hidden><i style={{ width: `${((run.sceneIdx + (run.finished ? 1 : 0)) / totalScenes) * 100}%` }} /></div>
 
