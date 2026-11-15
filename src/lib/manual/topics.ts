@@ -506,12 +506,12 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Search, sort, and select one or all.\nReactivate puts them back on the route and the schedule builds their cuts from today.\nDelete asks first and saves a backup right before deleting.",
         ],
         calc: [
-          "Al dar de baja se quitan sus cortes pendientes (también los atrasados). Lo que deba sigue en Por cobrar.\nEn Estudio, Clientes nuevos y bajas: altas son los clientes creados ese mes; bajas, los dados de baja ese mes. Si reactivas a alguien, deja de contar como baja.",
-          "Taking someone off removes their pending cuts (late ones too). What they owe stays in To collect.\nIn Stats, New clients and departures: new are clients created that month; departures, those taken off that month. If you reactivate someone, they stop counting as a departure.",
+          "Al dar de baja se quitan sus cortes pendientes (también los atrasados). Lo que deba sale de Por cobrar mientras esté de baja: su deuda queda guardada en su ficha.\nEn Estudio, Clientes nuevos y bajas: altas son los clientes creados ese mes; bajas, los dados de baja ese mes. Si reactivas a alguien, deja de contar como baja.",
+          "Taking someone off removes their pending cuts (late ones too). What they owe leaves To collect while they are off: their debt stays saved on their file.\nIn Stats, New clients and departures: new are clients created that month; departures, those taken off that month. If you reactivate someone, they stop counting as a departure.",
         ],
         example: [
-          "En octubre la señora Díaz se muda y te debe $45. La das de baja: desaparecen sus cortes, pero los $45 siguen en Por cobrar y ella sale en Con saldo. En Estudio, octubre cuenta 1 baja. En marzo vuelve: Reactivar y sus cortes regresan.",
-          "In October Mrs. Díaz moves away owing $45. You take her off: her cuts disappear, but the $45 stays in To collect and she shows under With a balance. In Stats, October counts 1 departure. In March she returns: Reactivate and her cuts come back.",
+          "En octubre la señora Díaz se muda y te debe $45. La das de baja: desaparecen sus cortes y los $45 salen de Por cobrar (quedan en su ficha; en Clientes sigue saliendo en Con saldo). En Estudio, octubre cuenta 1 baja. En marzo vuelve: Reactivar, sus cortes regresan y los $45 vuelven a Por cobrar.",
+          "In October Mrs. Díaz moves away owing $45. You take her off: her cuts disappear and the $45 leaves To collect (it stays on her file; in Clients she still shows under With a balance). In Stats, October counts 1 departure. In March she returns: Reactivate, her cuts come back and the $45 returns to To collect.",
         ],
         cases: [
           "Reactivas a un cliente con temporada: sus cortes siguen la temporada desde hoy.\nBorras a alguien: antes de borrar, Brizna te dice en voz alta cuánto debe, cuánto tiene a favor y cuántos pagos y visitas se borrarán — incluido el dinero que te prepagó. Para dejar constancia, mejor usa Perdonar y luego dale de baja.",
@@ -1075,8 +1075,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Tap the amount to see who owes, largest first.\nBelow, Partial paid: tap the number of people to see who left part and still owes.\nFrom each row: Paid, partial, Forgive, or Pause.\nEach person carries a state: current with a balance, Waiting, or High risk (orange).",
         ],
         calc: [
-          "Por cobrar suma la deuda de todos los clientes, también de los archivados. Sube con cada corte que no se paga y con la deuda anterior; baja con pagos, abonos y Perdonar.\nAbonado suma los abonos de este año de las personas que todavía deben. Cuando alguien paga todo, sale de Abonado.",
-          "To collect adds every client's debt, archived ones too. It grows with each unpaid cut and with earlier debt; it drops with payments, partials, and Forgive.\nPartial paid adds this year's partials from people who still owe. When someone pays in full, they leave Partial paid.",
+          "Por cobrar suma la deuda de tus clientes activos, fuera de la lista negra. Sube con cada corte que no se paga y con la deuda anterior; baja con pagos, abonos y Perdonar.\nAbonado suma los abonos de este año de las personas que todavía deben. Cuando alguien paga todo, sale de Abonado.",
+          "To collect adds the debt of your active clients, off the blacklist. It grows with each unpaid cut and with earlier debt; it drops with payments, partials, and Forgive.\nPartial paid adds this year's partials from people who still owe. When someone pays in full, they leave Partial paid.",
         ],
         example: [
           "Por cobrar: $415, 6 personas. Kevin debía $100 y te dio $40: sale en Abonado con $40 y sigue debiendo $60. El viernes te paga los $60: sale de Abonado y Por cobrar baja a $355.",
@@ -1324,8 +1324,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Look at the big figure: your normal month.\nBelow, the clients who bring the most and how many visits they add up to a month.\nCompare it with This month to see whether the month runs above or below your floor.",
         ],
         calc: [
-          "Por cada cliente regular activo: visitas al mes × precio. Cada semana cuenta 4 visitas, cada 2 semanas 2, 3 veces al mes 3, 1 vez al mes 1; a medida, 30,44 ÷ sus días. No cuentan extras, trabajos de una vez, clientes en pausa, la lista negra ni las temporadas.",
-          "For each active regular client: visits a month × price. Weekly counts 4 visits, every 2 weeks 2, 3 times a month 3, once a month 1; custom, 30.44 ÷ its days. Extras, one-time jobs, paused clients, the blacklist, and seasons do not count.",
+          "Por cada cliente regular activo: visitas al mes × precio. Las visitas salen de su frecuencia: 30,44 ÷ sus días (cada semana, unas 4,3; cada 2 semanas, unas 2,2; 3 veces al mes, 3; 1 vez al mes, 1), o las visitas al mes fijadas en su ficha. No cuentan extras, trabajos de una vez, clientes en pausa, la lista negra ni las temporadas.",
+          "For each active regular client: visits a month × price. The visits come from his frequency: 30.44 ÷ his days (weekly, about 4.3; every 2 weeks, about 2.2; 3 times a month, 3; once a month, 1), or the visits per month set on his file. Extras, one-time jobs, paused clients, the blacklist, and seasons do not count.",
         ],
         example: [
           "20 clientes semanales a $45 (4 × 45 = $180 cada uno) y 10 cada 2 semanas a $55 ($110 cada uno): 20 × 180 + 10 × 110 = $4.700 al mes. Si pausas a un semanal, el piso baja $180.",
@@ -1799,8 +1799,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Brizna's guide. Every (?) opens its topic here, and back returns you to where you were.",
         ],
         how: [
-          "El (?) da la idea en una o dos frases; Más en el manual abre aquí el detalle.\nCada tema tiene: Cómo funciona, Cómo se calcula, un Ejemplo, Si pasa… y temas relacionados.\nLa lupa busca en todo el texto del manual.\nVolver, la flecha del teléfono o Esc te regresan a la pantalla de antes.\nVer en la app te lleva al lugar exacto y lo enmarca con una luz unos segundos; un toque o un desliz la quitan antes.\nImprimir todo o un capítulo, y el Índice A–Z, están arriba.",
-          "The (?) gives the idea in one or two sentences; More in the manual opens the detail here.\nEach topic has: How it works, How it's counted, an Example, What if…, and related topics.\nThe magnifying glass searches the whole manual text.\nBack, the phone's back arrow, or Esc returns you to the screen you came from.\nSee it in the app takes you to the exact spot and frames it with a light for a few seconds; a tap or a scroll clears it sooner.\nPrint all or one chapter, and the A–Z index, are on top.",
+          "El (?) da la idea en una o dos frases; Más en el manual abre aquí el detalle.\nCada tema tiene: Cómo funciona, Cómo se calcula, un Ejemplo, Si pasa… y temas relacionados.\nLa lupa busca en todo el texto del manual.\nVolver, la flecha del teléfono o Esc te regresan a la pantalla de antes.\nVer en la app te lleva al lugar exacto y lo enmarca con una luz unos segundos; un toque o un desliz la quitan antes.\nImprimir todo o un capítulo, y el Índice A–Z, están arriba.\nNingún botón se queda sin explicación: cada tarjeta lleva su (?) y cada cifra lleva su cuenta en el Cómo se calcula de su tema.\nY cada botón hace lo que su nombre dice: si alguna vez uno no lo hace, eso es un defecto de la app, no un error tuyo.",
+          "The (?) gives the idea in one or two sentences; More in the manual opens the detail here.\nEach topic has: How it works, How it's counted, an Example, What if…, and related topics.\nThe magnifying glass searches the whole manual text.\nBack, the phone's back arrow, or Esc returns you to the screen you came from.\nSee it in the app takes you to the exact spot and frames it with a light for a few seconds; a tap or a scroll clears it sooner.\nPrint all or one chapter, and the A–Z index, are on top.\nNo button is left unexplained: every card carries its (?) and every figure carries its count in its topic's How it's counted.\nAnd every button does what its name says: if one ever does not, that is a defect in the app, not a mistake of yours.",
         ],
         example: [
           "En Ajustes no entiendes cuándo alguien pasa a naranja. Tocas el (?) de Espera y alto riesgo y luego Más en el manual: el ejemplo explica los 45 + 21 días. Tocas Volver y estás otra vez en Ajustes, donde estabas.",
