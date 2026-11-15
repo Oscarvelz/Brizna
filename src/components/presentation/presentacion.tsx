@@ -1163,11 +1163,22 @@ export function Presentacion() {
   };
 
   const onShieldTap = (e: React.PointerEvent) => { if (isGesture) { e.preventDefault(); setShaking((n) => n + 1); } };
-  const shieldRects: React.CSSProperties[] = hole ? [
-    { left: 0, top: 0, width: "100%", height: Math.max(0, hole.top) },
-    { left: 0, top: hole.top + hole.height, width: "100%", bottom: 0 },
-    { left: 0, top: hole.top, width: Math.max(0, hole.left), height: hole.height },
-    { left: hole.left + hole.width, top: hole.top, right: 0, height: hole.height },
+  /* LO DEMOSTRADO SE VE ENTERO Y EN COLOR NORMAL (Oscar, 2026-11-15
+   * 10:50): la ventana sin velo no cubre solo el botón enfocado — cubre
+   * la huella completa de la demostración, el control MÁS la región
+   * donde su efecto se representa. En las vistas, el efecto (las
+   * tarjetas que se achican y crecen) vive del selector hasta el fondo
+   * de la pantalla: la ventana clara se extiende hasta abajo y las
+   * tarjetas se ven en su color normal, integradas, no tras el fondo
+   * oscuro. El anillo sigue marcando el control, que es lo que se toca. */
+  const clearHole = hole && seatTop
+    ? { top: hole.top, left: 0, width: window.innerWidth, height: Math.max(0, window.innerHeight - hole.top) }
+    : hole;
+  const shieldRects: React.CSSProperties[] = clearHole ? [
+    { left: 0, top: 0, width: "100%", height: Math.max(0, clearHole.top) },
+    { left: 0, top: clearHole.top + clearHole.height, width: "100%", bottom: 0 },
+    { left: 0, top: clearHole.top, width: Math.max(0, clearHole.left), height: clearHole.height },
+    { left: clearHole.left + clearHole.width, top: clearHole.top, right: 0, height: clearHole.height },
   ] : [{ left: 0, top: 0, width: "100%", height: "100%" }];
 
   return (
