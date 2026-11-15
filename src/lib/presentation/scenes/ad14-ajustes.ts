@@ -1,7 +1,9 @@
 /**
  * AD14 · Ajustes, tarjeta a tarjeta — las 17 superficies del censo F,
  * contadas desde el censo y el orden de la casa (ajustes-order), no de
- * memoria: 16 pliegues — nombre, pantalla (tema+idioma), tableta, horas,
+ * memoria: 17 pliegues — nombre, pantalla, idioma (tarjeta propia desde
+ * la 1.5.82, por orden de Oscar; antes vivía dentro del pliegue de Tema),
+ * tableta, horas,
  * sonidos (vive en settings-finder.tsx), espera, recordatorios,
  * notificaciones (solo Android), temporada+horizonte, vacaciones,
  * exportar, ejemplo, copia, manual, nube y huella (estas dos, fuera del
@@ -99,11 +101,10 @@ export const AD14: Module = {
       ],
     },
     {
-      id: "ad14-idioma", chapter: "base", anchors: ["aj-pantalla"],
+      id: "ad14-idioma", chapter: "base", anchors: ["aj-idioma"],
       keys: [["idioma", "language"], ["español", "spanish"], ["english", "english"]],
       steps: [
-        { kind: "show", anchor: "aj-pantalla", caption: ["Idioma: Español o English, aplicado al instante.", "Language: Español or English, applied instantly."], contexto: ["Español es el idioma por defecto; la puerta de entrada tiene su propio selector.", "Spanish is the default language; the sign-in door has its own selector."] },
-        { kind: "ref", topic: "tema" },
+        { kind: "show", anchor: "aj-idioma", caption: ["Idioma: Español o English, aplicado al instante.", "Language: Español or English, applied instantly."], contexto: ["Español es el idioma por defecto; la puerta de entrada tiene su propio selector.", "Spanish is the default language; the sign-in door has its own selector."] },
       ],
     },
     {

@@ -2,7 +2,7 @@ import { Masonry } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScrollTop } from "@/components/scroll-top";
 import { createFileRoute } from "@tanstack/react-router";
-import { BatteryCharging, Bell, BellRing, Check, ChevronDown, ChevronsUpDown, CalendarRange, Clock, FlaskConical, Download, HardDrive, Hourglass, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
+import { BatteryCharging, Bell, BellRing, Check, ChevronDown, ChevronsUpDown, CalendarRange, Clock, FlaskConical, Download, HardDrive, Hourglass, Languages, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell, SignOutControl, TitleSearch } from "@/components/app-shell";
@@ -677,7 +677,7 @@ function AjustesPage() {
           id="aj-pantalla"
           order="order-2"
           query={query}
-          blob="tema pantalla dia noche automatico idioma language colores jardin costa barro pino cielo lima arena flor noche medianoche ciruela grafito luciernaga luciérnaga amoled theme screen day night"
+          blob="tema pantalla dia noche automatico colores jardin costa barro pino cielo lima arena flor noche medianoche ciruela grafito luciernaga luciérnaga amoled theme screen day night"
           title={
             <span className="flex items-center gap-2">
               <Palette className="size-5 shrink-0 text-primary" />
@@ -780,8 +780,26 @@ function AjustesPage() {
               ))}
               </div>
             </details>
-            <h3 className="mt-4 font-display text-base font-semibold">{locale === "en" ? "Language" : "Idioma"}</h3>
-            <div className="mt-3 grid grid-cols-2 gap-2">
+        </SettingFold>
+        {/* 1.5.82 (Oscar): el idioma gana su propia tarjeta en La pantalla,
+            con su icono y la forma de las demás — antes vivía como una
+            sección dentro del pliegue de Tema. */}
+        <SettingFold
+          id="aj-idioma"
+          order="order-2"
+          query={query}
+          blob="idioma lenguaje lengua español castellano ingles english language"
+          title={
+            <span className="flex items-center gap-2">
+              <Languages className="size-5 shrink-0 text-primary" />
+              {tx("Idioma", "Language")}
+            </span>
+          }
+          hint={
+            <Hint topic="idioma" />
+          }
+        >
+            <div className="grid grid-cols-2 gap-2">
               {(["es", "en"] as const).map((code) => (
                 <button
                   key={code}
@@ -890,7 +908,12 @@ function AjustesPage() {
         <SoundSettings query={query} />
 
         </Cluster>
-        <Cluster title={tx("Tus datos", "Your data")} hint={tx("Exportar, copias de seguridad y datos de ejemplo", "Export, backups, and sample data")}>
+        <Cluster title={tx("Tus datos", "Your data")} hint={tx("Exportar, copias, datos de ejemplo y la huella", "Export, backups, sample data, and the fingerprint")}>
+        {/* 1.5.82 (Oscar): la huella entra en Tus datos — es la cerradura de
+            todo el libro; antes flotaba al pie, fuera de las bandejas. */}
+        {!query || smartHit(query, "huella fingerprint seguridad desbloqueo unlock cara face") ? (
+          <FingerprintControl />
+        ) : null}
         <SettingFold
           id="aj-exportar"
           order="order-10"
@@ -1072,14 +1095,13 @@ function AjustesPage() {
           <UserManual onLocale={setLocale} forceOpen={Boolean(query)} />
         ) : null}
         </Cluster>
-        {!query || smartHit(query, "salir cerrar sesion cuenta sign out huella fingerprint nube sincronizar sync cloud") ? (
+        {!query || smartHit(query, "salir cerrar sesion cuenta sign out nube sincronizar sync cloud") ? (
         <div className="order-14" data-masonry-under="aj-ejemplo">
           <SyncStatusCard />
-          <FingerprintControl />
         </div>
         ) : null}
-        {!query || smartHit(query, "salir cerrar sesion cuenta sign out huella fingerprint nube sincronizar sync cloud") ? (
-        <section className="order-14 rounded-xl" data-spot-alt="nube huella" data-present="aj-salir">
+        {!query || smartHit(query, "salir cerrar sesion cuenta sign out nube sincronizar sync cloud") ? (
+        <section className="order-14 rounded-xl" data-spot-alt="nube" data-present="aj-salir">
           <SignOutControl full />
           <p className="mt-2 text-center text-xs text-muted">
             {tx("La cuenta y los clientes quedan en la nube y en este equipo. Entras otra vez con el mismo correo.", "The account and the clients stay in the cloud and on this device. Sign in again with the same email.")}

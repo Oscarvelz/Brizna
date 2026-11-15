@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 export const AJUSTES_DEFAULT = [
   "aj-nombre",
   "aj-pantalla",
+  "aj-idioma",
   "aj-horas",
   "aj-espera",
   "aj-recordatorios",
@@ -25,6 +26,8 @@ export function ajusteLabel(id: AjusteId, tx: (es: string, en: string) => string
       return tx("Nombre del negocio", "Business name");
     case "aj-pantalla":
       return tx("Tema", "Theme");
+    case "aj-idioma":
+      return tx("Idioma", "Language");
     case "aj-horas":
       return tx("Horas de trabajo", "Work hours");
     case "aj-espera":

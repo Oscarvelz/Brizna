@@ -179,7 +179,8 @@ export const ANCHORS: readonly AnchorRec[] = [
   { id: "cif-pospuesto", by: "id", value: "cif-pospuesto", file: "components/cobros-charts.tsx", serves: "AD9 ad9-resto (pliegue Pospuestos)", presence: "siempre" },
   // Los pliegues de Ajustes (el id lo emite Fold/SettingFold; AD14).
   { id: "aj-nombre", by: "id", value: "aj-nombre", file: "routes/ajustes.tsx", serves: "AD14 ad14-nombre (pliegue Tu nombre)", presence: "siempre" },
-  { id: "aj-pantalla", by: "id", value: "aj-pantalla", file: "routes/ajustes.tsx", serves: "AD14 ad14-pantalla/ad14-idioma (pliegue Pantalla e idioma)", presence: "siempre" },
+  { id: "aj-pantalla", by: "id", value: "aj-pantalla", file: "routes/ajustes.tsx", serves: "AD14 ad14-pantalla (pliegue Pantalla)", presence: "siempre" },
+  { id: "aj-idioma", by: "id", value: "aj-idioma", file: "routes/ajustes.tsx", serves: "AD14 ad14-idioma (pliegue Idioma, tarjeta propia desde la 1.5.82)", presence: "siempre" },
   { id: "aj-tableta", by: "id", value: "aj-tableta", file: "routes/ajustes.tsx", serves: "AD14 ad14-tableta (pliegue Tableta y ordenador)", presence: "siempre" },
   { id: "aj-horas", by: "id", value: "aj-horas", file: "routes/ajustes.tsx", serves: "AD14 ad14-horas (pliegue Horas de trabajo)", presence: "siempre" },
   { id: "aj-espera", by: "id", value: "aj-espera", file: "routes/ajustes.tsx", serves: "AD14 ad14-espera/ad14-espera-cadena (pliegue Espera y riesgo)", presence: "siempre" },

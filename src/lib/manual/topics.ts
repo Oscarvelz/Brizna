@@ -1812,15 +1812,15 @@ export const MANUAL_CHAPTERS: Chapter[] = [
       },
       {
         id: "tema",
-        title: ["Tema e idioma", "Theme and language"],
-        sum: ["Los colores de día y de noche, y español o English.", "Day and night colors, and Spanish or English."],
+        title: ["Tema", "Theme"],
+        sum: ["Los colores de día y de noche.", "Day and night colors."],
         what: [
           "El tema de día y el de noche se quedan como los dejes, aunque refresques la pantalla.",
           "The day theme and the night theme stay as you left them, even if you refresh.",
         ],
         how: [
-          "En Ajustes, Pantalla, elige un tema de día y uno de noche.\nAutomático cambia según la hora: noche antes de las 6:30 de la mañana y desde las 6:30 de la tarde.\nEl botón sol/luna de arriba cambia a mano entre los dos.\nIdioma: Español (el de siempre) o English; cambia los textos y el corrector del bloc.",
-          "In Settings, Screen, pick a day theme and a night theme.\nAutomatic follows the hour: night before 6:30 in the morning and from 6:30 in the evening.\nThe sun/moon button on top switches between them by hand.\nLanguage: Spanish (the default) or English; it changes the text and the pad's spellcheck.",
+          "En Ajustes, Pantalla, elige un tema de día y uno de noche.\nAutomático cambia según la hora: noche antes de las 6:30 de la mañana y desde las 6:30 de la tarde.\nEl botón sol/luna de arriba cambia a mano entre los dos.",
+          "In Settings, Screen, pick a day theme and a night theme.\nAutomatic follows the hour: night before 6:30 in the morning and from 6:30 in the evening.\nThe sun/moon button on top switches between them by hand.",
         ],
         calc: [
           "De día: Jardín, Costa, Barro, Pino, Cielo, Lima, Arena y Flor. De noche: Noche, Medianoche, Ciruela, Grafito, Luciérnaga y AMOLED (negro puro, ahorra batería en pantallas OLED).",
@@ -1831,12 +1831,12 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "You work in the sun 8 to 5: Sand by day reads well at high brightness. At night, checking payments in bed, AMOLED won't glare. With Automatic you touch nothing: at 6:30 pm it switches itself.",
         ],
         cases: [
-          "Cambias el idioma en la pantalla de Entrar: esa elección queda guardada.\nLos datos que escribiste (nombres, notas) no se traducen.",
-          "You change the language on the sign-in screen: that choice is kept.\nWhat you typed (names, notes) is not translated.",
+          "AMOLED es negro puro: ahorra batería solo en pantallas OLED; en una pantalla común se ve igual de negro, pero no ahorra.",
+          "AMOLED is pure black: it saves battery only on OLED screens; on a regular screen it looks just as black but saves nothing.",
         ],
         related: ["clima", "busca"],
         go: { to: "/ajustes", focus: "aj-pantalla", where: ["Ajustes, Pantalla", "Settings, Screen"] },
-        terms: [["Automático", "Automatic"], ["AMOLED", "AMOLED"], ["Colores", "Colors"], ["Idioma", "Language"], ["English", "Español"]],
+        terms: [["Automático", "Automatic"], ["AMOLED", "AMOLED"], ["Colores", "Colors"]],
       },
       {
         id: "tableta",
