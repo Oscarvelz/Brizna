@@ -2,7 +2,7 @@ import { Masonry } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScrollTop } from "@/components/scroll-top";
 import { createFileRoute } from "@tanstack/react-router";
-import { BatteryCharging, Bell, BellRing, Check, ChevronDown, ChevronsUpDown, CalendarRange, Clock, FlaskConical, Download, HardDrive, Hourglass, Languages, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Upload, Volume2 } from "lucide-react";
+import { BatteryCharging, Bell, BellRing, Check, ChevronDown, ChevronsUpDown, CalendarRange, Clock, FlaskConical, Download, HardDrive, Hourglass, Languages, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Target, Upload, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell, SignOutControl, TitleSearch } from "@/components/app-shell";
@@ -28,7 +28,7 @@ import { useUndo } from "@/lib/undo";
 import { UserManual } from "@/components/user-manual";
 import { PresentacionesFold } from "@/components/presentation/presentaciones";
 import { addDaysISO, todayISO } from "@/lib/dates";
-import { formatDay, formatStamp } from "@/lib/format";
+import { formatDay, formatStamp, weekdayOptions } from "@/lib/format";
 import { emphasize, useI18n, useTx } from "@/lib/i18n";
 import { smartHit } from "@/lib/fuzzy";
 import { notificationsSupported, requestNotificationPermission } from "@/lib/reminders";
@@ -40,11 +40,13 @@ import {
   exportBackup,
   exportReport,
   getBackupWeight,
+  getDashboard,
   getSettings,
   importBackupJson,
   listBackups,
   restoreBackup,
   updateSettings,
+  upsertDayGoal,
 } from "@/lib/server/lawn";
 import { readTabletEnabled, writeTabletEnabled } from "@/lib/tablet-mode";
 import {
@@ -177,6 +179,96 @@ function Cluster({ title, hint, children }: { title: ReactNode; hint: ReactNode;
       </header>
       <div className="bz-cluster-body">{children}</div>
     </section>
+  );
+}
+
+/* 1.5.83 (Oscar): las metas de la semana también se configuran desde
+ * Ajustes, no solo tocando la tarjeta del Estudio. Son LAS MISMAS metas:
+ * cada fila guarda con upsertDayGoal sobre la fecha de esta semana — la
+ * misma función que usa «Esfuerzo de la semana» — así que las dos puertas
+ * nunca cuentan historias distintas, y «Sin meta» retira la meta de una
+ * vez (la función ya limpia también la meta fija del día de semana). */
+function GoalsFold({ query }: { query: string }) {
+  const tx = useTx();
+  const qc = useQueryClient();
+  const dash = useQuery({ queryKey: ["dashboard"], queryFn: () => getDashboard() });
+  const [busyDate, setBusyDate] = useState<string | null>(null);
+  const save = useMutation({
+    mutationFn: (payload: { date: string; goal: number | null }) => upsertDayGoal({ data: payload }),
+    onMutate: (payload) => setBusyDate(payload.date),
+    onSettled: async () => {
+      setBusyDate(null);
+      await qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+  const days = dash.data?.weekEffort ?? [];
+  const goalByDate = new Map((dash.data?.weekGoals ?? []).map((g) => [g.date, g.goal]));
+  return (
+    <SettingFold
+      id="aj-metas"
+      order="order-3"
+      query={query}
+      blob="metas semana patios esfuerzo goals week yards"
+      title={
+        <span className="flex items-center gap-2">
+          <Target className="size-5 shrink-0 text-primary" />
+          {tx("Metas de la semana", "Weekly goals")}
+        </span>
+      }
+      hint={<Hint topic="esfuerzo" />}
+    >
+      <p className="text-sm text-muted">
+        {tx(
+          "Cuántos patios quieres terminar cada día. Es la meta que mide Esfuerzo de la semana, en el Estudio, y queda guardada para las próximas semanas.",
+          "How many yards you want to finish each day. It is the goal that This week's effort, in Stats, measures, and it stays saved for the weeks ahead.",
+        )}
+      </p>
+      <div className="mt-3 space-y-2.5">
+        {days.map((d) => {
+          const label = weekdayOptions().find((w) => w.value === d.weekday)?.label ?? "";
+          const goal = goalByDate.get(d.date) ?? null;
+          const busy = busyDate === d.date;
+          return (
+            <div key={d.date} className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 text-sm font-medium">{label}</span>
+              {goal ? (
+                <>
+                  <div className="aj-num-ctl">
+                    <button type="button" className="aj-num-btn" aria-label="−" disabled={busy || goal <= 1} onClick={() => save.mutate({ date: d.date, goal: goal - 1 })}>
+                      <span aria-hidden>−</span>
+                    </button>
+                    <span className="aj-num-val px-1 text-center" style={{ minWidth: "2.5ch" }}>
+                      {goal}
+                    </span>
+                    <button type="button" className="aj-num-btn" aria-label="+" disabled={busy || goal >= 80} onClick={() => save.mutate({ date: d.date, goal: goal + 1 })}>
+                      <span aria-hidden>+</span>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="shrink-0 text-xs font-semibold text-muted underline-offset-2 hover:underline disabled:opacity-50"
+                    disabled={busy}
+                    onClick={() => save.mutate({ date: d.date, goal: null })}
+                  >
+                    {tx("Sin meta", "No goal")}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-sm text-muted">{tx("Sin meta", "No goal")}</span>
+                  <Button type="button" size="sm" className="h-9" disabled={busy} onClick={() => save.mutate({ date: d.date, goal: d.done > 0 ? d.done : 8 })}>
+                    {tx("Fijar meta", "Set goal")}
+                  </Button>
+                </>
+              )}
+            </div>
+          );
+        })}
+        {dash.isLoading ? (
+          <p className="text-sm text-muted">{tx("Cargando…", "Loading…")}</p>
+        ) : null}
+      </div>
+    </SettingFold>
   );
 }
 
@@ -557,7 +649,7 @@ function AjustesPage() {
         </SettingFold>
 
         </Cluster>
-        <Cluster title={tx("El trabajo", "The work")} hint={tx("Las horas y las reglas de espera y riesgo", "Work hours and the waiting and risk rules")}>
+        <Cluster title={tx("El trabajo", "The work")} hint={tx("Las horas, las metas y las reglas de espera y riesgo", "Work hours, goals, and the waiting and risk rules")}>
         <SettingFold
           id="aj-horas"
           order="order-3"
@@ -598,6 +690,8 @@ function AjustesPage() {
             </label>
           </div>
         </SettingFold>
+
+        <GoalsFold query={query} />
 
         <SettingFold
           id="aj-espera"
@@ -908,6 +1002,14 @@ function AjustesPage() {
         <SoundSettings query={query} />
 
         </Cluster>
+        <Cluster title={tx("Aprender", "Learn")} hint={tx("Las presentaciones y el manual de usuario", "The presentations and the user manual")}>
+        {!query || smartHit(query, "presentaciones módulos aprender tutorial presentations modules learn") ? (
+          <PresentacionesFold />
+        ) : null}
+        {!query || smartHit(query, "manual ayuda usuario user guide") ? (
+          <UserManual onLocale={setLocale} forceOpen={Boolean(query)} />
+        ) : null}
+        </Cluster>
         <Cluster title={tx("Tus datos", "Your data")} hint={tx("Exportar, copias, datos de ejemplo y la huella", "Export, backups, sample data, and the fingerprint")}>
         {/* 1.5.82 (Oscar): la huella entra en Tus datos — es la cerradura de
             todo el libro; antes flotaba al pie, fuera de las bandejas. */}
@@ -1086,14 +1188,6 @@ function AjustesPage() {
           <SampleSettings />
         </SettingFold>
 
-        </Cluster>
-        <Cluster title={tx("Aprender", "Learn")} hint={tx("Las presentaciones y el manual de usuario", "The presentations and the user manual")}>
-        {!query || smartHit(query, "presentaciones módulos aprender tutorial presentations modules learn") ? (
-          <PresentacionesFold />
-        ) : null}
-        {!query || smartHit(query, "manual ayuda usuario user guide") ? (
-          <UserManual onLocale={setLocale} forceOpen={Boolean(query)} />
-        ) : null}
         </Cluster>
         {!query || smartHit(query, "salir cerrar sesion cuenta sign out nube sincronizar sync cloud") ? (
         <div className="order-14" data-masonry-under="aj-ejemplo">

@@ -5,6 +5,7 @@ export const AJUSTES_DEFAULT = [
   "aj-pantalla",
   "aj-idioma",
   "aj-horas",
+  "aj-metas",
   "aj-espera",
   "aj-recordatorios",
   "aj-temporada",
@@ -30,6 +31,8 @@ export function ajusteLabel(id: AjusteId, tx: (es: string, en: string) => string
       return tx("Idioma", "Language");
     case "aj-horas":
       return tx("Horas de trabajo", "Work hours");
+    case "aj-metas":
+      return tx("Metas de la semana", "Weekly goals");
     case "aj-espera":
       return tx("Espera y riesgo", "Waiting and risk");
     case "aj-recordatorios":

@@ -183,6 +183,7 @@ export const ANCHORS: readonly AnchorRec[] = [
   { id: "aj-idioma", by: "id", value: "aj-idioma", file: "routes/ajustes.tsx", serves: "AD14 ad14-idioma (pliegue Idioma, tarjeta propia desde la 1.5.82)", presence: "siempre" },
   { id: "aj-tableta", by: "id", value: "aj-tableta", file: "routes/ajustes.tsx", serves: "AD14 ad14-tableta (pliegue Tableta y ordenador)", presence: "siempre" },
   { id: "aj-horas", by: "id", value: "aj-horas", file: "routes/ajustes.tsx", serves: "AD14 ad14-horas (pliegue Horas de trabajo)", presence: "siempre" },
+  { id: "aj-metas", by: "id", value: "aj-metas", file: "routes/ajustes.tsx", serves: "AD14 ad14-metas (pliegue Metas de la semana, 1.5.83)", presence: "siempre" },
   { id: "aj-espera", by: "id", value: "aj-espera", file: "routes/ajustes.tsx", serves: "AD14 ad14-espera/ad14-espera-cadena (pliegue Espera y riesgo)", presence: "siempre" },
   { id: "aj-recordatorios", by: "id", value: "aj-recordatorios", file: "routes/ajustes.tsx", serves: "AD14 ad14-recordatorios (pliegue Recordatorios)", presence: "siempre" },
   { id: "aj-vacaciones", by: "id", value: "aj-vacaciones", file: "routes/ajustes.tsx", serves: "AD14 ad14-vacaciones (pliegue Vacaciones)", presence: "siempre" },

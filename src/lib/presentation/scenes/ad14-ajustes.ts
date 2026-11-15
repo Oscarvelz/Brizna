@@ -1,14 +1,14 @@
 /**
- * AD14 · Ajustes, tarjeta a tarjeta — las 17 superficies del censo F,
+ * AD14 · Ajustes, tarjeta a tarjeta — las 19 superficies del censo F,
  * contadas desde el censo y el orden de la casa (ajustes-order), no de
- * memoria: 17 pliegues — nombre, pantalla, idioma (tarjeta propia desde
+ * memoria: 18 pliegues — nombre, pantalla, idioma (tarjeta propia desde
  * la 1.5.82, por orden de Oscar; antes vivía dentro del pliegue de Tema),
- * tableta, horas,
+ * tableta, horas, metas (desde la 1.5.83, por orden de Oscar),
  * sonidos (vive en settings-finder.tsx), espera, recordatorios,
  * notificaciones (solo Android), temporada+horizonte, vacaciones,
  * exportar, ejemplo, copia, manual, nube y huella (estas dos, fuera del
  * archivo principal) — más la sección suelta de Salir, que es la
- * superficie 17. Dentro del pliegue del Manual, los tres «Ajustes
+ * superficie 19. Dentro del pliegue del Manual, los tres «Ajustes
  * rápidos» escondidos (F-59).
  *
  * Capítulos agrupados por familias de pliegues para que una división sea
@@ -21,7 +21,7 @@
  *
  * ANCLAS NUEVAS (el integrador las registra en anchors.ts):
  *  Por id DOM del pliegue (by: "id", el Fold emite el id):
- *  - aj-nombre, aj-pantalla, aj-tableta, aj-horas, aj-espera,
+ *  - aj-nombre, aj-pantalla, aj-tableta, aj-horas, aj-metas, aj-espera,
  *    aj-recordatorios, aj-notificaciones, aj-temporada, aj-vacaciones,
  *    aj-exportar, aj-ejemplo, aj-copia — routes/ajustes.tsx
  *  - aj-sonidos — components/settings-finder.tsx
@@ -130,6 +130,14 @@ export const AD14: Module = {
       steps: [
         { kind: "show", anchor: "aj-sonidos", caption: ["Sonidos: un ding suave cuando el día queda completo.", "Sounds: a soft ding when the day is complete."], contexto: ["Este pliegue vive en otro archivo: quien busca aquí, lo pierde.", "This fold lives in another file: searching only here misses it."] },
         { kind: "show", anchor: "aj-sonidos", caption: ["Volumen a tu gusto y «Probar ding» para oírlo antes.", "Volume your way, and “Test ding” to hear it first."] },
+      ],
+    },
+    {
+      id: "ad14-metas", chapter: "trabajo", anchors: ["aj-metas"],
+      keys: [["metas de la semana", "weekly goals"], ["metas", "goals"], ["patios", "yards"]],
+      steps: [
+        { kind: "show", anchor: "aj-metas", caption: ["Metas de la semana: cuántos patios quieres terminar cada día.", "Weekly goals: how many yards you want to finish each day."], contexto: ["Son las mismas metas que mide «Esfuerzo de la semana», en el Estudio.", "They are the same goals that “This week's effort”, in Stats, measures."] },
+        { kind: "show", anchor: "aj-metas", caption: ["Se guardan para las próximas semanas; un día sin meta no se mide.", "They are kept for the weeks ahead; a day with no goal is not measured."] },
       ],
     },
     {

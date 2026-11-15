@@ -1292,8 +1292,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "The month goal adds up the yard goal of each working day. The tick shows where you should be today.",
         ],
         how: [
-          "En Esfuerzo de la semana toca un día y pon su meta de patios (empieza en 8, o en lo que ya cortaste ese día).\nEsa meta queda también para ese día de la semana en las semanas siguientes.\nMeta del mes junta todo: lo hecho, la rayita de hoy y cuántos patios por día te faltan.\nCada barra de Esfuerzo es verde si llegaste, roja si un día pasado quedó corto y amarilla mientras hoy sigue en curso.",
-          "In This week's effort tap a day and set its yard goal (it starts at 8, or at what you already cut that day).\nThat goal also stays for that weekday in later weeks.\nMonth goal pulls it together: what is done, today's tick, and how many yards a day are left.\nEach Effort bar is green if you reached it, red if a past day fell short, and yellow while today is in progress.",
+          "En Esfuerzo de la semana toca un día y pon su meta de patios (empieza en 8, o en lo que ya cortaste ese día); las mismas metas se ponen todas juntas en Ajustes, El trabajo, Metas de la semana.\nEsa meta queda también para ese día de la semana en las semanas siguientes.\nMeta del mes junta todo: lo hecho, la rayita de hoy y cuántos patios por día te faltan.\nCada barra de Esfuerzo es verde si llegaste, roja si un día pasado quedó corto y amarilla mientras hoy sigue en curso.",
+          "In This week's effort tap a day and set its yard goal (it starts at 8, or at what you already cut that day); the same goals can all be set together in Settings, The work, Weekly goals.\nThat goal also stays for that weekday in later weeks.\nMonth goal pulls it together: what is done, today's tick, and how many yards a day are left.\nEach Effort bar is green if you reached it, red if a past day fell short, and yellow while today is in progress.",
         ],
         calc: [
           "Meta del mes = suma, día por día, de la meta de esa fecha (o la de ese día de la semana). No suman los días libres, los días que casi nunca se trabajan ni las vacaciones.\nHecho = todos los trabajos hechos del mes (cortes, extras y de una vez).\nRayita = la meta de los días ya pasados.\nPor día = lo que falta ÷ los días de trabajo que quedan, contando hoy, redondeado hacia arriba.",
@@ -2217,7 +2217,7 @@ export const HINT_ONLY: HintOnly[] = [
   {
     id: "esfuerzo",
     into: "meta-mes",
-    what: ["Toca un día para poner su meta de patios. La meta se mantiene ese día en las semanas siguientes.", "Tap a day to set its yard goal. The goal stays for that weekday in later weeks."],
+    what: ["Pon la meta de patios de cada día — tocando el día en el Estudio, o en Ajustes, en El trabajo — y se mantiene ese día en las semanas siguientes.", "Set each day's yard goal — by tapping the day in Stats, or in Settings, under The work — and it stays for that weekday in later weeks."],
   },
   {
     id: "orden-cifras",

@@ -2594,6 +2594,19 @@ export const upsertDayGoal = createServerFn({ method: "POST" })
         context.userId,
         data.date,
       ]);
+      // 1.5.83: «Sin meta» también retira la meta fija de ese día de semana.
+      // Hasta aquí solo borraba el retoque de la fecha, y la meta heredada
+      // volvía al refrescar — pasaba igual en la tarjeta del Estudio y en
+      // el nuevo pliegue de Ajustes.
+      const prefs = await loadPrefs(context.userId);
+      const next = { ...prefs.weekGoals };
+      delete next[String(weekday)];
+      await sql.query(
+        `insert into app_settings (user_id, week_goals, updated_at)
+         values ($1, $2, now())
+         on conflict (user_id) do update set week_goals = $2, updated_at = now()`,
+        [context.userId, JSON.stringify(next)],
+      );
       return { ok: true as const, goal: null };
     }
     await sql.query(
