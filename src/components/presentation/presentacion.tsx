@@ -156,6 +156,15 @@ const tapEl = (el: HTMLElement) => {
   interactiveTarget(el).dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
 };
 
+/* LA HUELLA DE UNA DEMOSTRACIÓN (principios 4, 8 y 11): los anclas cuya
+ * lección es el control MÁS la región donde su efecto se despliega — las
+ * vistas (la lista que se achica y crece) y los filtros de Clientes (la
+ * lista que separan). Para ellas la tarjeta se sienta arriba, la ventana
+ * clara cubre la huella hasta el fondo de la pantalla y la pantalla misma
+ * se desplaza: la huella entera, en color normal, dentro del cuadro. */
+const isFootprint = (a?: string): boolean =>
+  !!a && (a.startsWith("vistas") || a === "clientes-filtros");
+
 const hasCaption = (
   step: Step,
 ): step is Extract<Step, { caption: unknown }> =>
@@ -599,7 +608,7 @@ export function Presentacion() {
      * (la página o la hoja), no a ciegas sobre la ventana; el hueco
      * sigue al elemento porque armRect lo remide sin cesar. */
     const scrollDemonstration = (el: HTMLElement, anchor?: string) => {
-      if (!anchor || !anchor.startsWith("vistas")) {
+      if (!isFootprint(anchor)) {
         el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
         return;
       }
@@ -1124,7 +1133,7 @@ export function Presentacion() {
    * vistas el efecto vive ABAJO (la lista que se achica y crece), así
    * que la tarjeta SUBE: arriba del todo, donde no vive nada de la
    * lección. El foco (hueco y anillo) sigue en el selector. */
-  const seatTop = !!(step && "anchor" in step && typeof step.anchor === "string" && step.anchor.startsWith("vistas"));
+  const seatTop = !!(step && "anchor" in step && typeof step.anchor === "string" && isFootprint(step.anchor));
   const desiredTop = seatTop
     ? 10
     : cardHole

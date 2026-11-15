@@ -15,6 +15,7 @@
 import { switchDatabase } from "@/lib/db";
 import { readStoredLocale } from "@/lib/theme";
 import { setSealed } from "./seal-flag";
+import { armPrefGuardHere, restorePrefGuardHere } from "./pref-guard";
 
 /** The stage store's database URL. dbName() in src/spa/db.ts opens exactly this
  *  while the stage is on. PGlite's IndexedDB filesystem names its database
@@ -67,6 +68,11 @@ async function deleteStageStore(): Promise<void> {
  *  then does the app switch stores and remount. */
 export async function enterStage(): Promise<void> {
   if (stage) return;
+  // El guardián de preferencias se arma ANTES de todo: las demostraciones
+  // tocan preferencias del dispositivo (densidad, vista del Estudio, tema)
+  // que viven fuera del libro; su fotografía es lo que las devuelve intactas
+  // al salir, por cualquier puerta (pref-guard.ts, principio 13).
+  armPrefGuardHere();
   await deleteStageStore();
   setSealed(true);
   await switchDatabase(STAGE_DB_NAME);
@@ -96,6 +102,10 @@ export async function enterStage(): Promise<void> {
 export async function exitStage(): Promise<void> {
   if (!stage) return;
   await switchDatabase(null);
+  // Las preferencias vuelven a su fotografía ANTES del remontaje, para que
+  // la primera pintura sobre el libro real ya las lea como el usuario las
+  // dejó (densidad, vista del Estudio, tema, idioma).
+  restorePrefGuardHere();
   stage = false;
   dispatchSwitch();
   await deleteStageStore();
@@ -110,5 +120,9 @@ export async function exitStage(): Promise<void> {
 // interrupted, and it is deleted so no fiction survives into the real book's
 // session.
 if (!(globalThis as { __bzDb?: string }).__bzDb) {
+  // Si una muerte dejó el guardián armado, sus preferencias restauradas son
+  // lo primero: la casa vuelve a estar como el usuario la dejó antes de que
+  // cualquier pantalla lea una preferencia.
+  restorePrefGuardHere();
   void deleteStageStore();
 }
