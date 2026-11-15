@@ -24,7 +24,7 @@
 .pres-blurpatch {
   position: fixed;
   pointer-events: none;
-  background: rgb(0 0 0 / .47);
+  background: rgb(0 0 0 / .45); /* el techo de flota: el negro del velo no pasa del 45% (Oscar, 2026-11-15: «Que baje a 45% para todos») */
   -webkit-backdrop-filter: saturate(.8);
   transition: left .42s cubic-bezier(.22, 1, .36, 1), top .42s cubic-bezier(.22, 1, .36, 1),
     width .42s cubic-bezier(.22, 1, .36, 1), height .42s cubic-bezier(.22, 1, .36, 1), opacity .2s ease-out;
