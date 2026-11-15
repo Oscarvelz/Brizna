@@ -163,6 +163,23 @@ function NumberRow({
   );
 }
 
+/** Los clusters de Ajustes (Oscar, 2026-11-14, a su «Me encanta demasiado»):
+ * la pantalla se agrupa en bandejas como en Vela. El cluster es una bandeja:
+ * una tarjeta honda con su nombre y una línea de lo que guarda; los pliegues
+ * de siempre viven dentro sin cambiar su contenido, y el orden que el usuario
+ * guarda ordena dentro de cada bandeja. */
+function Cluster({ title, hint, children }: { title: ReactNode; hint: ReactNode; children: ReactNode }) {
+  return (
+    <section className="bz-cluster">
+      <header className="bz-cluster-head">
+        <h2 className="bz-cluster-title">{title}</h2>
+        <p className="bz-cluster-hint">{hint}</p>
+      </header>
+      <div className="bz-cluster-body">{children}</div>
+    </section>
+  );
+}
+
 function SettingFold({
   id,
   order,
@@ -451,6 +468,7 @@ function AjustesPage() {
     >
       <ScrollTop />
       <Masonry className="flex flex-col" three={1150}>
+        <Cluster title={tx("El negocio", "The business")} hint={tx("El nombre, la temporada y las vacaciones", "The name, the season, and vacation mode")}>
         <SettingFold
           id="aj-nombre"
           order="order-1"
@@ -481,6 +499,180 @@ function AjustesPage() {
             </Button>
           </SettingFold>
 
+        <SeasonBlock settings={settings} query={query} />
+
+        <SettingFold
+          id="aj-vacaciones"
+          order="order-8"
+          query={query}
+          blob="modo vacaciones descanso viaje time off vacation"
+          title={
+            <span className="flex items-center gap-2">
+              <Palmtree className="size-5 shrink-0 text-primary" />
+              {tx("Modo vacaciones", "Time off")}
+            </span>
+          }
+          hint={
+            <Hint topic="vacaciones" />
+          }
+        >
+          <p className="text-sm text-muted">
+            {settings?.vacationStart
+              ? tx(
+                  `Activo del ${formatDay(settings.vacationStart, "d MMM")} al ${formatDay(settings.vacationEnd ?? settings.vacationStart, "d MMM")}.`,
+                  `On from ${formatDay(settings.vacationStart, "d MMM")} to ${formatDay(settings.vacationEnd ?? settings.vacationStart, "d MMM")}.`,
+                )
+              : tx("Apagado. Sirve para reacomodar los patios pendientes durante las vacaciones.", "Off. Use it to reschedule pending yards during time off.")}
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div>
+              <Label>{tx("Desde", "From")}</Label>
+              <Input type="date" value={vacStart || settings?.vacationStart || todayISO()} onChange={(e) => setVacStart(e.target.value)} />
+            </div>
+            <div>
+              <Label>{tx("Hasta", "Until")}</Label>
+              <Input type="date" value={vacEnd || settings?.vacationEnd || addDaysISO(todayISO(), 7)} onChange={(e) => setVacEnd(e.target.value)} />
+            </div>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <Button
+              data-present="ajustes-vacaciones-activar"
+              disabled={vacMut.isPending}
+              onClick={() => {
+                const start = vacStart || settings?.vacationStart || todayISO();
+                const end = vacEnd || settings?.vacationEnd || addDaysISO(todayISO(), 7);
+                setVacStart(start);
+                setVacEnd(end);
+                vacMut.mutate({ start, end });
+              }}
+            >
+              {settings?.vacationStart ? tx("Actualizar fechas", "Update dates") : tx("Activar vacaciones", "Turn on time off")}
+            </Button>
+            {settings?.vacationStart ? (
+              <Button variant="outline" data-present="ajustes-vacaciones-quitar" disabled={vacOff.isPending} onClick={() => vacOff.mutate()}>
+                {tx("Quitar vacaciones", "Remove time off")}
+              </Button>
+            ) : null}
+          </div>
+        </SettingFold>
+
+        </Cluster>
+        <Cluster title={tx("El trabajo", "The work")} hint={tx("Las horas y las reglas de espera y riesgo", "Work hours and the waiting and risk rules")}>
+        <SettingFold
+          id="aj-horas"
+          order="order-3"
+          query={query}
+          blob="horas de trabajo entrada salida reloj horario work hours"
+          title={
+            <span className="flex items-center gap-2">
+              <Clock className="size-5 shrink-0 text-primary" />
+              {t("hours.title")}
+            </span>
+          }
+          hint={<Hint topic="horas" />}
+        >
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-sm">
+              {t("hours.in")}
+              <Input
+                type="time"
+                defaultValue={settings?.workStart ?? "08:00"}
+                key={`in-${settings?.workStart ?? "08:00"}`}
+                onBlur={(e) => {
+                  if (!/^\d{2}:\d{2}$/.test(e.target.value)) return;
+                  void updateSettings({ data: { workStart: e.target.value } });
+                }}
+              />
+            </label>
+            <label className="text-sm">
+              {t("hours.out")}
+              <Input
+                type="time"
+                defaultValue={settings?.workEnd ?? "17:30"}
+                key={`out-${settings?.workEnd ?? "17:30"}`}
+                onBlur={(e) => {
+                  if (!/^\d{2}:\d{2}$/.test(e.target.value)) return;
+                  void updateSettings({ data: { workEnd: e.target.value } });
+                }}
+              />
+            </label>
+          </div>
+        </SettingFold>
+
+        <SettingFold
+          id="aj-espera"
+          order="order-4"
+          query={query}
+          blob="espera alto riesgo dias monto cortes trabajos waiting high risk cuts"
+          title={
+            <span className="flex items-center gap-2">
+              <Hourglass className="size-5 shrink-0 text-primary" />
+              {tx("Espera y alto riesgo", "Waiting and high risk")}
+            </span>
+          }
+          hint={
+            <Hint topic="espera" />
+          }
+        >
+          <p className="text-sm text-muted">
+            {emphasize(
+              tx(
+                "El dinero sin pagar se queda en Por cobrar. En espera es alguien que se atrasa y va a pagar. Si pasa estos límites, el caso se pone naranja y entra en Clientes, Alto riesgo. Estos límites se aplican a todos AL INSTANTE: cambiarlos reclasifica a cada cliente en el acto. Y un caso en serio (alto riesgo) deja de recibir visitas nuevas hasta que pague, se le perdone o marques «Seguir atendiendo» en su ficha.",
+                "Unpaid money stays in To collect. Waiting is someone who is late and will pay. If they pass these limits, the case turns orange and shows in Clients, High risk. These limits apply to everyone INSTANTLY: changing them reclassifies every client right away. And a serious (high-risk) case stops getting new visits until they pay, are forgiven, or you mark \"Keep serving\" on their file.",
+              ),
+            )}
+          </p>
+          <div className="aj-nums mt-3">
+            <NumberRow
+              label={tx("Días para En espera", "Days for Waiting")}
+              sub={tx("Atraso que todavía esperas", "Lateness you still wait out")}
+              value={settings?.waitDays ?? 45}
+              min={7}
+              max={400}
+              step={1}
+              onCommit={(n) => updateSettings({ data: { waitDays: n } }).then(() => Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), invalidateLawn(qc)]))}
+            />
+            <NumberRow
+              label={tx("Días para alto riesgo", "Days for high risk")}
+              sub={tx("Después de En espera", "After Waiting")}
+              value={settings?.riskDays ?? 21}
+              min={3}
+              max={400}
+              step={1}
+              onCommit={(n) => updateSettings({ data: { riskDays: n } }).then(() => Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), invalidateLawn(qc)]))}
+            />
+            <NumberRow
+              label={tx("Monto para alto riesgo", "Amount for high risk")}
+              sub={tx("Lo que debe, en total", "What they owe, in total")}
+              prefix="$"
+              value={settings?.riskAmount ?? 200}
+              min={1}
+              max={100000}
+              step={25}
+              onCommit={(n) => updateSettings({ data: { riskAmount: n } }).then(() => Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), invalidateLawn(qc)]))}
+            />
+            <NumberRow
+              label={tx("Cortes sin pagar", "Unpaid cuts")}
+              sub={tx("Cortes o trabajos ya hechos", "Cuts or jobs already done")}
+              value={settings?.riskCuts ?? 3}
+              min={1}
+              max={30}
+              step={1}
+              onCommit={(n) => updateSettings({ data: { riskCuts: n } }).then(() => Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), invalidateLawn(qc)]))}
+            />
+          </div>
+          <p className="aj-note mt-3 text-sm">
+            {emphasize(
+              tx(
+                "Basta con que se pase del tiempo, del monto o de los cortes. No tienen que cumplirse a la vez.",
+                "It is enough to pass the time, the amount, or the cuts. They do not all have to happen at once.",
+              ),
+            )}
+          </p>
+        </SettingFold>
+
+        </Cluster>
+        <Cluster title={tx("La pantalla", "The screen")} hint={tx("Temas, idioma y modo tableta", "Themes, language, and tablet mode")}>
         <SettingFold
           id="aj-pantalla"
           order="order-2"
@@ -644,121 +836,8 @@ function AjustesPage() {
           </button>
         </SettingFold>
 
-        <SettingFold
-          id="aj-horas"
-          order="order-3"
-          query={query}
-          blob="horas de trabajo entrada salida reloj horario work hours"
-          title={
-            <span className="flex items-center gap-2">
-              <Clock className="size-5 shrink-0 text-primary" />
-              {t("hours.title")}
-            </span>
-          }
-          hint={<Hint topic="horas" />}
-        >
-          <div className="grid grid-cols-2 gap-2">
-            <label className="text-sm">
-              {t("hours.in")}
-              <Input
-                type="time"
-                defaultValue={settings?.workStart ?? "08:00"}
-                key={`in-${settings?.workStart ?? "08:00"}`}
-                onBlur={(e) => {
-                  if (!/^\d{2}:\d{2}$/.test(e.target.value)) return;
-                  void updateSettings({ data: { workStart: e.target.value } });
-                }}
-              />
-            </label>
-            <label className="text-sm">
-              {t("hours.out")}
-              <Input
-                type="time"
-                defaultValue={settings?.workEnd ?? "17:30"}
-                key={`out-${settings?.workEnd ?? "17:30"}`}
-                onBlur={(e) => {
-                  if (!/^\d{2}:\d{2}$/.test(e.target.value)) return;
-                  void updateSettings({ data: { workEnd: e.target.value } });
-                }}
-              />
-            </label>
-          </div>
-        </SettingFold>
-
-        <SoundSettings query={query} />
-
-        <SettingFold
-          id="aj-espera"
-          order="order-4"
-          query={query}
-          blob="espera alto riesgo dias monto cortes trabajos waiting high risk cuts"
-          title={
-            <span className="flex items-center gap-2">
-              <Hourglass className="size-5 shrink-0 text-primary" />
-              {tx("Espera y alto riesgo", "Waiting and high risk")}
-            </span>
-          }
-          hint={
-            <Hint topic="espera" />
-          }
-        >
-          <p className="text-sm text-muted">
-            {emphasize(
-              tx(
-                "El dinero sin pagar se queda en Por cobrar. En espera es alguien que se atrasa y va a pagar. Si pasa estos límites, el caso se pone naranja y entra en Clientes, Alto riesgo. Estos límites se aplican a todos AL INSTANTE: cambiarlos reclasifica a cada cliente en el acto. Y un caso en serio (alto riesgo) deja de recibir visitas nuevas hasta que pague, se le perdone o marques «Seguir atendiendo» en su ficha.",
-                "Unpaid money stays in To collect. Waiting is someone who is late and will pay. If they pass these limits, the case turns orange and shows in Clients, High risk. These limits apply to everyone INSTANTLY: changing them reclassifies every client right away. And a serious (high-risk) case stops getting new visits until they pay, are forgiven, or you mark \"Keep serving\" on their file.",
-              ),
-            )}
-          </p>
-          <div className="aj-nums mt-3">
-            <NumberRow
-              label={tx("Días para En espera", "Days for Waiting")}
-              sub={tx("Atraso que todavía esperas", "Lateness you still wait out")}
-              value={settings?.waitDays ?? 45}
-              min={7}
-              max={400}
-              step={1}
-              onCommit={(n) => updateSettings({ data: { waitDays: n } }).then(() => Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), invalidateLawn(qc)]))}
-            />
-            <NumberRow
-              label={tx("Días para alto riesgo", "Days for high risk")}
-              sub={tx("Después de En espera", "After Waiting")}
-              value={settings?.riskDays ?? 21}
-              min={3}
-              max={400}
-              step={1}
-              onCommit={(n) => updateSettings({ data: { riskDays: n } }).then(() => Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), invalidateLawn(qc)]))}
-            />
-            <NumberRow
-              label={tx("Monto para alto riesgo", "Amount for high risk")}
-              sub={tx("Lo que debe, en total", "What they owe, in total")}
-              prefix="$"
-              value={settings?.riskAmount ?? 200}
-              min={1}
-              max={100000}
-              step={25}
-              onCommit={(n) => updateSettings({ data: { riskAmount: n } }).then(() => Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), invalidateLawn(qc)]))}
-            />
-            <NumberRow
-              label={tx("Cortes sin pagar", "Unpaid cuts")}
-              sub={tx("Cortes o trabajos ya hechos", "Cuts or jobs already done")}
-              value={settings?.riskCuts ?? 3}
-              min={1}
-              max={30}
-              step={1}
-              onCommit={(n) => updateSettings({ data: { riskCuts: n } }).then(() => Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), invalidateLawn(qc)]))}
-            />
-          </div>
-          <p className="aj-note mt-3 text-sm">
-            {emphasize(
-              tx(
-                "Basta con que se pase del tiempo, del monto o de los cortes. No tienen que cumplirse a la vez.",
-                "It is enough to pass the time, the amount, or the cuts. They do not all have to happen at once.",
-              ),
-            )}
-          </p>
-        </SettingFold>
-
+        </Cluster>
+        <Cluster title={tx("Los avisos", "Alerts")} hint={tx("Recordatorios, avisos del teléfono y sonidos", "Reminders, phone notifications, and sounds")}>
         <SettingFold
           id="aj-recordatorios"
           order="order-6"
@@ -808,63 +887,10 @@ function AjustesPage() {
 
         {inAndroidApp() ? <NotifyFold query={query} /> : null}
 
-        <SeasonBlock settings={settings} query={query} />
+        <SoundSettings query={query} />
 
-        <SettingFold
-          id="aj-vacaciones"
-          order="order-8"
-          query={query}
-          blob="modo vacaciones descanso viaje time off vacation"
-          title={
-            <span className="flex items-center gap-2">
-              <Palmtree className="size-5 shrink-0 text-primary" />
-              {tx("Modo vacaciones", "Time off")}
-            </span>
-          }
-          hint={
-            <Hint topic="vacaciones" />
-          }
-        >
-          <p className="text-sm text-muted">
-            {settings?.vacationStart
-              ? tx(
-                  `Activo del ${formatDay(settings.vacationStart, "d MMM")} al ${formatDay(settings.vacationEnd ?? settings.vacationStart, "d MMM")}.`,
-                  `On from ${formatDay(settings.vacationStart, "d MMM")} to ${formatDay(settings.vacationEnd ?? settings.vacationStart, "d MMM")}.`,
-                )
-              : tx("Apagado. Sirve para reacomodar los patios pendientes durante las vacaciones.", "Off. Use it to reschedule pending yards during time off.")}
-          </p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <div>
-              <Label>{tx("Desde", "From")}</Label>
-              <Input type="date" value={vacStart || settings?.vacationStart || todayISO()} onChange={(e) => setVacStart(e.target.value)} />
-            </div>
-            <div>
-              <Label>{tx("Hasta", "Until")}</Label>
-              <Input type="date" value={vacEnd || settings?.vacationEnd || addDaysISO(todayISO(), 7)} onChange={(e) => setVacEnd(e.target.value)} />
-            </div>
-          </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <Button
-              data-present="ajustes-vacaciones-activar"
-              disabled={vacMut.isPending}
-              onClick={() => {
-                const start = vacStart || settings?.vacationStart || todayISO();
-                const end = vacEnd || settings?.vacationEnd || addDaysISO(todayISO(), 7);
-                setVacStart(start);
-                setVacEnd(end);
-                vacMut.mutate({ start, end });
-              }}
-            >
-              {settings?.vacationStart ? tx("Actualizar fechas", "Update dates") : tx("Activar vacaciones", "Turn on time off")}
-            </Button>
-            {settings?.vacationStart ? (
-              <Button variant="outline" data-present="ajustes-vacaciones-quitar" disabled={vacOff.isPending} onClick={() => vacOff.mutate()}>
-                {tx("Quitar vacaciones", "Remove time off")}
-              </Button>
-            ) : null}
-          </div>
-        </SettingFold>
-
+        </Cluster>
+        <Cluster title={tx("Tus datos", "Your data")} hint={tx("Exportar, copias de seguridad y datos de ejemplo", "Export, backups, and sample data")}>
         <SettingFold
           id="aj-exportar"
           order="order-10"
@@ -883,22 +909,6 @@ function AjustesPage() {
           <ExportCenterCard onOpen={exporter.launch} />
         </SettingFold>
         <ExportSheet open={exporter.open} preset={exporter.preset} onClose={exporter.close} />
-
-        <SettingFold
-          id="aj-ejemplo"
-          order="order-12"
-          query={query}
-          blob="datos de ejemplo muestra demo probar cargar quitar sample data try load remove"
-          title={
-            <span className="flex items-center gap-2">
-              <FlaskConical className="size-5 shrink-0 text-primary" />
-              {tx("Datos de ejemplo", "Sample data")}
-            </span>
-          }
-          hint={<Hint topic="ejemplo" />}
-        >
-          <SampleSettings />
-        </SettingFold>
 
         <SettingFold
           id="aj-copia"
@@ -1037,12 +1047,31 @@ function AjustesPage() {
           onConfirm={() => restoreJson && restoreFile.mutate(restoreJson)}
           onCancel={() => setRestoreJson(null)}
         />
+        <SettingFold
+          id="aj-ejemplo"
+          order="order-12"
+          query={query}
+          blob="datos de ejemplo muestra demo probar cargar quitar sample data try load remove"
+          title={
+            <span className="flex items-center gap-2">
+              <FlaskConical className="size-5 shrink-0 text-primary" />
+              {tx("Datos de ejemplo", "Sample data")}
+            </span>
+          }
+          hint={<Hint topic="ejemplo" />}
+        >
+          <SampleSettings />
+        </SettingFold>
+
+        </Cluster>
+        <Cluster title={tx("Aprender", "Learn")} hint={tx("Las presentaciones y el manual de usuario", "The presentations and the user manual")}>
         {!query || smartHit(query, "presentaciones módulos aprender tutorial presentations modules learn") ? (
           <PresentacionesFold />
         ) : null}
         {!query || smartHit(query, "manual ayuda usuario user guide") ? (
           <UserManual onLocale={setLocale} forceOpen={Boolean(query)} />
         ) : null}
+        </Cluster>
         {!query || smartHit(query, "salir cerrar sesion cuenta sign out huella fingerprint nube sincronizar sync cloud") ? (
         <div className="order-14" data-masonry-under="aj-ejemplo">
           <SyncStatusCard />

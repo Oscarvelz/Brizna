@@ -3423,3 +3423,22 @@ html.theme-amoled .bz-dup-group, html.theme-dark[data-palette="grafito"] .bz-dup
 
 /* 1.5.06: the shell column takes sideways drags itself (screen-to-screen swipe, lib/page-swipe.ts); vertical scroll and pinch stay the browser's. */
 .bz-swipe-host { touch-action: pan-y pinch-zoom; }
+
+/* Los clusters de Ajustes (Oscar, 2026-11-14, a su «Me encanta demasiado»:
+   la pantalla se agrupa en bandejas como en Vela). La separación con los
+   pliegues de dentro sigue la ley de calibración de la casa: la bandeja se
+   hunde un tono bajo la página (fg 4% sobre bg) y se sella con el borde
+   apilado (filete + luz superior + sombra corta); los pliegues, en surface,
+   quedan orgullosos dentro — jamás un salto grande de luz entre contenedor
+   y tarjeta. El cuerpo es flex en columna para que el orden guardado por el
+   usuario (los rangos de cada pliegue) ordene DENTRO de cada bandeja. Y una
+   bandeja cuyos pliegues no casan con la búsqueda no se pinta: sin cáscaras
+   vacías. */
+.bz-cluster { border-radius: 22px; padding: 16px 12px 2px; margin-bottom: 18px; background: color-mix(in oklab, var(--color-fg) 4%, var(--color-bg)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-fg) 8%, transparent), inset 0 1px 0 color-mix(in srgb, #ffffff 6%, transparent), 0 16px 30px -22px rgb(0 0 0 / .55); }
+.bz-cluster:has(> .bz-cluster-body:empty) { display: none; }
+.bz-cluster-head { padding: 0 6px 10px; }
+.bz-cluster-title { font-family: var(--font-display); font-size: 17px; font-weight: 700; letter-spacing: .01em; line-height: 1.2; }
+.bz-cluster-hint { font-size: 12.5px; color: var(--color-muted); margin-top: 2px; line-height: 1.35; }
+.bz-cluster-body { display: flex; flex-direction: column; }
+.bz-cluster-body > .bz-fold { margin-bottom: 10px; }
+.bz-cluster-body > .bz-fold:last-child { margin-bottom: 12px; }
