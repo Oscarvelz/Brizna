@@ -18,6 +18,12 @@ export type PresState = {
   speed: number;
   mode: "auto" | "interactive";
   savedScenes: string[];
+  /** La escala de velocidad recalibrada ya rige en este aparato (Oscar,
+   * 2026-11-14: la antigua 0.5 es el nuevo 1). Una velocidad guardada
+   * bajo la escala vieja significaba otro ritmo: la primera lectura sin
+   * esta marca la devuelve al 1 nuevo — el ritmo que Oscar eligió — y la
+   * marca hace que las elecciones posteriores se honren tal cual. */
+  paceV2: boolean;
   /** El último módulo que el usuario estuvo reproduciendo (ley de Oscar,
    * 2026-11-14): si quedó incompleto, su ficha abre el índice — la primera
    * de todas — para continuar donde iba sin tener que buscarla. Al
@@ -39,15 +45,20 @@ const SPEEDS = [0.5, 0.75, 1, 1.5, 2] as const;
 export function readPresState(): PresState {
   try {
     const raw = JSON.parse(localStorage.getItem(SEEN_KEY) || "null") as Partial<PresState> | null;
+    const paceV2 = raw?.paceV2 === true;
     return {
       modules: raw?.modules ?? {},
-      speed: SPEEDS.includes(raw?.speed as (typeof SPEEDS)[number]) ? (raw!.speed as number) : 1,
+      // Sin la marca de la escala nueva, una velocidad guardada era de la
+      // escala vieja: se vuelve al 1 (el ritmo que la recalibración
+      // declara normal) en vez de reinterpretarla en silencio.
+      speed: paceV2 && SPEEDS.includes(raw?.speed as (typeof SPEEDS)[number]) ? (raw!.speed as number) : 1,
       mode: raw?.mode === "interactive" ? "interactive" : "auto",
       savedScenes: Array.isArray(raw?.savedScenes) ? raw!.savedScenes : [],
       lastPlayed: typeof raw?.lastPlayed === "string" ? raw.lastPlayed : null,
+      paceV2: true,
     };
   } catch {
-    return { modules: {}, speed: 1, mode: "auto", savedScenes: [], lastPlayed: null };
+    return { modules: {}, speed: 1, mode: "auto", savedScenes: [], lastPlayed: null, paceV2: true };
   }
 }
 
@@ -81,6 +92,29 @@ export function takeLaunch(): LaunchIntent | null {
     return parsed.moduleId ? { moduleId: parsed.moduleId, sceneId: parsed.sceneId } : null;
   } catch {
     return null;
+  }
+}
+
+/** Espía la intención sin consumirla: la ventana de apertura se pinta
+ * desde el toque mismo, antes de que el escenario termine de entrar. */
+export function peekLaunch(): LaunchIntent | null {
+  try {
+    const raw = sessionStorage.getItem(LAUNCH_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<LaunchIntent>;
+    return parsed.moduleId ? { moduleId: parsed.moduleId, sceneId: parsed.sceneId } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Retira la intención: la ventana de apertura se canceló antes de nacer
+ * la corrida — el escenario que venía entrando se disuelve solo. */
+export function clearLaunch(): void {
+  try {
+    sessionStorage.removeItem(LAUNCH_KEY);
+  } catch {
+    /* ignore */
   }
 }
 

@@ -126,7 +126,23 @@ export const wordCount = (text: string): number => text.trim().split(/\s+/).filt
  * scroll comen ~0,4 s, y no se alcanzaban a leer. */
 export const MIN_DWELL_MS = 2600;
 
-/** Permanencia de un pie a velocidad 1×: proporcional a sus palabras. */
+/** LA ESCALA DE VELOCIDAD, RECALIBRADA (Oscar, veredicto telefónico sobre
+ * la 1.5.80, 2026-11-14 23:47 EST): a 1× no podía disfrutar la
+ * presentación — tenía que bajar a 0.5×, la mínima, «que es irónico». Su
+ * orden: la actual 0.5 sea el 1 normal, y las demás etiquetas se
+ * reescalan en proporción. PACE es ese factor: el motor divide siempre
+ * entre etiqueta × PACE, así la etiqueta 1 corre al ritmo que antes
+ * corría la de 0.5, la de 2 al que corría la de 1, y la de 0.5 queda como
+ * el estudio más lento. Lo anunciado (stepMs) se calcula con la misma
+ * escala — anunciar otra sería mentir la duración. Prueba en Brizna
+ * primero: si Oscar la aprueba, será ley universal. */
+export const PACE = 0.5;
+
+/** La velocidad efectiva de una etiqueta del selector: etiqueta × PACE. */
+export const effSpeed = (label: number): number => label * PACE;
+
+/** Permanencia nominal de un pie: proporcional a sus palabras. Su vida
+ * real en pantalla es dwellMs ÷ velocidad efectiva (a 1×, el doble). */
 export const dwellMs = (caption: Pair, lang: string): number =>
   Math.max(MIN_DWELL_MS, Math.round((wordCount(pick(caption, lang)) / WORDS_PER_MINUTE) * 60_000) + ORIENT_MS);
 
@@ -137,30 +153,36 @@ const contextoMs = (step: Step, lang: string): number =>
     ? Math.round((wordCount(pick(step.contexto, lang)) / WORDS_PER_MINUTE) * 60_000)
     : 0;
 
-/** Lo que un paso cuesta en modo automático a 1× (para la duración anunciada). */
+/** Lo que un paso cuesta en modo automático a 1× (para la duración
+ * anunciada): la suma nominal del motor dividida entre la velocidad
+ * efectiva de la etiqueta 1 — effSpeed(1) = PACE — para que lo anunciado
+ * sea exactamente lo que el motor corre a 1× tras la recalibración. */
 export function stepMs(step: Step, lang: string): number {
-  switch (step.kind) {
-    case "show":
-    case "ask":
-    case "theatre":
-      return dwellMs(step.caption, lang) + contextoMs(step, lang);
-    case "do":
-      return dwellMs(step.caption, lang) + contextoMs(step, lang) + 650; // el pie entero, el toque y el asentamiento
-    case "press":
-      return dwellMs(step.caption, lang) + contextoMs(step, lang) + step.ms + 800; // el pie + la presión entera con su respiro (150) + el asentamiento (650)
-    case "swipe":
-      return dwellMs(step.caption, lang) + contextoMs(step, lang) + 1150; // el pie + el arrastre (~500) + el asentamiento (650)
-    case "type":
-      return dwellMs(step.caption, lang) + contextoMs(step, lang) + 500; // el pie + el tecleo dentro de su vida
-    case "go":
-      return 1400; // el viaje y el asentamiento
-    case "tap":
-      return 720; // 300 hasta el toque + 420 de asentamiento, como corre el motor
-    case "stage":
-      return 600; // sembrar y seguir
-    case "ref":
-      return 0; // la referencia se ofrece; no cuesta tiempo de guion
-  }
+  const nominal = ((): number => {
+    switch (step.kind) {
+      case "show":
+      case "ask":
+      case "theatre":
+        return dwellMs(step.caption, lang) + contextoMs(step, lang);
+      case "do":
+        return dwellMs(step.caption, lang) + contextoMs(step, lang) + 650; // el pie entero, el toque y el asentamiento
+      case "press":
+        return dwellMs(step.caption, lang) + contextoMs(step, lang) + step.ms + 800; // el pie + la presión entera con su respiro (150) + el asentamiento (650)
+      case "swipe":
+        return dwellMs(step.caption, lang) + contextoMs(step, lang) + 1150; // el pie + el arrastre (~500) + el asentamiento (650)
+      case "type":
+        return dwellMs(step.caption, lang) + contextoMs(step, lang) + 500; // el pie + el tecleo dentro de su vida
+      case "go":
+        return 1400; // el viaje y el asentamiento
+      case "tap":
+        return 720; // 300 hasta el toque + 420 de asentamiento, como corre el motor
+      case "stage":
+        return 600; // sembrar y seguir
+      case "ref":
+        return 0; // la referencia se ofrece; no cuesta tiempo de guion
+    }
+  })();
+  return Math.round(nominal / PACE);
 }
 
 export const sceneMs = (scene: Scene, lang: string): number =>

@@ -23,11 +23,11 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useI18n, useTx } from "@/lib/i18n";
 import {
-  WORDS_PER_MINUTE, dwellMs, moduleById, pick, stepMs, wordCount,
+  WORDS_PER_MINUTE, dwellMs, durationLabel, effSpeed, moduleById, pick, stepMs, wordCount,
   type Module, type Scene, type Step,
 } from "@/lib/presentation/guion";
 import {
-  clearStay, peekStay, readPresState, setLaunch, setStay, takeLaunch, writePresState,
+  clearLaunch, clearStay, peekLaunch, peekStay, readPresState, setLaunch, setStay, takeLaunch, writePresState,
   type PresState,
 } from "@/lib/presentation/state";
 import { enterStage, exitStage, stageOn, STAGE_EVENT } from "@/lib/presentation/stage";
@@ -48,6 +48,10 @@ const SPEEDS = [0.5, 0.75, 1, 1.5, 2] as const;
  * requisito del compás no se acorta jamás: la suelta nunca baja de `ms`. */
 const PRESS_BREATHE_MS = 150;
 
+/** El aviso de lanzamiento: el conductor lo escucha para pintar la
+ * ventana de apertura en el mismo toque, sin esperar al escenario. */
+const LAUNCH_EVENT = "bz-pres-launch";
+
 /** Lanza un módulo: la intención viaja en sessionStorage y el conductor, ya
  * montado en la raíz, entra en el escenario (la app se remonta sobre el libro
  * de escenario vía StageHost). La escena de arranque, si viene, es el
@@ -56,6 +60,7 @@ const PRESS_BREATHE_MS = 150;
  * capítulo es la unidad de sentada. */
 export function launchPresentation(moduleId: string, sceneId?: string) {
   setLaunch({ moduleId, sceneId });
+  window.dispatchEvent(new Event(LAUNCH_EVENT));
   void enterStage();
 }
 
@@ -169,6 +174,35 @@ export function Presentacion() {
   const [run, setRun] = useState<RunState | null>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [shaking, setShaking] = useState(0);
+  /** LA VENTANA DE APERTURA (Oscar, veredicto telefónico sobre la 1.5.80,
+   * 2026-11-14 23:47 EST): el arranque se sentía duro — el toque no
+   * recibía respuesta mientras el escenario entraba en silencio. Ahora el
+   * toque mismo abre una ventana que explica las dos maneras de aprender
+   * (Automático e Interactivo) y los controles de la tarjeta, mientras el
+   * escenario se prepara detrás; «Empezar» se enciende cuando el primer
+   * compás con pie ya tiene su asiento medido. El estado vive desde la
+   * intención de lanzamiento (antes de que exista la corrida) y acompaña
+   * a la corrida hasta que el alumno empieza. */
+  const [intro, setIntro] = useState<{ mod: Module } | null>(null);
+  const introRef = useRef(false);
+  introRef.current = !!intro;
+  /** El compás con pie que la pre-corrida ya asentó tras la ventana
+   * («escena:paso»): con él, «Empezar» se enciende — el asiento está
+   * medido o el ancla resultó muerta y el despacho normal la saltará. */
+  const [heldAt, setHeldAt] = useState("");
+  /** La ventana se canceló mientras el escenario aún entraba: cuando el
+   * evento del escenario llegue sin intención viva, el escenario se
+   * disuelve solo en vez de quedar abierto sin corrida. */
+  const cancelledLaunchRef = useRef(false);
+  useEffect(() => {
+    const onLaunch = () => {
+      const intent = peekLaunch();
+      const m = intent ? moduleById(intent.moduleId) : undefined;
+      if (m && m.ready) setIntro({ mod: m });
+    };
+    window.addEventListener(LAUNCH_EVENT, onLaunch);
+    return () => window.removeEventListener(LAUNCH_EVENT, onLaunch);
+  }, []);
   /** La entrada del módulo en curso: el velo y el hueco nacen apagados y
    * se encienden en 300ms (la clase vive un respiro en la raíz). */
   const [entering, setEntering] = useState(false);
@@ -229,7 +263,15 @@ export function Presentacion() {
   useEffect(() => {
     if (!stageOn() || runRef.current) return;
     const launch = takeLaunch();
-    if (!launch) return;
+    if (!launch) {
+      // La ventana de apertura se canceló mientras el escenario entraba:
+      // nadie va a correr aquí — el escenario se disuelve solo.
+      if (cancelledLaunchRef.current) {
+        cancelledLaunchRef.current = false;
+        void exitStage();
+      }
+      return;
+    }
     const mod = moduleById(launch.moduleId);
     if (!mod || !mod.ready || !mod.scenes.length) return;
     const prefs = readPresState();
@@ -355,6 +397,7 @@ export function Presentacion() {
     window.setTimeout(() => {
       const r = runRef.current;
       if (r) saveProgress(r, r.finished);
+      setIntro(null);
       setStay({ path: "/ajustes", openPres: true });
       setRun(null);
       // Se navega ANTES de disolver: al remontar, el usuario ya está en
@@ -378,6 +421,21 @@ export function Presentacion() {
       void exitStage();
     }, leaveDelay());
   }, [saveProgress]);
+
+  /** «Ahora no» en la ventana de apertura: si la corrida ya nació, sale
+   * como cualquier salida al índice; si el escenario aún venía entrando,
+   * retira la intención y marca la cancelación — cuando el evento del
+   * escenario aterrice sin intención viva, el escenario se disuelve solo
+   * (la guarda del efecto de arranque) y el aterrizaje ya marcado deja al
+   * usuario en el índice, donde estaba. */
+  const cancelIntro = useCallback(() => {
+    if (runRef.current) { exitToIndex(); return; }
+    cancelledLaunchRef.current = true;
+    clearLaunch();
+    setIntro(null);
+    setStay({ path: "/ajustes", openPres: true });
+    if (stageOn()) void exitStage();
+  }, [exitToIndex]);
 
   /** «Quedarme aquí» PRIMERO pregunta (ley de Oscar, 2026-11-14): una
    * ventana emergente le dice al alumno qué pasa después — podrá continuar
@@ -460,7 +518,6 @@ export function Presentacion() {
    * enciende ahí — nace donde va a vivir. Los compases sin ancla no
    * esperan: el parqueo central ES su lugar verdadero. */
   const [cardShown, setCardShown] = useState(false);
-  const placePending = !!(step && "anchor" in step && step.anchor) && !rect;
   /* LA LECCIÓN NUNCA SE QUEDA EN BLANCO (Oscar, 2026-11-14, de su
    * teléfono: al avanzar en Q1 la presentación desapareció segundos,
    * solo el hilo arriba). La invisibilidad de is-unplaced es SOLO del
@@ -488,17 +545,38 @@ export function Presentacion() {
   useEffect(() => { if (rect) lastRectRef.current = rect; }, [rect]);
   useEffect(() => {
     if (!run) { setCardShown(false); bornRef.current = false; lastRectRef.current = null; prevSceneRef.current = -1; return; }
-    if (placePending && !bornRef.current) { setCardShown(false); return; }
+    // Tras la ventana de apertura la tarjeta espera invisible: su primer
+    // fotograma visible es al tocar «Empezar», ya en su sitio.
+    if (introRef.current) { setCardShown(false); return; }
+    if (!bornRef.current) {
+      /* EL NACIMIENTO ES EN EL PRIMER COMPÁS CON PIE (Oscar, 2026-11-14
+       * 23:47, sobre la 1.5.80: «la primera ficha se muestra en el
+       * centro, no donde va a comenzar»): la maquinaria inicial (stage,
+       * go) no tiene pie, y la regla anterior la dejaba encender la
+       * tarjeta en el parqueo central mientras sembraba y viajaba — el
+       * centro se veía un instante y luego la tarjeta viajaba a su
+       * sitio. Ahora la tarjeta NO nace durante la maquinaria: espera
+       * invisible hasta el primer compás con pie, y si ese compás tiene
+       * ancla, hasta que su asiento esté medido. Un primer pie sin ancla
+       * (el teatro de AD16) nace en el centro, porque ESE es su lugar
+       * verdadero. */
+      const captioned = !!step && hasCaption(step);
+      const seated = captioned && (!step || !("anchor" in step && step.anchor) || !!rect);
+      if (!seated) { setCardShown(false); return; }
+    }
     const raf = requestAnimationFrame(() => { setCardShown(true); bornRef.current = true; });
     return () => cancelAnimationFrame(raf);
-  }, [run, placePending, run?.sceneIdx, run?.stepIdx]);
+  }, [run, rect, step, intro, run?.sceneIdx, run?.stepIdx]);
 
   /* ------------------------------ el motor de pasos ------------------------------ */
   useEffect(() => {
     if (!run || !scene || !step || run.finished || run.chaptersOpen || run.speedOpen || run.stayOpen || run.exitOpen || inManual) return;
     const r = run;
     let cancelled = false;
-    const speed = r.speed;
+    // La velocidad EFECTIVA: la etiqueta del selector por el factor de la
+    // escala recalibrada (guion.ts, PACE) — a 1× el motor corre al ritmo
+    // que antes corría a 0.5×, como ordenó Oscar.
+    const speed = effSpeed(r.speed);
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const armRect = (el: HTMLElement) => {
@@ -611,6 +689,32 @@ export function Presentacion() {
           }
         }
       }
+      /* LA VENTANA DE APERTURA MANDA EN EL ARRANQUE (Oscar, 2026-11-14
+       * 23:47): mientras la ventana está abierta, la maquinaria camina
+       * tras ella — el escenario se siembra y el viaje inicial ocurre —
+       * y el primer compás CON PIE se resuelve y se asienta (su ancla se
+       * mide, la tarjeta ya tiene casa y «Empezar» se enciende), pero
+       * ningún compás actúa ni avanza: la lección empieza cuando el
+       * alumno toca «Empezar», con la tarjeta naciendo en su sitio. */
+      if (introRef.current) {
+        if (step.kind === "stage" || step.kind === "go" || step.kind === "ref") {
+          // La maquinaria sigue su curso: cae al despacho normal.
+        } else if (hasCaption(step)) {
+          const el = step.anchor ? await waitAnchor(step.anchor) : null;
+          if (cancelled) return;
+          if (el) {
+            el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+            later(() => { if (!cancelled) armRect(el); }, reduce ? 60 : 380);
+          }
+          // Asentado (o intentado: un ancla muerta no encierra la
+          // ventana — al empezar, el despacho normal la saltará con
+          // gracia, como siempre).
+          setHeldAt(`${r.sceneIdx}:${r.stepIdx}`);
+          return;
+        } else {
+          return; // Un toque u otra maquinaria con efecto: espera a «Empezar».
+        }
+      }
       if (step.kind === "stage") {
         const key = `${r.mod.id}:${r.sceneIdx}:${r.stepIdx}`;
         if (!stagedRef.current.has(key)) {
@@ -645,7 +749,7 @@ export function Presentacion() {
             }
           }
         }
-        later(() => { if (!cancelled) advance(); }, stepMs(step, lang) / speed);
+        later(() => { if (!cancelled) advance(); }, stepMs(step, lang) / r.speed); // stepMs ya trae la escala recalibrada: se divide entre la ETIQUETA, no entre la efectiva
         return;
       }
       if (step.kind === "go") {
@@ -655,7 +759,7 @@ export function Presentacion() {
         // mantenimiento — nunca señalar a un fantasma).
         if (target.includes(":")) { skipScene(scene.id); return; }
         void navigate({ to: target as never });
-        later(() => { if (!cancelled) advance(); }, stepMs(step, lang) / speed);
+        later(() => { if (!cancelled) advance(); }, stepMs(step, lang) / r.speed); // stepMs ya trae la escala recalibrada: se divide entre la ETIQUETA, no entre la efectiva
         return;
       }
       if (step.kind === "ref") { advance(); return; }
@@ -847,7 +951,7 @@ export function Presentacion() {
     void runStep();
     return () => { cancelled = true; clearTimers(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run?.sceneIdx, run?.stepIdx, run?.mode, run?.playing, run?.speed, run?.chaptersOpen, run?.speedOpen, run?.stayOpen, run?.exitOpen, run?.finished, inManual]);
+  }, [run?.sceneIdx, run?.stepIdx, run?.mode, run?.playing, run?.speed, run?.chaptersOpen, run?.speedOpen, run?.stayOpen, run?.exitOpen, run?.finished, inManual, intro]);
 
   /* Esc: una capa a la vez (velocidad → capítulos → salir al índice). */
   useEffect(() => {
@@ -865,7 +969,63 @@ export function Presentacion() {
     return () => window.removeEventListener("keydown", onKey);
   }, [run, exitToIndex]);
 
+  /* LA VENTANA DE APERTURA (Oscar, 2026-11-14 23:47): pregunta grande —
+   * el módulo — y explicación corta: las dos maneras de aprenderla y los
+   * controles de la tarjeta, nombrados uno a uno. «Empezar» se enciende
+   * cuando el primer compás con pie ya está asentado tras ella; mientras
+   * tanto el botón dice la verdad: «Preparando el escenario…». */
+  const introReady = !!run && !!step && hasCaption(step)
+    && (!("anchor" in step && step.anchor) || !!rect || heldAt === `${run.sceneIdx}:${run.stepIdx}`);
+  const renderIntroWindow = (ready: boolean) => {
+    const m = intro!.mod;
+    const row = (icon: ReactNode, name: string, job: string) => (
+      <div className="pres-intro-row">
+        <span className="pres-intro-ic">{icon}</span>
+        <span><strong>{name}</strong> · {job}</span>
+      </div>
+    );
+    return (
+      <div className="pres-stayveil">
+        <div className="pres-staynote pres-intro" role="dialog" aria-label={pick(m.title, lang)}>
+          <p className="pres-note-title">{pick(m.title, lang)}</p>
+          <p className="pres-intro-sub">{durationLabel(m, lang)} · {tx("La app, en vivo, paso a paso", "The app, live, step by step")}</p>
+          <p>
+            {tx(
+              "Puedes verla sola o hacerla tú. En Automático, la presentación avanza y toca cada función por ti; en Interactivo, avanzas tú y tocas tú. Puedes cambiar cuando quieras con el botón de modo de la tarjeta.",
+              "You can watch it on its own or do it yourself. In Automatic, the presentation advances and taps each function for you; in Interactive, you advance and you tap. You can switch any time with the card's mode button.",
+            )}
+          </p>
+          <div className="pres-intro-keys">
+            {row(<Gauge aria-hidden />, tx("Velocidad", "Speed"), tx("el ritmo de la lección", "the lesson's pace"))}
+            {row(<List aria-hidden />, tx("Capítulos", "Chapters"), tx("saltar a otra parte del módulo", "jump to another part of the module"))}
+            {row(<Pause aria-hidden />, tx("Pausa", "Pause"), tx("detiene el Automático", "stops the Automatic"))}
+            {row(<span className="pres-intro-pair"><ChevronLeft aria-hidden /><ChevronRight aria-hidden /></span>, tx("Ir y volver", "Back and forth"), tx("un paso, en Interactivo", "one step, in Interactive"))}
+            {row(<Hand aria-hidden />, tx("Muéstrame tú", "Show me"), tx("si un paso te cuesta, lo hace por ti", "if a step is hard, it does it for you"))}
+            {row(<X aria-hidden />, tx("Salir", "Leave"), tx("el módulo queda guardado donde va", "the module stays saved where you left it"))}
+          </div>
+          <p>
+            {tx(
+              "Todo pasa en un escenario de práctica: tu libro real no se toca.",
+              "Everything happens on a practice stage: your real book stays untouched.",
+            )}
+          </p>
+          <div className="pres-stayacts">
+            <button type="button" className="pres-btn ghost" onClick={cancelIntro}>{tx("Ahora no", "Not now")}</button>
+            <button type="button" className="pres-btn" disabled={!ready} onClick={() => setIntro(null)}>
+              {ready ? tx("Empezar", "Start") : tx("Preparando el escenario…", "Preparing the stage…")}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const stageActive = typeof window !== "undefined" && stageOn();
+  if (intro && !run) {
+    // La fase de la intención: el escenario aún entra y la ventana ya
+    // está — el toque recibió su respuesta en el mismo fotograma.
+    return <div className="pres-root is-introonly">{renderIntroWindow(false)}</div>;
+  }
   if (!stageActive || !run || inManual) return null;
 
   const mod = run.mod;
@@ -924,11 +1084,21 @@ export function Presentacion() {
    * render) y su sitio deseado se ABRAZA a la pantalla — se comprime
    * hasta caber, jamás se sale. */
   const vhNow = window.innerHeight;
-  const desiredTop = cardHole
-    ? cardBelow
-      ? cardHole.top + cardHole.height + 14
-      : cardHole.top - 14 - cardH
-    : 0;
+  /* LAS VISTAS SE MIRAN, NO SE TAPAN (Oscar, 2026-11-14 23:47, sobre la
+   * 1.5.80): al demostrar el selector de vistas, la tarjeta se sentaba
+   * bajo el selector y ocultaba las tarjetas cuyo cambio de tamaño era
+   * la lección misma. En esos compases la tarjeta se integra ABAJO,
+   * sobre la barra de pestañas: el selector y las primeras filas de
+   * tarjetas quedan a la vista, que es donde vive la demostración. El
+   * foco (hueco y anillo) sigue en el selector, como manda la ley. */
+  const seatBottom = !!(step && "anchor" in step && typeof step.anchor === "string" && step.anchor.startsWith("vistas"));
+  const desiredTop = seatBottom
+    ? vhNow - cardH - 70
+    : cardHole
+      ? cardBelow
+        ? cardHole.top + cardHole.height + 14
+        : cardHole.top - 14 - cardH
+      : 0;
   const clampedTop = cardH > 0
     ? Math.min(Math.max(8, desiredTop), Math.max(8, vhNow - cardH - 8))
     : desiredTop;
@@ -958,9 +1128,9 @@ export function Presentacion() {
         new PointerEvent(type, { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, pointerId: 7, pointerType: "touch", isPrimary: true });
       el.dispatchEvent(mk("pointerdown", x0));
       for (let i = 1; i <= 9; i++) {
-        window.setTimeout(() => el.dispatchEvent(mk("pointermove", x0 - (170 * i) / 9)), (420 * i) / 9 / run.speed);
+        window.setTimeout(() => el.dispatchEvent(mk("pointermove", x0 - (170 * i) / 9)), (420 * i) / 9 / effSpeed(run.speed));
       }
-      window.setTimeout(() => el.dispatchEvent(mk("pointerup", x0 - 170)), 520 / run.speed);
+      window.setTimeout(() => el.dispatchEvent(mk("pointerup", x0 - 170)), 520 / effSpeed(run.speed));
       return;
     }
     if (step.kind === "press") {
@@ -1143,6 +1313,8 @@ export function Presentacion() {
           </div>
         </div>
       ) : null}
+
+      {intro ? renderIntroWindow(introReady) : null}
 
       {run.stayOpen && !run.finished ? (
         /* La ventana de «Quedarme aquí»: dice qué pasa después ANTES de

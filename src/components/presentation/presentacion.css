@@ -303,6 +303,28 @@
 .pres-staynote .pres-note-title { font-family: var(--font-display); font-size: 1.34rem; line-height: 1.3; color: var(--color-fg); margin-bottom: 10px; }
 .pres-stayacts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; flex-wrap: nowrap; }
 
+/* LA VENTANA DE APERTURA (Oscar, 2026-11-14 23:47): la misma materia de
+   las ventanas de la casa, un poco más ancha para su lista de controles,
+   con techo y scroll propio para que en un teléfono bajo nunca se corte
+   — los botones de acción quedan siempre a la vista al final del flujo. */
+.pres-staynote.pres-intro { width: min(400px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); overflow-y: auto; }
+.pres-intro-sub { color: var(--color-muted); font-size: .85rem !important; margin-top: -6px !important; }
+.pres-intro-keys { display: grid; gap: 7px; margin: 10px 0 12px; }
+.pres-intro-row { display: flex; align-items: center; gap: 10px; font-size: .9rem; line-height: 1.4; }
+.pres-intro-row strong { font-weight: 650; }
+.pres-intro-ic {
+  flex: none; width: 30px; height: 30px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+  color: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+}
+.pres-intro-ic svg { width: 15px; height: 15px; }
+.pres-intro-pair { display: inline-flex; margin: 0 -4px; }
+.pres-intro-pair svg { width: 13px; height: 13px; }
+.pres-btn[disabled] { opacity: .55; cursor: default; }
+.pres-btn[disabled]:active { transform: none; }
+
 /* Botones propios de la tarjeta final (Brizna no tiene una clase .btn global). */
 .pres-btn {
   min-height: 38px; padding: 0 16px; border-radius: 999px; cursor: pointer;
