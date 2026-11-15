@@ -589,6 +589,36 @@ export function Presentacion() {
       timers.current.push(window.setTimeout(() => { window.clearInterval(iv); off(); }, 60_000) as unknown as number);
     };
 
+    /* LA PRESENTACIÓN SE MUEVE CON LA PANTALLA (Oscar, 2026-11-15
+     * 10:56, sobre la captura de la 1.5.88): en las vistas el selector
+     * quedaba varado EN EL MEDIO y las tarjetas de abajo se cortaban;
+     * la demostración debe DESPLAZAR la pantalla hacia arriba — y la
+     * tarjeta con ella — para que el selector suba justo bajo la
+     * tarjeta y la región del efecto llene el resto de la pantalla.
+     * El desplazamiento va sobre el contenedor que realmente rueda
+     * (la página o la hoja), no a ciegas sobre la ventana; el hueco
+     * sigue al elemento porque armRect lo remide sin cesar. */
+    const scrollDemonstration = (el: HTMLElement, anchor?: string) => {
+      if (!anchor || !anchor.startsWith("vistas")) {
+        el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+        return;
+      }
+      const cardBottom = cardRef.current?.getBoundingClientRect().bottom ?? 0;
+      const targetTop = Math.max(64, Math.round(cardBottom > 0 ? cardBottom + 16 : 232));
+      const delta = el.getBoundingClientRect().top - targetTop;
+      if (Math.abs(delta) < 4) return;
+      let node: HTMLElement | null = el;
+      while (node && node !== document.body) {
+        const st = window.getComputedStyle(node);
+        if ((st.overflowY === "auto" || st.overflowY === "scroll") && node.scrollHeight > node.clientHeight + 4) {
+          node.scrollTo({ top: node.scrollTop + delta, behavior: reduce ? "auto" : "smooth" });
+          return;
+        }
+        node = node.parentElement;
+      }
+      window.scrollTo({ top: window.scrollY + delta, behavior: reduce ? "auto" : "smooth" });
+    };
+
     /** La presión del conductor: pointerdown, mantener, pointerup y el click
      * que la app espera. ConfirmLink (la casa de la presión larga) arma su
      * temporizador con el pointerdown y traga el click si la presión llegó —
@@ -703,7 +733,7 @@ export function Presentacion() {
           const el = step.anchor ? await waitAnchor(step.anchor) : null;
           if (cancelled) return;
           if (el) {
-            el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+            scrollDemonstration(el, step.anchor);
             later(() => { if (!cancelled) armRect(el); }, reduce ? 60 : 380);
           }
           // Asentado (o intentado: un ancla muerta no encierra la
@@ -766,7 +796,7 @@ export function Presentacion() {
       const el = await waitAnchor(step.anchor);
       if (cancelled) return;
       if (!el) { skipScene(scene.id); return; } // ancla muerta: la escena se salta con gracia
-      el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+      scrollDemonstration(el, step.anchor);
       later(() => { if (!cancelled) armRect(el); }, reduce ? 60 : 380);
       // La permanencia del paso: el pie + la lectura de la ventanita, si la hay.
       const capDwell = hasCaption(step)
