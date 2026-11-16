@@ -250,7 +250,7 @@ function Hero({ r }: { r: AdvisorReading }) {
         <div>
           <span>{tx("Te deben", "Owed to you")}</span>
           <CountUp className="as-stat-num" value={Math.round(r.owed)} format={usd} />
-          {r.owedLate > 0 ? <small className="text-late">{usd(r.owedLate)} {tx("con atraso", "overdue")}</small> : <small>{tx("todo al día", "all current")}</small>}
+          {r.owedLate > 0 ? <small className="text-late">{usd(r.owedLate)} {tx("con atraso", "overdue")}{r.owedLost > 0 ? ` · ${usd(r.owedLost)} ${tx("de archivados", "from archived")}` : ""}</small> : r.owedLost > 0 ? <small>{usd(r.owedLost)} {tx("de archivados", "from archived")}</small> : <small>{tx("todo al día", "all current")}</small>}
         </div>
         <div>
           <span>{tx("Fijo al mes", "Monthly")}</span>

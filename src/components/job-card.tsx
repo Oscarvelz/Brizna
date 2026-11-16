@@ -151,7 +151,25 @@ export function JobCard({
       push({
         label: tx(`Hecho: ${job.clientName}`, `Done: ${job.clientName}`),
         undo: async () => {
-          await reopenJob({ data: { id: job.id } });
+          const res = await reopenJob({ data: { id: job.id } });
+          // Ola 2 (BZ-10): el mismo aviso en voz alta que en Deshacer.
+          const unaccounted = res && "unaccounted" in res ? (res.unaccounted ?? 0) : 0;
+          const looseCredit = res && "looseCredit" in res ? (res.looseCredit ?? 0) : 0;
+          if (unaccounted > 0) {
+            toast.warning(
+              tx(
+                `Ojo: ${money(unaccounted)} de este trabajo ya no estaban en la cuenta y no vienen de un pago. Revísalo en la ficha del cliente.`,
+                `Careful: ${money(unaccounted)} from this job was no longer in the balance and does not come from a payment. Check the client's file.`,
+              ),
+            );
+          } else if (looseCredit > 0) {
+            toast(
+              tx(
+                `El pago de ${money(looseCredit)} que ya había entrado quedó como adelanto del cliente.`,
+                `The ${money(looseCredit)} payment that had already come in is now the client's prepayment.`,
+              ),
+            );
+          }
           await invalidateLawn(qc);
         },
         redo: async () => {
@@ -176,8 +194,27 @@ export function JobCard({
   });
   const undo = useMutation({
     mutationFn: () => reopenJob({ data: { id: job.id } }),
-    onSuccess: async () => {
+    onSuccess: async (res) => {
       toast(tx("Vuelto a pendiente", "Back to pending"));
+      // Ola 2 (BZ-10): la reapertura avisa en voz alta qué hizo con el
+      // dinero ya cobrado — nada de ajustes en silencio.
+      const unaccounted = res && "unaccounted" in res ? (res.unaccounted ?? 0) : 0;
+      const looseCredit = res && "looseCredit" in res ? (res.looseCredit ?? 0) : 0;
+      if (unaccounted > 0) {
+        toast.warning(
+          tx(
+            `Ojo: ${money(unaccounted)} de este trabajo ya no estaban en la cuenta y no vienen de un pago. Revísalo en la ficha del cliente.`,
+            `Careful: ${money(unaccounted)} from this job was no longer in the balance and does not come from a payment. Check the client's file.`,
+          ),
+        );
+      } else if (looseCredit > 0) {
+        toast(
+          tx(
+            `El pago de ${money(looseCredit)} que ya había entrado quedó como adelanto del cliente.`,
+            `The ${money(looseCredit)} payment that had already come in is now the client's prepayment.`,
+          ),
+        );
+      }
       setAskUndo(false);
       await invalidateLawn(qc);
     },

@@ -331,7 +331,12 @@ function ClientDetailPage() {
             </p>
             <p className="mt-2 text-sm tabular-nums">
               {tx(`Puntaje ${client.reliability}`, `Score ${client.reliability}`)}
-              {client.daysSincePay != null && client.balance > 0 && !client.lastPaidDate
+              {client.daysSincePay != null && client.balance > 0 && client.agingFromEntry
+                ? tx(
+                    ` · ${client.daysSincePay} ${client.daysSincePay === 1 ? "día" : "días"} desde que la deuda entró al libro`,
+                    ` · ${client.daysSincePay} ${client.daysSincePay === 1 ? "day" : "days"} since the debt entered the book`,
+                  )
+                : client.daysSincePay != null && client.balance > 0 && !client.lastPaidDate
                 ? tx(" · Sin pagos todavía", " · No payments yet")
                 : client.daysSincePay != null
                 ? tx(
@@ -627,8 +632,8 @@ function ClientDetailPage() {
           {!seeded && reconcileQ.data ? (
             <p className="mt-4 rounded-xl bg-sun px-4 py-3 text-sm text-muted" role="status">
               {tx(
-                `El saldo guardado no cuadra con sus movimientos por ${money(Math.abs(reconcileQ.data.drift))}. No se cambió nada: revísalo en Movimientos y en sus cortes hechos.`,
-                `The saved balance is off from its activity by ${money(Math.abs(reconcileQ.data.drift))}. Nothing was changed: check it in Activity and in its completed cuts.`,
+                `El saldo guardado no cuadra con sus movimientos por ${money(Math.abs(reconcileQ.data.drift))}. No se cambió nada: revísalo en Movimientos y en sus cortes hechos. Este aviso compara el neto (saldo menos adelanto); el reparto entre los dos no se puede comprobar.`,
+                `The saved balance is off from its activity by ${money(Math.abs(reconcileQ.data.drift))}. Nothing was changed: check it in Activity and in its completed cuts. This check compares the net (balance minus prepayment); the split between the two cannot be verified.`,
               )}
             </p>
           ) : null}

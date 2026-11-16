@@ -1,4 +1,4 @@
-import { addDaysISO, stampDay, startOfWeekISO, weekdayFromISO } from "@/lib/dates";
+import { addDaysISO, monthlyVisitsFor, stampDay, startOfWeekISO, weekdayFromISO } from "@/lib/dates";
 import { frequencyLabel, jobKindLabel, money } from "@/lib/format";
 import { methodLabel } from "@/components/method-field";
 import { reasonLabel } from "@/lib/i18n";
@@ -485,7 +485,8 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   }));
 
   /* ---------- prices (active regular clients) */
-  const visitsOf = (c: ClientRow) => (c.frequencyDays && c.frequencyDays > 0 ? r2(30.4 / c.frequencyDays) : c.cutsPerMonth === 4 ? 4.3 : c.cutsPerMonth === 5 ? 8.7 : c.cutsPerMonth);
+  // Ola 2 (BZ-12): la misma cuenta compartida de dates.ts que el Asesor y el Estudio.
+  const visitsOf = (c: ClientRow) => r2(monthlyVisitsFor(Number(c.cutsPerMonth) || 0, c.frequencyDays));
   const priced = kept.filter((c) => c.isActive && c.pricePerCut > 0);
   const regular = priced.filter((c) => c.kind === "regular");
   const prices = regular.map((c) => c.pricePerCut).sort((a, b) => a - b);

@@ -172,6 +172,24 @@ export function intervalDaysForCuts(cutsPerMonth: number): number | null {
   return null;
 }
 
+/**
+ * Visits per month for a regular client — ONE count for the whole house
+ * (Asesor, Estudio, exportación): the same rhythm the agenda actually seeds.
+ * A custom frequency rules first (30.44 ÷ its days); otherwise the count
+ * derives from the seeding interval above: every 14 days ≈ 2.17, every 10
+ * ≈ 3.04, weekly ≈ 4.35, two weekdays a week ≈ 8.70, monthly = 1. The old
+ * per-screen copies read the card's cutsPerMonth raw (weekly counted 4,
+ * twice-a-week counted 5) and understated the month's floor.
+ */
+export function monthlyVisitsFor(cutsPerMonth: number, frequencyDays: number | null): number {
+  if (frequencyDays && frequencyDays > 0) return 30.44 / frequencyDays;
+  if (!(cutsPerMonth > 0)) return 0;
+  if (cutsPerMonth === 5) return (2 * 30.44) / 7;
+  const interval = intervalDaysForCuts(cutsPerMonth);
+  if (interval != null) return 30.44 / interval;
+  return 1;
+}
+
 export function scheduleDatesForMonth(opts: {
   year: number;
   month: number;

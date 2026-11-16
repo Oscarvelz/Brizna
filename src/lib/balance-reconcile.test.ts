@@ -91,3 +91,15 @@ test("deriva negativa y redondeo a centavos", () => {
   assert.equal(r.expectedNet, 22.22);
   assert.equal(r.drift, -12.32);
 });
+
+test("Ola 2 (BZ-38) — el límite declarado: un reparto torcido con el neto sano da deriva 0", () => {
+  // Libro: 2 cortes de $50 hechos, sin pagos → debe $100, crédito $0.
+  // Contadores torcidos a la par (saldo $150, crédito $50): el neto cuadra
+  // y la reconciliación NO lo ve — es su límite conocido y declarado en el
+  // aviso de la ficha («el reparto no se puede comprobar»), no un descuido:
+  // este test lo fija para que nadie lo «arregle» en silencio ni lo olvide.
+  const r = reconcileBalance({ ...zero, balance: 150, credit: 50, done: 100 });
+  assert.equal(r.storedNet, 100);
+  assert.equal(r.expectedNet, 100);
+  assert.equal(r.drift, 0);
+});

@@ -1324,16 +1324,16 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Look at the big figure: your normal month.\nBelow, the clients who bring the most and how many visits they add up to a month.\nCompare it with This month to see whether the month runs above or below your floor.",
         ],
         calc: [
-          "Por cada cliente regular activo: visitas al mes × precio. Las visitas salen de su frecuencia: 30,44 ÷ sus días (cada semana, unas 4,3; cada 2 semanas, unas 2,2; 3 veces al mes, 3; 1 vez al mes, 1), o las visitas al mes fijadas en su ficha. No cuentan extras, trabajos de una vez, clientes en pausa, la lista negra ni las temporadas.",
-          "For each active regular client: visits a month × price. The visits come from his frequency: 30.44 ÷ his days (weekly, about 4.3; every 2 weeks, about 2.2; 3 times a month, 3; once a month, 1), or the visits per month set on his file. Extras, one-time jobs, paused clients, the blacklist, and seasons do not count.",
+          "Por cada cliente regular activo: visitas al mes × precio. Las visitas salen del ritmo de su ficha, el mismo con que se siembra su agenda: cada semana, unas 4,35; cada 2 semanas, unas 2,17; cada 10 días, unas 3; dos veces por semana, unas 8,7; 1 vez al mes, 1. Solo si la ficha trae una frecuencia personalizada en días se divide 30,44 entre esos días. No cuentan extras, trabajos de una vez, clientes en pausa, la lista negra ni las temporadas.",
+          "For each active regular client: visits a month × price. The visits come from the rhythm on his file, the same one his schedule is seeded with: weekly, about 4.35; every 2 weeks, about 2.17; every 10 days, about 3; twice a week, about 8.7; once a month, 1. Only when the file carries a custom frequency in days is 30.44 divided by those days. Extras, one-time jobs, paused clients, the blacklist, and seasons do not count.",
         ],
         example: [
-          "20 clientes semanales a $45 (4 × 45 = $180 cada uno) y 10 cada 2 semanas a $55 ($110 cada uno): 20 × 180 + 10 × 110 = $4.700 al mes. Si pausas a un semanal, el piso baja $180.",
-          "20 weekly clients at $45 (4 × 45 = $180 each) and 10 every 2 weeks at $55 ($110 each): 20 × 180 + 10 × 110 = $4,700 a month. Pause one weekly client and the floor drops $180.",
+          "20 clientes semanales a $45 (unas 4,35 visitas: $196 cada uno) y 10 cada 2 semanas a $55 (unas 2,17 visitas: $120 cada uno): 20 × 196 + 10 × 120 = $5.120 al mes. Si pausas a un semanal, el piso baja $196.",
+          "20 weekly clients at $45 (about 4.35 visits: $196 each) and 10 every 2 weeks at $55 (about 2.17 visits: $120 each): 20 × 196 + 10 × 120 = $5,120 a month. Pause one weekly client and the floor drops $196.",
         ],
         cases: [
-          "Subes un precio: el piso sube en el acto.\nUn mes con 5 semanas: dejas más que el piso, porque el piso cuenta 4 visitas.\nEn invierno con temporada: entras por debajo del piso; es normal.",
-          "You raise a price: the floor rises at once.\nA 5-week month: you bring in more than the floor, which counts 4 visits.\nIn winter with a season on: you come in under the floor; that is normal.",
+          "Subes un precio: el piso sube en el acto.\nUn mes con 5 semanas: dejas más que el piso, porque el piso cuenta el promedio (unas 4,35 visitas), no las 5 de ese mes.\nEn invierno con temporada: entras por debajo del piso; es normal.",
+          "You raise a price: the floor rises at once.\nA 5-week month: you bring in more than the floor, because the floor counts the average (about 4.35 visits), not that month's 5.\nIn winter with a season on: you come in under the floor; that is normal.",
         ],
         related: ["este-mes", "pausa", "asesor-chequeos", "temporada"],
         go: { to: "/estadisticas", view: "estudio", focus: "cif-fijo", where: ["Estudio, Ingreso fijo del mes", "Stats, Steady monthly income"] },

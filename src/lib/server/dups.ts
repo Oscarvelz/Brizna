@@ -306,7 +306,11 @@ export const undoMerge = createServerFn({ method: "POST" })
     if (rec.photos.length) await sql.query(`update client_photos set client_id = $2 where user_id = $1 and client_id = $3 and id = any($4::int[])`, [uid, rec.dropId, rec.keepId, rec.photos]);
     if (rec.links.length) await sql.query(`update pad_links set client_id = $2 where user_id = $1 and client_id = $3 and id = any($4::int[])`, [uid, rec.dropId, rec.keepId, rec.links]);
     // Filled fields go back to empty only if nobody changed them since.
-    const sets: string[] = ["balance = balance - $3", "credit = greatest(credit - $4, 0)"];
+    // Ola 2 (BZ-26): el saldo del que queda lleva suelo en 0 — antes la
+    // resta comía pagos posteriores a la unión y dejaba saldos de −$100
+    // que partían «Por cobrar» en dos totales. Lo ya pagado de más no se
+    // evapora: la diferencia va a crédito del que queda.
+    const sets: string[] = ["credit = greatest(credit - $4, 0) + greatest($3 - balance, 0)", "balance = greatest(balance - $3, 0)"];
     const params: unknown[] = [uid, rec.keepId, rec.dropBefore.balance, rec.dropBefore.credit];
     for (const [f, v] of Object.entries(rec.filled)) {
       params.push(v);

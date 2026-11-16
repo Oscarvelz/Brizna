@@ -51,8 +51,10 @@ export type ClientRow = {
   seasonEnd: string | null;
   seasonEvery: number | null;
   daysSincePay: number | null;
-  /** Local date of the newest payment; null when the client never paid (daysSincePay then counts from the last cut). */
+  /** Local date of the newest REAL payment (paid/prepaid); null when the client never paid. A partial forgiveness never moves it (Ola 2, BZ-11). */
   lastPaidDate?: string | null;
+  /** True when the aging clock runs from the day the opening debt entered the book (no payment, no cut yet — Ola 2, BZ-37); the file declares it instead of "no payments yet". */
+  agingFromEntry?: boolean;
   payTier: PayTier;
   reliability: number;
 };

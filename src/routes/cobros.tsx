@@ -34,7 +34,7 @@ import { viewGrid } from "@/lib/density";
 import type { QuadCols } from "@/lib/density";
 import { emphasize, useTx } from "@/lib/i18n";
 import { useUndo } from "@/lib/undo";
-import { listBalances, recordPayment, recordPaymentsBulk, undoPayment } from "@/lib/server/lawn";
+import { getReconcileSweep, listBalances, recordPayment, recordPaymentsBulk, undoPayment } from "@/lib/server/lawn";
 import type { ClientRow, JobRow, PaymentRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Banknote, BadgeCheck, Check, ReceiptText, Smartphone, Coins, HandCoins, HandHeart, ShieldAlert, Hourglass, CircleAlert, Wallet } from "lucide-react";
@@ -82,6 +82,9 @@ function CobrosPage() {
   const media = density === "compact";
   const quad = density === "quad";
   const q = useQuery({ queryKey: ["balances"], queryFn: () => listBalances() });
+  // Ola 2 (BZ-38): el barrido de reconciliación del libro entero — si alguna
+  // ficha no cuadra, Cobros lo dice aquí sin esperar a que la abran.
+  const sweepQ = useQuery({ queryKey: ["reconcile-sweep"], queryFn: () => getReconcileSweep() });
   const data = q.data;
   const [paying, setPaying] = useState<{ client: ClientRow; mode: PayMode } | null>(null);
   const [sort, setSort] = useState<OwingSort>("amount");
@@ -288,6 +291,15 @@ function CobrosPage() {
           current={view}
         />
       </section>
+
+      {sweepQ.data && sweepQ.data.count > 0 ? (
+        <p className="mb-3 rounded-xl bg-sun px-4 py-3 text-sm text-muted" role="status">
+          {tx(
+            `${sweepQ.data.count} ${sweepQ.data.count === 1 ? "ficha" : "fichas"} por revisar: su saldo guardado no cuadra con sus movimientos. Abre la ficha y verás el aviso con el detalle.`,
+            `${sweepQ.data.count} ${sweepQ.data.count === 1 ? "file needs" : "files need"} a look: the saved balance does not match the activity. Open the file to see the notice with the detail.`,
+          )}
+        </p>
+      ) : null}
 
       <div className="mb-3 grid gap-3">
         <Fold

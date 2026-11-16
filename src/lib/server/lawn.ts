@@ -9,6 +9,7 @@ import {
   isPaymentLate,
   lastDayOfMonthISO,
   monthParts,
+  monthlyVisitsFor,
   scheduleDatesForMonth,
   seasonCuts,
   startOfWeekISO,
@@ -158,7 +159,9 @@ type ClientDb = {
   season_end?: string | null;
   season_every?: number | null;
   last_paid_at?: unknown;
+  last_waived_at?: unknown;
   unpaid_jobs?: unknown;
+  unpaid_since?: unknown;
   extras_this_month?: unknown;
   deactivated_at?: unknown;
   next_cut_date: unknown;
@@ -221,6 +224,36 @@ function mmddOrNull(raw: string | null | undefined): string | null {
 
 type RiskOpts = { riskDays: number; riskAmount: number; waitDays: number; riskCuts: number };
 
+/**
+ * Ola 2 (BZ-11 + BZ-37) — EL RELOJ DE ANTIGÜEDAD, un solo sitio de cálculo.
+ * La antigüedad de un saldo vivo corre desde el último pago REAL (paid/prepaid)
+ * o, si nunca lo hubo, desde el último corte. Un perdón (waived) solo reinicia
+ * el reloj cuando dejó la cuenta en cero: si hoy queda saldo pero TODA la
+ * deuda viva nació después del perdón (unpaidSince >= fecha del perdón), el
+ * perdón sí fue un cierre y el reloj corre desde él; si el perdón fue parcial
+ * sobre deuda vieja, solo reduce el monto y el reloj no se mueve (un perdón
+ * de $1 ya no lava 120 días de deuda). Sin pago ni corte (la deuda inicial
+ * «Deuda anterior»), el reloj corre desde el created_at del cliente: el día
+ * en que esa deuda entró al libro. Estudio, Cobros y el Asesor leen este
+ * mismo resultado a través de mapClient/highRiskClientIds.
+ */
+function agingRefDate(args: {
+  balance: number;
+  lastRealPaid: string | null;
+  lastWaived: string | null;
+  lastCut: string | null;
+  unpaidSince: string | null;
+  createdAt: string | null;
+}): string | null {
+  let ref = args.lastRealPaid ?? args.lastCut;
+  if (args.lastWaived && (ref == null || args.lastWaived > ref)) {
+    if (args.balance <= 0) ref = args.lastWaived;
+    else if (args.unpaidSince && args.unpaidSince >= args.lastWaived) ref = args.lastWaived;
+  }
+  if (ref == null && args.balance > 0) ref = args.createdAt;
+  return ref;
+}
+
 function payProfile(
   balance: number,
   lastPaid: string | null,
@@ -254,12 +287,33 @@ function payProfile(
 function mapClient(row: ClientDb, today = todayISO(), risk: number | RiskOpts = 21): ClientRow {
   const balance = money(row.balance);
   const lastPaid = row.last_paid_at ? asIsoDate(row.last_paid_at) : null;
+  const lastWaived = row.last_waived_at ? asIsoDate(row.last_waived_at) : null;
   const lastCut = row.last_cut_date ? asIsoDate(row.last_cut_date) : null;
+  const unpaidSince = row.unpaid_since ? asIsoDate(row.unpaid_since) : null;
+  const createdDate = row.created_at ? asIsoDate(row.created_at) : null;
+  // Ola 2 (BZ-11/BZ-37): el reloj de antigüedad se calcula en agingRefDate —
+  // el perdón parcial ya no lo reinicia y la deuda inicial envejece desde
+  // el día en que entró al libro.
+  const agingRef = agingRefDate({
+    balance,
+    lastRealPaid: lastPaid,
+    lastWaived,
+    lastCut,
+    unpaidSince,
+    createdAt: createdDate,
+  });
+  const agingFromEntry =
+    balance > 0 &&
+    lastPaid == null &&
+    lastCut == null &&
+    !(lastWaived != null && unpaidSince != null && unpaidSince >= lastWaived) &&
+    agingRef != null &&
+    agingRef === createdDate;
   const opts: RiskOpts =
     typeof risk === "number"
       ? { riskDays: risk, riskAmount: 200, waitDays: 45, riskCuts: 3 }
       : risk;
-  const profile = payProfile(balance, lastPaid, lastCut, today, intId(row.unpaid_jobs), opts);
+  const profile = payProfile(balance, agingRef, lastCut, today, intId(row.unpaid_jobs), opts);
   return {
     id: intId(row.id),
     name: row.name,
@@ -302,6 +356,7 @@ function mapClient(row: ClientDb, today = todayISO(), risk: number | RiskOpts = 
     seasonEvery: row.season_every == null ? null : Number(row.season_every) || null,
     daysSincePay: profile.daysSincePay,
     lastPaidDate: lastPaid,
+    agingFromEntry,
     payTier: profile.payTier,
     reliability: profile.reliability,
   };
@@ -370,7 +425,9 @@ const CLIENT_SELECT = `
        and j.scheduled_date >= date_trunc('month', $2::date)
        and j.scheduled_date < date_trunc('month', $2::date) + interval '1 month') as extras_this_month,
   (select max(p.paid_at) from payments p
-     where p.client_id = c.id and p.user_id = c.user_id and p.kind in ('paid','prepaid','waived')) as last_paid_at,
+     where p.client_id = c.id and p.user_id = c.user_id and p.kind in ('paid','prepaid')) as last_paid_at,
+  (select max(p.paid_at) from payments p
+     where p.client_id = c.id and p.user_id = c.user_id and p.kind = 'waived') as last_waived_at,
   (select count(*) from (
      select u.amount,
             sum(u.amount) over (order by u.ord desc, u.id desc) as running
@@ -378,12 +435,25 @@ const CLIENT_SELECT = `
          select j.amount, j.id,
                 coalesce(j.completed_at, j.scheduled_date::timestamptz) as ord
            from jobs j
-          where j.client_id = c.id and j.user_id = c.user_id and j.status = 'done'
+          where j.client_id = c.id and j.user_id = c.user_id and j.status = 'done' and j.amount > 0
           order by coalesce(j.completed_at, j.scheduled_date::timestamptz) desc, j.id desc
           limit 64
        ) u
    ) unpaid
-   where unpaid.running - unpaid.amount < c.balance) as unpaid_jobs
+   where unpaid.running - unpaid.amount < c.balance) as unpaid_jobs,
+  (select min(u.ord)::date from (
+     select u.amount, u.ord,
+            sum(u.amount) over (order by u.ord desc, u.id desc) as running
+       from (
+         select j.amount, j.id,
+                coalesce(j.completed_at, j.scheduled_date::timestamptz) as ord
+           from jobs j
+          where j.client_id = c.id and j.user_id = c.user_id and j.status = 'done' and j.amount > 0
+          order by coalesce(j.completed_at, j.scheduled_date::timestamptz) desc, j.id desc
+          limit 64
+       ) u
+   ) unpaid2
+   where unpaid2.running - unpaid2.amount < c.balance) as unpaid_since
 `;
 
 // MOVIMIENTO 2 (hallazgo 17): the unpaid count above is bounded to the newest 64 done jobs.
@@ -1095,12 +1165,17 @@ async function highRiskClientIds(userId: string, today: string): Promise<Set<num
     id: number;
     balance: unknown;
     last_paid: unknown;
+    last_waived: unknown;
     last_cut: unknown;
     unpaid_jobs: unknown;
+    unpaid_since: unknown;
+    created_at: unknown;
   }>(
-    `select c.id, c.balance,
+    `select c.id, c.balance, c.created_at,
             (select max(p.paid_at)::date from payments p
-              where p.user_id = c.user_id and p.client_id = c.id and p.kind in ('paid','prepaid','waived')) as last_paid,
+              where p.user_id = c.user_id and p.client_id = c.id and p.kind in ('paid','prepaid')) as last_paid,
+            (select max(p.paid_at)::date from payments p
+              where p.user_id = c.user_id and p.client_id = c.id and p.kind = 'waived') as last_waived,
             (select max(j.scheduled_date) from jobs j
               where j.user_id = c.user_id and j.client_id = c.id and j.status = 'done') as last_cut,
             (select count(*) from (
@@ -1110,12 +1185,25 @@ async function highRiskClientIds(userId: string, today: string): Promise<Set<num
                    select j.amount, j.id,
                           coalesce(j.completed_at, j.scheduled_date::timestamptz) as ord
                      from jobs j
-                    where j.client_id = c.id and j.user_id = c.user_id and j.status = 'done'
+                    where j.client_id = c.id and j.user_id = c.user_id and j.status = 'done' and j.amount > 0
                     order by coalesce(j.completed_at, j.scheduled_date::timestamptz) desc, j.id desc
                     limit 64
                  ) u
              ) unpaid
-             where unpaid.running - unpaid.amount < c.balance) as unpaid_jobs
+             where unpaid.running - unpaid.amount < c.balance) as unpaid_jobs,
+            (select min(u.ord)::date from (
+               select u.amount, u.ord,
+                      sum(u.amount) over (order by u.ord desc, u.id desc) as running
+                 from (
+                   select j.amount, j.id,
+                          coalesce(j.completed_at, j.scheduled_date::timestamptz) as ord
+                     from jobs j
+                    where j.client_id = c.id and j.user_id = c.user_id and j.status = 'done' and j.amount > 0
+                    order by coalesce(j.completed_at, j.scheduled_date::timestamptz) desc, j.id desc
+                    limit 64
+                 ) u
+             ) unpaid2
+             where unpaid2.running - unpaid2.amount < c.balance) as unpaid_since
        from clients c
       where c.user_id = $1 and c.is_active = true and c.blacklisted = false and c.balance > 0`,
     [userId],
@@ -1123,7 +1211,15 @@ async function highRiskClientIds(userId: string, today: string): Promise<Set<num
   const ids = new Set<number>();
   for (const row of rows) {
     const balance = money(row.balance);
-    const ref = row.last_paid ? asIsoDate(row.last_paid) : row.last_cut ? asIsoDate(row.last_cut) : null;
+    // Ola 2 (BZ-11/BZ-37): el mismo reloj de antigüedad que mapClient.
+    const ref = agingRefDate({
+      balance,
+      lastRealPaid: row.last_paid ? asIsoDate(row.last_paid) : null,
+      lastWaived: row.last_waived ? asIsoDate(row.last_waived) : null,
+      lastCut: row.last_cut ? asIsoDate(row.last_cut) : null,
+      unpaidSince: row.unpaid_since ? asIsoDate(row.unpaid_since) : null,
+      createdAt: row.created_at ? asIsoDate(row.created_at) : null,
+    });
     const lateByTime = ref != null && daysBetween(ref, today) >= risk.waitDays + risk.riskDays;
     const lateByMoney = balance >= risk.riskAmount;
     const lateByCuts = risk.riskCuts > 0 && intId(row.unpaid_jobs) >= risk.riskCuts;
@@ -1167,7 +1263,7 @@ export const getDashboard = createServerFn({ method: "GET" })
          (select count(*) from clients where user_id = $1 and is_active = true) as active_clients,
          (select count(*) from clients where user_id = $1 and is_active = true and kind = 'regular') as regular_clients,
          (select count(*) from clients where user_id = $1 and is_active = true and kind = 'one_time') as onetime_clients,
-         (select coalesce(sum(balance),0) from clients where user_id = $1 and is_active = true and blacklisted = false) as outstanding,
+         (select coalesce(sum(balance) filter (where balance > 0),0) from clients where user_id = $1 and is_active = true and blacklisted = false) as outstanding,
          (select coalesce(sum(amount),0) from payments
            where user_id = $1 and kind in ('paid','prepaid') and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')) as collected_month,
          (select coalesce(sum(amount),0) from jobs
@@ -2143,6 +2239,10 @@ export const reopenJob = createServerFn({ method: "POST" })
       (p) => p.note === "Abono al marcar hecho" && (p.kind === "paid" || p.kind === "prepaid"),
     );
     let paidReversed = false;
+    // Ola 2 (BZ-10): lo que la reapertura convierte en crédito desde pagos
+    // sueltos, y lo que no cuadra — la tarjeta lo avisa en voz alta.
+    let looseCreditOut = 0;
+    let unaccountedOut = 0;
     if (linkedPaidMain) {
       // Cobrado al hacerse: borrar su pago enlazado basta — nunca entró a la deuda.
       // (Una propina enlazada queda: sigue siendo de este trabajo si se rehace.)
@@ -2251,30 +2351,58 @@ export const reopenJob = createServerFn({ method: "POST" })
       if (!paidReversed) {
         const m = /Adelanto:([\d.]+)/.exec(notes);
         const used = m ? money(m[1]) : 0;
-        if (used > 0) {
-          const rest = Math.max(0, Math.round((amount - used) * 100) / 100);
+        // Ola 2 (BZ-10): prohibido el greatest(...,0) en silencio sobre
+        // dinero ya cobrado. La parte del trabajo que fue a la cuenta es
+        // (amount − adelanto); si el saldo ya no la cubre, lo que falta lo
+        // pagó el cliente con pagos sueltos de Cobros posteriores a la
+        // hechura (sin job_id, nota libre): esa parte se convierte en
+        // CRÉDITO antes de reabrir, no se evapora. Lo que falte más allá
+        // de esos pagos (un perdón, una deriva) no se inventa: se devuelve
+        // como `unaccounted` y la tarjeta avisa en voz alta.
+        const owedPart = Math.max(0, Math.round((amount - used) * 100) / 100);
+        let looseCredit = 0;
+        let unaccounted = 0;
+        if (owedPart > 0) {
+          const balRows = await sql.query<{ balance: unknown }>(
+            `select balance from clients where user_id = $1 and id = $2`,
+            [context.userId, job.client_id],
+          );
+          const balanceNow = money(balRows[0]?.balance);
+          const shortfall = Math.max(0, Math.round((owedPart - balanceNow) * 100) / 100);
+          if (shortfall > 0 && job.completed_at) {
+            const loose = await sql.query<{ total: unknown }>(
+              `select coalesce(sum(amount), 0) as total from payments
+                where user_id = $1 and client_id = $2 and kind = 'paid' and job_id is null
+                  and paid_at >= $3`,
+              [context.userId, job.client_id, job.completed_at],
+            );
+            const loosePaid = money(loose[0]?.total);
+            looseCredit = Math.min(shortfall, loosePaid);
+            unaccounted = Math.round((shortfall - looseCredit) * 100) / 100;
+          } else if (shortfall > 0) {
+            unaccounted = shortfall;
+          }
+        }
+        const creditBack = Math.round((used + looseCredit) * 100) / 100;
+        if (creditBack > 0 || owedPart > 0) {
           await sql.query(
             `update clients
                 set credit = credit + $3,
                     balance = greatest(balance - $4, 0)
               where user_id = $1 and id = $2`,
-            [context.userId, job.client_id, used, rest],
-          );
-        } else if (amount > 0) {
-          await sql.query(
-            `update clients set balance = greatest(balance - $3, 0) where user_id = $1 and id = $2`,
-            [context.userId, job.client_id, amount],
+            [context.userId, job.client_id, creditBack, owedPart],
           );
         }
-      }
-    }
+        looseCreditOut = looseCredit;
+        unaccountedOut = unaccounted;
+      }    }
     await sql.query(
       `update jobs set status = 'pending', completed_at = null,
          notes = case when notes like 'Adelanto:%' or notes like '%Hecho:%' then null else notes end
         where user_id = $1 and id = $2`,
       [context.userId, data.id],
     );
-    return { ok: true as const };
+    return { ok: true as const, looseCredit: looseCreditOut, unaccounted: unaccountedOut };
   });
 
 export const cancelJob = createServerFn({ method: "POST" })
@@ -2647,7 +2775,7 @@ export const getClientInventory = createServerFn({ method: "GET" })
          (select count(*) from clients where user_id = $1 and is_active = true and kind = 'one_time') as onetime,
          (select count(*) from clients where user_id = $1 and is_active = true) as total,
          (select count(*) from clients where user_id = $1 and is_active = false) as archived,
-         (select coalesce(sum(price_per_cut), 0) from clients where user_id = $1 and is_active = true and kind = 'regular') as round_amount`,
+         (select coalesce(sum(price_per_cut), 0) from clients where user_id = $1 and is_active = true and kind = 'regular' and coalesce(blacklisted, false) = false and coalesce(service_paused, false) = false) as round_amount`,
       [context.userId],
     );
     return {
@@ -2768,7 +2896,7 @@ export const listBalances = createServerFn({ method: "GET" })
              and paid_at >= $6::date and paid_at < ($7::date + interval '1 day')) as payments_paid_year,
          (select count(*) from payments
            where user_id = $1 and kind = 'waived' and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')) as waived_month_n,
-         (select coalesce(sum(balance),0) from clients where user_id = $1 and is_active = true and blacklisted = false) as outstanding,
+         (select coalesce(sum(balance) filter (where balance > 0),0) from clients where user_id = $1 and is_active = true and blacklisted = false) as outstanding,
          (select coalesce(sum(amount),0) from payments
            where user_id = $1 and kind in ('paid','prepaid') and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')) as collected_month,
          (select coalesce(sum(amount),0) from payments
@@ -3319,6 +3447,52 @@ export const getClientReconcile = createServerFn({ method: "GET" })
   .handler(async ({ context, data }): Promise<ClientReconcile | null> => {
     const r = await reconcileClient(context.userId, data.id);
     return r && r.drift !== 0 ? r : null;
+  });
+
+/**
+ * Ola 2 (BZ-38): el barrido del libro entero. El aviso de reconciliación
+ * solo corría al abrir una ficha — un descuadre podía vivir años en un
+ * cliente que nadie abre. Esta pasada calcula la deriva neta de TODOS los
+ * clientes con la misma fórmula de balance-reconcile.ts y devuelve cuántas
+ * fichas no cuadran; Cobros lo enseña como contador («N fichas por
+ * revisar») para que el aviso no dependa de abrir la ficha justa.
+ */
+export const getReconcileSweep = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<{ count: number }> => {
+    const sql = await getSql();
+    const rows = await sql.query<{
+      balance: unknown;
+      credit: unknown;
+      opening: unknown;
+      done: unknown;
+      paid: unknown;
+      waived: unknown;
+      prepaid: unknown;
+    }>(
+      `select c.balance, c.credit,
+         (select coalesce(sum(p.amount),0) from payments p where p.user_id = $1 and p.client_id = c.id and p.kind = 'opening') as opening,
+         (select coalesce(sum(j.amount),0) from jobs j where j.user_id = $1 and j.client_id = c.id and j.status = 'done') as done,
+         (select coalesce(sum(p.amount),0) from payments p where p.user_id = $1 and p.client_id = c.id and p.kind = 'paid') as paid,
+         (select coalesce(sum(p.amount),0) from payments p where p.user_id = $1 and p.client_id = c.id and p.kind = 'waived') as waived,
+         (select coalesce(sum(p.amount),0) from payments p where p.user_id = $1 and p.client_id = c.id and p.kind = 'prepaid') as prepaid
+       from clients c where c.user_id = $1`,
+      [context.userId],
+    );
+    let count = 0;
+    for (const row of rows) {
+      const r = reconcileBalance({
+        balance: money(row.balance),
+        credit: money(row.credit),
+        opening: money(row.opening),
+        done: money(row.done),
+        paid: money(row.paid),
+        waived: money(row.waived),
+        prepaid: money(row.prepaid),
+      });
+      if (r.drift !== 0) count += 1;
+    }
+    return { count };
   });
 
 type BackupPayload = {
@@ -6556,6 +6730,9 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
       let n = 0;
       for (const j of debtJobs) {
         if (intId(j.client_id) !== c.id || left <= 0.004) continue;
+        // Ola 2 (BZ-36): un trabajo de $0 no es un «corte sin pagar» — no
+        // mueve la suma y no entra en la cuenta (como ya hacía la exportación).
+        if (money(j.amount) <= 0) continue;
         left -= money(j.amount);
         n += 1;
       }
@@ -6698,7 +6875,8 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
     );
     const regular = regRows.map((r) => {
       const freq = Number(r.frequency_days) || 0;
-      const visits = freq > 0 ? Math.round((30.44 / freq) * 10) / 10 : Number(r.cuts_per_month) || 0;
+      // Ola 2 (BZ-12): la misma cuenta compartida del Asesor y la exportación.
+      const visits = monthlyVisitsFor(Number(r.cuts_per_month) || 0, freq > 0 ? freq : null);
       const price = money(r.price_per_cut);
       return { id: intId(r.id), name: r.name, visits, price, value: Math.round(visits * price * 100) / 100 };
     });
@@ -6920,6 +7098,8 @@ export type AdvisorReading = {
   activeClients: number;
   owed: number;
   owedLate: number;
+  /** Ola 2 (BZ-58): deuda viva de clientes archivados hace poco — declarada aparte, fuera de owed y de owedLate. */
+  owedLost: number;
   monthly: number;
   /** True when the daily yard goals are set (the week is measured against them). */
   hasGoals: boolean;
@@ -7028,10 +7208,12 @@ export const getAdvisor = createServerFn({ method: "GET" })
     const business = settingRows[0]?.business_name || DEFAULT_BUSINESS_NAME;
 
     // ---- one row per client
+    // Ola 2 (BZ-12): la cuenta de visitas es la compartida de dates.ts —
+    // la misma que siembra la agenda (antes esta copia leía cutsPerMonth
+    // crudo: el semanal contaba 4 y el de dos veces por semana contaba 5).
     const visitsOf = (c: ClientRow) => {
       if (c.kind !== "regular") return 0;
-      if (c.frequencyDays && c.frequencyDays > 0) return 30.44 / c.frequencyDays;
-      return Number(c.cutsPerMonth) || 0;
+      return monthlyVisitsFor(Number(c.cutsPerMonth) || 0, c.frequencyDays);
     };
     // Similar visits: more than weekly, weekly, every 2–3 weeks, monthly.
     const bucketOf = (v: number) => (v >= 4.8 ? "t" : v >= 3.5 ? "w" : v >= 1.6 ? "b" : "m");
@@ -7115,9 +7297,15 @@ export const getAdvisor = createServerFn({ method: "GET" })
         c.pricePerCut > 0 && typical > 0 && years >= 1 && c.pricePerCut <= typical * 0.9
       ) {
         // About +15%, to the nearest $5, never past the usual price or +20%, and at least +$5.
-        const step = Math.min(Math.round((c.pricePerCut * 1.15) / 5) * 5, typical, Math.round(c.pricePerCut * 1.2));
-        suggested = Math.max(c.pricePerCut + 5, step);
-        gainYear = Math.round((suggested - c.pricePerCut) * visits * 12);
+        // Ola 2 (BZ-25): el suelo de +$5 vive DENTRO de los topes — antes el
+        // Math.max exterior los anulaba (un precio de $15 con usual $20
+        // sugería $20, +33 %). Si el suelo no cabe, se sugiere el tope; si
+        // el tope no supera el precio, no se sugiere.
+        const cap = Math.min(typical, Math.round(c.pricePerCut * 1.2));
+        const step = Math.min(Math.round((c.pricePerCut * 1.15) / 5) * 5, cap);
+        const candidate = Math.min(Math.max(c.pricePerCut + 5, step), cap);
+        suggested = candidate > c.pricePerCut ? candidate : null;
+        gainYear = suggested ? Math.round((suggested - c.pricePerCut) * visits * 12) : 0;
       }
       people.push({
         id: c.id,
@@ -7162,7 +7350,13 @@ export const getAdvisor = createServerFn({ method: "GET" })
       (["estrellas", "fieles", "riesgo", "morosos", "ocasionales"] as const).map((k) => [k, []]),
     );
     for (const p of people) {
-      if (isLate(p)) { p.tip = "collect"; groups.get("morosos")!.push(p); continue; }
+      // Ola 2 (BZ-58): Morosos cuenta la misma población que el titular de
+      // la pantalla (activos, no lista negra). El archivado reciente con
+      // deuda viva ya no cae aquí — su chequeo isLate va primero y su saldo
+      // inflaba la tarjeta «Cobra» por encima del «Te deben» —: cae en
+      // Riesgo por su razón «stopped», y su deuda se declara aparte
+      // (owedLost), fuera de los dos totales.
+      if (isLate(p) && !lostIds.has(p.id)) { p.tip = "collect"; groups.get("morosos")!.push(p); continue; }
       if (p.reason) { p.tip = "call"; groups.get("riesgo")!.push(p); continue; }
       if (p.kind === "one_time") {
         // Hallazgo 8: un one_time terminado hace más de 12 meses (sin trabajo en el
@@ -7254,6 +7448,8 @@ export const getAdvisor = createServerFn({ method: "GET" })
     // note at the top of this file states for every outstanding sum.
     const owed = r2(clients.reduce((t, c) => t + (c.balance > 0 && c.isActive && !c.blacklisted ? c.balance : 0), 0));
     const owedLate = r2(morosos.people.reduce((t, p) => t + p.balance, 0));
+    // Ola 2 (BZ-58): la deuda de los archivados recientes se declara aparte.
+    const owedLost = r2(people.filter((p) => lostIds.has(p.id) && p.balance > 0).reduce((t, p) => t + p.balance, 0));
     if (morosos.count > 0 && owedLate >= 20) {
       // Biggest first, nudged up by age (capped at 6 months so an old $50 never beats a fresh $2,000).
       const urgency = (p: AdvisorPerson) => p.balance * (1 + Math.min(180, p.payDays ?? 0) / 90);
@@ -7335,7 +7531,12 @@ export const getAdvisor = createServerFn({ method: "GET" })
           .filter((p) => !p.suggested && !p.reason && !isLate(p) && (p.hourly ?? 0) < medianHourly * 0.7 && p.minutes)
           .map((p) => {
             const fair = (medianHourly * (p.minutes ?? 0)) / 60;
-            const target = Math.max(p.price + 5, Math.min(Math.round(fair / 5) * 5, Math.floor((p.price * 1.25) / 5) * 5));
+            // Ola 2 (BZ-25): también aquí el suelo de +$5 vive dentro del
+            // tope (+25 %): un precio de $10 ya no sugiere $15 (+50 %); si
+            // el suelo no cabe bajo el tope, la ganancia queda en 0 y el
+            // filtro de abajo descarta la sugerencia.
+            const capTime = Math.floor((p.price * 1.25) / 5) * 5;
+            const target = Math.min(Math.max(p.price + 5, Math.min(Math.round(fair / 5) * 5, capTime)), capTime);
             const visits = 30.44 / Math.max(1, p.every || 14);
             return { ...p, suggested: target, gainYear: Math.round((target - p.price) * visits * 12) };
           })
@@ -7425,6 +7626,7 @@ export const getAdvisor = createServerFn({ method: "GET" })
       activeClients: activeAll.length,
       owed,
       owedLate,
+      owedLost,
       monthly,
       hasGoals,
       actions,
@@ -7717,7 +7919,9 @@ export const getNativePlan = createServerFn({ method: "GET" })
         ])
       : [];
     // Hallazgo 9 (regla única): el widget suma solo clientes activos y no en lista negra.
-    const owed = await sql.query<{ total: unknown }>(`select coalesce(sum(balance),0) as total from clients where user_id = $1 and is_active = true and blacklisted = false`, [context.userId]);
+    // Ola 2 (BZ-26): y solo saldos positivos, como el Estudio y el Asesor —
+    // un saldo a favor no resta de lo que te deben.
+    const owed = await sql.query<{ total: unknown }>(`select coalesce(sum(balance) filter (where balance > 0),0) as total from clients where user_id = $1 and is_active = true and blacklisted = false`, [context.userId]);
     const debtorRows = await sql.query<{ name: string; balance: unknown }>(
       `select name, balance from clients
         where user_id = $1 and is_active = true and blacklisted = false and balance > 0
