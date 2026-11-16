@@ -441,7 +441,7 @@ const CLIENT_SELECT = `
        ) u
    ) unpaid
    where unpaid.running - unpaid.amount < c.balance) as unpaid_jobs,
-  (select min(u.ord)::date from (
+  (select min(unpaid2.ord)::date from (
      select u.amount, u.ord,
             sum(u.amount) over (order by u.ord desc, u.id desc) as running
        from (
@@ -1191,7 +1191,7 @@ async function highRiskClientIds(userId: string, today: string): Promise<Set<num
                  ) u
              ) unpaid
              where unpaid.running - unpaid.amount < c.balance) as unpaid_jobs,
-            (select min(u.ord)::date from (
+            (select min(unpaid2.ord)::date from (
                select u.amount, u.ord,
                       sum(u.amount) over (order by u.ord desc, u.id desc) as running
                  from (
