@@ -78,6 +78,13 @@ export function MessageComposer({
   // 1.5.05: the first time in the Android app, one line says why the microphone is asked for
   const [micWhy, setMicWhy] = useState(false);
   const recRef = useRef<DictSession | null>(null);
+  /* Ola 5 (BZ-50): el segmento dictado — el tramo [start, end) del texto
+   * que es de la voz. Los parciales reemplazan SOLO ese tramo; lo que
+   * Papá teclea durante el dictado jamás se reescribe desde una foto
+   * vieja (antes cada parcial reconstruía la caja entera desde el texto
+   * del inicio y lo tecleado desaparecía en silencio). Si teclea ENCIMA
+   * del segmento, el segmento se rinde y el dictado sigue tras su texto. */
+  const segRef = useRef<{ start: number; end: number; piece: string } | null>(null);
   const textRef = useRef(text);
   textRef.current = text;
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -90,15 +97,44 @@ export function MessageComposer({
     recRef.current?.cancel();
     const join = (a: string, b: string) => (a && b ? `${a} ${b}` : a || b).trim();
     const base = textRef.current.trim();
+    // Ola 5 (BZ-67): un dictado nuevo deja sin efecto la nota del motor que
+    // tradujo el texto anterior — el texto ya no es el que ese motor hizo.
+    setTrNote("");
     setListening(true);
+    /* Ola 5 (BZ-50): el dictado escribe en su segmento, al final del texto
+     * actual; cada parcial reemplaza ese tramo y nada más. */
+    segRef.current = { start: textRef.current.length, end: textRef.current.length, piece: "" };
+    const applyPiece = (piece: string) => {
+      setText((prev) => {
+        const seg = segRef.current;
+        if (!seg) return join(prev.trim(), piece);
+        const before = prev.slice(0, seg.start);
+        const after = prev.slice(seg.end);
+        const sep = before && piece && !/\s$/.test(before) ? " " : "";
+        const next = before + sep + piece + after;
+        seg.start = before.length + sep.length;
+        seg.end = seg.start + piece.length;
+        seg.piece = piece;
+        return next;
+      });
+    };
     let session: DictSession | null = null;
     session = startDictation(locale === "en" ? "en-US" : "es-US", {
       onState: (st) => setMicWhy(st === "asking"),
-      onPartial: (piece) => { setMicWhy(false); setText(join(base, piece)); },
+      onPartial: (piece) => { setMicWhy(false); applyPiece(piece); },
       onFinal: (piece) => {
         setMicWhy(false);
         if (translate) {
-          setText(base);
+          // Se retira solo el segmento dictado (los parciales); lo tecleado
+          // durante el dictado se queda. La traducción se añade al final.
+          setText((prev) => {
+            const seg = segRef.current;
+            if (!seg) return base;
+            const next = prev.slice(0, seg.start) + prev.slice(seg.end);
+            seg.end = seg.start;
+            seg.piece = "";
+            return next;
+          });
           setTranslating(true);
           void translateSmart(piece, (st) => { if (st === "download") setTrDownload(true); })
             .then((res) => {
@@ -110,10 +146,19 @@ export function MessageComposer({
           return;
         }
         const local = punctuate(piece);
-        setText(join(base, local));
+        applyPiece(local);
         void polishYardText({ data: { text: local, lang: locale } }).then((res) => {
           if (!res.ok || !res.text) return;
-          setText((prev) => (prev.endsWith(local) ? `${prev.slice(0, -local.length)}${res.text}` : prev));
+          setText((prev) => {
+            const seg = segRef.current;
+            if (seg && prev.slice(seg.start, seg.end) === local) {
+              const next = prev.slice(0, seg.start) + res.text + prev.slice(seg.end);
+              seg.end = seg.start + res.text.length;
+              seg.piece = res.text;
+              return next;
+            }
+            return prev.endsWith(local) ? `${prev.slice(0, -local.length)}${res.text}` : prev;
+          });
         });
       },
       onError: (e, code, attempts) => {
@@ -143,6 +188,7 @@ export function MessageComposer({
       onEnd: () => {
         setMicWhy(false);
         setListening(false);
+        segRef.current = null;
         if (recRef.current === session) recRef.current = null;
       },
     });
@@ -163,11 +209,18 @@ export function MessageComposer({
         microsoft: tx("Traducido con Microsoft", "Translated with Microsoft"),
         google: tx("Traducido con Google", "Translated with Google"),
         ai: tx("Traducido con el afinado", "Translated with the tuned translator"),
-        device: tx("Traducido en el teléfono (sin conexión)", "Translated on the phone (offline)"),
+        // Ola 5 (BZ-67): sin afirmar el estado de la conexión — el teléfono
+        // también es el último recurso cuando los de en línea fallan CON
+        // conexión; «(sin conexión)» podía mentir.
+        device: tx("Traducido en el teléfono", "Translated on the phone"),
         chrome: tx("Traducido con Chrome", "Translated with Chrome"),
         web: tx("Traducido con MyMemory", "Translated with MyMemory"),
       }[r.via];
       setTrNote(label);
+    } else {
+      // Ola 5 (BZ-67): una traducción fallida posterior también borra la
+      // nota — el texto que queda no lo tradujo el motor que la nota nombra.
+      setTrNote("");
     }
     return r;
   }
@@ -239,11 +292,27 @@ export function MessageComposer({
     setOpen(true);
   }
 
+  /* Las ediciones del usuario llegan por este setText (la hoja lo usa para
+   * teclear, vaciar y aplicar «Corregir»): borran la nota del motor que
+   * tradujo (BZ-67 — se borra donde se borra fixNote) y, si pisan el
+   * segmento dictado, lo rinden (BZ-50): el dictado seguirá tras el texto
+   * del usuario, nunca encima de lo que tecleó. */
+  const userSetText = (v: string) => {
+    const seg = segRef.current;
+    if (seg && v.slice(seg.start, seg.end) !== seg.piece) {
+      seg.start = v.length;
+      seg.end = v.length;
+      seg.piece = "";
+    }
+    setTrNote("");
+    setText(v);
+  };
+
   const sheet = open ? (
     <ComposerSheet
       name={name}
       text={text}
-      setText={setText}
+      setText={userSetText}
       mode={mode}
       listening={listening}
       translating={translating}

@@ -53,6 +53,8 @@ export type ClientRow = {
   daysSincePay: number | null;
   /** Local date of the newest REAL payment (paid/prepaid); null when the client never paid. A partial forgiveness never moves it (Ola 2, BZ-11). */
   lastPaidDate?: string | null;
+  /** The day the live debt's unpaid tail starts (Ola 2's unpaid_since); null when there is no job tail (e.g. pure opening debt). Cobros measures lateness from it (Ola 5, BZ-15). */
+  unpaidSince?: string | null;
   /** True when the aging clock runs from the day the opening debt entered the book (no payment, no cut yet — Ola 2, BZ-37); the file declares it instead of "no payments yet". */
   agingFromEntry?: boolean;
   payTier: PayTier;

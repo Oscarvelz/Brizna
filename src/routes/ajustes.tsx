@@ -1373,6 +1373,25 @@ function NotifyFold({ query }: { query: string }) {
           <PickerField type="time" className="aj-pf" value={prefs.hour.padStart(5, "0")} onChange={(e) => e.target.value && set({ hour: e.target.value.slice(0, 5) })} required />
         </div>
       </div>
+      {/* Ola 5 (BZ-73): una hora dentro del hueco del cambio de hora (1:00–2:59)
+          no existe el domingo de primavera: el aviso suena una hora más tarde
+          ese día. Se dice aquí, al elegirla — en silencio, no. */}
+      {(() => {
+        const hh = Number(prefs.hour.split(":")[0]);
+        return hh >= 1 && hh <= 2 ? (
+          <div className="aj-num mt-3">
+            <TriangleAlert className="size-5 shrink-0 text-primary" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="aj-num-sub">
+                {tx(
+                  "Ojo: el domingo del cambio de hora de primavera el reloj salta de 2:00 a 3:00, y con esta hora ese aviso sonará una hora más tarde ese día.",
+                  "Note: on the spring clock-change Sunday the clock jumps from 2:00 to 3:00, and at this time that alert will ring one hour later that day.",
+                )}
+              </p>
+            </div>
+          </div>
+        ) : null;
+      })()}
       {fail ? (
         <div className="aj-num mt-3">
           <TriangleAlert className="size-5 shrink-0 text-primary" aria-hidden />

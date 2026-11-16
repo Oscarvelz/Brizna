@@ -17,7 +17,7 @@ import {
   nowHHMM,
   stampDay,
   weekdayFromISO,
-  APP_TZ,
+  deviceTZ,
   isRealISODate,
 } from "@/lib/dates";
 import { DEFAULT_BUSINESS_NAME } from "@/lib/format";
@@ -356,6 +356,7 @@ function mapClient(row: ClientDb, today = todayISO(), risk: number | RiskOpts = 
     seasonEvery: row.season_every == null ? null : Number(row.season_every) || null,
     daysSincePay: profile.daysSincePay,
     lastPaidDate: lastPaid,
+    unpaidSince,
     agingFromEntry,
     payTier: profile.payTier,
     reliability: profile.reliability,
@@ -455,6 +456,24 @@ const CLIENT_SELECT = `
    ) unpaid2
    where unpaid2.running - unpaid2.amount < c.balance) as unpaid_since
 `;
+
+/* Ola 5 (BZ-15): la misma expresión unpaid_since de CLIENT_SELECT, para las
+ * consultas sueltas que cuentan morosos (Estudio y Asesor) — el atraso se
+ * mide contra el primer vencimiento que la deuda no cumplió, y esa fecha
+ * nace aquí una sola vez. La tabla de clientes se aliasa `c`. */
+export const UNPAID_SINCE_SQL = `(select min(unpaid2.ord)::date from (
+     select u.amount, u.ord,
+            sum(u.amount) over (order by u.ord desc, u.id desc) as running
+       from (
+         select j.amount, j.id,
+                coalesce(j.completed_at, j.scheduled_date::timestamptz) as ord
+           from jobs j
+          where j.client_id = c.id and j.user_id = c.user_id and j.status = 'done' and j.amount > 0
+          order by coalesce(j.completed_at, j.scheduled_date::timestamptz) desc, j.id desc
+          limit 64
+       ) u
+   ) unpaid2
+   where unpaid2.running - unpaid2.amount < c.balance)`;
 
 // MOVIMIENTO 2 (hallazgo 17): the unpaid count above is bounded to the newest 64 done jobs.
 // It only feeds payProfile's "late by cuts" test, whose threshold (riskCuts) riskPrefs
@@ -2458,7 +2477,8 @@ export const reopenJob = createServerFn({ method: "POST" })
                 and (p.paid_at at time zone $5)::date = (j.completed_at at time zone $5)::date
               order by p.paid_at asc, p.id asc
               limit 1`,
-            [context.userId, job.client_id, amount, data.id, APP_TZ],
+            // Ola 5 (BZ-45): el mismo día en el reloj del aparato, no en una zona clavada.
+            [context.userId, job.client_id, amount, data.id, deviceTZ()],
           );
           legacyPay = legacy[0];
         }
@@ -4423,15 +4443,16 @@ export const getFinanceStats = createServerFn({ method: "GET" })
       });
     }
 
-    const owing = await sql.query<{ pay_due_day: number | null; balance: unknown }>(
+    const owing = await sql.query<{ pay_due_day: number | null; balance: unknown; unpaid_since: unknown }>(
       // 1.5.50 (auditoría interna, P3): latePayers follows the single totals rule — a
       // blacklisted balance is written off, so its owner is not a "late payer" here.
-      `select pay_due_day, balance from clients
+      // Ola 5 (BZ-15): unpaid_since viaja para que el atraso no tenga amnesia de calendario.
+      `select pay_due_day, balance, ${UNPAID_SINCE_SQL} as unpaid_since from clients c
         where user_id = $1 and is_active = true and blacklisted = false and balance > 0`,
       [context.userId],
     );
     const latePayers = owing.filter((c) =>
-      isPaymentLate(c.pay_due_day, today, money(c.balance)),
+      isPaymentLate(c.pay_due_day, today, money(c.balance), c.unpaid_since ? asIsoDate(c.unpaid_since) : null),
     ).length;
 
     const thisWeek = weekSeries[weekSeries.length - 1];
@@ -7029,10 +7050,10 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
       }
       unpaid.set(c.id, n);
     }
-    const dueRows = await sql.query<{ pay_due_day: number | null; balance: unknown }>(
+    const dueRows = await sql.query<{ pay_due_day: number | null; balance: unknown; unpaid_since: unknown }>(
       // 1.5.50 (auditoría interna, P3): same rule — latePayers counts only active,
-      // non-blacklisted debtors.
-      `select pay_due_day, balance from clients where user_id = $1 and is_active = true and blacklisted = false and balance > 0`,
+      // non-blacklisted debtors. Ola 5 (BZ-15): con su unpaid_since, como en el Estudio.
+      `select pay_due_day, balance, ${UNPAID_SINCE_SQL} as unpaid_since from clients c where user_id = $1 and is_active = true and blacklisted = false and balance > 0`,
       [uid],
     );
     const waitPeople = owing.filter((c) => c.payTier === "espera").length;
@@ -7051,7 +7072,7 @@ export const getCifrasInsights = createServerFn({ method: "GET" })
       waitPeople,
       seriousPeople,
       currentPeople: Math.max(0, owing.length - waitPeople - seriousPeople),
-      latePayers: dueRows.filter((c) => isPaymentLate(c.pay_due_day, today, money(c.balance))).length,
+      latePayers: dueRows.filter((c) => isPaymentLate(c.pay_due_day, today, money(c.balance), c.unpaid_since ? asIsoDate(c.unpaid_since) : null)).length,
     };
     void owingIds;
     const outstandingRows = await sql.query<{ v: unknown; n: unknown }>(
@@ -8171,9 +8192,10 @@ export type NativePlan = {
   debtors: { name: string; balance: number }[];
 };
 
-/** What the Android app needs to schedule its reminders and fill its widget: the next 8 days of open cuts (route
+/** What the Android app needs to schedule its reminders and fill its widget: the next 30 days of open cuts (route
  *  order), today's done count, who pays on which day of the month, late cuts, Alto riesgo and the Por cobrar total.
- *  Read-only; only ever called inside the Android app. */
+ *  Read-only; only ever called inside the Android app. (Ola 5, BZ-16: the window was 9 days — the notices died
+ *  after ~8 days without opening the app; Ajustes promises they arrive anyway.) */
 export const getNativePlan = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<NativePlan> => {
@@ -8182,7 +8204,7 @@ export const getNativePlan = createServerFn({ method: "GET" })
     const today = todayISO();
     const jobs = await loadJobsForIds(context.userId, today);
     const days: NativePlan["days"] = [];
-    for (let i = 0; i <= 8; i += 1) {
+    for (let i = 0; i <= 29; i += 1) {
       const date = addDaysISO(today, i);
       const open = jobs.filter((j) => j.status === "pending" && j.scheduledDate === date);
       days.push({

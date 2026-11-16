@@ -19,8 +19,8 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/input";
 import {
   endOfWeekISO,
+  governingDueISO,
   isPaymentLate,
-  payDueISO,
   lastDayOfMonthISO,
   monthParts,
   stampDay,
@@ -143,8 +143,8 @@ function CobrosPage() {
         return bv.localeCompare(av) || b.balance - a.balance;
       }
       if (sort === "late") {
-        const al = isPaymentLate(a.payDueDay, today, a.balance) ? 0 : 1;
-        const bl = isPaymentLate(b.payDueDay, today, b.balance) ? 0 : 1;
+        const al = isPaymentLate(a.payDueDay, today, a.balance, a.unpaidSince) ? 0 : 1;
+        const bl = isPaymentLate(b.payDueDay, today, b.balance, b.unpaidSince) ? 0 : 1;
         if (al !== bl) return al - bl;
         return b.balance - a.balance;
       }
@@ -426,7 +426,7 @@ function CobrosPage() {
             )}
             <ul className={viewGrid(density, cols, dense ? "gap-1" : "gap-2")}>
               {owing.map((c) => {
-                const late = isPaymentLate(c.payDueDay, today, c.balance);
+                const late = isPaymentLate(c.payDueDay, today, c.balance, c.unpaidSince);
                 const on = picked.includes(c.id);
                 if (!dense) {
                   return (
@@ -1273,9 +1273,11 @@ function PickBox({ on, onToggle, label, className }: { on: boolean; onToggle: ()
   );
 }
 
-function lateDays(dueDay: number | null | undefined, today: string): number {
+function lateDays(dueDay: number | null | undefined, today: string, unpaidSince?: string | null): number {
   if (!dueDay) return 0;
-  const due = payDueISO(dueDay, today);
+  // Ola 5 (BZ-15): los días cuentan desde el vencimiento que manda (el
+  // primero que la deuda no cumplió), no desde el de este mes.
+  const due = governingDueISO(dueDay, today, unpaidSince);
   return Math.max(0, Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${due}T12:00:00Z`)) / 86400000));
 }
 
@@ -1305,7 +1307,7 @@ function OwingCard({
 }) {
   const tx = useTx();
   const quad = mode === "quad";
-  const days = late ? lateDays(c.payDueDay, today) : 0;
+  const days = late ? lateDays(c.payDueDay, today, c.unpaidSince) : 0;
   const cut = c.lastCutDate ? tx(`Corte ${formatDay(c.lastCutDate, "d MMM")}`, `Cut ${formatDay(c.lastCutDate, "d MMM")}`) : tx("Sin corte hecho", "No cut done");
   const pays = c.payDueDay ? payDueLabel(c.payDueDay) : null;
   const paysShort = c.payDueDay ? tx(`Paga el ${c.payDueDay}`, `Pays on ${c.payDueDay}`) : null;

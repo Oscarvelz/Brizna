@@ -27,6 +27,9 @@ export type BriznaNativeBridge = {
   takeRoute?(): string;
   canAuth(): string;
   authenticate(id: string, title: string, subtitle: string): void;
+  /** android-12 (Ola 5, BZ-8): cancela el prompt de huella/PIN de ese id
+   *  (CancellationSignal); la cáscara contesta por el evento de siempre. */
+  authenticateCancel?(id: string): void;
   saveBegin(name: string, mime: string): string;
   saveChunk(id: string, b64: string): string;
   saveEnd(id: string, msgTemplate: string): string;
@@ -82,26 +85,37 @@ export function nativeAuth(): Promise<boolean> {
   if (!n) return Promise.resolve(false);
   const id = Math.random().toString(36).slice(2);
   return new Promise((resolve) => {
-    // 1.5.50 (auditoría interna, C4): if the shell never answers (it can die silently),
-    // the lock screen used to wait forever; 30 s without the event resolves as "no".
-    const timer = setTimeout(() => {
+    /* Ola 5 (BZ-8): el plazo ya no mata un prompt vivo. A los 30 s la web
+     * pide a la cáscara CANCELAR el prompt (authenticateCancel) y sigue
+     * esperando su contestación — la cáscara contesta también cuando el
+     * prompt se cierra por cualquier causa. Un acierto tardío dentro del
+     * margen cuenta: antes, teclear el PIN con calma (>30 s) autenticaba
+     * bien y la app lo tiraba a la basura porque la promesa ya había
+     * resuelto false. La red de 90 s solo cubre una cáscara que muera sin
+     * contestar nada (la lección C4 sigue: nunca colgar para siempre). */
+    let settled = false;
+    const done = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(askCancel);
+      clearTimeout(net);
       window.removeEventListener("briznanative-auth", on);
-      resolve(false);
-    }, 30_000);
+      resolve(ok);
+    };
     const on = (e: Event) => {
       const d = (e as CustomEvent<{ id: string; ok: boolean }>).detail;
       if (!d || d.id !== id) return;
-      clearTimeout(timer);
-      window.removeEventListener("briznanative-auth", on);
-      resolve(!!d.ok);
+      done(!!d.ok);
     };
+    const askCancel = setTimeout(() => {
+      try { n.authenticateCancel?.(id); } catch { /* cáscara vieja: queda la red */ }
+    }, 30_000);
+    const net = setTimeout(() => done(false), 90_000);
     window.addEventListener("briznanative-auth", on);
     try {
       n.authenticate(id, en() ? "Unlock Brizna" : "Desbloquear Brizna", en() ? "Use your fingerprint or your screen lock" : "Usa tu huella o el bloqueo de pantalla");
     } catch {
-      clearTimeout(timer);
-      window.removeEventListener("briznanative-auth", on);
-      resolve(false);
+      done(false);
     }
   });
 }
@@ -120,28 +134,55 @@ export type NativePickedContact = {
  * (browser, PWA, or an older shell), so the caller falls back to navigator.contacts.
  * Rejects with Error("contacts-cancelled") when the user backs out, Error("contacts-failed") otherwise.
  */
+/* Ola 5 (BZ-7): una elección que llega cuando su promesa ya no vive (la red
+ * de seguridad venció, o la cáscara la entrega tras recrearse) no se tira:
+ * se reenvía por «briznanative-contacts-late» y el formulario que la pidió
+ * la aplica igual que una elección a tiempo. */
+const livePickIds = new Set<string>();
+let lastPickId: string | null = null;
+let pickLateArmed = false;
+function armPickLate() {
+  if (pickLateArmed || typeof window === "undefined") return;
+  pickLateArmed = true;
+  window.addEventListener("briznanative-contacts", (e) => {
+    const d = (e as CustomEvent<{ id: string; ok: boolean; contacts?: NativePickedContact[] }>).detail;
+    if (!d || !d.ok || !d.contacts?.length) return;
+    if (d.id !== lastPickId || livePickIds.has(d.id)) return;
+    window.dispatchEvent(new CustomEvent("briznanative-contacts-late", { detail: { contacts: d.contacts } }));
+  });
+}
+
 export function nativePickContacts(multiple: boolean): Promise<NativePickedContact[]> | null {
   const n = native();
   if (!n?.pickContacts) return null;
   const pick = n.pickContacts.bind(n);
   const id = Math.random().toString(36).slice(2);
+  armPickLate();
+  lastPickId = id;
+  livePickIds.add(id);
   return new Promise((resolve, reject) => {
-    // Picking a contact is a human browsing their address book: two minutes, not the auth prompt's 30 s.
-    // If the shell never answers, the form must not spin forever either (the C4 lesson).
+    /* Ola 5 (BZ-7): la web ya no rechaza mientras el selector viva. Antes,
+     * a los 120 s la promesa rechazaba con el selector AÚN ABIERTO y la
+     * elección que llegaba después se descartaba en silencio. Ahora la
+     * cáscara contesta siempre: la elección, la cancelación, o su evento
+     * propio de «selector cerrado sin elección» (error "closed", que el
+     * formulario trata como cancelación: silencio). La red de 10 minutos
+     * solo cubre una cáscara que muera sin contestar nada. */
     const timer = setTimeout(() => {
       cleanup();
       try { n.pickContactsCancel?.(); } catch { /* the shell is gone anyway */ }
       reject(new Error("contacts-failed"));
-    }, 120_000);
+    }, 600_000);
     const on = (e: Event) => {
       const d = (e as CustomEvent<{ id: string; ok: boolean; error?: string; contacts?: NativePickedContact[] }>).detail;
       if (!d || d.id !== id) return;
       cleanup();
       if (d.ok) resolve(d.contacts ?? []);
-      else reject(new Error(d.error === "cancelled" ? "contacts-cancelled" : "contacts-failed"));
+      else reject(new Error(d.error === "cancelled" || d.error === "closed" ? "contacts-cancelled" : "contacts-failed"));
     };
     const cleanup = () => {
       clearTimeout(timer);
+      livePickIds.delete(id);
       window.removeEventListener("briznanative-contacts", on);
     };
     window.addEventListener("briznanative-contacts", on);
@@ -194,17 +235,22 @@ function installBack(n: BriznaNativeBridge) {
   const root = () => {
     try { n.atRoot(en() ? "Press back again to close Brizna" : "Pulsa atrás otra vez para salir"); } catch { /* ignore */ }
   };
-  // Count every completed history step (popstate in capture, plus the Navigation API for traversals someone else
-  // handled first). When Back moves nothing, Brizna is on its first entry: that is the root.
-  let steps = 0;
-  const step = () => { steps++; };
-  window.addEventListener("popstate", step, true);
-  const nav = (window as Window & { navigation?: EventTarget }).navigation;
-  nav?.addEventListener?.("currententrychange", step);
+  /* Ola 5 (BZ-28): «raíz» ya no se decide por reloj. Antes, Back esperaba
+   * 400 ms a que algo se moviera y, si el teléfono era lento, declaraba
+   * raíz con la navegación en marcha — y la segunda pulsación, la natural
+   * de «esto no se movió», cerraba la app. Ahora el router conoce su
+   * índice: cada entrada lleva `__TSR_index` en history.state, y los pasos
+   * propios (hojas bzSheet, saltos bzJump) viajan marcados en el mismo
+   * estado. Raíz es exactamente: índice 0 y ningún paso propio encima.
+   * Todo lo demás es navegación, tarde lo que tarde. */
   w.BriznaBack = () => {
-    const before = steps;
-    history.back();
-    window.setTimeout(() => { if (steps === before) root(); }, 400);
+    const st = (window.history.state ?? {}) as { __TSR_index?: number; bzSheet?: number; bzJump?: boolean };
+    const idx = typeof st.__TSR_index === "number" ? st.__TSR_index : 0;
+    if (idx > 0 || st.bzSheet != null || st.bzJump) {
+      history.back();
+    } else {
+      root();
+    }
     return "ok";
   };
 }

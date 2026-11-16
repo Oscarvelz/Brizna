@@ -7,7 +7,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
-import { addDaysISO, todayISO, weekdayFromISO, APP_TZ } from "@/lib/dates";
+import { addDaysISO, todayISO, weekdayFromISO, deviceTZ } from "@/lib/dates";
 import {
   ensureScheduleForUserInner,
   logClientChange,
@@ -159,13 +159,13 @@ function specs(_en: boolean): Spec[] {
 const INTERVAL: Record<Freq, number> = { w: 7, b: 14, m: 0 };
 const CUTS: Record<Freq, number> = { w: 4, b: 2, m: 1 };
 
-/** The UTC instant of a wall-clock time on the app's clock (America/New_York). */
+/** The UTC instant of a wall-clock time on the app's clock (the device's zone — Ola 5, BZ-45). */
 function stamp(date: string, hhmm: string): string {
   const [y, m, d] = date.split("-").map(Number);
   const [hh, mm] = hhmm.split(":").map(Number);
   const want = Date.UTC(y, m - 1, d, hh, mm);
   let guess = want + 5 * 3600_000;
-  const f = new Intl.DateTimeFormat("en-US", { timeZone: APP_TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const f = new Intl.DateTimeFormat("en-US", { timeZone: deviceTZ(), year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   for (let k = 0; k < 2; k += 1) {
     const p = Object.fromEntries(f.formatToParts(new Date(guess)).map((x) => [x.type, x.value]));
     const seen = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute));

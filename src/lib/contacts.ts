@@ -52,6 +52,20 @@ function mapContact(c: NativeContact): PickedContact | null {
   return { name: name || phone, phone, address };
 }
 
+/* Ola 5 (BZ-7): si la elección del selector llega tarde (su promesa ya no
+ * vive), la cáscara la entrega igual y native.ts la reenvía por este canal;
+ * el formulario la aplica como una elección a tiempo. Devuelve el desarmado. */
+export function onLatePickedContacts(cb: (picked: PickedContact[]) => void): () => void {
+  if (typeof window === "undefined") return () => undefined;
+  const on = (e: Event) => {
+    const d = (e as CustomEvent<{ contacts?: NativeContact[] }>).detail;
+    const picked = (d?.contacts ?? []).map(mapContact).filter((c): c is PickedContact => Boolean(c));
+    if (picked.length) cb(picked);
+  };
+  window.addEventListener("briznanative-contacts-late", on);
+  return () => window.removeEventListener("briznanative-contacts-late", on);
+}
+
 export async function pickPhoneContacts(multiple = false): Promise<PickedContact[]> {
   // android-11: inside the app, the shell picks the contact itself. The WebView's own
   // navigator.contacts exists but its picker fails on real phones — the promise rejected even

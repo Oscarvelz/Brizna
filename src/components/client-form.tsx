@@ -7,7 +7,7 @@ import { OffDayDialog, shiftToMonday, useRareDay } from "@/components/off-day-as
 import { RichNotes } from "@/components/rich-notes";
 import { Button } from "@/components/ui/button";
 import { Input, Label, NativeSelect } from "@/components/ui/input";
-import { pickPhoneContacts } from "@/lib/contacts";
+import { onLatePickedContacts, pickPhoneContacts } from "@/lib/contacts";
 import { PhotoPicker } from "@/components/photo-picker";
 import { PHOTOS_ENABLED } from "@/lib/photos-flag";
 import { previewUpcomingCuts, todayISO, weekdayFromISO } from "@/lib/dates";
@@ -244,6 +244,12 @@ export function ClientForm({
         : tx("Contacto copiado. Completa la dirección si hace falta.", "Contact copied. Fill in the address if needed."),
     );
   }
+
+  /* Ola 5 (BZ-7): una elección del selector que llega tarde (la promesa ya
+   * no vivía) se aplica igual — el contacto que Papá eligió no se pierde. */
+  const applyPickedRef = useRef(applyPicked);
+  applyPickedRef.current = applyPicked;
+  useEffect(() => onLatePickedContacts((picked) => applyPickedRef.current(picked)), []);
 
   async function importContact(multiple: boolean) {
     setPicking(true);

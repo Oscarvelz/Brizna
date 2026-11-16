@@ -1,15 +1,27 @@
 import { smartHit } from "@/lib/fuzzy";
 import { readStoredLocale } from "@/lib/theme";
 
-export const APP_TZ = "America/New_York";
+/* Ola 5 (BZ-45, decisión de Oscar): UN SOLO RELOJ — manda la zona del
+ * aparato en todo. Antes todayISO vivía clavado a America/New_York mientras
+ * los avisos y los widgets vivían en la zona del teléfono: en el panhandle
+ * (Central) o de viaje, el «hoy» de la app y el de los avisos se
+ * contradecían. Sin argumento, estas funciones leen el día y la hora EN LA
+ * ZONA DEL APARATO; la zona explícita queda solo para quien la pida. */
+export function deviceTZ(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York";
+  } catch {
+    return "America/New_York";
+  }
+}
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-export function todayISO(timeZone = APP_TZ): string {
+export function todayISO(timeZone?: string): string {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
+    ...(timeZone ? { timeZone } : {}),
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -18,24 +30,25 @@ export function todayISO(timeZone = APP_TZ): string {
 
 const dayFmt = new Map<string, Intl.DateTimeFormat>();
 
-/** Calendar day (YYYY-MM-DD) of a moment, on the app's clock (same zone as todayISO),
- *  never the UTC day. A plain YYYY-MM-DD string is returned as is. */
-export function stampDay(v: string | Date | null | undefined, timeZone = APP_TZ): string {
+/** Calendar day (YYYY-MM-DD) of a moment, on the app's clock (the device's zone,
+ *  same as todayISO), never the UTC day. A plain YYYY-MM-DD string is returned as is. */
+export function stampDay(v: string | Date | null | undefined, timeZone?: string): string {
   if (v == null || v === "") return "";
   if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
   const d = v instanceof Date ? v : new Date(v);
   if (Number.isNaN(d.getTime())) return String(v).slice(0, 10);
-  let f = dayFmt.get(timeZone);
+  const key = timeZone ?? "device";
+  let f = dayFmt.get(key);
   if (!f) {
-    f = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
-    dayFmt.set(timeZone, f);
+    f = new Intl.DateTimeFormat("en-CA", { ...(timeZone ? { timeZone } : {}), year: "numeric", month: "2-digit", day: "2-digit" });
+    dayFmt.set(key, f);
   }
   return f.format(d);
 }
 
-export function nowHHMM(timeZone = APP_TZ): string {
+export function nowHHMM(timeZone?: string): string {
   const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone,
+    ...(timeZone ? { timeZone } : {}),
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
@@ -285,9 +298,40 @@ export function payDueISO(dueDay: number, fromISO: string): string {
   return `${year}-${pad(month)}-${pad(d)}`;
 }
 
-export function isPaymentLate(dueDay: number | null | undefined, today: string, balance: number): boolean {
+/* Ola 5 (BZ-15): el vencimiento que MANDA para decir «atrasado». Antes
+ * isPaymentLate comparaba solo contra el vencimiento de ESTE mes: el día 1,
+ * toda deuda impaga dejaba de estar atrasada hasta que pasaba el nuevo
+ * vencimiento (amnesia de calendario). Ahora: si se conoce desde cuándo vive
+ * la deuda (unpaidSince), manda el PRIMER vencimiento que la deuda no
+ * cumplió — los días cuentan desde ahí, sin reinicio el día 1 ni el día
+ * después del vencimiento. Sin esa fecha (deuda inicial), manda el último
+ * vencimiento ya pasado. El día de pago en sí nunca es atraso: el atraso
+ * empieza al día siguiente del vencimiento que manda. */
+export function governingDueISO(dueDay: number, today: string, unpaidSince?: string | null): string {
+  if (unpaidSince) {
+    let due = payDueISO(dueDay, unpaidSince);
+    if (due < unpaidSince) {
+      const { year, month } = monthParts(unpaidSince);
+      const next = month === 12 ? `${year + 1}-01-15` : `${year}-${pad(month + 1)}-15`;
+      due = payDueISO(dueDay, next);
+    }
+    return due;
+  }
+  const thisDue = payDueISO(dueDay, today);
+  if (today > thisDue) return thisDue;
+  const { year, month } = monthParts(today);
+  const prev = month === 1 ? `${year - 1}-12-15` : `${year}-${pad(month - 1)}-15`;
+  return payDueISO(dueDay, prev);
+}
+
+export function isPaymentLate(
+  dueDay: number | null | undefined,
+  today: string,
+  balance: number,
+  unpaidSince?: string | null,
+): boolean {
   if (!dueDay || balance <= 0) return false;
-  return today > payDueISO(dueDay, today);
+  return today > governingDueISO(dueDay, today, unpaidSince);
 }
 
 function nthWeekday(year: number, month: number, weekday: number, n: number): string {

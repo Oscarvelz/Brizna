@@ -4,9 +4,11 @@
  * with Android alarms, even with Brizna closed or after a restart. Runs only inside the app (see components/native-host).
  *
  * Reminder kinds (each can be turned off in Ajustes, Notificaciones):
- * - cortes: the evening before each of the next 8 days with cuts, at the chosen hour (19:00 by default).
+ * - cortes: the evening before each day of the plan window with cuts, at the chosen hour (19:00 by default).
  * - pagos: 7:30 a.m. on the day of the month a client pays (pay day 31 falls on the month's last day).
- * - riesgo: the next 7:30 a.m.: late cuts (today's still open ones count, they will be late by then) and Alto riesgo.
+ * - riesgo: EVERY morning of the window at 7:30 (Ola 5, BZ-16 — it used to be only the next one, while
+ *   Ajustes promises "each morning there is any"): late cuts (today's still open ones count from tomorrow,
+ *   they will be late by then) and Alto riesgo.
  * - lluvia: 7:30 a.m. on the day the yards moved by rain land on.
  */
 import { formatDay, formatTime, money } from "@/lib/format";
@@ -40,7 +42,18 @@ export function writeNotifyPrefs(next: NotifyPrefs) {
   window.dispatchEvent(new Event("bz-notify-prefs"));
 }
 
-export type PlanItem = { id: string; at: number; kind: "cortes" | "pagos" | "riesgo" | "lluvia"; title: string; body: string; route: string };
+export type PlanItem = { id: string; at: number; kind: "cortes" | "pagos" | "riesgo" | "lluvia"; title: string; body: string; route: string; hash: string };
+
+/** Ola 5 (BZ-46): la huella del contenido de un aviso. Si el aviso de un
+ *  mismo id cambia de texto (un patio más para mañana), la cáscara compara
+ *  la huella y limpia su marca «ya sonó» de ese id: lo corregido vuelve a
+ *  poder sonar en vez de quedar enterrado por la marca vieja. */
+function contentHash(it: { title: string; body: string; route: string }): string {
+  const s = `${it.title}\n${it.body}\n${it.route}`;
+  let h = 5381;
+  for (let i = 0; i < s.length; i += 1) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
 
 const en = () => typeof document !== "undefined" && document.documentElement.lang === "en";
 const tx = (es: string, eng: string) => (en() ? eng : es);
@@ -73,7 +86,12 @@ function daysInMonth(date: string): number {
 
 export function buildSchedule(plan: NativePlan, prefs: NotifyPrefs, now = Date.now()): PlanItem[] {
   const out: PlanItem[] = [];
-  const push = (it: PlanItem) => { if (it.at > now) out.push(it); };
+  /* Ola 5 (BZ-46): también se entrega lo pasado DENTRO de la tolerancia de
+   * la cáscara (6 h): abrir la app cinco minutos después de la hora elegida
+   * ya no borra el aviso de esa noche — decide fireDue, no esta lista. */
+  const push = (it: Omit<PlanItem, "hash">) => {
+    if (it.at > now - 6 * 3600_000) out.push({ ...it, hash: contentHash(it) });
+  };
   for (const day of plan.days) {
     if (prefs.cuts && day.date > plan.today && day.cuts.length) {
       const rain = day.cuts.filter((c) => c.rain).length;
@@ -128,27 +146,31 @@ export function buildSchedule(plan: NativePlan, prefs: NotifyPrefs, now = Date.n
     }
   }
   if (prefs.risk) {
-    const morningToday = at(plan.today, MORNING);
-    const first = morningToday > now ? plan.today : plan.days[1]?.date;
-    if (first) {
-      const todayOpen = first === plan.today ? [] : (plan.days[0]?.cuts ?? []).map((c) => c.name);
-      const late = [...plan.overdue, ...todayOpen];
+    /* Ola 5 (BZ-16 + BZ-72): el aviso de riesgo sale para CADA mañana de la
+     * ventana, como Ajustes promete («Cada mañana que haya») — antes salía
+     * solo la próxima y la segunda mañana sin abrir la app ya era silencio.
+     * Y la lista de atrasados se deduplica UNA vez (BZ-72): el título, el
+     * cuerpo y la ruta cuentan la misma lista. */
+    const todayOpen = (plan.days[0]?.cuts ?? []).map((c) => c.name);
+    const firstIdx = at(plan.today, MORNING) > now ? 0 : 1;
+    for (let i = firstIdx; i < plan.days.length; i += 1) {
+      const day = plan.days[i]!;
+      const late = once([...plan.overdue, ...(i >= 1 ? todayOpen : [])]);
       const parts: string[] = [];
       if (late.length) parts.push(tx(plural(late.length, "corte atrasado", "cortes atrasados"), plural(late.length, "late cut", "late cuts")));
       if (plan.risk.length) parts.push(tx(`${plan.risk.length} en Alto riesgo`, `${plan.risk.length} at high risk`));
-      if (parts.length) {
-        const body: string[] = [];
-        if (late.length) body.push(dot(`${tx("Atrasados", "Late")}: ${joinNames(once(late))}`));
-        if (plan.risk.length) body.push(dot(`${tx("Alto riesgo", "High risk")}: ${joinNames(once(plan.risk))}`));
-        push({
-          id: `riesgo-${first}`,
-          at: at(first, MORNING),
-          kind: "riesgo",
-          title: parts.join(" · "),
-          body: body.join(" "),
-          route: late.length ? "/" : "/cobros",
-        });
-      }
+      if (!parts.length) continue;
+      const body: string[] = [];
+      if (late.length) body.push(dot(`${tx("Atrasados", "Late")}: ${joinNames(late)}`));
+      if (plan.risk.length) body.push(dot(`${tx("Alto riesgo", "High risk")}: ${joinNames(once(plan.risk))}`));
+      push({
+        id: `riesgo-${day.date}`,
+        at: at(day.date, MORNING),
+        kind: "riesgo",
+        title: parts.join(" · "),
+        body: body.join(" "),
+        route: late.length ? "/" : "/cobros",
+      });
     }
   }
   return out.sort((a, b) => a.at - b.at);
@@ -171,7 +193,9 @@ export function buildWidget(plan: NativePlan) {
     debtors: plan.debtors.map((x) => ({ name: x.name, amt: money(x.balance) })),
     alertLine: alertParts.join(" · "),
     at: Date.now(),
-    days: plan.days.slice(0, 8).map((d) => {
+    // Ola 5 (BZ-64): los 9 días que los widgets saben pintar, no 8 — la tira
+    // Semana perdía su última celda a los dos días de no abrir la app.
+    days: plan.days.slice(0, 9).map((d) => {
       const n = d.cuts.length;
       const first = d.cuts[0];
       const t = first ? formatTime(first.time) : null;
