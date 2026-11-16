@@ -63,6 +63,7 @@ function readKey(k: string): OutboxOp[] {
 }
 
 let legacyAdopted = false;
+let localAdopted = false;
 
 function read(): OutboxOp[] {
   if (typeof localStorage === "undefined") return [];
@@ -80,6 +81,23 @@ function read(): OutboxOp[] {
         localStorage.removeItem(LEGACY_KEY);
       } catch { /* ignore */ }
       return legacy;
+    }
+  }
+  // 1.5.93 (campaña Prejuicio, BZ-5): the same adoption for the PROVISIONAL scope.
+  // Work queued with no remembered session lives under `ols-outbox.local`; when the
+  // owner signs in, the scope changes to their account and those ops used to stay
+  // behind, invisible and never uploaded — a field day's "Hecho" marks lost in plain
+  // sight. They belong to the owner of this device's book (the same admission C1
+  // makes), so the first account-scoped read moves them into the account's queue.
+  if (!localAdopted && scope() !== "local" && mine.length === 0) {
+    localAdopted = true;
+    const local = readKey("ols-outbox.local");
+    if (local.length) {
+      try {
+        localStorage.setItem(key(), JSON.stringify(local));
+        localStorage.removeItem("ols-outbox.local");
+      } catch { /* ignore */ }
+      return local;
     }
   }
   return mine;
@@ -120,13 +138,47 @@ export function clearFailed() {
 
 /** A restore replaces the book and remaps every id: ops queued against the old book
  *  can never apply to the new one. They are quarantined into the failed list — visible,
- *  counted, dismissible — never silently dropped and never flushed (D1). */
+ *  counted, dismissible — never silently dropped and never flushed (D1).
+ *  1.5.93 (BZ-5): the quarantine walks EVERY scope present on the device, not only
+ *  the current one — ops under the provisional scope (`ols-outbox.local`) or another
+ *  account's scope point at the same replaced book's ids and are just as poisonous. */
 export function quarantineOutbox(why: string): number {
-  const ops = read();
-  if (!ops.length) return 0;
-  addFailed(ops.map((op) => ({ op, why, at: Date.now() })));
-  write([]);
-  return ops.length;
+  let moved = 0;
+  const mine = read();
+  if (mine.length) {
+    addFailed(mine.map((op) => ({ op, why, at: Date.now() })));
+    write([]);
+    moved += mine.length;
+  }
+  try {
+    const scopes = new Set<string>();
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const k = localStorage.key(i);
+      const m = k ? /^ols-outbox\.(.+)$/.exec(k) : null;
+      if (m && !m[1].startsWith("failed")) scopes.add(m[1]);
+    }
+    for (const sc of scopes) {
+      if (`ols-outbox.${sc}` === key()) continue;
+      const ops = readKey(`ols-outbox.${sc}`);
+      if (!ops.length) continue;
+      const failed = (() => {
+        try {
+          const raw = JSON.parse(localStorage.getItem(`ols-outbox-failed.${sc}`) || "[]");
+          return Array.isArray(raw) ? (raw as FailedOp[]) : [];
+        } catch { return [] as FailedOp[]; }
+      })();
+      try {
+        localStorage.setItem(
+          `ols-outbox-failed.${sc}`,
+          JSON.stringify([...failed, ...ops.map((op) => ({ op, why, at: Date.now() }))].slice(-50)),
+        );
+        localStorage.removeItem(`ols-outbox.${sc}`);
+        moved += ops.length;
+      } catch { /* ignore */ }
+    }
+  } catch { /* ignore */ }
+  if (moved) window.dispatchEvent(new Event(EVENT));
+  return moved;
 }
 
 export function useFailed(): FailedOp[] {

@@ -1153,8 +1153,8 @@ function AjustesPage() {
           open={Boolean(restoreTarget)}
           title={tx("¿Restaurar esta copia?", "Restore this copy?")}
           description={tx(
-            `Se reemplazan los clientes y trabajos actuales por los de ${restoreTarget ? formatStamp(restoreTarget.createdAt) : ""}. Antes se guarda una copia de lo que hay ahora, por si quieres volver.`,
-            `Current clients and jobs are replaced by those from ${restoreTarget ? formatStamp(restoreTarget.createdAt) : ""}. A copy of what is there now is saved first, in case you want to go back.`,
+            `Se reemplazan los clientes y trabajos actuales por los de ${restoreTarget ? formatStamp(restoreTarget.createdAt) : ""} (${restoreTarget ? restoreTarget.clientCount : 0} clientes · ${restoreTarget ? restoreTarget.jobCount : 0} trabajos). Antes se guarda una copia de lo que hay ahora, por si quieres volver. La copia restaurada también reemplaza la de la Nube y llegará a tus otros equipos.`,
+            `Current clients and jobs are replaced by those from ${restoreTarget ? formatStamp(restoreTarget.createdAt) : ""} (${restoreTarget ? restoreTarget.clientCount : 0} clients · ${restoreTarget ? restoreTarget.jobCount : 0} jobs). A copy of what is there now is saved first, in case you want to go back. The restored copy also replaces the cloud copy and will reach your other devices.`,
           )}
           confirmLabel={tx("Sí, restaurar", "Yes, restore")}
           danger
@@ -1165,7 +1165,7 @@ function AjustesPage() {
         <ConfirmDialog
           open={Boolean(restoreJson)}
           title={tx("¿Restaurar el archivo?", "Restore the file?")}
-          description={tx("Reemplaza los datos actuales por los del archivo. Antes se guarda una copia de lo que hay ahora.", "It replaces the current data with the file. A copy of what is there now is saved first.")}
+          description={tx("Reemplaza los datos actuales por los del archivo. Antes se guarda una copia de lo que hay ahora. La copia restaurada también reemplaza la de la Nube y llegará a tus otros equipos.", "It replaces the current data with the file. A copy of what is there now is saved first. The restored copy also replaces the cloud copy and will reach your other devices.")}
           confirmLabel={tx("Sí, restaurar archivo", "Yes, restore file")}
           danger
           pending={restoreFile.isPending}

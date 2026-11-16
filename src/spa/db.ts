@@ -3,6 +3,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
 import { setFlushFailed } from "@/lib/flush-state";
+import { quarantineOutbox } from "@/lib/offline-queue";
 import { warmPglite } from "./pg-warm";
 
 export type DbSource = "neon" | "pglite";
@@ -49,12 +50,23 @@ export function clearDbFailures() {
   try { localStorage.removeItem(FAIL_KEY); } catch { /* ignore */ }
 }
 
-/** Rescue: future opens use a NEW store on this device. The old store is not deleted. */
+/** Rescue: future opens use a NEW store on this device. The old store is not deleted.
+ *  1.5.93 (campaña Prejuicio, BZ-1): the sync state describes the OLD store — left in
+ *  place it told the first sync "nothing changed" about an empty book, so the cloud
+ *  copy never came down and the first edit pushed the EMPTY book over the full cloud
+ *  one, emptying every device. The rescue now retires every `brizna.sync.*` state
+ *  (the fresh store starts at revision 0, where sync observes first, keeps copies
+ *  and refuses to push an empty book over a full one) and quarantines the offline
+ *  queue, whose ops point at the old store's ids. */
 export function startWithFreshStore() {
   try {
     localStorage.setItem(GEN_KEY, String(dbGeneration() + 1));
     localStorage.removeItem(FAIL_KEY);
+    for (const k of Object.keys(localStorage)) {
+      if (k.startsWith("brizna.sync.")) localStorage.removeItem(k);
+    }
   } catch { /* ignore */ }
+  try { quarantineOutbox("rescate"); } catch { /* ignore */ }
 }
 
 /** 1.5.53 (C1): the account whose book is this device's base store, if any has ever

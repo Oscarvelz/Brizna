@@ -7,8 +7,12 @@
  * copy time, so a key the app grows tomorrow travels too, without anyone updating a
  * list. What does NOT travel is a short, named set of machinery and secrets:
  *
- * - the session itself (`brizna-auth`, `brizna.lastUser`): a backup file must never
+ * - the session itself (`brizna-auth*` — the key and every auth-js child beside
+ *   it, PKCE verifiers included — and `brizna.lastUser`): a backup file must never
  *   carry a credential or decide who you are — signing in does that;
+ * - the device lock's credential (`brizna.lock*`): the WebAuthn id enrolled on
+ *   THIS device — elsewhere it points at an authenticator that does not exist,
+ *   and here it would resurrect a lock the owner turned off (1.5.93, BZ-6);
  * - this device's database bookkeeping (`brizna.dbOwner`, `brizna.db-gen`,
  *   `brizna.db-failures`, `brizna.device`): names and state of THIS device's stores;
  * - sync bookkeeping (`brizna.sync.*`): revision/hash accounting per device — a
@@ -17,8 +21,8 @@
  *   belong to a living book's ids (D1's fence) — into another book they are poison;
  * - screen snapshots (`brizna.screens.*`): a device cache that rebuilds from the book;
  * - day stamps (`brizna.ensured.*`): the restoring device must earn its own;
- * - the cached weather pack (`ols-weather`): a timed cache — the PLACE travels
- *   (`ols-weather-place`), the pack refetches and says its hour honestly;
+ * - the cached weather packs (`ols-weather`, `brizna.clima.*`): timed caches — the
+ *   PLACE travels (`ols-weather-place`), the pack refetches and says its hour honestly;
  * - diagnostics and session flags (`bz-dict-error`, `brizna-quiet-boot`, `ols.had-user`).
  *
  * The same predicate filters both ways: what collect skips, apply also refuses, so a
@@ -29,7 +33,6 @@
 
 export function localStoreExcluded(key: string): boolean {
   return (
-    key === "brizna-auth" ||
     key === "brizna.lastUser" ||
     key === "brizna.dbOwner" ||
     key === "brizna.db-gen" ||
@@ -42,7 +45,21 @@ export function localStoreExcluded(key: string): boolean {
     key.startsWith("brizna.sync") ||
     key.startsWith("brizna.screens.") ||
     key.startsWith("brizna.ensured.") ||
-    key.startsWith("ols-outbox")
+    key.startsWith("ols-outbox") ||
+    // 1.5.93 (campaña Prejuicio, BZ-6 — REABIERTO D4): whole FAMILIES that the
+    // exact-string list missed. The auth family travels by prefix now: the exact
+    // `brizna-auth` key AND every `brizna-auth-…` child (the PKCE code verifiers
+    // and flow indexes auth-js keeps beside it) — a backup must never carry
+    // sign-in material. The device lock's credential (`brizna.lock.<uid>`: the
+    // WebAuthn id enrolled on THIS device, or "native") must never travel
+    // either: restored elsewhere it points at an authenticator that does not
+    // exist there, and restored here it resurrects a lock the owner turned off.
+    // And the weather PACKS (`brizna.clima.<lat>,<lon>`) are timed caches like
+    // `ols-weather` — only the place travels; a pack also eats the size budget
+    // that the user's own keys need.
+    key.startsWith("brizna-auth") ||
+    key.startsWith("brizna.lock") ||
+    key.startsWith("brizna.clima.")
   );
 }
 

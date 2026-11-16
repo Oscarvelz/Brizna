@@ -242,8 +242,15 @@ let editCounter = 0;
 export let quiet = false;
 
 let quietHits = 0;
+/** 1.5.93 (campaña Prejuicio, BZ-4): edits made while no sync is running — the
+ *  provisional session C1 admits — still happened. The mark lives outside the
+ *  per-account state (there is no account yet) and startSync adopts it. */
+const PROV_KEY = "brizna.prov-edited";
 export function markDirty() {
-  if (!uid) return;
+  if (!uid) {
+    try { localStorage.setItem(PROV_KEY, new Date().toISOString()); } catch { /* ignore */ }
+    return;
+  }
   if (quiet) { quietHits += 1; return; }
   const s = load(uid);
   s.dirty = true;
@@ -334,6 +341,20 @@ async function once(force = false) {
         setStatus("idle");
         return;
       } else if (localEdited && choice !== "cloud") {
+        // 1.5.93 (campaña Prejuicio, BZ-35): the push is atomic on the server but
+        // this device's state is saved only after the win — dying in that window
+        // leaves the device declaring a "conflict" against its OWN upload. Same
+        // writer and identical content is not a conflict: adopt the revision.
+        const ownHash = await digest(hashView((JSON.parse(remoteJson) as { tables: Record<string, unknown[]> }).tables));
+        const remoteDevice = String(remote.device_id ?? "");
+        if (deviceId() === remoteDevice && ownHash === hash) {
+          const latest = load(me);
+          save(me, { rev: fullRev, at: String(full.data.updated_at), dirty: editCounter !== mark, editedAt: latest.editedAt, hash, hv: HASH_V });
+          if (editCounter !== mark) again = true;
+          if (notice?.kind === "conflict") showNotice(null);
+          setStatus("idle");
+          return;
+        }
         const key = `${fullRev}:${hash}`;
         const copiedKey = `brizna.sync.copied.${me}`;
         let copied = copiedFor;
@@ -348,7 +369,14 @@ async function once(force = false) {
         base = fullRev; // keep this device's: save it over the cloud copy (already kept on this device)
         overCloud = true;
       } else {
-        const bump = changed || (s.rev === 0 && (await hasLocalData())) ? await keepLocalCopy() : 0;
+        // 1.5.93 (campaña Prejuicio, BZ-21 + BZ-1): keep a copy whenever the
+        // incoming book actually DIFFERS from this device's — not only when this
+        // device edited since its last sync. A device whose newest work was
+        // already synced (changed=false) loses that work all the same if the
+        // pull lands without a copy — that is how a restore on one device, or
+        // an emptied cloud copy, used to take the other device's book with it.
+        const remoteHash = await digest(hashView((JSON.parse(remoteJson) as { tables: Record<string, unknown[]> }).tables));
+        const bump = changed || remoteHash !== hash || (s.rev === 0 && (await hasLocalData())) ? await keepLocalCopy() : 0;
         if (bump > 2 || editCounter !== mark) { again = true; setStatus("idle"); return; } // edited meanwhile: look again
         const epoch = Number(G.__bzWriteEpoch ?? 0);
         const guard = () => editCounter === mark && Number(G.__bzInPost ?? 0) === 0 && Number(G.__bzWriteEpoch ?? 0) === epoch;
@@ -375,6 +403,26 @@ async function once(force = false) {
     const emptyTakeover = Boolean(remote && s.rev === 0);
     const needPush = overCloud || emptyTakeover || (remote ? changed || (force && s.dirty) : (s.rev > 0 || force || (await hasLocalData())));
     if (!needPush) { if (s.dirty || s.hv !== HASH_V) save(me, { ...s, dirty: false, hash, hv: HASH_V }); setStatus("idle"); return; }
+    // 1.5.93 (campaña Prejuicio, BZ-1, defense in depth): an EMPTY book never
+    // wins the CAS over a non-empty cloud copy in silence — that is exactly how
+    // a rescued store would have emptied every device at once. Both copies are
+    // kept and the person is asked, like any other real conflict — unless they
+    // already chose this device.
+    const localClients = (JSON.parse(text) as { tables?: { clients?: unknown[] } }).tables?.clients?.length ?? 0;
+    if (localClients === 0 && remote && s.rev > 0 && !overCloud && choice !== "device") {
+      const full = await supabase.from("brizna_books").select("data_gz, revision, updated_at").maybeSingle();
+      if (full.error) throw full.error;
+      if (full.data) {
+        const remoteJson = await gunzip(String(full.data.data_gz));
+        if (!snapshotMeta(remoteJson).empty) {
+          await keepLocalCopy();
+          await keepCloudCopy(remoteJson);
+          showNotice({ kind: "conflict" });
+          setStatus("idle");
+          return;
+        }
+      }
+    }
     dbg("push", base);
     const payload = await gzip(text);
     const row = await pushOver(payload, base);
@@ -396,6 +444,17 @@ async function once(force = false) {
 let wired = false;
 export function startSync(userId: string) {
   uid = userId;
+  // 1.5.93 (BZ-4): adopt the provisional mark, so the first pass counts the
+  // pre-sign-in work as this device's edits — if the cloud also moved meanwhile,
+  // the conflict door asks instead of the pull silently overwriting the day.
+  try {
+    const prov = localStorage.getItem(PROV_KEY);
+    if (prov) {
+      localStorage.removeItem(PROV_KEY);
+      const s = load(userId);
+      if (!s.dirty) { s.dirty = true; s.editedAt = prov; save(userId, s); }
+    }
+  } catch { /* ignore */ }
   if (!wired) {
     wired = true;
     window.addEventListener("online", () => void syncNow());

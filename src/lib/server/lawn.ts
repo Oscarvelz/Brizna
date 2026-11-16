@@ -539,17 +539,19 @@ async function collectBackup(userId: string) {
   };
   // Hallazgo 13: the content checksum rides inside the copy so the snapshot path can
   // recognise "same book as the newest copy" with one cheap payload->> lookup.
-  const contentChecksum = backupContentChecksum(body);
   // 1.5.52 (D4): the device layer rides along — captured by enumeration on this
   // device (on the server build there is no localStorage and the section is simply
   // absent). It is INSIDE the sealed object, so the integrity checksum covers it;
-  // the CONTENT checksum above stays book-only, so a preference-only change does not
-  // churn the automatic snapshots — the newest copy still carries the layer.
+  // the CONTENT checksum above stays book-only — churn control lives in the
+  // snapshot skip below, which since 1.5.93 compares the layer's own fingerprint
+  // too (BZ-56), so a preference-only change no longer slips past every copy.
   let localStore: Record<string, string> = {};
   try {
     if (typeof localStorage !== "undefined") localStore = collectLocalStore(localStorage);
   } catch { /* a copy without the layer is still a copy */ }
-  return withChecksum({ ...body, contentChecksum, ...(Object.keys(localStore).length ? { localStore } : {}) });
+  const contentChecksum = backupContentChecksum(body);
+  const localChecksum = backupContentChecksum(localStore);
+  return withChecksum({ ...body, contentChecksum, localChecksum, ...(Object.keys(localStore).length ? { localStore } : {}) });
 }
 
 const BACKUP_GAP_MS = 10 * 60 * 1000;
@@ -570,19 +572,28 @@ export async function snapshotBackup(userId: string, force = false): Promise<voi
   const sql = await getSql();
   const payload = await collectBackup(userId);
   const contentChecksum = (payload as { contentChecksum?: unknown }).contentChecksum;
-  if (typeof contentChecksum === "string" && contentChecksum) {
-    if (lastContentChecksum.get(userId) === contentChecksum) return;
-    const newest = await sql.query<{ cc: string | null }>(
-      `select payload->>'contentChecksum' as cc from backups where user_id = $1 order by created_at desc, id desc limit 1`,
+  const localChecksum = (payload as { localChecksum?: unknown }).localChecksum;
+  // 1.5.93 (BZ-56): the skip stamp covers the layer too — before, the checksum
+  // was book-only, so a preferences-only change (folders, colors, look, orders)
+  // matched the newest copy and NO automatic snapshot ever picked it up, not
+  // even a forced one; the pre-restore safety copy could restore a stale house.
+  const stamp =
+    typeof contentChecksum === "string" && contentChecksum
+      ? `${contentChecksum}|${typeof localChecksum === "string" ? localChecksum : ""}`
+      : "";
+  if (stamp) {
+    if (lastContentChecksum.get(userId) === stamp) return;
+    const newest = await sql.query<{ cc: string | null; lc: string | null }>(
+      `select payload->>'contentChecksum' as cc, payload->>'localChecksum' as lc from backups where user_id = $1 order by created_at desc, id desc limit 1`,
       [userId],
     );
-    if (newest[0]?.cc && newest[0].cc === contentChecksum) {
-      lastContentChecksum.set(userId, contentChecksum);
+    if (newest[0]?.cc && `${newest[0].cc}|${newest[0].lc ?? ""}` === stamp) {
+      lastContentChecksum.set(userId, stamp);
       return;
     }
   }
   await sql.query(`insert into backups (user_id, payload) values ($1, $2::jsonb)`, [userId, JSON.stringify(payload)]);
-  if (typeof contentChecksum === "string" && contentChecksum) lastContentChecksum.set(userId, contentChecksum);
+  if (stamp) lastContentChecksum.set(userId, stamp);
   const rows = await sql.query<{ id: number; created_at: unknown }>(
     `select id, created_at from backups where user_id = $1 order by created_at desc, id desc`,
     [userId],
@@ -3423,7 +3434,31 @@ async function restoreClientExtras(clientId: number, row: Record<string, unknown
   );
 }
 
+/** The columns applyBackup's base insert writes itself (either spelling); a client
+ *  row carrying anything beyond these holds extras restoreClientExtras must keep. */
+const BASE_CLIENT_KEYS = new Set([
+  "id", "user_id", "name", "phone", "address", "notes", "kind",
+  "price_per_cut", "pricePerCut", "cuts_per_month", "cutsPerMonth",
+  "weekday", "weekday_2", "weekday2", "frequency_days", "frequencyDays",
+  "arrival_time", "arrivalTime", "start_date", "startDate",
+  "pay_same_day", "paySameDay", "sort_order", "sortOrder",
+  "balance", "is_active", "isActive", "pay_due_day", "payDueDay",
+  "credit", "rich_notes", "richNotes", "service_paused", "servicePaused",
+]);
+
 async function applyBackup(userId: string, payload: BackupPayload): Promise<{ clients: number; jobs: number; localChanged: boolean }> {
+  // 1.5.93 (campaña Prejuicio, BZ-71): D2's anti-empty guard lived only on the
+  // FILE door (importBackupJson) — the on-device copies door had none, and a
+  // stored copy with 0 clients (a first-day snapshot, an empty cloud-conflict
+  // copy) could empty the book in one tap. The guard lives here now, where
+  // every restore funnels, with the same words the file door already used.
+  if ((payload.clients?.length ?? 0) === 0) {
+    const guardSql = await getSql();
+    const cur = await guardSql.query<{ n: unknown }>(`select count(*) as n from clients where user_id = $1`, [userId]);
+    if (intId(cur[0]?.n) > 0) {
+      throw new Error("Esta copia no trae clientes y tu libro sí. No se restauró nada.");
+    }
+  }
   // MOVIMIENTO 2 (hallazgo 19): backups never carry photos (see photos-flag.ts). While
   // photos are off this never fires; the day they are enabled, a restore must refuse —
   // loudly — rather than replace the tables and silently take the device's photos with it.
@@ -3491,7 +3526,20 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
     const newId = intId(inserted[0]?.id);
     if (oldId && newId) idMap.set(oldId, newId);
     // Brizna's own backups carry every column: keep paused/blocked flags, season, cue, dates, etc.
-    if (newId && "user_id" in row) await restoreClientExtras(newId, row, sql);
+    // 1.5.93 (campaña Prejuicio, BZ-57): extras used to ride only on rows carrying
+    // user_id — a legacy row (an old or hand-made copy) lost its blacklist, its
+    // keep-serving, its pin and its cue to the column defaults, and a blacklisted
+    // client came back COLLECTIBLE under the single totals rule. Any row carrying
+    // columns beyond the base insert gets its extras, whatever its provenance;
+    // the two flags with money/safety weight also get the explicit rescue
+    // service_paused already had, in both spellings.
+    if (newId && Object.keys(row).some((k) => !BASE_CLIENT_KEYS.has(k))) await restoreClientExtras(newId, row, sql);
+    if (newId && row.blacklisted === true) {
+      await sql.query(`update clients set blacklisted = true where user_id = $1 and id = $2`, [userId, newId]);
+    }
+    if (newId && (row.keep_serving === true || row.keepServing === true)) {
+      await sql.query(`update clients set keep_serving = true where user_id = $1 and id = $2`, [userId, newId]);
+    }
     if (newId && (row.service_paused === true || row.servicePaused === true)) {
       await sql.query(`update clients set service_paused = true where user_id = $1 and id = $2`, [
         userId,
