@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { native } from "@/spa/native";
+import { toast } from "sonner";
+import { native, NATIVE_DELIVERY_FAIL_KEY, type NativeDeliveryFail } from "@/spa/native";
 import { buildSchedule, buildWidget, readNotifyPrefs } from "@/lib/native-plan";
 import { getNativePlan } from "@/lib/server/lawn";
 import { onSyncStatus } from "@/spa/sync";
@@ -30,8 +31,24 @@ async function refresh() {
   try {
     const plan = await getNativePlan();
     const items = buildSchedule(plan, readNotifyPrefs());
-    n.setSchedule(JSON.stringify(items));
-    n.setWidget(JSON.stringify(buildWidget(plan)));
+    // Ola 4 (BZ-48): las respuestas de la cáscara se LEEN. Ante un "error"
+    // se reintenta una vez; si persiste, queda constancia visible en
+    // Ajustes › Notificaciones («última entrega fallida») en vez de fingir
+    // que el estado releído es el vigente.
+    const schedJson = JSON.stringify(items);
+    const widgetJson = JSON.stringify(buildWidget(plan));
+    let sched = n.setSchedule(schedJson);
+    if (sched === "error") sched = n.setSchedule(schedJson);
+    let widget = n.setWidget(widgetJson);
+    if (widget === "error") widget = n.setWidget(widgetJson);
+    try {
+      if (sched === "error" || widget === "error") {
+        const fail: NativeDeliveryFail = { at: Date.now(), what: sched === "error" ? "schedule" : "widget" };
+        localStorage.setItem(NATIVE_DELIVERY_FAIL_KEY, JSON.stringify(fail));
+      } else {
+        localStorage.removeItem(NATIVE_DELIVERY_FAIL_KEY);
+      }
+    } catch { /* storage lleno o bloqueado: la constancia es lo de menos */ }
     window.dispatchEvent(new Event("briznanative-status"));
   } catch (err) {
     console.warn("[brizna native] plan", err);
@@ -70,6 +87,18 @@ export function NativeHost() {
     };
     go();
     refreshNativeSoon(2500);
+    // Ola 4 (BZ-9): un guardado por el puente que falló sin que nadie
+    // esperara su veredicto se anuncia aquí — el archivo no existe y el
+    // usuario tiene que saberlo, no descubrirlo al buscarlo.
+    const onSaveFailed = (e: Event) => {
+      const name = (e as CustomEvent<{ name?: string }>).detail?.name || "Brizna";
+      toast.error(
+        document.documentElement.lang === "en"
+          ? `Could not save "${name}". The file was not written.`
+          : `No se pudo guardar «${name}». El archivo no quedó escrito.`,
+      );
+    };
+    window.addEventListener("brizna-save-failed", onSaveFailed);
     let lastSync = "";
     const offSync = onSyncStatus((s) => {
       if (lastSync === "syncing" && s === "idle") soon();
@@ -99,6 +128,7 @@ export function NativeHost() {
       window.removeEventListener("bz-data-write", soon);
       window.removeEventListener("bz-notify-prefs", soon);
       window.removeEventListener("briznanative-route", go);
+      window.removeEventListener("brizna-save-failed", onSaveFailed);
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [navigate]);

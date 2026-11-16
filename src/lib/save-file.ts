@@ -1,3 +1,22 @@
+import { inAndroidApp, nativeSaveOutcome } from "@/spa/native";
+
+// Ola 4 (BZ-9): dentro de la app, un clic en un enlace de descarga lo
+// recoge el puente y el guardado termina DESPUÉS del clic. Quien anuncia
+// «guardado» espera aquí el veredicto real del puente; si el guardado
+// falló, esto lanza NativeSaveError y el aviso de éxito nunca se canta.
+// Fuera de la app no hay nada que esperar: el navegador ya descargó.
+async function settleNativeSave(name: string): Promise<void> {
+  if (!inAndroidApp()) return;
+  const outcome = nativeSaveOutcome(name);
+  if (!outcome) return;
+  const ok = await outcome;
+  if (!ok) {
+    const err = new Error("native save failed");
+    err.name = "NativeSaveError";
+    throw err;
+  }
+}
+
 export async function downloadHref(filename: string, src: string) {
   const blob = await (await fetch(src)).blob();
   const url = URL.createObjectURL(blob);
@@ -8,6 +27,7 @@ export async function downloadHref(filename: string, src: string) {
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+  await settleNativeSave(filename);
 }
 
 export async function saveJsonFile(
@@ -82,6 +102,7 @@ async function saveBlobFile(
   a.click();
   a.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+  await settleNativeSave(filename);
   return "downloaded";
 }
 
@@ -242,6 +263,27 @@ function downloadDirect(name: string, blob: Blob) {
   window.setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
+// Ola 4 (BZ-70): un archivo de copia nace como «.tmp» y solo gana su nombre
+// bueno cuando su contenido quedó entero en disco — un corte a mitad nunca
+// deja un archivo con nombre de copia buena y contenido truncado.
+async function writeDirFile(dir: DirHandle, name: string, blob: Blob): Promise<void> {
+  const tmpName = `${name}.tmp`;
+  const tmp = await dir.getFileHandle(tmpName, { create: true });
+  const writable = await tmp.createWritable();
+  await writable.write(blob);
+  await writable.close();
+  const movable = tmp as unknown as { move?: (dest: string) => Promise<void> };
+  if (typeof movable.move === "function") {
+    await movable.move(name);
+    return;
+  }
+  const final = await dir.getFileHandle(name, { create: true });
+  const w2 = await final.createWritable();
+  await w2.write(blob);
+  await w2.close();
+  await dir.removeEntry(tmpName);
+}
+
 export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; xls: Uint8Array }): Promise<"folder" | "downloaded"> {
   const stamp = stampBase();
   const files = [
@@ -256,14 +298,34 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
       { name: `${stamp}.pdf`, data: parts.pdf },
       { name: `${stamp}.xls`, data: parts.xls },
     ]);
-    downloadDirect(`${stamp}.zip`, bytesBlob(packed, "application/zip"));
+    const zipName = `${stamp}.zip`;
+    downloadDirect(zipName, bytesBlob(packed, "application/zip"));
+    // Ola 4 (BZ-9): dentro de la app, el «descargado» se dice solo cuando
+    // el puente confirma el guardado del ZIP; si falló, esto lanza y el
+    // aviso de Ajustes es el de error, no el de éxito.
+    await settleNativeSave(zipName);
     return "downloaded";
   }
-  for (const file of files) {
-    const handle = await dir.getFileHandle(file.name, { create: true });
-    const writable = await handle.createWritable();
-    await writable.write(file.blob);
-    await writable.close();
+  // Ola 4 (BZ-70): los tres archivos se escriben como «.tmp» y ganan su
+  // nombre al completarse; si uno falla, se borra todo lo de este sello
+  // (finales y temporales) y el error nombra el archivo que falló, para
+  // que el aviso lo diga — nunca queda un paquete a medias con buen nombre.
+  try {
+    for (const file of files) {
+      try {
+        await writeDirFile(dir, file.name, file.blob);
+      } catch {
+        const err = new Error(file.name);
+        err.name = "BundleFileError";
+        throw err;
+      }
+    }
+  } catch (err) {
+    for (const file of files) {
+      await dir.removeEntry(file.name).catch(() => undefined);
+      await dir.removeEntry(`${file.name}.tmp`).catch(() => undefined);
+    }
+    throw err;
   }
   const names: string[] = [];
   for await (const [entryName, entry] of dir.entries()) {
@@ -289,10 +351,9 @@ export async function writeRotatingBackup(json: string): Promise<"folder" | "dow
     });
     return "downloaded";
   }
-  const file = await dir.getFileHandle(name, { create: true });
-  const writable = await file.createWritable();
-  await writable.write(blob);
-  await writable.close();
+  // Ola 4 (BZ-70): la copia rotativa gana la misma disciplina — nace como
+  // «.tmp» y solo gana su nombre cuando quedó entera en disco.
+  await writeDirFile(dir, name, blob);
   const names: string[] = [];
   for await (const [entryName, entry] of dir.entries()) {
     if (entry.kind === "file" && entryName.startsWith("oscar-copia-") && entryName.endsWith(".json")) names.push(entryName);

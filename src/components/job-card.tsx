@@ -105,7 +105,7 @@ export function JobCard({
           photo: input.photo,
           tip: input.tip,
         });
-        return { ok: true as const, offline: true as const, collected: false, usedCredit: 0 };
+        return { ok: true as const, offline: true as const, collected: false, skipped: false, usedCredit: 0 };
       }
       try {
         return await completeJob({ data: payload });
@@ -120,7 +120,7 @@ export function JobCard({
           photo: input.photo,
           tip: input.tip,
         });
-        return { ok: true as const, offline: true as const, collected: false, usedCredit: 0 };
+        return { ok: true as const, offline: true as const, collected: false, skipped: false, usedCredit: 0 };
       }
     },
     onSuccess: async (res, input) => {
@@ -128,6 +128,25 @@ export function JobCard({
         toast(tx("Sin red, guardado aquí", "No signal, saved here"));
         setAskDone(false);
         setAskAbono(false);
+        return;
+      }
+      // Ola 4 (BZ-19): el éxito se canta solo tras mirar la respuesta. Sin
+      // trabajo no hay cobro que anunciar ni Deshacer que empujar; y si el
+      // servidor dice que ya estaba hecho (skipped), este toque no cobró
+      // nada — el Deshacer viejo sigue siendo el dueño del cierre bueno.
+      if (!res.ok) {
+        toast.error(tx("Ese trabajo ya no está. La lista se actualiza sola.", "That job is no longer there. The list refreshes itself."));
+        setAskDone(false);
+        setAskAbono(false);
+        await invalidateLawn(qc);
+        return;
+      }
+      if (res.skipped) {
+        toast(tx("Ya estaba marcado como hecho.", "It was already marked done."));
+        setAskDone(false);
+        setAskAbono(false);
+        setPhoto(null);
+        await invalidateLawn(qc);
         return;
       }
       playTick();

@@ -292,7 +292,18 @@ export function ExportSheet({ open, preset, onClose }: { open: boolean; preset: 
       }
     } catch (err) {
       const name = err instanceof Error ? err.name : "";
-      if (name !== "AbortError") toast.error(tx("No se pudo preparar el archivo. Prueba otra vez.", "Could not prepare the file. Try again."));
+      // Ola 4 (BZ-54): un fallo del puente de compartir NO es una
+      // cancelación: se avisa y se guarda el archivo, el mismo destino
+      // «guardado» que la ruta web ya usa cuando no se puede compartir.
+      if (name === "ShareError") {
+        try {
+          if (shareKind === "pdf") await downloadPdf(model, o);
+          else await downloadSheet(model, o);
+          toast(tx("No se pudo compartir; lo guardé en el teléfono.", "Couldn't share it; saved it on the phone instead."));
+        } catch {
+          toast.error(tx("No se pudo preparar el archivo. Prueba otra vez.", "Could not prepare the file. Try again."));
+        }
+      } else if (name !== "AbortError") toast.error(tx("No se pudo preparar el archivo. Prueba otra vez.", "Could not prepare the file. Try again."));
     } finally {
       setBusy(null);
     }

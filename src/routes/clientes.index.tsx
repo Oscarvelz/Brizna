@@ -320,11 +320,18 @@ function ClientesPage() {
   const bulk = useMutation({
     mutationFn: (action: "reactivate" | "delete") =>
       bulkClients({ data: { ids: picked, action, confirmMoney: action === "delete" } }),
-    onSuccess: async (_, action) => {
+    // Ola 4 (barrido): el conteo sale del servidor, no de la selección —
+    // y si el servidor pide la confirmación reforzada, no se canta borrado.
+    onSuccess: async (res, action) => {
+      if (!res.ok) {
+        toast.error(tx("Tienen dinero o historial: hace falta la confirmación reforzada para borrar.", "They have money or history: the reinforced confirmation is needed to delete."));
+        await invalidateLawn(qc);
+        return;
+      }
       toast.success(
         action === "reactivate"
-          ? tx(`${picked.length} reactivados`, `${picked.length} reactivated`)
-          : tx(`${picked.length} eliminados para siempre`, `${picked.length} deleted forever`),
+          ? tx(`${res.count} reactivados`, `${res.count} reactivated`)
+          : tx(`${res.count} eliminados para siempre`, `${res.count} deleted forever`),
       );
       setPicked([]);
       setAskBulk(null);

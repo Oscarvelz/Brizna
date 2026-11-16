@@ -629,12 +629,12 @@ class MainActivity : Activity() {
                 s.cur = f.outputStream()
                 s.files.add(f to mime.ifBlank { "application/octet-stream" })
                 "ok"
-            } catch (e: Exception) { "error" }
+            } catch (e: Exception) { dropShare(id); "error" }
         }
 
         @JavascriptInterface fun shareChunk(id: String, b64: String): String {
             val s = shares[id] ?: return "error"
-            return try { s.cur!!.write(Base64.decode(b64, Base64.DEFAULT)); "ok" } catch (e: Exception) { "error" }
+            return try { s.cur!!.write(Base64.decode(b64, Base64.DEFAULT)); "ok" } catch (e: Exception) { dropShare(id); "error" }
         }
 
         @JavascriptInterface fun shareEnd(id: String, title: String, text: String): String {
@@ -774,6 +774,15 @@ class MainActivity : Activity() {
     private fun drop(id: String) {
         val s = saves.remove(id) ?: return
         runCatching { s.out.close() }; runCatching { contentResolver.delete(s.uri, null, null) }
+    }
+
+    // Ola 4 (BZ-54): un share que falla a mitad no deja su parcial huérfano
+    // en la caché: se cierra, se borran sus archivos y se retira la entrada.
+    private fun dropShare(id: String) {
+        val s = shares.remove(id) ?: return
+        runCatching { s.cur?.close() }
+        s.files.forEach { runCatching { it.first.delete() } }
+        runCatching { s.files.firstOrNull()?.first?.parentFile?.delete() }
     }
 
     private fun authReply(id: String, ok: Boolean) =

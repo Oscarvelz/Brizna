@@ -58,11 +58,16 @@ export function SettleDay({
       }
     }
     setPending(true);
+    // Ola 4 (BZ-31): el cierre cuenta solo lo que el servidor confirma de
+    // este pase (ok y no skipped). Un fallo se nombra; un corte a mitad
+    // dice cuántos sí quedaron marcados.
+    let marked = 0;
+    const failed: string[] = [];
     try {
       for (const job of jobs) {
         const row = rows.find((item) => item.id === job.id);
         const mode = row?.mode ?? "owe";
-        await completeJob({
+        const res = await completeJob({
           data: {
             id: job.id,
             settlement: mode,
@@ -70,20 +75,46 @@ export function SettleDay({
             tip: Math.round((Number(row?.tip) || 0) * 100) / 100,
           },
         });
+        if (res && res.ok && !res.skipped) marked++;
+        else if (res && res.ok && res.skipped) {
+          // Ya estaba hecho por otro toque: no es de este cierre ni un fallo.
+        } else failed.push(job.clientName);
       }
-      playDing();
-      toast.success(
-        jobs.length === 1
-          ? tx("1 patio marcado como hecho", "1 yard marked done")
-          : tx(`${jobs.length} patios marcados como hechos`, `${jobs.length} yards marked done`),
+    } catch {
+      toast.error(
+        tx(
+          `Algo falló a mitad: ${marked} de ${jobs.length} quedaron marcados.`,
+          `Something failed halfway: ${marked} of ${jobs.length} were marked.`,
+        ),
       );
       await invalidateLawn(qc);
-      onClose();
-    } catch {
-      toast.error(tx("No se pudieron marcar todos", "Could not mark them all"));
-    } finally {
       setPending(false);
+      return;
     }
+    if (failed.length > 0) {
+      toast.warning(
+        tx(
+          `Se marcaron ${marked} de ${jobs.length}. No se pudo marcar: ${failed.join(", ")}.`,
+          `Marked ${marked} of ${jobs.length}. Could not mark: ${failed.join(", ")}.`,
+        ),
+      );
+      await invalidateLawn(qc);
+      setPending(false);
+      return;
+    }
+    if (marked === 0) {
+      toast(tx("Ya estaban todos marcados como hechos.", "They were all already marked done."));
+    } else {
+      playDing();
+      toast.success(
+        marked === 1
+          ? tx("1 patio marcado como hecho", "1 yard marked done")
+          : tx(`${marked} patios marcados como hechos`, `${marked} yards marked done`),
+      );
+    }
+    await invalidateLawn(qc);
+    onClose();
+    setPending(false);
   }
 
   return (

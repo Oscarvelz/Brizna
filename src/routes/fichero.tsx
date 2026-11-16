@@ -1219,14 +1219,34 @@ function GearSheet({
 
   async function emptyTrash() {
     setAskEmpty(false);
+    // Ola 4 (BZ-69): cada retorno se mira. Si la guarda de la última página
+    // retiene una nota, el aviso lo dice en vez de cantar «Papelera
+    // vaciada»; y la pantalla se refresca aunque el vaciado sea parcial o
+    // se corte a mitad, para que enseñe lo que de verdad quedó.
+    let keptLast = false;
+    const keptFolders = new Set<string>();
     try {
-      for (const folder of trashed) await dropPadFolder({ data: { name: folder.name } });
+      for (const folder of trashed) {
+        const r = await dropPadFolder({ data: { name: folder.name } });
+        if (r && "keptLast" in r && r.keptLast) {
+          keptLast = true;
+          keptFolders.add(folder.name);
+        }
+      }
       const loose = pages.filter((page) => page.deletedAt && !trashed.some((folder) => folder.name === page.folder));
-      for (const page of loose) await deletePadPage({ data: { id: page.id } });
-      if (trashed.length > 0) onCabinet(cabinet.filter((folder) => !folder.trashedAt));
-      toast.success(tx("Papelera vaciada", "Trash emptied"));
+      for (const page of loose) {
+        const r = await deletePadPage({ data: { id: page.id } });
+        if (r && !r.ok && "reason" in r && r.reason === "last") keptLast = true;
+      }
+      if (trashed.length > 0) onCabinet(cabinet.filter((folder) => !folder.trashedAt || keptFolders.has(folder.name)));
       await onRefresh();
+      if (keptLast) {
+        toast(tx("Queda la última nota: el libro siempre guarda una página.", "One last note remains: the book always keeps a page."));
+      } else {
+        toast.success(tx("Papelera vaciada", "Trash emptied"));
+      }
     } catch {
+      await onRefresh().catch(() => undefined);
       toast.error(tx("No se pudo vaciar la papelera", "Could not empty the trash"));
     }
   }

@@ -748,7 +748,12 @@ function ChangeHistory({ clientId }: { clientId: number }) {
   });
   const restore = useMutation({
     mutationFn: (changeId: number) => restoreClientChange({ data: { clientId, changeId } }),
-    onSuccess: async () => {
+    // Ola 4 (barrido): sin copia del cambio no hay restauración que cantar.
+    onSuccess: async (res) => {
+      if (!res.ok) {
+        toast.error(tx("Ese cambio ya no se puede restaurar.", "That change can no longer be restored."));
+        return;
+      }
       toast.success(tx("Cambio restaurado", "Change restored"));
       setRestoreId(null);
       await invalidateLawn(qc);
@@ -1176,6 +1181,19 @@ function WaiveButton({ clientId, balance, name }: { clientId: number; balance: n
     mutationFn: () =>
       recordPayment({ data: { clientId, kind: "waived", amount: amt > 0 ? amt : undefined } }),
     onSuccess: async (res) => {
+      // Ola 4 (BZ-32): si el servidor no perdonó, se dice la causa y no se
+      // promete ningún Deshacer; el «puedes deshacerlo arriba» solo existe
+      // cuando hay un pago que deshacer.
+      if (!res.ok) {
+        toast.error(
+          "reason" in res && res.reason === "gone"
+            ? tx("No se perdonó: ese cliente ya no está.", "Nothing was forgiven: that client is no longer there.")
+            : tx("No se perdonó nada: el saldo ya estaba en $0.", "Nothing was forgiven: the balance was already $0."),
+        );
+        setOpen(false);
+        await invalidateLawn(qc);
+        return;
+      }
       const ids = res.paymentIds ?? [];
       if (ids.length > 0) {
         push({
@@ -1191,8 +1209,10 @@ function WaiveButton({ clientId, balance, name }: { clientId: number; balance: n
             await invalidateLawn(qc);
           },
         });
+        toast(tx("Perdón guardado. Puedes deshacerlo arriba.", "Forgiveness saved. You can undo it above."));
+      } else {
+        toast(tx("Perdón guardado.", "Forgiveness saved."));
       }
-      toast(tx("Perdón guardado. Puedes deshacerlo arriba.", "Forgiveness saved. You can undo it above."));
       setOpen(false);
       await invalidateLawn(qc);
     },
@@ -1295,7 +1315,23 @@ function ExtraForm({ clientId, onDone }: { clientId: number; onDone: () => void 
           markDone: date <= todayISO(),
         },
       }),
-    onSuccess: async () => {
+    // Ola 4 (barrido): addExtraJob puede negarse (BZ-44: lista negra, pausa
+    // o archivo) y la mutación resuelve igual — el éxito se canta solo si
+    // el servidor dice ok, y la negativa se dice con su razón.
+    onSuccess: async (res) => {
+      if (!res.ok) {
+        toast.error(
+          "reason" in res && res.reason === "blacklisted"
+            ? tx("No se añadió: está en la lista negra. Quítalo de ahí primero.", "Not added: the client is blacklisted. Remove them from the list first.")
+            : "reason" in res && res.reason === "paused"
+              ? tx("No se añadió: su servicio está en pausa.", "Not added: their service is paused.")
+              : "reason" in res && res.reason === "inactive"
+                ? tx("No se añadió: está archivado. Reactívalo primero.", "Not added: the client is archived. Reactivate them first.")
+                : tx("No se pudo añadir el trabajo extra.", "Could not add the extra job."),
+        );
+        await invalidateLawn(qc);
+        return;
+      }
       toast.success(tx("Trabajo extra añadido", "Extra job added"));
       await invalidateLawn(qc);
       onDone();

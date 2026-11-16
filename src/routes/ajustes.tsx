@@ -2,7 +2,7 @@ import { Masonry } from "@/components/wide-layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScrollTop } from "@/components/scroll-top";
 import { createFileRoute } from "@tanstack/react-router";
-import { BatteryCharging, Bell, BellRing, Check, ChevronDown, ChevronsUpDown, CalendarRange, Clock, FlaskConical, Download, HardDrive, Hourglass, Languages, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Target, Upload, Volume2 } from "lucide-react";
+import { BatteryCharging, Bell, BellRing, Check, ChevronDown, ChevronsUpDown, CalendarRange, Clock, FlaskConical, Download, HardDrive, Hourglass, Languages, LayoutGrid, Moon, Palette, Palmtree, Printer, RotateCcw, Store, Sun, Sunrise, Target, TriangleAlert, Upload, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell, SignOutControl, TitleSearch } from "@/components/app-shell";
@@ -21,7 +21,7 @@ import { Input, Label, NativeSelect } from "@/components/ui/input";
 import { PickerField } from "@/components/ui/picker-field";
 import { SettingsOrderButton } from "@/components/settings-order-button";
 import { useAjustesRank } from "@/lib/ajustes-order";
-import { inAndroidApp, native, nativeNotifyStatus, type NativeNotifyStatus } from "@/spa/native";
+import { inAndroidApp, native, nativeDeliveryFail, nativeNotifyStatus, type NativeDeliveryFail, type NativeNotifyStatus } from "@/spa/native";
 import { MORNING, readNotifyPrefs, writeNotifyPrefs, type NotifyPrefs } from "@/lib/native-plan";
 import { refreshNativeSoon } from "@/components/native-host";
 import { useUndo } from "@/lib/undo";
@@ -433,6 +433,11 @@ function AjustesPage() {
     },
     onError: (err) => {
       if ((err instanceof Error ? err.name : "") === "AbortError") return;
+      // Ola 4 (BZ-70): si falló un archivo del paquete, el aviso lo nombra.
+      if (err instanceof Error && err.name === "BundleFileError") {
+        toast.error(tx(`No se pudo guardar la copia: falló el archivo ${err.message}. No quedó ningún archivo de esta copia.`, `Could not save the copy: the file ${err.message} failed. No file from this copy remains.`));
+        return;
+      }
       toast.error(tx("No se pudo guardar la copia", "Could not save the copy"));
     },
   });
@@ -449,9 +454,31 @@ function AjustesPage() {
     },
     onError: (err) => {
       if ((err instanceof Error ? err.name : "") === "AbortError") return;
+      if (err instanceof Error && err.name === "BundleFileError") {
+        toast.error(tx(`No se pudo guardar el archivo: falló ${err.message}. No quedó ningún archivo de esta copia.`, `Could not save the file: ${err.message} failed. No file from this copy remains.`));
+        return;
+      }
       toast.error(tx("No se pudo guardar el archivo", "Could not save the file"));
     },
   });
+  // Ola 4 (BZ-55): si la copia traía filas que no se pudieron colocar, la
+  // restauración lo declara en voz alta — el éxito ya no tapa la pérdida.
+  function warnDropped(res: { dropped?: { jobs: number; payments: number; changes: number; links: number } }) {
+    const d = res.dropped;
+    if (!d) return;
+    const parts: string[] = [];
+    if (d.jobs > 0) parts.push(tx(`${d.jobs} trabajos`, `${d.jobs} jobs`));
+    if (d.payments > 0) parts.push(tx(`${d.payments} pagos`, `${d.payments} payments`));
+    if (d.changes > 0) parts.push(tx(`${d.changes} apuntes del historial`, `${d.changes} history entries`));
+    if (d.links > 0) parts.push(tx(`${d.links} enlaces de notas`, `${d.links} note links`));
+    if (!parts.length) return;
+    toast.warning(
+      tx(
+        `Ojo: ${parts.join(", ")} de la copia no se pudieron colocar y quedaron fuera.`,
+        `Careful: ${parts.join(", ")} from the copy could not be placed and were left out.`,
+      ),
+    );
+  }
   const restore = useMutation({
     mutationFn: (id: number) => restoreBackup({ data: { id } }),
     onSuccess: async (res) => {
@@ -459,6 +486,7 @@ function AjustesPage() {
         toast.error(tx("No se encontró esa copia", "That copy was not found"));
         return;
       }
+      warnDropped(res);
       // 1.5.51 (auditoría interna, D1): the restore remapped every id — anything still
       // queued against the old book is quarantined (visible), never flushed into it.
       quarantineOutbox("restore");
@@ -479,6 +507,7 @@ function AjustesPage() {
     mutationFn: (json: string) => importBackupJson({ data: { json } }),
     onSuccess: async (res) => {
       quarantineOutbox("restore");
+      warnDropped(res);
       if (res.localChanged) {
         toast.success(tx("Archivo restaurado. Se recarga para aplicar también tus carpetas y tu apariencia.", "File restored. Reloading to also apply your folders and your look."));
         setTimeout(() => location.reload(), 900);
@@ -1239,8 +1268,11 @@ function NotifyFold({ query }: { query: string }) {
   const rank = useAjustesRank("aj-recordatorios");
   const [prefs, setPrefs] = useState<NotifyPrefs>(() => readNotifyPrefs());
   const [st, setSt] = useState<NativeNotifyStatus | null>(() => nativeNotifyStatus());
+  // Ola 4 (BZ-48): la última entrega fallida a la cáscara, si la hay, se
+  // enseña aquí — el estado de la cáscara por sí solo contaría lo viejo.
+  const [fail, setFail] = useState<NativeDeliveryFail | null>(() => nativeDeliveryFail());
   useEffect(() => {
-    const read = () => setSt(nativeNotifyStatus());
+    const read = () => { setSt(nativeNotifyStatus()); setFail(nativeDeliveryFail()); };
     window.addEventListener("briznanative-status", read);
     document.addEventListener("visibilitychange", read);
     const t = window.setInterval(read, 4000);
@@ -1341,6 +1373,20 @@ function NotifyFold({ query }: { query: string }) {
           <PickerField type="time" className="aj-pf" value={prefs.hour.padStart(5, "0")} onChange={(e) => e.target.value && set({ hour: e.target.value.slice(0, 5) })} required />
         </div>
       </div>
+      {fail ? (
+        <div className="aj-num mt-3">
+          <TriangleAlert className="size-5 shrink-0 text-primary" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="aj-num-label">{tx("Última entrega al teléfono", "Last delivery to the phone")}</p>
+            <p className="aj-num-sub">
+              {tx(
+                `Falló ${fail.what === "schedule" ? "el horario de avisos" : "el widget"} a las ${formatClock(`${new Date(fail.at).getHours()}:${new Date(fail.at).getMinutes()}`, tx)}. Brizna lo vuelve a intentar con el próximo cambio; lo de arriba puede ser el horario anterior.`,
+                `The ${fail.what === "schedule" ? "alert schedule" : "widget"} failed at ${formatClock(`${new Date(fail.at).getHours()}:${new Date(fail.at).getMinutes()}`, tx)}. Brizna retries with the next change; the status above may be the older one.`,
+              )}
+            </p>
+          </div>
+        </div>
+      ) : null}
       <div className="aj-notif-foot mt-3">
         <p className="aj-fine min-w-0 flex-1">
           {!allowed ? tx("Permite los avisos para recibirlos.", "Allow alerts to get them.") : nextLine ? tx(`Próximo: ${nextLine}`, `Next: ${nextLine}`) : anyOn ? tx("Sin avisos pendientes por ahora.", "No alerts due for now.") : tx("Todos los avisos están apagados.", "All alerts are off.")}

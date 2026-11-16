@@ -1172,6 +1172,18 @@ function Waive({ client, icon }: { client: ClientRow; icon?: boolean }) {
         data: { clientId: client.id, kind: "waived", amount: amt > 0 ? amt : undefined },
       }),
     onSuccess: async (res) => {
+      // Ola 4 (BZ-32): misma ley que en la ficha — sin perdón real no hay
+      // canto de guardado ni Deshacer prometido.
+      if (!res.ok) {
+        toast.error(
+          "reason" in res && res.reason === "gone"
+            ? tx("No se perdonó: ese cliente ya no está.", "Nothing was forgiven: that client is no longer there.")
+            : tx("No se perdonó nada: el saldo ya estaba en $0.", "Nothing was forgiven: the balance was already $0."),
+        );
+        setOpen(false);
+        await invalidateLawn(qc);
+        return;
+      }
       const ids = res.paymentIds ?? [];
       if (ids.length > 0) {
         push({
@@ -1187,8 +1199,10 @@ function Waive({ client, icon }: { client: ClientRow; icon?: boolean }) {
             await invalidateLawn(qc);
           },
         });
+        toast(tx("Saldo perdonado. Puedes deshacerlo arriba.", "Balance forgiven. You can undo it above."));
+      } else {
+        toast(tx("Saldo perdonado.", "Balance forgiven."));
       }
-      toast(tx("Saldo perdonado. Puedes deshacerlo arriba.", "Balance forgiven. You can undo it above."));
       setOpen(false);
       await invalidateLawn(qc);
     },

@@ -2322,7 +2322,9 @@ export const completeJob = createServerFn({ method: "POST" })
       await ensureScheduleForUser(context.userId);
       await snapshotBackup(context.userId).catch(() => undefined);
     }
-    return { ok: true as const, collected: result.collected, usedCredit: result.usedCredit };
+    // Ola 4 (BZ-19): `skipped` viaja al cliente — sin él, la tarjeta no
+    // puede distinguir «cobré» de «ya estaba hecho» y cantaba cobro falso.
+    return { ok: true as const, collected: result.collected, skipped: result.skipped, usedCredit: result.usedCredit };
   });
 
 export const completeTodayJobs = createServerFn({ method: "POST" })
@@ -2723,7 +2725,9 @@ export const recordPayment = createServerFn({ method: "POST" })
       [context.userId, data.clientId],
     );
     const client = rows[0];
-    if (!client) return { ok: false as const, paymentIds: [] as number[] };
+    // Ola 4 (BZ-32): los dos fallos del perdón llevan su causa nombrada
+    // (reason) para que la UI la diga en vez de cantar un guardado falso.
+    if (!client) return { ok: false as const, paymentIds: [] as number[], reason: "gone" as const };
     const balance = money(client.balance);
     const credit = money(client.credit);
     const payMethod = data.method.trim().slice(0, 40) || null;
@@ -2733,7 +2737,7 @@ export const recordPayment = createServerFn({ method: "POST" })
       // (undoPayment ya sabía revertir un 'waived'; solo faltaba poder alcanzarlo).
       const waiveAmount =
         data.amount != null ? Math.min(money(data.amount), balance) : balance;
-      if (waiveAmount <= 0) return { ok: false as const, paymentIds: [] as number[] };
+      if (waiveAmount <= 0) return { ok: false as const, paymentIds: [] as number[], reason: "settled" as const };
       const ins = await sql.query<{ id: number }>(
         `insert into payments (user_id, client_id, amount, kind, note, method) values ($1,$2,$3,'waived',$4,$5) returning id`,
         [context.userId, data.clientId, waiveAmount, data.note.trim() || null, null],
@@ -3810,7 +3814,7 @@ const BASE_CLIENT_KEYS = new Set([
   "credit", "rich_notes", "richNotes", "service_paused", "servicePaused",
 ]);
 
-async function applyBackup(userId: string, payload: BackupPayload): Promise<{ clients: number; jobs: number; localChanged: boolean }> {
+async function applyBackup(userId: string, payload: BackupPayload): Promise<{ clients: number; jobs: number; localChanged: boolean; dropped: { jobs: number; payments: number; changes: number; links: number } }> {
   // 1.5.93 (campaña Prejuicio, BZ-71): D2's anti-empty guard lived only on the
   // FILE door (importBackupJson) — the on-device copies door had none, and a
   // stored copy with 0 clients (a first-day snapshot, an empty cloud-conflict
@@ -3844,6 +3848,11 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
   // or a bad row midway rolls everything back and the book is never left half-restored.
   // The safety copy above stays outside (it must survive a rolled-back restore), and the
   // schedule top-up moves after the commit: it is regenerable, not restored data.
+  // Ola 4 (BZ-55): toda fila de la copia que no se puede colocar (su
+  // cliente no está en el mapa de ids) se CUENTA por tabla — restaurar ya
+  // no pierde en silencio, y las cifras devueltas son las insertadas de
+  // verdad (contadas en la base al final), no las del archivo.
+  const dropped = { jobs: 0, payments: 0, changes: 0, links: 0 };
   const counts = await withTransaction(async (sql) => {
   await sql.query(`delete from payments where user_id = $1`, [userId]);
   await sql.query(`delete from jobs where user_id = $1`, [userId]);
@@ -3914,19 +3923,18 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
 
   const fullJobs = (payload.jobs ?? []).filter((row) => "user_id" in row && "client_id" in row);
   if (fullJobs.length) {
-    await bulkRestore(
-      "jobs",
-      fullJobs
-        .map((row) => ({ ...row, user_id: userId, client_id: idMap.get(intId(row.client_id)) }))
-        .filter((row) => row.client_id),
-      sql,
-    );
+    const keptJobs = fullJobs
+      .map((row) => ({ ...row, user_id: userId, client_id: idMap.get(intId(row.client_id)) }))
+      .filter((row) => row.client_id);
+    dropped.jobs += fullJobs.length - keptJobs.length;
+    await bulkRestore("jobs", keptJobs, sql);
   }
   // Hallazgo 18: legacy rows (no user_id/client_id pair) are normalised to the same
   // DB-shaped rows and go through the SAME bulk path, with exactly the field mapping
   // and defaults the old row-by-row insert applied — no more thousands of single inserts.
-  const legacyJobRows = (payload.jobs ?? [])
-    .filter((r) => !("user_id" in r && "client_id" in r))
+  const legacyJobRowsAll = (payload.jobs ?? [])
+    .filter((r) => !("user_id" in r && "client_id" in r));
+  const legacyJobRows = legacyJobRowsAll
     .map((row) => {
       const clientId = idMap.get(intId(row.client_id ?? row.clientId));
       if (!clientId) return null;
@@ -3945,21 +3953,21 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
       };
     })
     .filter((row) => row !== null);
+  dropped.jobs += legacyJobRowsAll.length - legacyJobRows.length;
   if (legacyJobRows.length) await bulkRestore("jobs", legacyJobRows, sql);
 
   const fullPayments = (payload.payments ?? []).filter((row) => "user_id" in row && "client_id" in row);
   if (fullPayments.length) {
     // Keeps kind (opening, prepaid...), method and tip, so totals and balances match the original.
-    await bulkRestore(
-      "payments",
-      fullPayments
-        .map((row) => ({ ...row, user_id: userId, client_id: idMap.get(intId(row.client_id)) }))
-        .filter((row) => row.client_id),
-      sql,
-    );
+    const keptPayments = fullPayments
+      .map((row) => ({ ...row, user_id: userId, client_id: idMap.get(intId(row.client_id)) }))
+      .filter((row) => row.client_id);
+    dropped.payments += fullPayments.length - keptPayments.length;
+    await bulkRestore("payments", keptPayments, sql);
   }
-  const legacyPaymentRows = (payload.payments ?? [])
-    .filter((r) => !("user_id" in r && "client_id" in r))
+  const legacyPaymentRowsAll = (payload.payments ?? [])
+    .filter((r) => !("user_id" in r && "client_id" in r));
+  const legacyPaymentRows = legacyPaymentRowsAll
     .map((row) => {
       const clientId = idMap.get(intId(row.client_id ?? row.clientId));
       if (!clientId) return null;
@@ -3975,6 +3983,7 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
       };
     })
     .filter((row) => row !== null);
+  dropped.payments += legacyPaymentRowsAll.length - legacyPaymentRows.length;
   if (legacyPaymentRows.length) await bulkRestore("payments", legacyPaymentRows, sql);
 
   if (payload.padNotes != null) {
@@ -4050,8 +4059,18 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
       );
     }
   }
-  await restoreV5Tables(userId, payload, idMap, pageMap, sql);
-  return { clients: payload.clients?.length ?? 0, jobs: payload.jobs?.length ?? 0 };
+  const v5Dropped = await restoreV5Tables(userId, payload, idMap, pageMap, sql);
+  dropped.changes += v5Dropped.changes;
+  dropped.links += v5Dropped.links;
+  // Las cifras devueltas son las filas que de verdad quedaron en el libro
+  // (la restauración borró antes todas las del usuario: lo que hay es lo
+  // insertado), no las que el archivo decía traer.
+  const real = await sql.query<{ clients: unknown; jobs: unknown }>(
+    `select (select count(*) from clients where user_id = $1) as clients,
+            (select count(*) from jobs where user_id = $1) as jobs`,
+    [userId],
+  );
+  return { clients: intId(real[0]?.clients), jobs: intId(real[0]?.jobs) };
   });
   await ensureScheduleForUser(userId);
   // 1.5.52 (D4): the copy's device layer lands AFTER the book transaction commits —
@@ -4066,7 +4085,7 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
       if (typeof localStorage !== "undefined") localChanged = applyLocalStore(localStorage, payload.localStore);
     } catch { /* the book is restored; the layer can be re-applied from the same copy */ }
   }
-  return { ...counts, localChanged };
+  return { ...counts, localChanged, dropped };
 }
 
 // Rows as the copy holds them, only the columns this table has (a missing column takes its default).
@@ -4087,14 +4106,18 @@ async function insertRows(table: string, rows: Record<string, unknown>[], dropId
   }
 }
 
-/** v5 copies: settings, client history, day goals/notes, off days and note links. */
+/** v5 copies: settings, client history, day goals/notes, off days and note links.
+ * Ola 4 (BZ-55): devuelve cuántas filas de historial/enlaces no se pudieron
+ * colocar (su cliente o página no está en el mapa), para que applyBackup
+ * las declare en vez de perderlas en silencio. */
 async function restoreV5Tables(
   userId: string,
   payload: BackupPayload,
   idMap: Map<number, number>,
   pageMap: Map<number, number>,
   txSql?: Sql,
-): Promise<void> {
+): Promise<{ changes: number; links: number }> {
+  const dropped = { changes: 0, links: 0 };
   const sql = txSql ?? (await getSql());
   if (payload.settings) {
     const tableCols = new Set(await tableColumns("app_settings", txSql));
@@ -4123,18 +4146,23 @@ async function restoreV5Tables(
   }
   if (payload.clientChanges) {
     // Clients were re-created above (cascade removed their old history); point rows at the new ids.
-    const rows = mine(payload.clientChanges)
+    const allChanges = mine(payload.clientChanges);
+    const rows = allChanges
       .map((row) => ({ ...row, client_id: idMap.get(intId(row.client_id)) }))
       .filter((row) => row.client_id);
+    dropped.changes += allChanges.length - rows.length;
     await insertRows("client_changes", rows, true, txSql);
   }
   if (payload.padLinks && payload.padPages) {
     await sql.query(`delete from pad_links where user_id = $1`, [userId]);
-    const rows = mine(payload.padLinks)
+    const allLinks = mine(payload.padLinks);
+    const rows = allLinks
       .map((row) => ({ ...row, page_id: pageMap.get(intId(row.page_id)), client_id: idMap.get(intId(row.client_id)) }))
       .filter((row) => row.page_id && row.client_id);
+    dropped.links += allLinks.length - rows.length;
     await insertRows("pad_links", rows, true, txSql);
   }
+  return dropped;
 }
 
 export const restoreBackup = createServerFn({ method: "POST" })
@@ -4934,8 +4962,29 @@ export const dropPadFolder = createServerFn({ method: "POST" })
   .validator((data: unknown) => z.object({ name: z.string().trim().min(1).max(40) }).parse(data))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    // Ola 4 (BZ-69): la guarda de deletePadPage («el libro siempre guarda
+    // una página») también manda aquí — borrar la carpeta no puede dejar
+    // el libro en cero páginas por la puerta de atrás. Si esta carpeta
+    // guarda la última página, sobrevive la más reciente de la carpeta.
+    const counts = await sql.query<{ total: unknown; mine: unknown }>(
+      `select (select count(*) from pad_pages where user_id = $1) as total,
+              (select count(*) from pad_pages where user_id = $1 and folder = $2) as mine`,
+      [context.userId, data.name],
+    );
+    const total = intId(counts[0]?.total);
+    const mine = intId(counts[0]?.mine);
+    const keep = Math.max(0, Math.min(mine, 1 - (total - mine)));
+    if (keep > 0) {
+      await sql.query(
+        `delete from pad_pages where user_id = $1 and folder = $2
+           and id not in (select id from pad_pages where user_id = $1 and folder = $2
+                           order by updated_at desc, id desc limit $3)`,
+        [context.userId, data.name, keep],
+      );
+      return { ok: true as const, keptLast: true as const };
+    }
     await sql.query(`delete from pad_pages where user_id = $1 and folder = $2`, [context.userId, data.name]);
-    return { ok: true as const };
+    return { ok: true as const, keptLast: false as const };
   });
 
 export const exportSheets = createServerFn({ method: "GET" })

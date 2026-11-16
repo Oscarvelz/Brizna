@@ -172,6 +172,21 @@ export function nativeNotifyStatus(): NativeNotifyStatus | null {
   try { return JSON.parse(n.notifyStatus()) as NativeNotifyStatus; } catch { return null; }
 }
 
+/* Ola 4 (BZ-48): la última entrega del plan a la cáscara (avisos/widget)
+ * que falló dos veces seguidas queda anotada aquí; Ajustes › Notificaciones
+ * la enseña, porque notifyStatus() solo puede contar lo viejo que la
+ * cáscara sí guardó. */
+export const NATIVE_DELIVERY_FAIL_KEY = "bz.native.lastfail";
+export type NativeDeliveryFail = { at: number; what: "schedule" | "widget" };
+export function nativeDeliveryFail(): NativeDeliveryFail | null {
+  try {
+    const raw = localStorage.getItem(NATIVE_DELIVERY_FAIL_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as NativeDeliveryFail;
+    return parsed && (parsed.what === "schedule" || parsed.what === "widget") ? parsed : null;
+  } catch { return null; }
+}
+
 /* ---------- back ---------- */
 
 function installBack(n: BriznaNativeBridge) {
@@ -252,14 +267,50 @@ function b64(bytes: Uint8Array): string {
 }
 const CH = 384 * 1024;
 
-async function saveBlob(n: BriznaNativeBridge, name: string, blob: Blob) {
-  const id = n.saveBegin(name || "Brizna", blob.type && blob.type !== "application/octet-stream" ? blob.type : guessMime(name));
-  if (!id || id.startsWith("error")) return;
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  for (let i = 0; i < bytes.length; i += CH) {
-    if (n.saveChunk(id, b64(bytes.subarray(i, i + CH))) !== "ok") return;
+/* Ola 4 (BZ-9): un guardado por el puente ya no es fire-and-forget. saveBlob
+ * devuelve una promesa que SOLO resuelve cuando saveEnd contesta "ok" y
+ * rechaza (NativeSaveError) ante cualquier "error" del camino; y cada
+ * guardado deja su veredicto en un registro por nombre de archivo para que
+ * quien lo pidió (save-file.ts) lo espere antes de cantar «guardado». */
+const saveOutcomes = new Map<string, Promise<boolean>>();
+/* Quién pidió el guardado y espera el veredicto (save-file.ts): si reclama,
+ * él anuncia el fallo con su propio mensaje; si nadie reclama (un clic de
+ * descarga suelto), el fallo lo anuncia NativeHost por el evento de abajo. */
+const saveClaimed = new Set<string>();
+
+export function nativeSaveOutcome(name: string): Promise<boolean> | null {
+  const outcome = saveOutcomes.get(name) ?? null;
+  if (outcome) saveClaimed.add(name);
+  return outcome;
+}
+
+function saveFailed(): Error {
+  const err = new Error("native save failed");
+  err.name = "NativeSaveError";
+  return err;
+}
+
+async function saveBlob(n: BriznaNativeBridge, name: string, blob: Blob): Promise<void> {
+  let settle: (ok: boolean) => void = () => undefined;
+  const outcome = new Promise<boolean>((resolve) => { settle = resolve; });
+  saveOutcomes.set(name, outcome);
+  const finish = (ok: boolean) => {
+    settle(ok);
+    window.setTimeout(() => { if (saveOutcomes.get(name) === outcome) { saveOutcomes.delete(name); saveClaimed.delete(name); } }, 60_000);
+  };
+  try {
+    const id = n.saveBegin(name || "Brizna", blob.type && blob.type !== "application/octet-stream" ? blob.type : guessMime(name));
+    if (!id || id.startsWith("error")) throw saveFailed();
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    for (let i = 0; i < bytes.length; i += CH) {
+      if (n.saveChunk(id, b64(bytes.subarray(i, i + CH))) !== "ok") throw saveFailed();
+    }
+    if (n.saveEnd(id, en() ? "Saved in Downloads › Brizna: %s" : "Guardado en Descargas › Brizna: %s") !== "ok") throw saveFailed();
+    finish(true);
+  } catch (err) {
+    finish(false);
+    throw err;
   }
-  n.saveEnd(id, en() ? "Saved in Downloads › Brizna: %s" : "Guardado en Descargas › Brizna: %s");
 }
 
 function guessMime(name: string): string {
@@ -280,26 +331,53 @@ function installDownloads(n: BriznaNativeBridge) {
   URL.revokeObjectURL = (u: string) => {
     window.setTimeout(() => { blobs.delete(u); revoke(u); }, 60_000);
   };
+  /* Arranca un guardado y vigila su veredicto: si falla y nadie lo reclamó
+   * (el clic venía suelto, sin un llamador esperando), el fallo se anuncia
+   * por evento para que NativeHost lo enseñe — nunca muere en silencio —
+   * y se ofrece la descarga normal del navegador dejando pasar el clic
+   * original una vez (cura recetada para BZ-9). Quien reclamó el veredicto
+   * avisa por su cuenta y no recibe ni el evento ni el segundo clic. */
+  const startWatchedSave = (name: string, saving: Promise<void>, refire?: () => void) => {
+    void saving.catch(() => undefined);
+    void (async () => {
+      for (let i = 0; i < 50 && !saveOutcomes.has(name); i++) await new Promise((r) => window.setTimeout(r, 100));
+      const outcome = saveOutcomes.get(name);
+      if (!outcome) return;
+      const ok = await outcome;
+      if (ok) return;
+      // Un macrociclo basta: quien espera el veredicto lo reclama en la
+      // misma tarea del clic (save-file.ts llama nativeSaveOutcome al
+      // momento); pasado ese respiro, un no-reclamado es un clic suelto.
+      await new Promise((r) => window.setTimeout(r, 0));
+      if (!saveClaimed.has(name)) {
+        window.dispatchEvent(new CustomEvent("brizna-save-failed", { detail: { name } }));
+        refire?.();
+      }
+    })();
+  };
+  const rawClick = HTMLAnchorElement.prototype.click;
+  const bypass = new WeakSet<HTMLAnchorElement>();
   const take = (a: HTMLAnchorElement): boolean => {
+    if (bypass.has(a)) return false;
     if (!a.hasAttribute("download")) return false;
     const href = a.href || "";
     const name = a.getAttribute("download") || "Brizna";
+    const refire = () => { bypass.add(a); rawClick.call(a); };
     if (href.startsWith("blob:")) {
       const blob = blobs.get(href);
-      if (blob) { void saveBlob(n, name, blob); return true; }
-      void fetch(href).then((r) => r.blob()).then((b) => saveBlob(n, name, b)).catch(() => undefined);
+      if (blob) { startWatchedSave(name, saveBlob(n, name, blob), refire); return true; }
+      startWatchedSave(name, fetch(href).then((r) => r.blob()).then((b) => saveBlob(n, name, b)), refire);
       return true;
     }
     if (href.startsWith("data:")) {
-      void fetch(href).then((r) => r.blob()).then((b) => saveBlob(n, name, b)).catch(() => undefined);
+      startWatchedSave(name, fetch(href).then((r) => r.blob()).then((b) => saveBlob(n, name, b)), refire);
       return true;
     }
     return false;
   };
-  const click = HTMLAnchorElement.prototype.click;
   HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
     if (take(this)) return;
-    click.call(this);
+    rawClick.call(this);
   };
   document.addEventListener("click", (e) => {
     const a = (e.target as Element | null)?.closest?.("a[download]") as HTMLAnchorElement | null;
@@ -310,18 +388,26 @@ function installDownloads(n: BriznaNativeBridge) {
 function installShare(n: BriznaNativeBridge) {
   if (!n.shareBegin || !n.shareFile || !n.shareChunk || !n.shareEnd) return;
   const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void>; canShare?: (d?: ShareData) => boolean };
+  // Ola 4 (BZ-54): un fallo del puente NO es una cancelación del usuario.
+  // Lleva nombre propio (ShareError) para que quien comparte lo distinga
+  // del AbortError verdadero y pueda avisar y ofrecer guardar el archivo.
+  const shareFail = (): Error => {
+    const err = new Error("share bridge failed");
+    err.name = "ShareError";
+    return err;
+  };
   const share = async (d: ShareData = {}) => {
     const id = n.shareBegin!();
-    if (!id || id === "error") throw new DOMException("share failed", "AbortError");
+    if (!id || id === "error") throw shareFail();
     for (const f of d.files ?? []) {
-      if (n.shareFile!(id, f.name || "Brizna", f.type || guessMime(f.name)) !== "ok") throw new DOMException("share failed", "AbortError");
+      if (n.shareFile!(id, f.name || "Brizna", f.type || guessMime(f.name)) !== "ok") throw shareFail();
       const bytes = new Uint8Array(await f.arrayBuffer());
       for (let i = 0; i < bytes.length; i += CH) {
-        if (n.shareChunk!(id, b64(bytes.subarray(i, i + CH))) !== "ok") throw new DOMException("share failed", "AbortError");
+        if (n.shareChunk!(id, b64(bytes.subarray(i, i + CH))) !== "ok") throw shareFail();
       }
     }
     const text = [d.text, d.url].filter(Boolean).join("\n");
-    if (n.shareEnd!(id, d.title ?? "", text) !== "ok") throw new DOMException("share failed", "AbortError");
+    if (n.shareEnd!(id, d.title ?? "", text) !== "ok") throw shareFail();
   };
   try {
     Object.defineProperty(nav, "share", { configurable: true, value: share });
