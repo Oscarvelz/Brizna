@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useTx } from "@/lib/i18n";
+import { writeDraftRaw } from "@/lib/note-draft";
 import { cn } from "@/lib/utils";
 
 /** Plain text for search and lists. The editor itself keeps the formatting. */
@@ -243,11 +244,9 @@ export function RichNotes({
     setEmpty(htmlToNote(el.innerHTML).length === 0);
     onDraft?.(el.innerHTML);
     if (draftKey) {
-      try {
-        sessionStorage.setItem(draftKey, el.innerHTML);
-      } catch {
-        /* ignore */
-      }
+      // 1.6.00 (BZ-30): el borrador crudo del editor vive con los demás
+      // borradores, en el almacén que sobrevive a la sesión.
+      writeDraftRaw(draftKey, el.innerHTML);
     }
     look();
     if (applying.current) return;

@@ -189,6 +189,10 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Toca Todos en el bloque Hoy (sale cuando quedan 2 o más patios pendientes).\nSe abre ¿Quién pagó hoy? con cada patio y su precio.\nCada patio empieza como Pagó si paga el mismo día, o como Pendiente si se le acumula; cámbialo si hace falta. Abonó pide el monto.\nConfirma: cada patio se marca Hecho con su camino y suena un ding.",
           "Tap All in the Today block (it shows when 2 or more yards are pending).\nWho paid today? opens with each yard and its price.\nEach yard starts as Paid if they pay the same day, or Unpaid if it adds up; change it if needed. Partial asks for the amount.\nConfirm: each yard is marked Done by its path and a ding plays.",
         ],
+        calc: [
+          "Al cerrar: un patio en Pagó cobra su precio entero; en Abonó cobra el abono y el resto (precio menos abono) pasa a su deuda; en Pendiente, el precio entero pasa a su deuda.\nLo que pasa a deuda al cerrar es lo que después suma Por cobrar.",
+          "At the close: a yard on Paid collects its full price; on Partial it collects the part payment and the rest (price minus part payment) goes to their debt; on Unpaid, the full price goes to their debt.\nWhat moves into debt at the close is what later adds up in To collect.",
+        ],
         example: [
           "Terminas 8 patios. Seis pagaron en efectivo, Kevin abonó $20 de $50 y Luis paga a fin de mes. En Todos revisas: seis en Pagó, Kevin en Abonó con 20, y Luis en Pendiente. Un toque y el día queda cerrado: los $40 de Luis y los $30 que le faltan a Kevin pasan a Por cobrar.",
           "You finish 8 yards. Six paid cash, Kevin gave $20 of $50, and Luis pays at month end. In All you check: six on Paid, Kevin on Partial with 20, and Luis on Unpaid. One tap and the day is closed: Luis's $40 and the $30 Kevin still owes go to To collect.",
@@ -386,16 +390,16 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Tap the funnel and pick a filter; each one has its own explanation.\nOn top, the counts show Regular, One-time, Together, and Archive; each number opens that list.\nThe magnifying glass searches by name, phone, address, or cue inside the filter you chose.",
         ],
         calc: [
-          "Activos y Juntos: todos los que siguen en la ruta (regulares y de una vez).\nCon saldo: deben más de $0, aunque estén archivados.\nCasos especiales: 3 o más cortes este mes, o un trabajo extra este mes.\nAlto riesgo: pasaron alguno de tus límites de Ajustes (días, monto o cortes sin pagar).\nLista negra: no entran en la agenda automática.",
-          "Active and Together: everyone still on the route (regular and one-time).\nWith a balance: they owe more than $0, even if archived.\nSpecial cases: 3 or more cuts this month, or an extra job this month.\nHigh risk: they passed one of your Settings limits (days, amount, or unpaid cuts).\nBlacklist: they never enter the automatic schedule.",
+          "Activos y Juntos: todos los que siguen en la ruta (regulares y de una vez).\nCon saldo: clientes activos que deben más de $0 (el archivado no sale aquí: su deuda vive en Archivos y en su ficha).\nCasos especiales: 3 o más cortes este mes, o un trabajo extra este mes.\nAlto riesgo: pasaron alguno de tus límites de Ajustes (días, monto o cortes sin pagar).\nLista negra: no entran en la agenda automática.",
+          "Active and Together: everyone still on the route (regular and one-time).\nWith a balance: active clients who owe more than $0 (an archived client does not show here: their debt lives in Archive and on their file).\nSpecial cases: 3 or more cuts this month, or an extra job this month.\nHigh risk: they passed one of your Settings limits (days, amount, or unpaid cuts).\nBlacklist: they never enter the automatic schedule.",
         ],
         example: [
           "Tienes 38 clientes: 31 permanentes, 7 de una vez y 4 en el archivo. El lunes por la mañana eliges Con saldo: salen 6 nombres, ordenados por lo que deben, y llamas primero al de arriba.",
           "You have 38 clients: 31 regular, 7 one-time, and 4 archived. Monday morning you pick With a balance: 6 names show, sorted by what they owe, and you call the top one first.",
         ],
         cases: [
-          "Un cliente archivado todavía debe: sale en Con saldo y su deuda sigue en Por cobrar.\nPones a alguien en la lista negra: sus trabajos pendientes se quitan y no vuelven solos.",
-          "An archived client still owes: they show under With a balance and the debt stays in To collect.\nYou blacklist someone: their pending jobs are removed and do not come back on their own.",
+          "Un cliente archivado todavía debe: su deuda sale de Por cobrar y de Con saldo mientras esté de baja; la encuentras en Archivos y en su ficha, y todo vuelve al reactivarlo.\nPones a alguien en la lista negra: sus trabajos pendientes se quitan y no vuelven solos.",
+          "An archived client still owes: their debt leaves To collect and With a balance while they are off; you find it in Archive and on their file, and it all comes back when you reactivate them.\nYou blacklist someone: their pending jobs are removed and do not come back on their own.",
         ],
         related: ["lista-clientes", "archivo", "espera", "tipo-cliente"],
         go: { to: "/clientes", where: ["Clientes, el embudo", "Clients, the funnel"] },
@@ -510,8 +514,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Taking someone off removes their pending cuts (late ones too). What they owe leaves To collect while they are off: their debt stays saved on their file.\nIn Stats, New clients and departures: new are clients created that month; departures, those taken off that month. If you reactivate someone, they stop counting as a departure.",
         ],
         example: [
-          "En octubre la señora Díaz se muda y te debe $45. La das de baja: desaparecen sus cortes y los $45 salen de Por cobrar (quedan en su ficha; en Clientes sigue saliendo en Con saldo). En Estudio, octubre cuenta 1 baja. En marzo vuelve: Reactivar, sus cortes regresan y los $45 vuelven a Por cobrar.",
-          "In October Mrs. Díaz moves away owing $45. You take her off: her cuts disappear and the $45 leaves To collect (it stays on her file; in Clients she still shows under With a balance). In Stats, October counts 1 departure. In March she returns: Reactivate, her cuts come back and the $45 returns to To collect.",
+          "En octubre la señora Díaz se muda y te debe $45. La das de baja: desaparecen sus cortes y los $45 salen de Por cobrar (quedan en su ficha y en Archivos; en Con saldo no sale mientras esté de baja). En Estudio, octubre cuenta 1 baja. En marzo vuelve: Reactivar, sus cortes regresan y los $45 vuelven a Por cobrar.",
+          "In October Mrs. Díaz moves away owing $45. You take her off: her cuts disappear and the $45 leaves To collect (it stays on her file and in Archive; she does not show under With a balance while she is off). In Stats, October counts 1 departure. In March she returns: Reactivate, her cuts come back and the $45 returns to To collect.",
         ],
         cases: [
           "Reactivas a un cliente con temporada: sus cortes siguen la temporada desde hoy.\nBorras a alguien: antes de borrar, Brizna te dice en voz alta cuánto debe, cuánto tiene a favor y cuántos pagos y visitas se borrarán — incluido el dinero que te prepagó. Para dejar constancia, mejor usa Perdonar y luego dale de baja.",
@@ -616,6 +620,10 @@ export const MANUAL_CHAPTERS: Chapter[] = [
         how: [
           "En la ficha o en Nuevo cliente elige Se acumula o Paga el mismo día.\nSe acumula: cada corte hecho suma su precio a la deuda; tú marcas Pagado cuando te pague.\nPaga el mismo día: en Todos su patio sale ya en Pagó, y con Sin confirmación extra un toque en Hecho lo da por cobrado.\nEl cambio queda anotado en el historial de la ficha.",
           "On the file or in New client choose It adds up or Pays the same day.\nIt adds up: each finished cut adds its price to the debt; you mark Paid when they pay.\nPays the same day: in All their yard starts on Paid, and with No extra confirmation one tap on Done counts it as paid.\nThe change is noted in the file's history.",
+        ],
+        calc: [
+          "La cuenta de cada cliente: suma el precio de cada corte hecho y no pagado, más su deuda anterior si la trae; resta cada pago y cada perdón.\nCon Paga el mismo día el corte nace cobrado y no suma nada.\nSi un pago pasa de lo que debe, lo que sobra queda a favor para el próximo corte.",
+          "Each client's account: it adds the price of every finished, unpaid cut, plus their earlier debt if they carry any; it subtracts each payment and each forgiveness.\nWith Pays the same day the cut is born paid and adds nothing.\nIf a payment is more than they owe, the extra stays as credit toward the next cut.",
         ],
         example: [
           "María paga en efectivo al terminar: Paga el mismo día. Robert paga por transferencia cada dos semanas: Se acumula. Tras dos cortes de $60, Robert debe $120; cuando llega su pago, Pagado en la ficha y su deuda vuelve a $0.",
@@ -770,8 +778,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "The Rivera cut said $40 but the grass was huge and you charged $55. In History you change 40 to 55: their account goes up $15. In January you raise their price to $45: from then on all pending cuts are $45, and December's stay at $40.",
         ],
         cases: [
-          "Bajas el precio de un corte ya pagado: la diferencia queda como adelanto para el próximo.\nUn corte atrasado de antes del cambio: toma el precio nuevo porque sigue pendiente.\nUn corte de $0 (cortesía): no cuenta para el precio promedio en Estudio.",
-          "You lower the price of a paid cut: the difference becomes an advance for the next one.\nA late cut from before the change: takes the new price because it is still pending.\nA $0 cut (courtesy): it does not count toward the average price in Stats.",
+          "Bajas el precio de un corte ya pagado: la diferencia queda como adelanto para el próximo.\nUn corte atrasado de antes del cambio: conserva el precio acordado, aunque siga pendiente.\nUn corte de $0 (cortesía): no cuenta para el precio promedio en Estudio.",
+          "You lower the price of a paid cut: the difference becomes an advance for the next one.\nA late cut from before the change: it keeps the agreed price, even though it is still pending.\nA $0 cut (courtesy): it does not count toward the average price in Stats.",
         ],
         related: ["ficha-deuda", "precio-trabajo", "asesor-pasos"],
         go: { to: "/clientes", where: ["La ficha del cliente, Historial", "The client file, History"] },
@@ -1660,6 +1668,10 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Escribe y toca Guardar: el texto no se guarda solo.\nEl más abre una nota en blanco; no se crea nada hasta que guardas.\nSi sales con algo sin guardar, pregunta qué hacer.\nEscribe @ y elige un cliente: la nota queda también en su ficha.\nLa calculadora, junto al pin, saca una cuenta y En la nota la escribe donde estás; se mueve por el asa y se achica por la esquina.\nAbajo, Esta semana: toca un día para ver sus patios (hoy primero y luego seis días).\nEn tableta y computadora la lista de notas queda abierta a la izquierda (Nota nueva arriba, buscar, fichero) y, con la tableta acostada, la calculadora queda fija a la derecha sobre Esta semana.\nArrastra la barrita entre dos paneles para darles ancho, con el dedo o el lápiz; doble toque la deja como venía. Llévala hasta el borde, o toca el botón de plegar, y el panel se recoge en una franja con sus iconos. Los anchos se recuerdan en ese aparato.",
           "Write and tap Save: text does not save itself.\nThe plus opens a blank note; nothing is created until you save.\nIf you leave with unsaved text, it asks what to do.\nType @ and pick a client: the note also lands on their file.\nThe calculator, next to the pin, works out a sum and Into note writes it where you are; drag it by the handle and shrink it from the corner.\nBelow, This week: tap a day to see its yards (today first, then six days).\nOn a tablet or computer the notes list stays open on the left (New note on top, search, cabinet) and, with the tablet in landscape, the calculator stays docked on the right above This week.\nDrag the small bar between two panels to resize them, with a finger or the pen; double-tap puts it back as it came. Drag it to the edge, or tap the fold button, and the panel tucks into a strip with its icons. Widths are remembered on that device.",
         ],
+        calc: [
+          "La calculadora hace la cuenta tal como la escribes: suma, resta, multiplica y divide, y acepta la coma o el punto en los decimales (18,50 y 18.50 valen lo mismo).\nEn la nota escribe solo el resultado, donde está el cursor; la cuenta en sí no se guarda en la nota.",
+          "The calculator works out the sum just as you type it: add, subtract, multiply and divide, and it takes a comma or a dot for decimals (18,50 and 18.50 are worth the same).\nInto note writes only the result, where the cursor is; the sum itself is not kept in the note.",
+        ],
         example: [
           "En la tienda anotas: 2 cuchillas, 1 galón de mezcla, hilo 0.095. Con la calculadora sumas 2 × 18,50 + 24 + 12 = 73 y En la nota escribe 73. Debajo pones @Kevin cambiar la llave del portón: esa línea aparece también en la ficha de Kevin.",
           "At the store you note: 2 blades, 1 gallon of mix, 0.095 line. With the calculator you add 2 × 18.50 + 24 + 12 = 73 and Into note writes 73. Below you add @Kevin new gate key: that line also shows on Kevin's file.",
@@ -1799,8 +1811,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Brizna's guide. Every (?) opens its topic here, and back returns you to where you were.",
         ],
         how: [
-          "El (?) da la idea en una o dos frases; Más en el manual abre aquí el detalle.\nCada tema tiene: Cómo funciona, Cómo se calcula, un Ejemplo, Si pasa… y temas relacionados.\nLa lupa busca en todo el texto del manual.\nVolver, la flecha del teléfono o Esc te regresan a la pantalla de antes.\nVer en la app te lleva al lugar exacto y lo enmarca con una luz unos segundos; un toque o un desliz la quitan antes.\nImprimir todo o un capítulo, y el Índice A–Z, están arriba.\nNingún botón se queda sin explicación: cada tarjeta lleva su (?) y cada cifra lleva su cuenta en el Cómo se calcula de su tema.\nY cada botón hace lo que su nombre dice: si alguna vez uno no lo hace, eso es un defecto de la app, no un error tuyo.",
-          "The (?) gives the idea in one or two sentences; More in the manual opens the detail here.\nEach topic has: How it works, How it's counted, an Example, What if…, and related topics.\nThe magnifying glass searches the whole manual text.\nBack, the phone's back arrow, or Esc returns you to the screen you came from.\nSee it in the app takes you to the exact spot and frames it with a light for a few seconds; a tap or a scroll clears it sooner.\nPrint all or one chapter, and the A–Z index, are on top.\nNo button is left unexplained: every card carries its (?) and every figure carries its count in its topic's How it's counted.\nAnd every button does what its name says: if one ever does not, that is a defect in the app, not a mistake of yours.",
+          "El (?) da la idea en una o dos frases; Más en el manual abre aquí el detalle.\nCada tema tiene: Cómo funciona, un Ejemplo y temas relacionados. Los temas con cuentas tienen además su Cómo se calcula, y muchos traen Si pasa… con casos reales.\nLa lupa busca en todo el texto del manual.\nVolver, la flecha del teléfono o Esc te regresan a la pantalla de antes.\nVer en la app te lleva al lugar exacto y lo enmarca con una luz unos segundos; un toque o un desliz la quitan antes.\nImprimir todo o un capítulo, y el Índice A–Z, están arriba.\nNingún botón se queda sin explicación: cada tarjeta lleva su (?) y cada cifra lleva su cuenta en el Cómo se calcula de su tema.\nY cada botón hace lo que su nombre dice: si alguna vez uno no lo hace, eso es un defecto de la app, no un error tuyo.",
+          "The (?) gives the idea in one or two sentences; More in the manual opens the detail here.\nEach topic has: How it works, an Example, and related topics. Topics with figures also carry their How it's counted, and many bring What if… with real cases.\nThe magnifying glass searches the whole manual text.\nBack, the phone's back arrow, or Esc returns you to the screen you came from.\nSee it in the app takes you to the exact spot and frames it with a light for a few seconds; a tap or a scroll clears it sooner.\nPrint all or one chapter, and the A–Z index, are on top.\nNo button is left unexplained: every card carries its (?) and every figure carries its count in its topic's How it's counted.\nAnd every button does what its name says: if one ever does not, that is a defect in the app, not a mistake of yours.",
         ],
         example: [
           "En Ajustes no entiendes cuándo alguien pasa a naranja. Tocas el (?) de Espera y alto riesgo y luego Más en el manual: el ejemplo explica los 45 + 21 días. Tocas Volver y estás otra vez en Ajustes, donde estabas.",
@@ -1834,9 +1846,33 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "AMOLED es negro puro: ahorra batería solo en pantallas OLED; en una pantalla común se ve igual de negro, pero no ahorra.",
           "AMOLED is pure black: it saves battery only on OLED screens; on a regular screen it looks just as black but saves nothing.",
         ],
-        related: ["clima", "busca"],
+        related: ["clima", "busca", "idioma"],
         go: { to: "/ajustes", focus: "aj-pantalla", where: ["Ajustes, Pantalla", "Settings, Screen"] },
         terms: [["Automático", "Automatic"], ["AMOLED", "AMOLED"], ["Colores", "Colors"]],
+      },
+      {
+        id: "idioma",
+        title: ["Idioma", "Language"],
+        sum: ["La app en español o en inglés, tú eliges.", "The app in Spanish or in English, your choice."],
+        what: [
+          "Español es el idioma de siempre. English cambia los textos de la app y el corrector del bloc.",
+          "Spanish is the default. English changes the app text and the notepad spellcheck.",
+        ],
+        how: [
+          "En Ajustes, la tarjeta Idioma trae dos botones: Español y English. El cambio es al instante y no cierra nada.\nEl idioma vive en este aparato: cada teléfono o tableta guarda el suyo, y cambiarlo aquí no cambia el de otro aparato.\nCambiar el idioma no toca tu libro: clientes, notas y cifras quedan como están; solo cambian los textos de la app.",
+          "In Settings, the Language card carries two buttons: Español and English. The change is instant and closes nothing.\nThe language lives on this device: each phone or tablet keeps its own, and changing it here does not change another device's.\nChanging the language does not touch your book: clients, notes and figures stay as they are; only the app's own text changes.",
+        ],
+        example: [
+          "Tu hijo te ayuda los sábados y lee mejor en inglés: en su tableta pones English y tu teléfono sigue en Español. El libro que ven los dos es el mismo.",
+          "Your son helps you on Saturdays and reads English better: on his tablet you set English and your phone stays on Spanish. The book you both see is the same.",
+        ],
+        cases: [
+          "El corrector del Bloc sigue el idioma de la app: con English, subraya según el inglés.\nLos nombres de tus clientes y lo que escribes en tus notas no se traducen nunca: eso es tuyo y queda como lo escribiste.",
+          "The Pad's spellcheck follows the app's language: with English, it checks by English.\nYour clients' names and what you write in your notes are never translated: that is yours and stays as you wrote it.",
+        ],
+        related: ["tema", "busca", "ajustes-usuales"],
+        go: { to: "/ajustes", focus: "aj-idioma", where: ["Ajustes, Idioma", "Settings, Language"] },
+        terms: [["Idioma", "Language"], ["Corrector", "Spellcheck"]],
       },
       {
         id: "tableta",
@@ -2094,7 +2130,7 @@ export const HINT_ONLY: HintOnly[] = [
   {
     id: "agenda-dia",
     into: "parar-dia",
-    what: ["La razón por la que no se siguió trabajando en esta fecha. Si el día fue normal, no aparece.", "Why work did not continue on this date. If the day was normal, it does not show."],
+    what: ["La razón por la que no se siguió trabajando en esta fecha. Si el día fue normal, no aparece.", "Why work stopped on this date: the reason shows here. If the day was normal, it does not show."],
   },
   {
     id: "dias-parados",
@@ -2248,11 +2284,6 @@ export const HINT_ONLY: HintOnly[] = [
     id: "ajustes",
     into: "busca",
     what: ["Abre o cierra de una vez todos los ajustes de esta página.", "Opens or closes every setting on this page at once."],
-  },
-  {
-    id: "idioma",
-    into: "tema",
-    what: ["Español es el idioma de siempre. English cambia los textos de la app y el corrector del bloc.", "Spanish is the default. English changes the app text and the notepad spellcheck."],
   },
   {
     id: "sesion",

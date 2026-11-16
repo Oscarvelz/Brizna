@@ -26,6 +26,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { smartHit } from "@/lib/fuzzy";
 import { backupContentChecksum, checksumMatches, idsToKeep, withChecksum } from "@/lib/backup-plan";
 import { applyLocalStore, collectLocalStore, sanitizeLocalStore } from "@/lib/local-store-backup";
+import { nameKey } from "@/lib/dup-match";
 import { reconcileBalance } from "@/lib/balance-reconcile";
 import { sealedOn } from "@/lib/presentation/seal-flag";
 import { buildReportPdf } from "@/lib/report-pdf";
@@ -1764,7 +1765,21 @@ export const createClientsBulk = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const ids: number[] = [];
+    // 1.6.00 (campaña Prejuicio, BZ-53): la última cerca — un nombre repetido
+    // DENTRO de la misma tanda (con la clave plegada de dup-match: «José
+    // Pérez» ≡ «Jose Perez») entra una sola vez, como el Manual promete. El
+    // hueco en ids conserva el índice de cada fila para la revisión del
+    // cliente, y la respuesta declara cuántos se fundieron.
+    const seenBatch = new Set<string>();
+    let skipped = 0;
     for (const c of data.contacts) {
+      const batchKey = nameKey(c.name);
+      if (batchKey && seenBatch.has(batchKey)) {
+        ids.push(0);
+        skipped += 1;
+        continue;
+      }
+      if (batchKey) seenBatch.add(batchKey);
       const startDate =
         c.kind === "one_time"
           ? null
@@ -1818,7 +1833,7 @@ export const createClientsBulk = createServerFn({ method: "POST" })
     }
     await ensureScheduleForUser(context.userId);
     await snapshotBackup(context.userId).catch(() => undefined);
-    return { ids, count: ids.length };
+    return { ids, count: ids.length - skipped, skipped };
   });
 
 export const updateClient = createServerFn({ method: "POST" })
@@ -3967,6 +3982,10 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
         title: strField(row, "title"),
         amount: money(row.amount),
         notes: strField(row, "notes"),
+        // 1.6.00 (campaña Prejuicio, BZ-68): la vía legacy conserva también el
+        // motivo del pase y la fecha de origen, como la vía completa.
+        postpone_reason: strField(row, "postpone_reason", "postponeReason"),
+        origin_date: asIsoDate(row.origin_date ?? row.originDate) || null,
         completed_at: row.completed_at ?? row.completedAt ?? null,
         arrival_time: strField(row, "arrival_time", "arrivalTime"),
         sort_order: Number(row.sort_order ?? row.sortOrder) || 0,
@@ -3995,7 +4014,12 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
         user_id: userId,
         client_id: clientId,
         amount: money(row.amount),
-        kind: row.kind === "waived" ? "waived" : "paid",
+        // 1.6.00 (campaña Prejuicio, BZ-68): la vía legacy conserva el kind
+        // íntegro — un «opening» renacía como «paid» y el dinero aparecía como
+        // cobrado sin haber entrado — y también medio y propina.
+        kind: row.kind === "waived" || row.kind === "prepaid" || row.kind === "opening" ? String(row.kind) : "paid",
+        method: strField(row, "method"),
+        tip: money(row.tip),
         note: strField(row, "note"),
         // The old insert used coalesce(paid_at, now()): a legacy row without a date
         // is stamped at restore time, never left null in bulk.

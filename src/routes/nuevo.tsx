@@ -22,7 +22,7 @@ import { todayISO } from "@/lib/dates";
 import { frequencyLabel, money, weekdayLabel } from "@/lib/format";
 import { createClient, createClientsBulk, addClientPhoto, getSettings } from "@/lib/server/lawn";
 import { checkClientDupes, checkClientDupesBatch, markNotDuplicate, mergeClients, undoMerge, type DupClient, type DupMatch } from "@/lib/server/dups";
-import { nameMatch, phoneTail } from "@/lib/dup-match";
+import { nameKey, nameMatch, phoneTail } from "@/lib/dup-match";
 import { DEFAULT_DEBT_PRESETS, DEFAULT_PRICE_PRESETS } from "@/lib/types";
 import { useTx } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -149,10 +149,16 @@ function NuevoPage() {
       }
       const merged = mergeIds.length;
       const added = res.count - merged;
+      const baseMsg = merged
+        ? tx(`${added} ${added === 1 ? "cliente añadido" : "clientes añadidos"} · ${merged} ${merged === 1 ? "unido" : "unidos"}`, `${added} added · ${merged} merged`)
+        : tx(`${res.count} ${res.count === 1 ? "cliente añadido" : "clientes añadidos"}`, `${res.count} ${res.count === 1 ? "client" : "clients"} added`);
+      // 1.6.00 (BZ-53): si el servidor fundió repetidos de la propia tanda,
+      // el aviso lo declara — nadie canta éxito sin mirar (Ola 4).
+      const skippedMsg = res.skipped
+        ? tx(` · ${res.skipped} ${res.skipped === 1 ? "repetido no entró" : "repetidos no entraron"} (ya estaban en la lista)`, ` · ${res.skipped} duplicate${res.skipped === 1 ? " was" : "s were"} not added (already in the list)`)
+        : "";
       toast.success(
-        merged
-          ? tx(`${added} ${added === 1 ? "cliente añadido" : "clientes añadidos"} · ${merged} ${merged === 1 ? "unido" : "unidos"}`, `${added} added · ${merged} merged`)
-          : tx(`${res.count} ${res.count === 1 ? "cliente añadido" : "clientes añadidos"}`, `${res.count} ${res.count === 1 ? "client" : "clients"} added`),
+        baseMsg + skippedMsg,
         merged
           ? {
               duration: 10000,
@@ -243,7 +249,9 @@ function NuevoPage() {
     const names: string[] = [];
     for (const line of raw.split(/\n/)) {
       const name = line.replace(/\s+/g, " ").trim();
-      const key = name.toLocaleLowerCase();
+      // 1.6.00 (BZ-53): la clave plegada de dup-match — «José Pérez» y
+      // «Jose Perez» son el mismo nombre al pegar, como en el resto de la app.
+      const key = nameKey(name);
       if (!name || seen.has(key)) continue;
       seen.add(key);
       names.push(name);

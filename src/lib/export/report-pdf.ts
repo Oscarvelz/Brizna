@@ -998,6 +998,8 @@ function drawHoras(ctx: Ctx) {
     { label: tx("$ POR HORA (TRABAJO)", "$ AN HOUR (WORK)"), value: m.amounts ? usd(h.perHour) : "", color: C.money },
     { label: tx("$ POR HORA (COBRADO)", "$ AN HOUR (COLLECTED)"), value: m.amounts ? usd(h.perHourCollected) : "", color: C.money },
   ]);
+  // 1.6.00 (BZ-51): la sección lo declara en su propia cara, no solo la portada.
+  note(ctx, tx("Horas es siempre el negocio entero: el registro de horas es por día, no por cliente.", "Hours always covers the whole business: the hours log is per day, not per client."));
   const rows = h.rows.filter((r) => r.hours > 0 || r.stopped);
   if (!rows.length) return;
   if (rows.length <= 120) {

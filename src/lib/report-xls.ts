@@ -49,8 +49,14 @@ export function buildReportXls(pack: WorkbookPack) {
   const jobs = pack.jobs.map((row) => [cell(row.date), cell(row.name), cell(row.status), cell(row.amount)]);
   const pays = pack.payments.map((row) => [cell(row.date), cell(row.name), cell(row.amount), cell(row.kind)]);
   const hours = pack.hours.map((row) => [cell(row.date), cell(row.inn), cell(row.out), cell(row.hours)]);
-  const collected = pack.payments.reduce((n, row) => n + row.amount, 0);
-  const owing = pack.clients.reduce((n, row) => n + Math.max(0, row.balance), 0);
+  // 1.6.00 (campaña Prejuicio, BZ-18 — REABIERTO P3): la hoja cuenta lo mismo
+  // que el PDF del mismo paquete. «Cobrado» suma solo el dinero que entró
+  // (paid|prepaid — fuera el perdonado y el saldo inicial) y «Saldo por
+  // cobrar» es la cifra del paquete, que ya sigue la regla única; la fórmula
+  // SUMIF sobre el roster completo la recalculaba mal para siempre.
+  const moneyIn = pack.payments.filter((row) => row.kind === "paid" || row.kind === "prepaid");
+  const collected = moneyIn.reduce((n, row) => n + row.amount, 0);
+  const owing = pack.owingTotal;
   const hourTotal = pack.hours.reduce((n, row) => n + row.hours, 0);
   const pending = pack.jobs.filter((row) => row.status === "Pendiente").length;
   const leeme = [
@@ -60,12 +66,14 @@ export function buildReportXls(pack: WorkbookPack) {
     [cell("Trabajos"), cell("Fecha, cliente, estado y monto.")],
     [cell("Pagos"), cell("Cada cobro. El resumen suma esta hoja.")],
     [cell("Horas"), cell("Horas confirmadas.")],
-    [cell("Resumen"), cell("Las cifras son fórmulas. Si cambias un monto, el total cambia.")],
+    [cell("Resumen"), cell("Cobrado y saldo por cobrar son las cifras del libro, las mismas del PDF. Horas y pendientes son fórmulas de sus hojas.")],
   ];
+  const sumifIn = pays.length ? `=SUMIF(Pagos!D2:D${pays.length + 1},"paid",Pagos!C2:C${pays.length + 1})+SUMIF(Pagos!D2:D${pays.length + 1},"prepaid",Pagos!C2:C${pays.length + 1})` : "0";
+  const countifIn = pays.length ? `COUNTIF(Pagos!D2:D${pays.length + 1},"paid")+COUNTIF(Pagos!D2:D${pays.length + 1},"prepaid")` : "0";
   const resumen = [
     [cell("Qué"), cell("Cifra")],
-    [cell("Cobrado en la hoja"), sum("Pagos", "C", pays.length, collected)],
-    [cell("Saldo por cobrar"), clients.length ? formula(`=SUMIF(Clientes!D2:D${clients.length + 1},">0")`, owing) : formula("0", 0)],
+    [cell("Cobrado en la hoja"), formula(sumifIn, collected)],
+    [cell("Saldo por cobrar"), cell(owing)],
     [cell("Horas confirmadas"), sum("Horas", "D", hours.length, hourTotal)],
     [
       cell("Trabajos pendientes"),
@@ -75,7 +83,7 @@ export function buildReportXls(pack: WorkbookPack) {
     ],
     [
       cell("Promedio de cobro"),
-      pays.length ? formula(`=AVERAGE(Pagos!C2:C${pays.length + 1})`, collected / pays.length) : formula("0", 0),
+      moneyIn.length ? formula(`=(${sumifIn.slice(1)})/(${countifIn})`, collected / moneyIn.length) : formula("0", 0),
     ],
   ];
   const book = `<?xml version="1.0" encoding="UTF-8"?>

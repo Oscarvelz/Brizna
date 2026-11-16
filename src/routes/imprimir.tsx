@@ -35,6 +35,9 @@ function payKindLabel(kind: string, tx: (es: string, en: string) => string): str
   if (kind === "waived") return tx("Perdonado", "Forgiven");
   if (kind === "prepaid") return tx("Adelanto", "Advance");
   if (kind === "paid") return tx("Pagado", "Paid");
+  // 1.6.00 (BZ-75): el saldo inicial gana su etiqueta — antes salía «opening»
+  // en inglés en la hoja en español.
+  if (kind === "opening") return tx("Saldo inicial", "Opening balance");
   return kind;
 }
 
@@ -66,6 +69,11 @@ function ScopedPrint({ from, to }: { from: string; to: string }) {
   });
   const jobs = sheet.data?.jobs ?? [];
   const payments = sheet.data?.payments ?? [];
+  // 1.6.00 (BZ-75): el encabezado «Cobros» suma solo el dinero que entró
+  // (paid|prepaid); el perdonado se declara aparte, como en el modelo del
+  // Centro, y el saldo inicial queda fuera de la suma.
+  const cobrosIn = payments.filter((p) => p.kind === "paid" || p.kind === "prepaid");
+  const cobrosForgiven = payments.filter((p) => p.kind === "waived");
 
   return (
     <AppShell
@@ -124,7 +132,13 @@ function ScopedPrint({ from, to }: { from: string; to: string }) {
       <article className="mt-6 rounded-xl bg-surface p-4 shadow-card print:break-before-page print:shadow-none">
         <h2 className="font-display text-xl font-semibold">{tx("Cobros", "Payments")}</h2>
         <p className="text-sm text-muted">
-          {payments.length} · {money(sumMoney(payments.map((p) => p.amount)))}
+          {cobrosIn.length} · {money(sumMoney(cobrosIn.map((p) => p.amount)))}
+          {cobrosForgiven.length > 0 && (
+            <>
+              {" · "}
+              {money(sumMoney(cobrosForgiven.map((p) => p.amount)))} {tx("perdonado (no entró)", "forgiven (not collected)")}
+            </>
+          )}
         </p>
         <div className="mt-3 w-full overflow-x-auto print:overflow-visible">
           <table className="w-full min-w-[28rem] text-left text-sm print:min-w-0 print:text-xs">

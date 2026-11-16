@@ -29,9 +29,85 @@ export function noteHasText(note: UnsavedNote | null) {
   return plain.length > 0 || (note.shots?.length ?? 0) > 0;
 }
 
+/* 1.6.00 (campaña Prejuicio, BZ-30 — decisión de Oscar según la recomendación
+ * del plan): los borradores del Bloc SOBREVIVEN a la sesión. Hasta 1.5.99
+ * vivían en sessionStorage y morían al cerrar la app, aunque el Manual
+ * prometía recuperarlos al volver; ahora viven en localStorage, el mismo
+ * almacén que las preferencias — y con eso entran solos en el censo del sello
+ * de la Presentación (el guardián fotografía todo localStorage) y en la capa
+ * local del respaldo, como el catálogo de carpetas. Las lecturas adoptan una
+ * copia legada de sessionStorage una sola vez, para que ningún borrador vivo
+ * se pierda en el cambio de almacén. */
+function draftStore(): Storage | null {
+  try {
+    return typeof localStorage !== "undefined" ? localStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+function legacyStore(): Storage | null {
+  try {
+    return typeof sessionStorage !== "undefined" ? sessionStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Lee una clave de borrador: localStorage manda; si solo vive la copia de
+ *  sessionStorage (de antes de 1.6.00), se adopta y la vieja se retira. */
+export function readDraftRaw(key: string): string | null {
+  const store = draftStore();
+  if (!store) return null;
+  try {
+    const v = store.getItem(key);
+    if (v !== null) return v;
+    const legacy = legacyStore();
+    const old = legacy?.getItem(key) ?? null;
+    if (old !== null) {
+      try {
+        store.setItem(key, old);
+      } catch {
+        /* si no cabe, se lee igual esta vez */
+      }
+      legacy?.removeItem(key);
+      return old;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeDraftRaw(key: string, value: string): void {
+  try {
+    draftStore()?.setItem(key, value);
+  } catch {
+    /* el llamador decide su repliegue */
+  }
+  try {
+    legacyStore()?.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function removeDraftRaw(key: string): void {
+  try {
+    draftStore()?.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+  try {
+    legacyStore()?.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
 function readSlot(key: string): UnsavedNote | null {
   try {
-    const raw = sessionStorage.getItem(key);
+    const raw = readDraftRaw(key);
     if (!raw) return null;
     const data = JSON.parse(raw) as Partial<UnsavedNote>;
     if (!data || typeof data.pageId !== "number" || data.pageId < 0) return null;
@@ -52,23 +128,31 @@ function readSlot(key: string): UnsavedNote | null {
 }
 
 function writeSlot(key: string, note: UnsavedNote | null) {
+  if (!note) {
+    removeDraftRaw(key);
+    return;
+  }
+  const store = draftStore();
   try {
-    if (!note) sessionStorage.removeItem(key);
-    else sessionStorage.setItem(key, JSON.stringify(note));
+    store?.setItem(key, JSON.stringify(note));
   } catch {
-    if (!note) return;
     try {
       const { shots: _shots, ...rest } = note;
-      sessionStorage.setItem(key, JSON.stringify(rest));
+      store?.setItem(key, JSON.stringify(rest));
     } catch {
       /* ignore */
     }
+  }
+  try {
+    legacyStore()?.removeItem(key);
+  } catch {
+    /* ignore */
   }
 }
 
 function readPages(): Record<string, UnsavedNote> {
   try {
-    const raw = sessionStorage.getItem(PAGES);
+    const raw = readDraftRaw(PAGES);
     if (!raw) return {};
     const data = JSON.parse(raw) as Record<string, Partial<UnsavedNote>>;
     const out: Record<string, UnsavedNote> = {};
@@ -97,12 +181,8 @@ function readSlotValue(data: Partial<UnsavedNote> | null): UnsavedNote | null {
 }
 
 function writePages(map: Record<string, UnsavedNote>) {
-  try {
-    if (Object.keys(map).length === 0) sessionStorage.removeItem(PAGES);
-    else sessionStorage.setItem(PAGES, JSON.stringify(map));
-  } catch {
-    /* ignore */
-  }
+  if (Object.keys(map).length === 0) removeDraftRaw(PAGES);
+  else writeDraftRaw(PAGES, JSON.stringify(map));
 }
 
 export function readUnsavedNote(): UnsavedNote | null {
@@ -176,12 +256,8 @@ export function clearDrafts() {
   writeMainDraft(null);
   writeSideDraft(null);
   writePages({});
-  try {
-    sessionStorage.removeItem("ols-pad-draft");
-    sessionStorage.removeItem("ols-pad-0");
-  } catch {
-    /* ignore */
-  }
+  removeDraftRaw("ols-pad-draft");
+  removeDraftRaw("ols-pad-0");
 }
 
 export function dropSavedDraft(slot: DraftSlot, pageId = 0) {

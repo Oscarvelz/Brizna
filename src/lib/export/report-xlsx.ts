@@ -815,7 +815,7 @@ export function reportXlsxBytes(m: Model): Uint8Array {
     agenda: tx("Los próximos patios, con casilla para marcar.", "The next yards, with a box to tick."),
     clientes: tx("El directorio: contacto, día, frecuencia, precio y saldo.", "The directory: contact, day, frequency, price and balance."),
     precios: tx("Lo que paga cada patio y cuánto deja al mes.", "What each yard pays and what it brings a month."),
-    horas: tx("Entrada, salida, horas y $ por hora de cada día.", "Clock in, out, hours and $ an hour each day."),
+    horas: tx("Entrada, salida, horas y $ por hora de cada día. Siempre el negocio entero: las horas son por día, no por cliente.", "Clock in, out, hours and $ an hour each day. Always the whole business: hours are per day, not per client."),
     propinas: tx("Cada propina y quién la dejó.", "Every tip and who left it."),
     pospuestos: tx("Trabajos movidos: de qué día a qué día y por qué.", "Moved jobs: from which day to which, and why."),
     libres: tx("Días sin trabajo y paradas tempranas.", "Days without work and early stops."),

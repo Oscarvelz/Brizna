@@ -44,6 +44,15 @@ const EXCLUDED_KEYS = [
 // What the user authored or chose: these must TRAVEL (predicate must not exclude).
 const TRAVEL_KEYS = [
   "ols-pad-folders",
+  // 1.6.00 (BZ-30): los borradores del Bloc viven en localStorage desde esta
+  // versión — son texto del usuario, viajan como el catálogo de carpetas.
+  "ols-note-unsaved",
+  "ols-note-main",
+  "ols-note-side",
+  "ols-note-pages",
+  "ols-pad-draft",
+  "ols-pad-0",
+  "ols-pad-123",
   "ols-look-v2",
   "ols-ajustes-order",
   "ols-weather-place",

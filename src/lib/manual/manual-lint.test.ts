@@ -38,6 +38,31 @@ test("every manual page adds real detail and never repeats its (?) text", () => 
   assert.deepEqual(errs, []);
 });
 
+test("every hint-only bubble lands on a topic that talks about what it promises", () => {
+  // 1.6.00 (campaña Prejuicio, BZ-47): la cerca vieja comprobaba que el
+  // destino EXISTE; esta comprueba que el destino HABLA de lo que la burbuja
+  // promete — la burbuja «idioma» aterrizaba en «tema», un tema de colores.
+  // Una palabra significativa (≥5 letras, plegada) de la burbuja debe aparecer
+  // en el título o el cuerpo del tema destino, en el mismo idioma.
+  const fold = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  const words = (s: string) => [...new Set(fold(s).replace(/[^a-zñ ]/g, " ").split(/\s+/).filter((w) => w.length >= 5))];
+  const errs: string[] = [];
+  for (const h of HINT_ONLY) {
+    const t = findTopic(h.into);
+    if (!t) continue; // la existencia la caza la cerca de arriba
+    for (const i of langs) {
+      const promised = words(h.what[i]);
+      const dest = fold([t.title[i], ...topicBody(t).map((p) => p[i])].join(" "));
+      if (!promised.some((w) => dest.includes(w))) errs.push(`${h.id} [${i ? "en" : "es"}]: el tema destino «${h.into}» no habla de lo que la burbuja promete`);
+    }
+  }
+  assert.deepEqual(errs, []);
+});
+
 test("bubbles stay short: one or two plain sentences", () => {
   const errs: string[] = [];
   const ok = (c: unknown, m: string) => { if (!c) errs.push(m); };

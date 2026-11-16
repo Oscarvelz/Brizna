@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useTx } from "@/lib/i18n";
-import { clearDrafts, padFamily, pendingDrafts } from "@/lib/note-draft";
+import { clearDrafts, padFamily, pendingDrafts, removeDraftRaw } from "@/lib/note-draft";
 import { savePad, createPadPage } from "@/lib/server/lawn";
 
 export function NoteLeaveGuard() {
@@ -24,11 +24,7 @@ export function NoteLeaveGuard() {
 
   function discard() {
     for (const note of pendingDrafts()) {
-      try {
-        sessionStorage.removeItem(`ols-pad-${note.pageId}`);
-      } catch {
-        /* ignore */
-      }
+      removeDraftRaw(`ols-pad-${note.pageId}`);
     }
     clearDrafts();
     blocker.proceed?.();
@@ -51,11 +47,7 @@ export function NoteLeaveGuard() {
         await savePad({
           data: { pageId, html: note.html, title: note.title, folder: note.folder },
         });
-        try {
-          sessionStorage.removeItem(`ols-pad-${note.pageId}`);
-        } catch {
-          /* ignore */
-        }
+        removeDraftRaw(`ols-pad-${note.pageId}`);
       }
       clearDrafts();
       await qc.invalidateQueries({ queryKey: ["pad"] });

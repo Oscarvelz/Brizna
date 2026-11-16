@@ -274,7 +274,13 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   const kindWord = (k: string) => (k === "extra" ? tx("Extra", "Extra") : k === "one_time" ? tx("Una vez", "One-time") : tx("Corte", "Cut"));
 
   /* ---------- KPIs */
-  const owingKept = kept.filter((c) => c.balance > 0.004);
+  // 1.6.00 (campaña Prejuicio, BZ-17): TODA suma de deuda del modelo usa la
+  // población de la regla única — activo y no lista negra — salga o no el
+  // cliente en los grupos elegidos: los grupos gobiernan la lista de
+  // clientes, no la suma. Antes owingKept nacía de `kept` y la exportación
+  // resucitaba como cobrable la deuda de vetados y archivados ($650 entre 4
+  // donde la pantalla decía $150 entre 2).
+  const owingKept = raw.clients.filter((c) => c.isActive && !c.blacklisted && c.balance > 0.004);
   const work = raw.work.filter((w) => w.minutes > 0);
   const kpi: Model["kpi"] = {
     collected: sum(money_in.map((p) => p.amount)),
@@ -487,7 +493,7 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   /* ---------- prices (active regular clients) */
   // Ola 2 (BZ-12): la misma cuenta compartida de dates.ts que el Asesor y el Estudio.
   const visitsOf = (c: ClientRow) => r2(monthlyVisitsFor(Number(c.cutsPerMonth) || 0, c.frequencyDays));
-  const priced = kept.filter((c) => c.isActive && c.pricePerCut > 0);
+  const priced = kept.filter((c) => c.isActive && !c.blacklisted && c.pricePerCut > 0);
   const regular = priced.filter((c) => c.kind === "regular");
   const prices = regular.map((c) => c.pricePerCut).sort((a, b) => a - b);
   const median = prices.length ? (prices.length % 2 ? prices[(prices.length - 1) / 2]! : (prices[prices.length / 2 - 1]! + prices[prices.length / 2]!) / 2) : 0;
@@ -704,6 +710,11 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
     !o.names && tx("iniciales en vez de nombres", "initials instead of names"),
     !o.phones && tx("sin teléfonos", "no phone numbers"),
     !o.amounts && tx("sin montos", "no amounts"),
+    // 1.6.00 (campaña Prejuicio, BZ-51): Horas no se puede recortar por
+    // cliente — el registro de horas es por día, del negocio entero — y la
+    // portada lo declara cuando el alcance elegido es parcial, para que la
+    // hoja no declare un alcance y entregue otro.
+    sections.includes("horas") && (o.pick?.length || !(o.groups.active && o.groups.oneTime && o.groups.archived)) && tx("Horas: siempre el negocio entero", "Hours: always the whole business"),
   ].filter(Boolean) as string[];
   const scope = cap(o.pick?.length ? scopeBits.join(" · ") : `${tx("Clientes", "Clients")}: ${scopeBits.join(" · ")}`);
   const now = new Date();

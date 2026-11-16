@@ -57,12 +57,12 @@ export const AD4: Module = {
     {
       id: "ad4-puertas", chapter: "puertas", anchors: ["bache-contactos", "bache-varios"],
       keys: [["varios", "several"], ["contactos", "contacts"]],
-      verify: "La puerta de contactos depende del aparato: en la app Android el sistema aún no lee Contactos y la app lo avisa en voz alta (censo B-45 / F-73, verificado en código); qué selector abre cada navegador real no se contrastó en esta línea.",
+      verify: "En la app Android, «Del teléfono» abre el selector del sistema: la cáscara lo abre ella (Contacts.kt, ACTION_PICK) y NO pide permiso de leer Contactos — solo entra el contacto que el usuario toca (verdad de 1.5.92, re-verificada en esta línea contra native.ts y Contacts.kt); en un aparato sin selector, la app avisa honesto: escribe a mano.",
       steps: [
         { kind: "stage", build: "ruta-base" },
         { kind: "go", screen: "/nuevo" },
         { kind: "ask", anchor: "bache-varios", caption: ["¿Varios patios nuevos? No uno a uno: en tanda.", "Several new yards? Not one by one: in a batch."] },
-        { kind: "show", anchor: "bache-contactos", caption: ["Del teléfono trae nombre, teléfono y dirección de tus contactos.", "From the phone it brings name, phone and address of your contacts."], contexto: ["Si el aparato no lee contactos, avisa honesto: escribe a mano.", "If the device cannot read contacts, it says so: type by hand."] },
+        { kind: "show", anchor: "bache-contactos", caption: ["Del teléfono trae nombre y teléfono, y la dirección cuando el teléfono la deja.", "From the phone: name and phone, plus the address when the phone offers it."], contexto: ["Si el aparato no lee contactos, avisa honesto: escribe a mano.", "If the device cannot read contacts, it says so: type by hand."] },
         { kind: "show", anchor: "bache-varios", caption: ["Añadir varios es la otra puerta: pegar nombres.", "Add several is the other door: pasting names."], contexto: ["Esto suma clientes al libro; Restaurar, en cambio, lo reemplaza entero.", "This adds clients to the book; Restore, instead, replaces it entirely."] },
         { kind: "ref", topic: "anadir-varios" },
       ],

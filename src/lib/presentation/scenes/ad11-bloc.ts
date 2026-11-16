@@ -1,8 +1,8 @@
 /**
  * AD11 · Bloc y Fichero — las notas como memoria del negocio: escribir
  * con @menciones que aterrizan en la ficha, guardar como acto con su
- * carpeta, el borrador protegido en TRES ranuras y lo que SÍ se pierde
- * al cerrar de verdad, la calculadora que custodia el cursor, el doble
+ * carpeta, el borrador protegido en TRES ranuras que SOBREVIVE al cierre
+ * de la app (1.6.00, BZ-30), la calculadora que custodia el cursor, el doble
  * toque Notas → Fichero, y la papelera con su caducidad.
  * Censo E (E-46…E-65) y H-2 (el doble toque de 320 ms vive en el shell).
  * Escenario: bloc-notas (una nota guardada que menciona a Don Aurelio
@@ -148,7 +148,7 @@ export const AD11: Module = {
       keys: [["borrador", "draft"], ["cerrar", "close"], ["guardada", "saved"]],
       steps: [
         { kind: "ask", anchor: "notas", caption: ["¿Y si cierras la app de verdad, sin guardar?", "And if you truly close the app, without saving?"] },
-        { kind: "show", anchor: "notas", caption: ["El borrador muere con la sesión: eso sí se pierde.", "The draft dies with the session: that much is truly lost."], contexto: ["Lo guardado, jamás: notas y carpetas viven en tu libro.", "What is saved, never: notes and folders live in your book."] },
+        { kind: "show", anchor: "notas", caption: ["El borrador te espera: cierras la app, vuelves al Bloc y ahí está.", "The draft waits: close the app, return to the Pad, and there it is."], contexto: ["Vive en este aparato, como tus ajustes; lo guardado con Guardar, en tu libro.", "It lives on this device, like your settings; saved notes live in your book."] },
         { kind: "ref", topic: "notas" },
       ],
     },

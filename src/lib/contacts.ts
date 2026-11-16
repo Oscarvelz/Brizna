@@ -116,11 +116,24 @@ function unfoldVcard(raw: string): string {
   return raw.replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
 }
 
+/** vCard 2.1 QUOTED-PRINTABLE: «Jos=C3=A9» es «José» (bytes UTF-8 en =XX,
+ *  con cortes suaves «=\n» que no cortan nada). */
+function decodeQuotedPrintable(value: string): string {
+  const joined = value.replace(/=\r?\n/g, "");
+  try {
+    return decodeURIComponent(joined.replace(/=([0-9A-Fa-f]{2})/g, "%$1"));
+  } catch {
+    return joined.replace(/=([0-9A-Fa-f]{2})/g, (_m, h: string) => String.fromCharCode(parseInt(h, 16)));
+  }
+}
+
 function vcardValue(block: string, key: string): string {
-  const re = new RegExp(`^${key}(?:;[^:]*)?:(.*)$`, "im");
+  const re = new RegExp(`^${key}(;[^:]*)?:(.*)$`, "im");
   const m = re.exec(block);
   if (!m) return "";
-  return m[1]!.replace(/\\n/g, " ").replace(/\\,/g, ",").replace(/\\;/g, ";").trim();
+  let v = m[2]!;
+  if (/QUOTED-PRINTABLE/i.test(m[1] ?? "")) v = decodeQuotedPrintable(v);
+  return v.replace(/\\n/g, " ").replace(/\\,/g, ",").replace(/\\;/g, ";").trim();
 }
 
 function parseAdr(raw: string): string {
@@ -132,11 +145,15 @@ function parseAdr(raw: string): string {
 }
 
 export function parseContactFile(text: string, fileName = ""): PickedContact[] {
-  const lower = fileName.toLowerCase();
-  if (lower.endsWith(".csv") || (!text.includes("BEGIN:VCARD") && text.includes(","))) {
-    return parseCsv(text);
-  }
-  return parseVcard(text);
+  // 1.6.00 (campaña Prejuicio, BZ-52): el enrutado es por CONTENIDO, no por
+  // la extensión ni por «lleva comas»: vCard si trae tarjetas; JSON jamás es
+  // una lista de contactos; el resto se intenta como CSV de verdad.
+  void fileName;
+  const t = text.trim();
+  if (!t) return [];
+  if (/BEGIN:VCARD/i.test(t)) return parseVcard(t);
+  if (t.startsWith("{") || t.startsWith("[")) return [];
+  return parseCsv(t);
 }
 
 export function parseVcard(text: string): PickedContact[] {
@@ -147,62 +164,89 @@ export function parseVcard(text: string): PickedContact[] {
     const fn = vcardValue(block, "FN") || vcardValue(block, "N").split(";").filter(Boolean).join(" ");
     const tel = vcardValue(block, "TEL");
     const adr = parseAdr(vcardValue(block, "ADR"));
-    if (!fn.trim() && !tel.trim()) continue;
+    // Cerca de cordura (BZ-52): sin FN y sin teléfono de ≥7 dígitos, la
+    // tarjeta no nace.
+    if (!fn.trim() && tel.replace(/\D/g, "").length < 7) continue;
     out.push({ name: fn.trim() || tel.trim(), phone: tel.trim(), address: adr });
   }
   return out;
 }
 
-function parseCsv(text: string): PickedContact[] {
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  if (lines.length === 0) return [];
-  const header = splitCsvLine(lines[0]!).map((h) => h.toLowerCase());
-  const hasHeader = header.some((h) => /name|nombre|phone|tel|address|direccion/.test(h));
-  const rows = hasHeader ? lines.slice(1) : lines;
-  const idx = {
-    name: Math.max(0, header.findIndex((h) => /name|nombre/.test(h))),
-    phone: Math.max(
-      hasHeader ? header.findIndex((h) => /phone|tel|cel/.test(h)) : 1,
-      hasHeader ? 0 : 1,
-    ),
-    address: hasHeader ? header.findIndex((h) => /address|direccion|dirección/.test(h)) : 2,
-  };
-  if (!hasHeader) {
-    idx.name = 0;
-    idx.phone = 1;
-    idx.address = 2;
-  }
-  const out: PickedContact[] = [];
-  for (const line of rows) {
-    const cols = splitCsvLine(line);
-    const name = (cols[idx.name] ?? "").trim();
-    const phone = (cols[idx.phone] ?? "").trim();
-    const address = (cols[idx.address] ?? "").trim();
-    if (!name && !phone) continue;
-    out.push({ name: name || phone, phone, address });
-  }
-  return out;
-}
-
-function splitCsvLine(line: string): string[] {
-  const out: string[] = [];
+/** Lector CSV sobre el texto entero: las comillas protegen comas, puntos y
+ *  coma y SALTOS DE LÍNEA (una dirección entrecomillada con «\n» dentro es una
+ *  sola celda, no un cliente inventado). */
+function splitCsvRows(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
   let cur = "";
   let q = false;
-  for (let i = 0; i < line.length; i += 1) {
-    const ch = line[i]!;
+  const pushCell = () => {
+    row.push(cur.trim());
+    cur = "";
+  };
+  const pushRow = () => {
+    pushCell();
+    if (row.some((c) => c !== "")) rows.push(row);
+    row = [];
+  };
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i]!;
     if (q) {
-      if (ch === '"' && line[i + 1] === '"') {
+      if (ch === '"' && text[i + 1] === '"') {
         cur += '"';
         i += 1;
       } else if (ch === '"') q = false;
       else cur += ch;
     } else if (ch === '"') q = true;
-    else if (ch === "," || ch === ";") {
-      out.push(cur.trim());
-      cur = "";
-    } else cur += ch;
+    else if (ch === "," || ch === ";") pushCell();
+    else if (ch === "\n") pushRow();
+    else if (ch !== "\r") cur += ch;
   }
-  out.push(cur.trim());
+  pushRow();
+  return rows;
+}
+
+/** El encabezado se reconoce por la fila COMPLETA: una celda ES una palabra
+ *  de encabezado (plegada), no «la contiene» — una clienta llamada Telma no
+ *  es un encabezado por llevar «tel» dentro. */
+const HEADER_WORDS: Record<string, "name" | "phone" | "address"> = {};
+for (const w of ["name", "nombre", "nombre completo", "full name", "contacto", "contact"]) HEADER_WORDS[w] = "name";
+for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone"]) HEADER_WORDS[w] = "phone";
+for (const w of ["address", "direccion", "domicilio", "addr"]) HEADER_WORDS[w] = "address";
+
+function foldHead(cell: string): string {
+  return cell
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseCsv(text: string): PickedContact[] {
+  const rows = splitCsvRows(text);
+  if (rows.length === 0 || !rows.some((r) => r.length >= 2)) return [];
+  const head = rows[0]!.map(foldHead);
+  const colOf = (kind: "name" | "phone" | "address") => head.findIndex((h) => HEADER_WORDS[h] === kind);
+  const nameCol = colOf("name");
+  const phoneCol = colOf("phone");
+  const addrCol = colOf("address");
+  const hasHeader = nameCol >= 0 || phoneCol >= 0;
+  const idx = {
+    name: hasHeader && nameCol >= 0 ? nameCol : 0,
+    phone: hasHeader && phoneCol >= 0 ? phoneCol : 1,
+    address: hasHeader ? addrCol : 2,
+  };
+  const out: PickedContact[] = [];
+  for (const cols of hasHeader ? rows.slice(1) : rows) {
+    const name = (cols[idx.name] ?? "").trim();
+    const phone = (cols[idx.phone] ?? "").trim();
+    const address = idx.address >= 0 ? (cols[idx.address] ?? "").trim() : "";
+    // Cerca de cordura (BZ-52): sin teléfono de ≥7 dígitos y sin nombre con
+    // letras, la fila no nace.
+    if (phone.replace(/\D/g, "").length < 7 && !/[a-záéíóúñü]/i.test(name)) continue;
+    out.push({ name: name || phone, phone, address });
+  }
   return out;
 }
 

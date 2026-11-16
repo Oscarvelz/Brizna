@@ -20,7 +20,7 @@ import { todayISO } from "@/lib/dates";
 import { formatDay, money, weekdayOptions } from "@/lib/format";
 import { useI18n, useTx } from "@/lib/i18n";
 import { useUndo } from "@/lib/undo";
-import { dropSavedDraft, holdPageDraft, readMainDraft, readSideDraft, rememberDraft } from "@/lib/note-draft";
+import { dropSavedDraft, holdPageDraft, readDraftRaw, readMainDraft, readSideDraft, rememberDraft, removeDraftRaw } from "@/lib/note-draft";
 import { mentionIds } from "@/lib/note-mentions";
 import { downloadHref } from "@/lib/save-file";
 import { readCabinet, readTrashDays, withLiveFolders, writeCabinet, type CabinetFolder } from "@/lib/pad-cabinet";
@@ -214,12 +214,8 @@ function PadBody({
     if (next.id !== pageId) setPageId(next.id);
     let htmlNext = next.body ?? "";
     let titleNext = next.title ?? "Nota";
-    try {
-      const raw = sessionStorage.getItem(`ols-pad-${next.id}`);
-      if (typeof raw === "string") htmlNext = raw;
-    } catch {
-      /* ignore */
-    }
+    const raw = readDraftRaw(`ols-pad-${next.id}`);
+    if (typeof raw === "string") htmlNext = raw;
     bodyRef.current = htmlNext;
     setTitle(titleNext);
     const dirty = htmlNext !== (next.body ?? "");
@@ -287,11 +283,7 @@ function PadBody({
     draftBody.current = "";
     setSaved(true);
     setNoteFind("");
-    try {
-      sessionStorage.removeItem("ols-pad-draft");
-    } catch {
-      /* ignore */
-    }
+    removeDraftRaw("ols-pad-draft");
     if (keepPrevious && current) {
       holdPageDraft({
         pageId: current.id,
@@ -351,12 +343,8 @@ function PadBody({
       await savePad({
         data: { pageId: id, html, title: noteTitle, folder, clientIds },
       });
-      try {
-        sessionStorage.removeItem(`ols-pad-${id}`);
-        sessionStorage.removeItem("ols-pad-0");
-      } catch {
-        /* ignore */
-      }
+      removeDraftRaw(`ols-pad-${id}`);
+      removeDraftRaw("ols-pad-0");
       bodyRef.current = html;
       hydrated.current = id;
       setTitle(noteTitle);
@@ -462,12 +450,8 @@ function PadBody({
     setDraftOn(false);
     const next = data.pages.find((item) => item.id === id);
     let htmlNext = next?.body ?? "";
-    try {
-      const raw = sessionStorage.getItem(`ols-pad-${id}`);
-      if (typeof raw === "string") htmlNext = raw;
-    } catch {
-      /* ignore */
-    }
+    const raw = readDraftRaw(`ols-pad-${id}`);
+    if (typeof raw === "string") htmlNext = raw;
     bodyRef.current = htmlNext;
     hydrated.current = id;
     setTitle(next?.title ?? "Nota");

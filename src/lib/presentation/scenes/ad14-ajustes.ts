@@ -80,7 +80,7 @@ export const AD14: Module = {
       id: "ad14-orden", chapter: "base", anchors: ["ajustes-orden"],
       keys: [["orden", "order"], ["ajustes", "settings"]],
       steps: [
-        { kind: "show", anchor: "ajustes-orden", caption: ["El orden de los pliegues se cambia y vive en este aparato.", "The folds' order can change and lives on this device."], contexto: ["Cubre once pliegues; sonidos, nube y huella quedan fuera del orden.", "It covers eleven folds; sounds, cloud, and fingerprint stay out."] },
+        { kind: "show", anchor: "ajustes-orden", caption: ["El orden de los pliegues se cambia y vive en este aparato.", "The folds' order can change and lives on this device."], contexto: ["Cubre trece pliegues; sonidos, nube y huella quedan fuera del orden.", "It covers thirteen folds; sounds, cloud, and fingerprint stay out."] },
       ],
     },
     {
