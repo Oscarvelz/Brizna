@@ -27,7 +27,11 @@ object Notify {
     const val ACTION_TEST = "com.oscarvelz.brizna.TEST"
     private const val LATE_LIMIT = 6 * 60 * 60 * 1000L // a reminder missed while the phone was off still shows within 6 h
 
-    data class Item(val id: String, val at: Long, val kind: String, val title: String, val body: String, val route: String)
+    /* Ola 5: `wall` es la hora de pared elegida ("2026-11-17 19:00") — ante un
+     * cambio de zona, el instante se recalcula desde ella (BZ-45); `hash` es la
+     * huella del contenido que manda la página — si cambia con el mismo id, la
+     * marca «ya sonó» de ese id se limpia (BZ-46). */
+    data class Item(val id: String, val at: Long, val kind: String, val title: String, val body: String, val route: String, val wall: String = "", val hash: String = "")
 
     private val CHANNELS = listOf(
         Triple("cortes", "Cortes de mañana", "El aviso de la noche con los patios del día siguiente."),
@@ -53,16 +57,20 @@ object Notify {
             val a = JSONArray(raw)
             (0 until a.length()).mapNotNull { i ->
                 val o = a.optJSONObject(i) ?: return@mapNotNull null
-                Item(o.optString("id"), o.optLong("at"), o.optString("kind"), o.optString("title"), o.optString("body"), o.optString("route", "/"))
+                Item(o.optString("id"), o.optLong("at"), o.optString("kind"), o.optString("title"), o.optString("body"), o.optString("route", "/"), o.optString("wall"), o.optString("hash"))
             }.filter { it.id.isNotBlank() && it.at > 0 }
         }.getOrDefault(emptyList())
     }
 
     private fun fired(ctx: Context): MutableSet<String> = (prefs(ctx).getStringSet("fired", emptySet()) ?: emptySet()).toMutableSet()
 
-    /** Replaces the whole list (from the page). Already shown reminders keep their mark, so nothing repeats. */
+    /** Replaces the whole list (from the page). Already shown reminders keep their mark, so nothing repeats —
+     *  except one whose CONTENT changed under the same id (Ola 5, BZ-46): its mark is cleared, because the
+     *  reminder that rang is not the reminder now stored (a yard added to tomorrow at 19:30 must be able
+     *  to ring in the corrected notice). */
     fun store(ctx: Context, json: String): Int {
         val a = runCatching { JSONArray(json) }.getOrNull() ?: return -1
+        val oldHash = read(ctx).associate { it.id to it.hash }
         val clean = JSONArray()
         val ids = HashSet<String>()
         for (i in 0 until minOf(a.length(), 200)) {
@@ -71,12 +79,21 @@ object Notify {
             if (id.isBlank() || at <= 0) continue
             ids.add(id)
             clean.put(JSONObject().put("id", id).put("at", at).put("kind", o.optString("kind"))
-                .put("title", o.optString("title").take(120)).put("body", o.optString("body").take(600)).put("route", o.optString("route", "/")))
+                .put("title", o.optString("title").take(120)).put("body", o.optString("body").take(600)).put("route", o.optString("route", "/"))
+                .put("wall", o.optString("wall")).put("hash", o.optString("hash")))
         }
-        val keep = fired(ctx).filter { it in ids }.toSet()
+        val keep = fired(ctx).filter { id -> id in ids && oldHash[id] == readHash(clean, id) }.toSet()
         prefs(ctx).edit().putString("items", clean.toString()).putStringSet("fired", keep).putLong("storedAt", System.currentTimeMillis()).apply()
         arm(ctx)
         return clean.length()
+    }
+
+    private fun readHash(items: JSONArray, id: String): String {
+        for (i in 0 until items.length()) {
+            val o = items.optJSONObject(i) ?: continue
+            if (o.optString("id") == id) return o.optString("hash")
+        }
+        return ""
     }
 
     fun nextAt(ctx: Context): Long {
@@ -109,20 +126,38 @@ object Notify {
         }
     }
 
-    /** Shows every reminder that is due now, then arms the next one. */
+    /** Shows every reminder that is due now, then arms the next one.
+     *  Ola 5 (BZ-63): a reminder is marked as shown ONLY when show() actually
+     *  published it — before, a reminder due while notifications were off was
+     *  marked as seen without ever existing, and never came back.
+     *  Ola 5 (BZ-22): reminders that expired beyond the tolerance while the
+     *  phone was off are no longer dropped in silence: they collapse into ONE
+     *  summary notification («Mientras el teléfono estaba apagado: …»). */
     fun fireDue(ctx: Context) {
         val now = System.currentTimeMillis()
         val done = fired(ctx)
-        val due = read(ctx).filter { it.id !in done && it.at <= now + 60_000 && it.at > now - LATE_LIMIT }
-        for (it in due) { show(ctx, it); done.add(it.id) }
+        val items = read(ctx)
+        val due = items.filter { it.id !in done && it.at <= now + 60_000 && it.at > now - LATE_LIMIT }
+        for (it in due) { if (show(ctx, it)) done.add(it.id) }
+        val missed = items.filter { it.id !in done && it.at <= now - LATE_LIMIT }
+        if (missed.isNotEmpty()) {
+            val titles = missed.joinToString(" · ") { it.title }.take(600)
+            val summary = Item(
+                "resumen-" + now, now, missed.first().kind,
+                if (missed.size == 1) "Mientras el teléfono estaba apagado: 1 aviso" else "Mientras el teléfono estaba apagado: ${missed.size} avisos",
+                titles, "/",
+            )
+            if (show(ctx, summary)) missed.forEach { done.add(it.id) }
+        }
         prefs(ctx).edit().putStringSet("fired", done).apply()
         arm(ctx)
     }
 
-    fun show(ctx: Context, it: Item) {
+    /** True only when the notification was actually published. */
+    fun show(ctx: Context, it: Item): Boolean {
         channels(ctx)
-        val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
-        if (!nm.areNotificationsEnabled()) return
+        val nm = ctx.getSystemService(NotificationManager::class.java) ?: return false
+        if (!nm.areNotificationsEnabled()) return false
         val open = Intent(ctx, MainActivity::class.java).setAction("brizna.OPEN").putExtra("route", it.route.ifBlank { "/" })
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val pi = PendingIntent.getActivity(ctx, it.id.hashCode(), open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
@@ -140,6 +175,41 @@ object Notify {
             .setCategory(Notification.CATEGORY_REMINDER)
             .build()
         nm.notify(it.id.hashCode(), n)
+        return true
+    }
+
+    /* Ola 5 (BZ-45): un solo reloj — la zona del aparato manda también en la
+     * cáscara. Ante un cambio de zona, cada instante guardado se recalcula
+     * desde su hora de pared (`wall`): las 19:00 elegidas vuelven a ser las
+     * 19:00 del lugar nuevo, en vez de sonar desplazadas hasta que la app se
+     * abra y reconstruya la lista. Los ítems sin `wall` (paquetes viejos)
+     * conservan su instante. */
+    fun retime(ctx: Context) {
+        val items = read(ctx)
+        if (items.none { it.wall.isNotBlank() }) return
+        val arr = JSONArray()
+        var changed = false
+        for (it in items) {
+            var at = it.at
+            if (it.wall.length >= 16) {
+                val p = { a: Int, b: Int -> it.wall.substring(a, b).toIntOrNull() }
+                val y = p(0, 4); val mo = p(5, 7); val d = p(8, 10); val h = p(11, 13); val mi = p(14, 16)
+                if (y != null && mo != null && d != null && h != null && mi != null) {
+                    val cal = Calendar.getInstance().apply {
+                        set(y, mo - 1, d, h, mi, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+                    if (cal.timeInMillis != it.at) { at = cal.timeInMillis; changed = true }
+                }
+            }
+            arr.put(JSONObject().put("id", it.id).put("at", at).put("kind", it.kind)
+                .put("title", it.title).put("body", it.body).put("route", it.route)
+                .put("wall", it.wall).put("hash", it.hash))
+        }
+        if (changed) {
+            prefs(ctx).edit().putString("items", arr.toString()).apply()
+            arm(ctx)
+        }
     }
 
     /** A one-off test reminder through the same alarm path (Ajustes, Notificaciones, Probar). */
@@ -177,6 +247,7 @@ class AlarmReceiver : BroadcastReceiver() {
             Notify.ACTION_WIDGET -> { HoyWidget.refresh(ctx); PanelWidget.refresh(ctx); SemanaWidget.refresh(ctx); Notify.armWidgetTick(ctx) }
             else -> { // boot, app update, clock or time zone change, exact-alarm permission change
                 Notify.channels(ctx)
+                Notify.retime(ctx) // Ola 5 (BZ-45): tras un cambio de zona, los instantes se recalculan desde su hora de pared
                 Notify.fireDue(ctx)
                 HoyWidget.refresh(ctx)
                 PanelWidget.refresh(ctx)

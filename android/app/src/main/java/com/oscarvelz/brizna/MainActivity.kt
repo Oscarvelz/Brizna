@@ -100,7 +100,7 @@ class MainActivity : Activity() {
     /** android-11: open the system's contact picker (the phone's own Contacts app). False when none exists. */
     private fun launchContactPicker(intent: Intent): Boolean {
         if (intent.resolveActivity(packageManager) == null) return false
-        return try { startActivityForResult(intent, RQ_CONTACTS); true }
+        return try { startActivityForResult(intent, RQ_CONTACTS); contactsLaunchedAt = System.currentTimeMillis(); true }
         catch (e: ActivityNotFoundException) { false }
     }
     /** The dictation id waiting on the system's speech screen (RQ_SPEECH), or null. */
@@ -121,6 +121,15 @@ class MainActivity : Activity() {
     private var micAsk: Pair<String, String>? = null
     private var dictId: String? = null
     private var webMicAsk: PermissionRequest? = null
+    // Ola 5 (BZ-8): la señal de cancelación de cada prompt de huella vivo, por id.
+    private val authSignals = ConcurrentHashMap<String, CancellationSignal>()
+    // Ola 5 (BZ-7): cuándo salió el selector de contactos; onResume lo usa
+    // para notar un cierre sin respuesta.
+    private var contactsLaunchedAt = 0L
+    // Ola 5 (BZ-27): una selección de archivo estaba abierta cuando Android
+    // recreó la actividad; su callback no sobrevive, así que la página se
+    // entera por el evento «file-lost» en cuanto está lista.
+    private var fileLostPending = false
 
     private class Save(val uri: Uri, val out: OutputStream, val name: String)
     private class Share(val files: MutableList<Pair<File, String>>, var cur: OutputStream?)
@@ -172,11 +181,32 @@ class MainActivity : Activity() {
         }
         setContentView(root)
         applyBars()
+        // Ola 5 (BZ-27): si Android recreó la actividad, las preguntas
+        // pendientes vuelven a estar vivas con su id (contactos, dictado,
+        // micrófono). El callback de archivos no puede sobrevivir: se avisa
+        // a la página con «file-lost» cuando esté lista.
+        if (state != null) restorePending(state)
         takeRoute(intent)
         if (state != null) web.restoreState(state) else web.loadUrl(home)
         checkUpdate()
         Notify.arm(this)
         Notify.armWidgetTick(this)
+    }
+
+    /** Ola 5 (BZ-27): recupera las preguntas pendientes guardadas en el Bundle. */
+    private fun restorePending(state: Bundle) {
+        speechAsk = state.getString("bzSpeechAsk")
+        dictId = state.getString("bzDictId")
+        val micId = state.getString("bzMicId")
+        val micLang = state.getString("bzMicLang")
+        if (micId != null && micLang != null) micAsk = micId to micLang
+        state.getString("bzCamUri")?.let { camUri = Uri.parse(it) }
+        fileLostPending = state.getBoolean("bzFilePending", false)
+        val cid = state.getString("bzContactsId")
+        if (cid != null) {
+            val pickedArr = runCatching { JSONArray(state.getString("bzContactsPicked") ?: "[]") }.getOrDefault(JSONArray())
+            contactPicker.restore(cid, state.getBoolean("bzContactsMultiple", false), pickedArr)
+        }
     }
 
     /** Builds the page's WebView. Also used to start a fresh one if the page's process is ever lost. */
@@ -208,6 +238,11 @@ class MainActivity : Activity() {
             }
             override fun onPageFinished(v: WebView, url: String?) {
                 trusted = url != null && isBrizna(Uri.parse(url)); pageReady = trusted
+                if (pageReady && fileLostPending) {
+                    // Ola 5 (BZ-27): la selección de archivo no sobrevivió a la recreación; la página avisa y reintenta.
+                    fileLostPending = false
+                    event("briznanative-file-lost")
+                }
                 if (pageReady && pendingRoute != null) dispatch("dispatchEvent(new Event('briznanative-route'))")
             }
             override fun onReceivedError(v: WebView, r: WebResourceRequest, e: WebResourceError) {
@@ -319,7 +354,10 @@ class MainActivity : Activity() {
 
     private fun isBrizna(u: Uri): Boolean {
         val s = u.scheme ?: return false
-        if (s == "blob" || s == "data" || s == "about") return true
+        // Ola 5 (BZ-49): solo `blob:` nace de la propia página de Brizna;
+        // `data:` y `about:` ya no reciben la confianza de la casa — una
+        // página con esos esquemas no es Brizna y no manda en la cáscara.
+        if (s == "blob") return true
         val path = u.path ?: ""
         return s == "https" && u.host == "oscarvelz.github.io" && (path == "/Brizna" || path.startsWith("/Brizna/"))
     }
@@ -429,6 +467,7 @@ class MainActivity : Activity() {
             }
             RQ_CONTACTS -> {
                 // android-11: the system's contact picker closed — hand the pick (or the backing-out) to ContactPicker.
+                contactsLaunchedAt = 0L
                 contactPicker.onResult(rc == RESULT_OK, d)
             }
             else -> super.onActivityResult(rq, rc, d)
@@ -489,6 +528,7 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun atRoot(msg: String) {
+            if (!trusted) return
             runOnUiThread { leaveOnSecondBack(msg.ifBlank { "Pulsa atrás otra vez para salir" }) }
         }
 
@@ -516,7 +556,7 @@ class MainActivity : Activity() {
             if (!trusted) { event("briznanative-contacts", JSONObject().put("id", id).put("ok", false).put("error", "failed")); return }
             runOnUiThread { contactPicker.start(id, multiple) }
         }
-        @JavascriptInterface fun pickContactsCancel() { runOnUiThread { contactPicker.cancel() } }
+        @JavascriptInterface fun pickContactsCancel() { if (!trusted) return; runOnUiThread { contactPicker.cancel() } }
 
         @JavascriptInterface fun dictateState(): String = when {
             !dictation.available() -> "none"
@@ -542,8 +582,8 @@ class MainActivity : Activity() {
             }
         }
 
-        @JavascriptInterface fun dictateStop(id: String) { runOnUiThread { dictation.stop(id) } }
-        @JavascriptInterface fun dictateCancel() { runOnUiThread { micAsk = null; dictId = null; speechAsk = null; dictation.cancel() } }
+        @JavascriptInterface fun dictateStop(id: String) { if (!trusted) return; runOnUiThread { dictation.stop(id) } }
+        @JavascriptInterface fun dictateCancel() { if (!trusted) return; runOnUiThread { micAsk = null; dictId = null; speechAsk = null; dictation.cancel() } }
 
         /* fingerprint */
 
@@ -561,13 +601,27 @@ class MainActivity : Activity() {
                         .setSubtitle(subtitle)
                         .setAllowedAuthenticators(AUTH)
                         .build()
-                    prompt.authenticate(CancellationSignal(), mainExecutor, object : BiometricPrompt.AuthenticationCallback() {
+                    // Ola 5 (BZ-8): la señal de cancelación queda guardada por
+                    // id — la página puede cerrar el prompt cuando su espera
+                    // vence, y el cierre llega por onAuthenticationError, que
+                    // ya contesta false por cualquier causa.
+                    val signal = CancellationSignal()
+                    authSignals[id] = signal
+                    prompt.authenticate(signal, mainExecutor, object : BiometricPrompt.AuthenticationCallback() {
                         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) = authReply(id, true)
                         override fun onAuthenticationError(code: Int, msg: CharSequence) = authReply(id, false)
                         // onAuthenticationFailed (a finger not recognised) keeps the prompt open: no reply yet.
                     })
                 } catch (e: Exception) { authReply(id, false) }
             }
+        }
+
+        /** Ola 5 (BZ-8): la página dejó de esperar — el prompt se cierra y su
+         *  error contesta false, en vez de quedarse abierto sobre una app que
+         *  ya siguió adelante. */
+        @JavascriptInterface fun authenticateCancel(id: String) {
+            if (!trusted) return
+            runOnUiThread { authSignals[id]?.cancel() }
         }
 
         /* downloads into Downloads/Brizna */
@@ -593,12 +647,14 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun saveChunk(id: String, b64: String): String {
+            if (!trusted) return "error"
             val s = saves[id] ?: return "error"
             return try { s.out.write(Base64.decode(b64, Base64.DEFAULT)); "ok" }
             catch (e: Exception) { drop(id); "error" }
         }
 
         @JavascriptInterface fun saveEnd(id: String, template: String): String {
+            if (!trusted) return "error"
             val s = saves.remove(id) ?: return "error"
             return try {
                 s.out.close()
@@ -621,6 +677,7 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun shareFile(id: String, name: String, mime: String): String {
+            if (!trusted) return "error"
             val s = shares[id] ?: return "error"
             return try {
                 runCatching { s.cur?.close() }
@@ -633,11 +690,13 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun shareChunk(id: String, b64: String): String {
+            if (!trusted) return "error"
             val s = shares[id] ?: return "error"
             return try { s.cur!!.write(Base64.decode(b64, Base64.DEFAULT)); "ok" } catch (e: Exception) { dropShare(id); "error" }
         }
 
         @JavascriptInterface fun shareEnd(id: String, title: String, text: String): String {
+            if (!trusted) return "error"
             val s = shares.remove(id) ?: return "error"
             runCatching { s.cur?.close() }
             return try {
@@ -703,6 +762,7 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun requestNotify() {
+            if (!trusted) return
             runOnUiThread {
                 val nm = getSystemService(NotificationManager::class.java)
                 if (nm?.areNotificationsEnabled() == true) { event("briznanative-status"); return@runOnUiThread }
@@ -717,6 +777,7 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun requestBattery() {
+            if (!trusted) return
             runOnUiThread {
                 val ok = open(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
                 if (!ok) open(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
@@ -724,12 +785,14 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun requestExact() {
+            if (!trusted) return
             runOnUiThread {
                 if (Build.VERSION.SDK_INT >= 31) open(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName")))
             }
         }
 
         @JavascriptInterface fun openAppSettings() {
+            if (!trusted) return
             runOnUiThread { open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }
         }
 
@@ -785,8 +848,10 @@ class MainActivity : Activity() {
         runCatching { s.files.firstOrNull()?.first?.parentFile?.delete() }
     }
 
-    private fun authReply(id: String, ok: Boolean) =
+    private fun authReply(id: String, ok: Boolean) {
+        authSignals.remove(id)
         dispatch("dispatchEvent(new CustomEvent('briznanative-auth',{detail:{id:${JSONObject.quote(id)},ok:$ok}}))")
+    }
 
     /* ---------- back ---------- */
 
@@ -876,6 +941,13 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        // Ola 5 (BZ-7): un selector de contactos que cerró sin pasar por
+        // onActivityResult (ese llega ANTES que onResume cuando cierra con
+        // normalidad) deja la pregunta colgada: la cáscara contesta «closed».
+        if (contactPicker.pending() != null && contactsLaunchedAt > 0L && System.currentTimeMillis() - contactsLaunchedAt > 1000L) {
+            contactsLaunchedAt = 0L
+            contactPicker.closedWithoutChoice()
+        }
         // Back from Android's settings (notifications, battery, exact alarms): the page re-reads the status.
         if (::web.isInitialized && pageReady) event("briznanative-status")
     }
@@ -887,7 +959,23 @@ class MainActivity : Activity() {
         CookieManager.getInstance().flush()
     }
 
-    override fun onSaveInstanceState(out: Bundle) { super.onSaveInstanceState(out); web.saveState(out) }
+    override fun onSaveInstanceState(out: Bundle) {
+        super.onSaveInstanceState(out)
+        web.saveState(out)
+        // Ola 5 (BZ-27): las preguntas pendientes viajan en el Bundle para
+        // que una recreación no las deje huérfanas (la página espera una
+        // respuesta que la cáscara vieja se llevó).
+        speechAsk?.let { out.putString("bzSpeechAsk", it) }
+        dictId?.let { out.putString("bzDictId", it) }
+        micAsk?.let { out.putString("bzMicId", it.first); out.putString("bzMicLang", it.second) }
+        camUri?.let { out.putString("bzCamUri", it.toString()) }
+        if (fileCb != null) out.putBoolean("bzFilePending", true)
+        contactPicker.pending()?.let { (cid, multi) ->
+            out.putString("bzContactsId", cid)
+            out.putBoolean("bzContactsMultiple", multi)
+            out.putString("bzContactsPicked", contactPicker.pickedSoFar().toString())
+        }
+    }
 
     override fun onDestroy() {
         for (id in saves.keys.toList()) drop(id)

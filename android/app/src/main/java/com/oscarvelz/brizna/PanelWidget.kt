@@ -94,8 +94,13 @@ class PanelWidget : AppWidgetProvider() {
             }
             v.setTextViewText(R.id.title, data?.optString("title")?.ifBlank { null } ?: "Hoy")
             v.setTextViewText(R.id.wk_k, data?.optString("weekLabel")?.ifBlank { null } ?: "Semana")
-            v.setTextViewText(R.id.owedLabel, data?.optString("owedLabel")?.ifBlank { null } ?: "Por cobrar")
+            // Ola 5 (BZ-34): la etiqueta lleva la edad del paquete, y si hoy ya
+            // no está en el paquete (todayIdx == -1) el saldo se oculta: una
+            // cifra vieja sin fecha sería una mentira con número.
+            v.setTextViewText(R.id.owedLabel, WidgetLook.owedLabel(data, data?.optString("owedLabel")?.ifBlank { null } ?: "Por cobrar"))
             v.setTextViewText(R.id.owed, data?.optString("owed")?.ifBlank { null } ?: "$0")
+            v.setTextColor(R.id.owed, if (WidgetLook.packStale(data)) muted else accent)
+            if (todayIdx == -1) v.setViewVisibility(R.id.owed, View.GONE)
             if (!WidgetLook.showOwed(ctx, widgetId)) v.setViewVisibility(R.id.owed_zone, View.GONE)
             v.setTextViewText(R.id.alert, data?.optString("alertLine") ?: "")
             v.setViewVisibility(R.id.alert, if (data?.optString("alertLine").isNullOrBlank()) View.GONE else View.VISIBLE)

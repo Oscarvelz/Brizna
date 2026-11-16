@@ -37,6 +37,10 @@ class ContactPicker(private val ctx: Context, private val reply: (JSONObject) ->
     private var id: String? = null
     private var multiple = false
     private var picked = JSONArray()
+    /* Ola 5 (BZ-7): el último id vencido se recuerda — una elección que llega
+     * tarde se entrega con él en vez de tirarse, y un cierre sin elección
+     * también se contesta con él. */
+    private var lastId: String? = null
 
     fun start(newId: String, multi: Boolean) {
         if (id != null) {
@@ -51,8 +55,23 @@ class ContactPicker(private val ctx: Context, private val reply: (JSONObject) ->
 
     /** MainActivity's onActivityResult hands the picker's answer here. */
     fun onResult(ok: Boolean, data: Intent?) {
-        if (id == null) return
         val uri = if (ok) data?.data else null
+        if (id == null) {
+            // Sin pregunta viva: la elección tardía de la última pregunta
+            // vencida se entrega igual (BZ-7); el cierre sin elección se
+            // contesta como «closed» para que nadie espere para siempre.
+            val late = lastId ?: return
+            lastId = null
+            if (uri != null) {
+                val contact = read(uri)
+                if (contact != null) {
+                    reply(JSONObject().put("id", late).put("ok", true).put("contacts", JSONArray().put(contact)))
+                    return
+                }
+            }
+            reply(JSONObject().put("id", late).put("ok", false).put("error", "closed"))
+            return
+        }
         if (uri == null) {
             // The user backed out: with several picks, what was gathered still counts.
             if (picked.length() > 0) finish(null) else finish("cancelled")
@@ -71,9 +90,29 @@ class ContactPicker(private val ctx: Context, private val reply: (JSONObject) ->
         }
     }
 
-    /** The page stopped waiting (its own timeout): forget the ask; a late answer is dropped. */
+    /** The page stopped waiting (its own timeout): forget the ask — but keep
+     *  the id (BZ-7): a late pick is delivered with it, not dropped. */
     fun cancel() {
+        lastId = id
         id = null
+    }
+
+    /* Ola 5 (BZ-27): lo mínimo del pendiente viaja en el Bundle de la
+     * actividad; al recrearse, la pregunta vuelve a estar viva. */
+    fun pending(): Pair<String, Boolean>? = id?.let { it to multiple }
+    fun restore(savedId: String, savedMultiple: Boolean, savedPicked: JSONArray) {
+        if (id == null) {
+            id = savedId
+            multiple = savedMultiple
+            picked = savedPicked
+        }
+    }
+    fun pickedSoFar(): JSONArray = picked
+
+    /** The host resumed and the picker is gone without an answer (BZ-7):
+     *  the shell says so itself instead of leaving the page waiting. */
+    fun closedWithoutChoice() {
+        if (id != null) finish("closed")
     }
 
     private fun openPicker(): Boolean {

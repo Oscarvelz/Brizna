@@ -42,7 +42,17 @@ export function writeNotifyPrefs(next: NotifyPrefs) {
   window.dispatchEvent(new Event("bz-notify-prefs"));
 }
 
-export type PlanItem = { id: string; at: number; kind: "cortes" | "pagos" | "riesgo" | "lluvia"; title: string; body: string; route: string; hash: string };
+export type PlanItem = { id: string; at: number; kind: "cortes" | "pagos" | "riesgo" | "lluvia"; title: string; body: string; route: string; hash: string; wall: string };
+
+/** Ola 5 (BZ-45): la hora de pared del aviso ("2026-11-17 19:00") en la zona
+ *  del aparato. Viaja con el ítem para que la cáscara, ante un cambio de
+ *  zona, recalcule el instante desde la pared elegida en vez de sonar
+ *  desplazada hasta que la app se abra. */
+function wallOf(atMs: number): string {
+  const d = new Date(atMs);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 /** Ola 5 (BZ-46): la huella del contenido de un aviso. Si el aviso de un
  *  mismo id cambia de texto (un patio más para mañana), la cáscara compara
@@ -89,8 +99,8 @@ export function buildSchedule(plan: NativePlan, prefs: NotifyPrefs, now = Date.n
   /* Ola 5 (BZ-46): también se entrega lo pasado DENTRO de la tolerancia de
    * la cáscara (6 h): abrir la app cinco minutos después de la hora elegida
    * ya no borra el aviso de esa noche — decide fireDue, no esta lista. */
-  const push = (it: Omit<PlanItem, "hash">) => {
-    if (it.at > now - 6 * 3600_000) out.push({ ...it, hash: contentHash(it) });
+  const push = (it: Omit<PlanItem, "hash" | "wall">) => {
+    if (it.at > now - 6 * 3600_000) out.push({ ...it, hash: contentHash(it), wall: wallOf(it.at) });
   };
   for (const day of plan.days) {
     if (prefs.cuts && day.date > plan.today && day.cuts.length) {

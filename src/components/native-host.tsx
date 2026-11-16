@@ -99,6 +99,17 @@ export function NativeHost() {
       );
     };
     window.addEventListener("brizna-save-failed", onSaveFailed);
+    // Ola 5 (BZ-27): la cáscara avisa cuando una selección de archivo se
+    // perdió al recrearse la app — el aviso es de la cáscara, la página
+    // solo lo pone en palabras.
+    const onFileLost = () => {
+      toast.error(
+        document.documentElement.lang === "en"
+          ? "The file selection was lost when the app reopened. Please try again."
+          : "La selección de archivo se perdió al reabrirse la app. Inténtalo de nuevo.",
+      );
+    };
+    window.addEventListener("briznanative-file-lost", onFileLost);
     let lastSync = "";
     const offSync = onSyncStatus((s) => {
       if (lastSync === "syncing" && s === "idle") soon();
@@ -129,6 +140,7 @@ export function NativeHost() {
       window.removeEventListener("bz-notify-prefs", soon);
       window.removeEventListener("briznanative-route", go);
       window.removeEventListener("brizna-save-failed", onSaveFailed);
+      window.removeEventListener("briznanative-file-lost", onFileLost);
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [navigate]);
