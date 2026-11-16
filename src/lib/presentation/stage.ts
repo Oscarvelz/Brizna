@@ -15,7 +15,7 @@
 import { switchDatabase } from "@/lib/db";
 import { readStoredLocale } from "@/lib/theme";
 import { setSealed } from "./seal-flag";
-import { armPrefGuardHere, restorePrefGuardHere } from "./pref-guard";
+import { armPrefGuardHere, armSessionGuardHere, restorePrefGuardHere, restoreSessionGuardHere } from "./pref-guard";
 
 /** The stage store's database URL. dbName() in src/spa/db.ts opens exactly this
  *  while the stage is on. PGlite's IndexedDB filesystem names its database
@@ -73,6 +73,12 @@ export async function enterStage(): Promise<void> {
   // que viven fuera del libro; su fotografía es lo que las devuelve intactas
   // al salir, por cualquier puerta (pref-guard.ts, principio 13).
   armPrefGuardHere();
+  // 1.5.94 (campaña Prejuicio, BZ-2): el gemelo de sesión se arma a la vez —
+  // los borradores del Bloc viven en sessionStorage sin identidad de libro, y
+  // la lección de AD11 escribe los suyos en las mismas claves; sin fotografía,
+  // la ficción se pintaba en el Bloc real al salir (y un Guardar la hacía
+  // permanente) y un borrador real podía perderse en el libro-escenario.
+  armSessionGuardHere();
   await deleteStageStore();
   setSealed(true);
   await switchDatabase(STAGE_DB_NAME);
@@ -106,6 +112,10 @@ export async function exitStage(): Promise<void> {
   // la primera pintura sobre el libro real ya las lea como el usuario las
   // dejó (densidad, vista del Estudio, tema, idioma).
   restorePrefGuardHere();
+  // Los borradores reales del Bloc vuelven con la misma fotografía (BZ-2):
+  // lo que la lección escribió en sessionStorage se retira y lo que Papá
+  // tenía a medias vuelve a su ranura antes del remontaje.
+  restoreSessionGuardHere();
   stage = false;
   dispatchSwitch();
   await deleteStageStore();
@@ -124,5 +134,6 @@ if (!(globalThis as { __bzDb?: string }).__bzDb) {
   // lo primero: la casa vuelve a estar como el usuario la dejó antes de que
   // cualquier pantalla lea una preferencia.
   restorePrefGuardHere();
+  restoreSessionGuardHere();
   void deleteStageStore();
 }

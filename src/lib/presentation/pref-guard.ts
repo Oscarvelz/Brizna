@@ -27,6 +27,12 @@ export interface StoreLike {
 }
 
 export const PREF_GUARD_KEY = "bz.pres.prefguard";
+/** 1.5.94 (campaña Prejuicio, BZ-2): the session twin's photograph key. The
+ *  Bloc's drafts live in sessionStorage under book-less keys (`ols-note-*`,
+ *  `ols-pad-<id>`), so the localStorage photograph alone let a lesson's fiction
+ *  draft paint — and be saved — in the real Bloc, and a real draft be lost into
+ *  the discarded stage book. The session store gets the same guardian. */
+export const SESSION_GUARD_KEY = "bz.pres.sessionguard";
 
 /** Lo que nunca retrocede: el progreso de las presentaciones es real, las
  *  claves del propio guardián se gestionan solas y los tokens de sesión
@@ -47,25 +53,25 @@ function keysOf(store: StoreLike): string[] {
 
 /** Fotografía el almacén. Si ya hay una fotografía (una entrada anterior que
  *  la muerte interrumpió), se conserva la ORIGINAL: es la casa verdadera. */
-export function armPrefGuard(store: StoreLike): void {
+export function armPrefGuard(store: StoreLike, guardKey: string = PREF_GUARD_KEY): void {
   try {
-    if (store.getItem(PREF_GUARD_KEY)) return;
+    if (store.getItem(guardKey)) return;
     const snap: Record<string, string> = {};
     for (const k of keysOf(store)) {
       if (excluded(k)) continue;
       const v = store.getItem(k);
       if (v !== null) snap[k] = v;
     }
-    store.setItem(PREF_GUARD_KEY, JSON.stringify(snap));
+    store.setItem(guardKey, JSON.stringify(snap));
   } catch {
     /* el guardián nunca rompe la entrada */
   }
 }
 
 /** Restaura la fotografía y la retira. Devuelve true si había una puesta. */
-export function restorePrefGuard(store: StoreLike): boolean {
+export function restorePrefGuard(store: StoreLike, guardKey: string = PREF_GUARD_KEY): boolean {
   try {
-    const raw = store.getItem(PREF_GUARD_KEY);
+    const raw = store.getItem(guardKey);
     if (!raw) return false;
     const snap = JSON.parse(raw) as Record<string, string>;
     // Lo que la demostración creó y la casa no tenía, fuera.
@@ -77,7 +83,7 @@ export function restorePrefGuard(store: StoreLike): boolean {
     for (const [k, v] of Object.entries(snap)) {
       if (store.getItem(k) !== v) store.setItem(k, v);
     }
-    store.removeItem(PREF_GUARD_KEY);
+    store.removeItem(guardKey);
     return true;
   } catch {
     return false;
@@ -102,4 +108,26 @@ export function armPrefGuardHere(): void {
 export function restorePrefGuardHere(): boolean {
   const s = here();
   return s ? restorePrefGuard(s) : false;
+}
+
+function sessionHere(): StoreLike | null {
+  try {
+    return typeof sessionStorage !== "undefined" ? sessionStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Arma el guardián sobre el sessionStorage real (stage.ts, al entrar): los
+ *  borradores del Bloc quedan fotografiados antes de que la ficción escriba
+ *  los suyos en las mismas claves. */
+export function armSessionGuardHere(): void {
+  const s = sessionHere();
+  if (s) armPrefGuard(s, SESSION_GUARD_KEY);
+}
+
+/** Restaura el guardián de sesión si está armado (stage.ts, al salir y al arrancar). */
+export function restoreSessionGuardHere(): boolean {
+  const s = sessionHere();
+  return s ? restorePrefGuard(s, SESSION_GUARD_KEY) : false;
 }

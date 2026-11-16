@@ -26,6 +26,7 @@ import { smartHit } from "@/lib/fuzzy";
 import { backupContentChecksum, checksumMatches, idsToKeep, withChecksum } from "@/lib/backup-plan";
 import { applyLocalStore, collectLocalStore, sanitizeLocalStore } from "@/lib/local-store-backup";
 import { reconcileBalance } from "@/lib/balance-reconcile";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import { buildReportPdf } from "@/lib/report-pdf";
 import { buildReportXls, type WorkbookPack } from "@/lib/report-xls";
 import {
@@ -3198,6 +3199,13 @@ export const updateSettings = createServerFn({ method: "POST" })
 export const exportBackup = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
+    // 1.5.94 (campaña Prejuicio, BZ-3, defensa en profundidad): con el sello
+    // de Presentación puesto, el libro abierto es ficción de práctica y su
+    // paquete restaurable no sale por ninguna puerta — la de Ajustes ya avisa
+    // antes de llamar; esta es la segunda cerradura, en el servidor mismo.
+    // En el servidor real el sello vive solo en memoria del cliente y siempre
+    // lee falso: la cerradura solo existe dentro de la app.
+    if (sealedOn()) throw new Error("Presentación en curso: no se exportan copias del escenario.");
     await snapshotBackup(context.userId, true);
     const payload = await collectBackup(context.userId);
     return { json: JSON.stringify(payload) };
@@ -3239,6 +3247,11 @@ export const listBackups = createServerFn({ method: "GET" })
 export const saveBackupNow = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
+    // 1.5.94 (campaña Prejuicio, BZ-3): con el sello puesto no se toma ninguna
+    // copia — ni la automática ni la de antes de cerrar sesión; el libro
+    // abierto es el escenario y sus copias morirían con él de todos modos.
+    // No-op silencioso, la misma semántica que backup-watch aplica al tick.
+    if (sealedOn()) return { ok: true as const, at: new Date().toISOString() };
     await snapshotBackup(context.userId, true);
     return { ok: true as const, at: new Date().toISOString() };
   });

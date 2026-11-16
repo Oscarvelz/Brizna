@@ -51,6 +51,8 @@ test("every egress path reads the seal", () => {
     ["components/backup-watch.tsx", "the automatic backup tick"],
     ["components/native-host.tsx", "the native widget / reminder refresh"],
     ["components/offline-banner.tsx", "the network flush itself"],
+    ["routes/ajustes.tsx", "the manual backup doors (BZ-3: Guardar copia / Descargar must not export the fiction)"],
+    ["lib/server/lawn.ts", "exportBackup / saveBackupNow (BZ-3: defense in depth at the server seam)"],
   ];
   for (const [rel, what] of gated) {
     const src = read(rel);
@@ -104,4 +106,19 @@ test("the server twin refuses to stage against Neon", () => {
   assert.match(body, /dbSource\s*===\s*"neon"/, "lib/db.ts switchDatabase must check for Neon");
   assert.match(body, /throw/, "lib/db.ts switchDatabase must throw on Neon — presentations never stage against a shared cloud DB");
   assert.match(body, /pglite-stage/, "lib/db.ts switchDatabase must point the PGLite fallback at the sibling stage directory");
+});
+
+test("the seal photographs sessionStorage too: the Bloc drafts never cross (BZ-2)", () => {
+  const prefSrc = read("lib/presentation/pref-guard.ts");
+  assert.match(prefSrc, /SESSION_GUARD_KEY\s*=\s*"bz\.pres\.sessionguard"/, "pref-guard must keep a separate session photograph key");
+  assert.match(prefSrc, /export function armSessionGuardHere\(\)/, "pref-guard must arm the session guardian");
+  assert.match(prefSrc, /export function restoreSessionGuardHere\(\)/, "pref-guard must restore the session guardian");
+  assert.match(prefSrc, /sessionStorage/, "the session guardian must photograph sessionStorage, where the book-less Bloc drafts live");
+  const enter = stageSrc.slice(stageSrc.indexOf("export async function enterStage"), stageSrc.indexOf("export async function exitStage"));
+  const exit = stageSrc.slice(stageSrc.indexOf("export async function exitStage"));
+  const armAt = enter.indexOf("armSessionGuardHere()");
+  const switchAt = enter.indexOf("switchDatabase(");
+  assert.ok(armAt >= 0 && armAt < switchAt, "enterStage must photograph sessionStorage BEFORE switching to the stage book");
+  assert.ok(exit.includes("restoreSessionGuardHere()"), "exitStage must restore the session photograph");
+  assert.ok(stageSrc.lastIndexOf("restoreSessionGuardHere()") > stageSrc.indexOf("export async function exitStage"), "the boot sweep must also restore the session photograph after a hard death");
 });

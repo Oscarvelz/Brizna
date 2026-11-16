@@ -33,6 +33,7 @@ import { emphasize, useI18n, useTx } from "@/lib/i18n";
 import { smartHit } from "@/lib/fuzzy";
 import { notificationsSupported, requestNotificationPermission } from "@/lib/reminders";
 import { quarantineOutbox } from "@/lib/offline-queue";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import { pickBackupFolder, writeBackupBundle } from "@/lib/save-file";
 import {
   applyVacation,
@@ -322,12 +323,6 @@ function AjustesPage() {
   const [restoreTarget, setRestoreTarget] = useState<BackupSummary | null>(null);
   const [restoreJson, setRestoreJson] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  async function saveFullCopy() {
-    const [copy, report] = await Promise.all([exportBackup(), exportReport()]);
-    const pdf = Uint8Array.from(atob(report.pdf), (c) => c.charCodeAt(0));
-    const xls = Uint8Array.from(atob(report.xls), (c) => c.charCodeAt(0));
-    return writeBackupBundle({ json: copy.json, pdf, xls });
-  }
   const exporter = useExportLaunch();
   const [findOn, setFindOn] = useState(false);
   const [needle, setNeedle] = useState("");
@@ -399,8 +394,34 @@ function AjustesPage() {
       await qc.invalidateQueries({ queryKey: ["settings"] });
     },
   });
+  // 1.5.94 (campaña Prejuicio, BZ-3): con el sello puesto, el libro abierto
+  // es el escenario de práctica — un paquete restaurable de la ficción no
+  // puede salir del equipo. El respaldo automático ya se retira en silencio
+  // (backup-watch); estas puertas manuales dicen por qué, con el aviso
+  // honesto, y el AbortError nombrado hace que el onError calle (el aviso ya
+  // lo dijo todo). El sello se consulta en la puerta misma (las mutaciones) y
+  // otra vez en el embudo (saveFullCopy), y por defensa en profundidad
+  // exportBackup y saveBackupNow lo consultan dentro de lawn.ts.
+  function refuseSealedCopy(): Error {
+    toast.info(
+      tx(
+        "Durante una presentación no se guardan copias: estás en el escenario de práctica, no en tu libro.",
+        "During a presentation no copies are saved: you are on the practice stage, not in your book.",
+      ),
+    );
+    const stop = new Error("sealed");
+    stop.name = "AbortError";
+    return stop;
+  }
+  async function saveFullCopy() {
+    if (sealedOn()) throw refuseSealedCopy();
+    const [copy, report] = await Promise.all([exportBackup(), exportReport()]);
+    const pdf = Uint8Array.from(atob(report.pdf), (c) => c.charCodeAt(0));
+    const xls = Uint8Array.from(atob(report.xls), (c) => c.charCodeAt(0));
+    return writeBackupBundle({ json: copy.json, pdf, xls });
+  }
   const backupNow = useMutation({
-    mutationFn: () => saveFullCopy(),
+    mutationFn: () => (sealedOn() ? Promise.reject(refuseSealedCopy()) : saveFullCopy()),
     onSuccess: async (how) => {
       toast.success(
         how === "folder"
@@ -416,7 +437,7 @@ function AjustesPage() {
     },
   });
   const download = useMutation({
-    mutationFn: () => saveFullCopy(),
+    mutationFn: () => (sealedOn() ? Promise.reject(refuseSealedCopy()) : saveFullCopy()),
     onSuccess: async (how) => {
       toast.success(
         how === "folder"
