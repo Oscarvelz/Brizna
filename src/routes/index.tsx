@@ -78,7 +78,7 @@ function Home() {
   const [rainReady, setRainReady] = useState<{
     date: string;
     text: string;
-    people: { id: number; name: string; phone: string | null }[];
+    people: { id: number; name: string; phone: string | null; date: string }[];
   } | null>(null);
 
   useEffect(() => {
@@ -100,18 +100,12 @@ function Home() {
     mutationFn: (scope: "overdue" | "today") =>
       postponeAccumulated({ data: { date: accDate, scope, reason: accReason } }),
     onSuccess: async (res) => {
-      const who = res.names.slice(0, 4).join(", ");
-      toast.success(
-        res.names.length
-          ? tx(
-              `${res.moved} pasados al ${formatLongDay(res.date)}: ${who}${res.names.length > 4 ? "…" : ""}`,
-              `${res.moved} moved to ${formatLongDay(res.date)}: ${who}${res.names.length > 4 ? "…" : ""}`,
-            )
-          : tx(
-              `${res.moved} trabajos pasados al ${formatLongDay(res.date)}`,
-              `${res.moved} jobs moved to ${formatLongDay(res.date)}`,
-            ),
-      );
+      // 1.5.96 (BZ-33): agrupado por la fecha REAL de cada trabajo.
+      const byDate = new Map<string, string[]>();
+      for (const m of res.moves) { const l = byDate.get(m.date) ?? []; l.push(m.name); byDate.set(m.date, l); }
+      const parts = [...byDate.entries()].map(([d, ns]) => `${ns.slice(0, 4).join(", ")}${ns.length > 4 ? "…" : ""} → ${formatLongDay(d)}`);
+      if (parts.length) toast.success(tx(`${res.moved} pasados: ${parts.join(" · ")}`, `${res.moved} moved: ${parts.join(" · ")}`));
+      if (res.failed > 0) toast.warning(tx(`${res.failed} no se pudieron mover y quedaron en su día.`, `${res.failed} could not be moved and stayed on their day.`));
       setAskAcc(null);
       await invalidateLawn(qc);
     },
@@ -337,8 +331,12 @@ function Home() {
           <p className="font-semibold text-hold">{tx("Mensajes listos por la lluvia", "Messages ready for the rain")}</p>
           <p className="mt-1 text-sm text-muted">
             {tx(
-              `Los patios de hoy pasaron al ${formatLongDay(rainReady.date)}. El clima sigue siendo el de Miami hasta que lo pidas. Tú envías cada mensaje.`,
-              `Today's yards moved to ${formatLongDay(rainReady.date)}. The weather stays Miami's until you ask for it. You send each message.`,
+              rainReady.people.every((p) => p.date === rainReady.date)
+                ? `Los patios de hoy pasaron al ${formatLongDay(rainReady.date)}. El clima sigue siendo el de Miami hasta que lo pidas. Tú envías cada mensaje.`
+                : `Cada patio pasó a su día: revisa la fecha en cada mensaje. El clima sigue siendo el de Miami hasta que lo pidas. Tú envías cada mensaje.`,
+              rainReady.people.every((p) => p.date === rainReady.date)
+                ? `Today's yards moved to ${formatLongDay(rainReady.date)}. The weather stays Miami's until you ask for it. You send each message.`
+                : `Each yard moved to its own day: check the date in each message. The weather stays Miami's until you ask for it. You send each message.`,
             )}
           </p>
           <textarea
@@ -353,13 +351,14 @@ function Home() {
                 <li key={person.id} className="flex items-center justify-between gap-2">
                   <span className="min-w-0 truncate text-sm font-semibold">{person.name}</span>
                   <span className="flex shrink-0 gap-1">
-                    <MessageComposer phone={person.phone} name={person.name} compact initialText={rainReady.text} />
+                    {/* 1.5.96 (BZ-33): el mensaje de cada cliente lleva SU fecha real. */}
+                    <MessageComposer phone={person.phone} name={person.name} compact initialText={person.date === rainReady.date ? rainReady.text : rainReady.text.replace(formatLongDay(rainReady.date), formatLongDay(person.date))} />
                     <MessageComposer
                       phone={person.phone}
                       name={person.name}
                       compact
                       channel="whatsapp"
-                      initialText={rainReady.text}
+                      initialText={person.date === rainReady.date ? rainReady.text : rainReady.text.replace(formatLongDay(rainReady.date), formatLongDay(person.date))}
                     />
                   </span>
                 </li>

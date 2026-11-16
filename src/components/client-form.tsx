@@ -91,7 +91,7 @@ function modeFromClient(c: ClientRow): FrequencyMode {
   return "2";
 }
 
-export function formFromClient(c: ClientRow): ClientFormValue {
+export function formFromClient(c: ClientRow, oneTimeJobDate?: string): ClientFormValue {
   return {
     name: c.name,
     phone: c.phone ?? "",
@@ -108,7 +108,11 @@ export function formFromClient(c: ClientRow): ClientFormValue {
     startDate: c.startDate ?? todayISO(),
     paySameDay: c.paySameDay,
     payDueDay: c.payDueDay ? String(c.payDueDay) : "",
-    oneTimeDate: todayISO(),
+    // 1.5.96 (campaña Prejuicio, BZ-24): el campo de fecha de un trabajo de una
+    // vez enseña la fecha REAL de su trabajo pendiente, no «hoy» — enseñar otra
+    // fecha era la mitad del engaño (la otra mitad, el servidor, ya mueve el
+    // trabajo al guardar).
+    oneTimeDate: oneTimeJobDate ?? todayISO(),
     oneTimeTitle: "",
     cue: c.cue ?? "",
     richNotes: c.richNotes ?? "",

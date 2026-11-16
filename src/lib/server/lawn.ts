@@ -762,6 +762,19 @@ export async function ensureScheduleForUserInner(userId: string): Promise<void> 
     [userId, today],
   );
   const offDates = new Set(offRows.map((r) => asIsoDate(r.off_date)));
+  // 1.5.96 (campaña Prejuicio, BZ-14): la ventana de vacaciones vigente también
+  // cierra días para la SIEMBRA. Antes la generación no la miraba: todo lo que
+  // nacía durante el viaje (cliente nuevo, reactivación, edición de agenda…)
+  // caía dentro de las vacaciones y vencía sin trabajarse. Las visitas que ya
+  // existían las corre applyVacation; las que nacen, nacen después del regreso.
+  const closedDates = new Set(offDates);
+  if (prefs.vacationStart && prefs.vacationEnd && prefs.vacationEnd >= today) {
+    let d = prefs.vacationStart < today ? today : prefs.vacationStart;
+    while (d <= prefs.vacationEnd) {
+      closedDates.add(d);
+      d = addDaysISO(d, 1);
+    }
+  }
   const clients = await sql.query<{
     id: number;
     weekday: number;
@@ -821,16 +834,21 @@ export async function ensureScheduleForUserInner(userId: string): Promise<void> 
       // year of already-seeded cuts, each one ripening into a late visit in Agenda.
       // Only the next pending cut stays; the rest join the same drop list (and the
       // same status-guarded delete below) as every other pruned row.
+      // 1.5.96 (campaña Prejuicio, BZ-42): la poda de serio ya no toca las
+      // visitas movidas a mano (origin_date o razón de pospuesto): son
+      // decisiones del jardinero, no siembra — el camino normal las trata
+      // como intocables (sticky) y esta poda las borraba en silencio.
       const pending = (futureByClient.get(intId(client.id)) ?? [])
         .filter((r) => r.status === "pending")
         .sort((a, b) => (asIsoDate(a.scheduled_date) < asIsoDate(b.scheduled_date) ? -1 : 1));
-      for (const row of pending.slice(1)) dropIds.push(intId(row.id));
+      const plain = pending.filter((r) => !r.origin_date && !(r.postpone_reason ?? "").trim());
+      for (const row of plain.slice(1)) dropIds.push(intId(row.id));
       continue;
     }
-    const generated: string[] = [];
+    const rawGenerated: string[] = [];
     for (let step = 0; step < horizon; step += 1) {
       const part = addMonths(year, month, step);
-      generated.push(
+      rawGenerated.push(
         ...scheduleDatesForMonth({
           year: part.year,
           month: part.month,
@@ -840,7 +858,7 @@ export async function ensureScheduleForUserInner(userId: string): Promise<void> 
           frequencyDays: client.frequency_days == null ? null : Number(client.frequency_days),
           startDate: client.start_date ? asIsoDate(client.start_date) : null,
           today,
-        }).map((d) => nextOpenDate(d, excluded, offDates)),
+        }),
       );
     }
     const seasonStart = mmddOrNull(client.season_start) ?? prefs.seasonStart;
@@ -850,22 +868,62 @@ export async function ensureScheduleForUserInner(userId: string): Promise<void> 
         ? Number(client.season_every)
         : prefs.seasonEvery;
     const anchor = client.start_date ? asIsoDate(client.start_date) : today;
+    // 1.5.96 (campaña Prejuicio, BZ-60/61): colocar cada fecha en un día abierto
+    // SIN fundir dos visitas en una. placeOpen empuja la fecha a su día abierto
+    // y, si ese día ya quedó asignado a otra visita de ESTE cliente en esta
+    // misma pasada, sigue al siguiente día abierto libre para él; si no hay
+    // día abierto en la ventana de búsqueda, la visita no se siembra (null).
+    const assigned = new Set<string>();
+    const placeOpen = (d: string): string | null => {
+      let cur = nextOpenDate(d, excluded, closedDates);
+      while (cur && assigned.has(cur)) cur = nextOpenDate(addDaysISO(cur, 1), excluded, closedDates);
+      if (cur) assigned.add(cur);
+      return cur;
+    };
+    const generated: string[] = [];
+    for (const d of rawGenerated) {
+      const p = placeOpen(d);
+      if (p) generated.push(p);
+    }
     let planned = [...new Set(generated)];
     if (seasonStart && seasonEnd && seasonEvery) {
-      const seasonal = seasonCuts({
+      const inWindow = (iso: string) => {
+        const md = iso.slice(5, 10);
+        return seasonStart <= seasonEnd
+          ? md >= seasonStart && md <= seasonEnd
+          : md >= seasonStart || md <= seasonEnd;
+      };
+      const seasonal: string[] = [];
+      for (const d of seasonCuts({
         seasonStart,
         seasonEnd,
         every: seasonEvery,
         anchor,
         from: today,
         until,
-      }).map((d) => nextOpenDate(d, excluded, offDates));
-      const outside = planned.filter((d) => {
-        const md = d.slice(5, 10);
-        const inside =
-          seasonStart <= seasonEnd ? md >= seasonStart && md <= seasonEnd : md >= seasonStart || md <= seasonEnd;
-        return !inside;
-      });
+      })) {
+        let p = placeOpen(d);
+        if (p && !inWindow(p)) {
+          // 1.5.96 (BZ-62): el empuje sacó el corte de su temporada — la ventana
+          // es un techo. Se reubica hacia atrás, al último día abierto dentro
+          // de la ventana; si no hay ninguno, el corte no se siembra fuera.
+          assigned.delete(p);
+          p = null;
+          let back = addDaysISO(d, -1);
+          for (let i = 0; i < 28 && back >= today; i += 1) {
+            const closedWeekday =
+              excluded.length > 0 && excluded.length < 7 && excluded.includes(weekdayFromISO(back));
+            if (!closedWeekday && !closedDates.has(back) && inWindow(back) && !assigned.has(back)) {
+              p = back;
+              assigned.add(back);
+              break;
+            }
+            back = addDaysISO(back, -1);
+          }
+        }
+        if (p) seasonal.push(p);
+      }
+      const outside = planned.filter((d) => !inWindow(d));
       planned = [...new Set([...outside, ...seasonal])];
     }
     const keptRows = (futureByClient.get(intId(client.id)) ?? []).filter((r) => r.status === "pending");
@@ -891,7 +949,14 @@ export async function ensureScheduleForUserInner(userId: string): Promise<void> 
     const uniqueDates = new Set([...insertDates, ...sticky]);
     const amount = money(client.price_per_cut);
     const arrival = asTime(client.arrival_time);
-    const have = new Set((futureByClient.get(intId(client.id)) ?? []).map((r) => asIsoDate(r.scheduled_date)));
+    // 1.5.96 (campaña Prejuicio, BZ-39): una fila CANCELADA no ocupa su fecha —
+    // cancelar libera el día (el índice único parcial de la migración 0027 dice
+    // lo mismo). Las 'done' sí la siguen ocupando.
+    const have = new Set(
+      (futureByClient.get(intId(client.id)) ?? [])
+        .filter((r) => r.status !== "cancelled")
+        .map((r) => asIsoDate(r.scheduled_date)),
+    );
     for (const date of insertDates) {
       if (have.has(date)) continue;
       await sql.query(
@@ -900,6 +965,7 @@ export async function ensureScheduleForUserInner(userId: string): Promise<void> 
           where not exists (
             select 1 from jobs
              where user_id = $1 and client_id = $2 and scheduled_date = $3::date and kind = 'cut'
+               and status <> 'cancelled'
           )`,
         [userId, client.id, date, amount, arrival],
       );
@@ -1029,7 +1095,7 @@ function parseExcluded(raw: unknown): number[] {
   }
 }
 
-function nextOpenDate(iso: string, excluded: number[], offDates?: Set<string>): string {
+function nextOpenDate(iso: string, excluded: number[], offDates?: Set<string>): string | null {
   const offs = offDates ?? new Set<string>();
   if ((excluded.length === 0 || excluded.length >= 7) && offs.size === 0) return iso;
   let d = iso;
@@ -1039,7 +1105,10 @@ function nextOpenDate(iso: string, excluded: number[], offDates?: Set<string>): 
     if (!closedWeekday && !offs.has(d)) return d;
     d = addDaysISO(d, 1);
   }
-  return iso;
+  // 1.5.96 (campaña Prejuicio, BZ-60): sin día abierto en la ventana de 28 días
+  // NO hay fecha: antes se devolvía la fecha original — un día cerrado disfrazado
+  // de visita — y la siembra la plantaba dentro del paro. El llamador omite.
+  return null;
 }
 
 async function loadPrefs(userId: string) {
@@ -1106,24 +1175,32 @@ async function moveJobToDate(
   jobId: number,
   clientId: number,
   target: string,
-): Promise<string> {
+  opts?: { keepVacMark?: boolean },
+): Promise<string | null> {
   const sql = await getSql();
   let d = target;
   for (let i = 0; i < 21; i += 1) {
     try {
-      await sql.query(
+      // 1.5.96 (campaña Prejuicio, BZ-33): la fecha devuelta es la REAL solo si el
+      // UPDATE tocó la fila (returning id); 0 filas = el trabajo ya no está
+      // pendiente y no se movió. Tras 21 choques con el índice único se devuelve
+      // null, no la fecha pedida: ningún llamador cuenta ya un movimiento que no
+      // ocurrió. Un movimiento deliberado (no el de vacaciones) retira el sello
+      // de vacaciones: esa fila ya no es «corrida por el viaje», es decisión.
+      const rows = await sql.query<{ id: number }>(
         `update jobs
             set scheduled_date = $3::date,
-                origin_date = coalesce(origin_date, scheduled_date)
-          where user_id = $1 and id = $2 and status = 'pending'`,
+                origin_date = coalesce(origin_date, scheduled_date)${opts?.keepVacMark ? "" : ", vacation_shift = 0"}
+          where user_id = $1 and id = $2 and status = 'pending'
+          returning id`,
         [userId, jobId, d],
       );
-      return d;
+      return rows.length === 1 ? d : null;
     } catch {
       d = addDaysISO(d, 1);
     }
   }
-  return target;
+  return null;
 }
 
 async function shiftPendingJobs(
@@ -1131,6 +1208,7 @@ async function shiftPendingJobs(
   days: number,
   fromDate: string,
   toDate?: string,
+  mark?: number,
 ): Promise<number> {
   if (days === 0) return 0;
   const sql = await getSql();
@@ -1146,7 +1224,57 @@ async function shiftPendingJobs(
   for (const row of rows) {
     const prev = asIsoDate(row.scheduled_date);
     const next = addDaysISO(prev, days);
-    await moveJobToDate(userId, intId(row.id), intId(row.client_id), next);
+    // 1.5.96 (BZ-33): solo cuenta lo que de verdad se movió. Con `mark` (el
+    // corrimiento de vacaciones, BZ-13) la fila movida queda sellada con los
+    // días corridos para que el deshacer toque solo esas filas.
+    const real = await moveJobToDate(userId, intId(row.id), intId(row.client_id), next, { keepVacMark: true });
+    if (real == null) continue;
+    moved += 1;
+    if (mark) {
+      await sql.query(`update jobs set vacation_shift = $3 where user_id = $1 and id = $2`, [
+        userId,
+        intId(row.id),
+        mark,
+      ]);
+    }
+  }
+  return moved;
+}
+
+/**
+ * 1.5.96 (campaña Prejuicio, BZ-13): deshacer el corrimiento de vacaciones toca
+ * SOLO las filas selladas por él (vacation_shift <> 0), cada una hacia atrás por
+ * su propio sello. Antes el deshacer corría hacia atrás todo lo pendiente desde
+ * el inicio de las vacaciones — un año entero de agenda, incluidas visitas que
+ * nunca fueron corridas. Una fila que no se puede mover (21 choques) conserva
+ * su sello: sigue corrida y un deshacer posterior lo reintenta.
+ */
+async function undoVacationShift(userId: string): Promise<number> {
+  const sql = await getSql();
+  const rows = await sql.query<{ id: number; client_id: number; scheduled_date: unknown; origin_date: unknown; vacation_shift: number }>(
+    `select id, client_id, scheduled_date, origin_date, vacation_shift from jobs
+      where user_id = $1 and status = 'pending' and vacation_shift <> 0
+      order by scheduled_date asc, id desc`,
+    [userId],
+  );
+  let moved = 0;
+  for (const row of rows) {
+    const mark = Number(row.vacation_shift);
+    // Sello -1: lo atrasado que el viaje juntó en el día del regreso vuelve a
+    // su fecha de ORIGEN exacta (origin_date la selló el propio movimiento).
+    // Sello > 0: corrimiento dentro de la ventana, hacia atrás por su sello.
+    const back =
+      mark < 0
+        ? row.origin_date
+          ? asIsoDate(row.origin_date)
+          : addDaysISO(asIsoDate(row.scheduled_date), mark)
+        : addDaysISO(asIsoDate(row.scheduled_date), -mark);
+    const real = await moveJobToDate(userId, intId(row.id), intId(row.client_id), back, { keepVacMark: true });
+    if (real == null) continue;
+    await sql.query(`update jobs set vacation_shift = 0 where user_id = $1 and id = $2`, [
+      userId,
+      intId(row.id),
+    ]);
     moved += 1;
   }
   return moved;
@@ -1813,12 +1941,41 @@ export const updateClient = createServerFn({ method: "POST" })
 
     // Hallazgo 6: el precio nuevo solo repricea cortes de HOY en adelante; un corte
     // vencido pendiente se acordó al precio viejo y se cobra al precio viejo.
+    // 1.5.96 (campaña Prejuicio, BZ-40): la fecha que manda es la de ORIGEN — un
+    // corte nacido vencido y pospuesto a mañana (origin_date = ayer) se acordó
+    // al precio viejo aunque hoy su scheduled_date ya sea futura.
     await sql.query(
       `update jobs set amount = $3, arrival_time = $4
         where user_id = $1 and client_id = $2 and kind = 'cut' and status = 'pending'
-          and scheduled_date >= $5::date`,
+          and scheduled_date >= $5::date
+          and (origin_date is null or origin_date >= $5::date)`,
       [context.userId, data.id, data.pricePerCut, arrival, todayISO()],
     );
+
+    // 1.5.96 (campaña Prejuicio, BZ-24): si el cliente ERA y SIGUE de una vez y
+    // la fecha del formulario cambió, su trabajo pendiente se mueve de verdad
+    // (con la misma guarda anti-choque de rescheduleJob). Antes la fecha nueva
+    // se ignoraba en silencio fuera de la rama kindChanged.
+    if (!kindChanged && data.kind === "one_time" && data.oneTimeDate && data.oneTimeDate.length >= 8) {
+      const otRows = await sql.query<{ id: number; scheduled_date: unknown }>(
+        `select id, scheduled_date from jobs
+          where user_id = $1 and client_id = $2 and kind = 'one_time' and status = 'pending'
+          order by scheduled_date asc limit 1`,
+        [context.userId, data.id],
+      );
+      const ot = otRows[0];
+      if (ot && asIsoDate(ot.scheduled_date) !== data.oneTimeDate) {
+        try {
+          await sql.query(
+            `update jobs
+                set scheduled_date = $3::date,
+                    origin_date = coalesce(origin_date, scheduled_date)
+              where user_id = $1 and id = $2 and status = 'pending'`,
+            [context.userId, intId(ot.id), data.oneTimeDate],
+          );
+        } catch { /* choque de índice: la fecha vieja se queda, como en rescheduleJob */ }
+      }
+    }
 
     if (data.kind === "regular") await ensureScheduleForUser(context.userId);
     await logClientChange(context.userId, data.id, "Datos del cliente actualizados", {
@@ -2458,11 +2615,18 @@ export const addExtraJob = createServerFn({ method: "POST" })
   .validator((data: unknown) => extraInput.parse(data))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    const owned = await sql.query<{ id: number }>(
-      `select id from clients where user_id = $1 and id = $2`,
+    // 1.5.96 (campaña Prejuicio, BZ-44): el extra mira el ESTADO del cliente,
+    // no solo su existencia — para un cliente vetado, pausado o archivado no
+    // nace ningún trabajo (ni pendiente latente que resucite al reactivar, ni
+    // hecho que mueva el saldo de un archivado por la puerta de atrás).
+    const owned = await sql.query<{ id: number; blacklisted: boolean; service_paused: boolean; is_active: boolean }>(
+      `select id, blacklisted, service_paused, is_active from clients where user_id = $1 and id = $2`,
       [context.userId, data.clientId],
     );
     if (!owned[0]) return { ok: false as const };
+    if (owned[0].blacklisted) return { ok: false as const, reason: "blacklisted" as const };
+    if (owned[0].service_paused) return { ok: false as const, reason: "paused" as const };
+    if (!owned[0].is_active) return { ok: false as const, reason: "inactive" as const };
     const today = todayISO();
     const markDone = data.markDone || data.date <= today;
     const arrival = normalizeArrival(data.arrivalTime);
@@ -2580,6 +2744,10 @@ export const recordPayment = createServerFn({ method: "POST" })
         Math.round((balance - waiveAmount) * 100) / 100,
       ]);
       await maybeAutoArchiveOneTime(context.userId, data.clientId);
+      // 1.5.96 (campaña Prejuicio, BZ-43): el pago que saca al cliente de
+      // serio resiembra su agenda EN EL ACTO (antes la agenda seguía
+      // congelada hasta la primera apertura de mañana).
+      await ensureScheduleForUser(context.userId);
       await snapshotBackup(context.userId).catch(() => undefined);
       return { ok: true as const, paymentIds: [intId(ins[0]?.id)] };
     }
@@ -2632,6 +2800,7 @@ export const recordPayment = createServerFn({ method: "POST" })
       [context.userId, data.clientId, Math.max(0, balance - toDebt), credit + leftover],
     );
     await maybeAutoArchiveOneTime(context.userId, data.clientId);
+    await ensureScheduleForUser(context.userId);
     await snapshotBackup(context.userId).catch(() => undefined);
     return { ok: true as const, paymentIds: ids };
   });
@@ -2669,6 +2838,9 @@ export const undoPayment = createServerFn({ method: "POST" })
       }
       await sql.query(`delete from payments where user_id = $1 and id = $2`, [context.userId, id]);
     }
+    // 1.5.96 (BZ-43): deshacer un pago puede DEVOLVER al cliente a serio:
+    // la agenda se reevalúa en el acto, igual que al pagar.
+    await ensureScheduleForUser(context.userId);
     return { ok: true as const };
   });
 
@@ -2712,6 +2884,8 @@ export const recordPaymentsBulk = createServerFn({ method: "POST" })
       count += 1;
       total += balance;
     }
+    // 1.5.96 (BZ-43): el pago en grupo también descongela agendas en el acto.
+    await ensureScheduleForUser(context.userId);
     await snapshotBackup(context.userId).catch(() => undefined);
     return { ok: true as const, count, total, paymentIds };
   });
@@ -3318,7 +3492,10 @@ export const updateSettings = createServerFn({ method: "POST" })
     );
     // Hallazgo 11: seasonEnd también dispara la regeneración (antes editar SOLO el fin
     // de temporada no hacía nada hasta que otro cambio regenerara la agenda).
-    if (data.excludedWeekdays !== undefined || data.horizonMonths !== undefined || data.seasonEvery !== undefined || data.seasonStart !== undefined || data.seasonEnd !== undefined) {
+    // 1.5.96 (campaña Prejuicio, BZ-43): los umbrales de riesgo también — cambiar
+    // quién está en serio sin resembrar dejaba agendas congeladas (o libres) con
+    // la clasificación vieja hasta el día siguiente.
+    if (data.excludedWeekdays !== undefined || data.horizonMonths !== undefined || data.seasonEvery !== undefined || data.seasonStart !== undefined || data.seasonEnd !== undefined || data.riskDays !== undefined || data.riskAmount !== undefined || data.riskCuts !== undefined || data.waitDays !== undefined) {
       await ensureScheduleForUser(context.userId);
     }
     return { ok: true as const };
@@ -4972,11 +5149,9 @@ export const applyVacation = createServerFn({ method: "POST" })
     const sql = await getSql();
     const prefs = await loadPrefs(context.userId);
     if (prefs.vacationShift) {
-      await shiftPendingJobs(
-        context.userId,
-        -prefs.vacationShift,
-        prefs.vacationStart ?? data.start,
-      );
+      // 1.5.96 (BZ-13): reaplicar deshace SOLO las filas selladas por el
+      // corrimiento anterior, no todo lo pendiente desde su inicio.
+      await undoVacationShift(context.userId);
     }
     let days = 0;
     let cursor = data.start;
@@ -4984,7 +5159,7 @@ export const applyVacation = createServerFn({ method: "POST" })
       days += 1;
       cursor = addDaysISO(cursor, 1);
     }
-    const moved = await shiftPendingJobs(context.userId, days, data.start, data.end);
+    const moved = await shiftPendingJobs(context.userId, days, data.start, data.end, days);
     const overdue = await sql.query<{ id: number; client_id: number }>(
       `select id, client_id from jobs
         where user_id = $1 and status = 'pending' and scheduled_date < $2::date
@@ -4992,8 +5167,20 @@ export const applyVacation = createServerFn({ method: "POST" })
       [context.userId, data.start],
     );
     const returnDate = addDaysISO(data.end, 1);
+    let overdueMoved = 0;
     for (const row of overdue) {
-      await moveJobToDate(context.userId, intId(row.id), intId(row.client_id), returnDate);
+      // 1.5.96 (BZ-33): el conteo suma solo movimientos reales.
+      const real = await moveJobToDate(context.userId, intId(row.id), intId(row.client_id), returnDate);
+      if (real == null) continue;
+      overdueMoved += 1;
+      // 1.5.96 (BZ-13, segunda mitad): lo atrasado que las vacaciones juntaron
+      // en el día del regreso lleva el sello -1 — al quitar las vacaciones
+      // vuelve a SU fecha de origen exacta, no a un corrimiento. La ida y
+      // vuelta de las vacaciones es byte a byte también para los atrasados.
+      await sql.query(`update jobs set vacation_shift = -1 where user_id = $1 and id = $2`, [
+        context.userId,
+        intId(row.id),
+      ]);
     }
     await sql.query(
       `insert into app_settings (user_id, vacation_start, vacation_end, vacation_shift, updated_at)
@@ -5003,7 +5190,7 @@ export const applyVacation = createServerFn({ method: "POST" })
       [context.userId, data.start, data.end, days],
     );
     await snapshotBackup(context.userId).catch(() => undefined);
-    return { ok: true as const, moved: moved + overdue.length, days };
+    return { ok: true as const, moved: moved + overdueMoved, days };
   });
 
 export const clearVacation = createServerFn({ method: "POST" })
@@ -5011,7 +5198,10 @@ export const clearVacation = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const prefs = await loadPrefs(context.userId);
     if (prefs.vacationShift && prefs.vacationStart) {
-      await shiftPendingJobs(context.userId, -prefs.vacationShift, prefs.vacationStart);
+      // 1.5.96 (BZ-13): quitar las vacaciones deshace SOLO las filas que el
+      // corrimiento selló — antes corría hacia atrás todo lo pendiente desde
+      // el inicio del viaje hasta el fin del horizonte (un año entero).
+      await undoVacationShift(context.userId);
     }
     const sql = await getSql();
     await sql.query(
@@ -5044,13 +5234,18 @@ export const bulkReschedule = createServerFn({ method: "POST" })
       [context.userId, data.ids],
     );
     let moved = 0;
+    let failed = 0;
     const names: string[] = [];
+    const moves: { name: string; date: string }[] = [];
     for (const row of rows) {
-      await moveJobToDate(context.userId, intId(row.id), intId(row.client_id), target);
+      // 1.5.96 (BZ-33): cada trabajo cuenta con SU fecha real de aterrizaje.
+      const real = await moveJobToDate(context.userId, intId(row.id), intId(row.client_id), target);
+      if (real == null) { failed += 1; continue; }
       moved += 1;
       names.push(row.name);
+      moves.push({ name: row.name, date: real });
     }
-    return { ok: true as const, moved, date: target, names };
+    return { ok: true as const, moved, failed, date: target, names, moves };
   });
 
 export const postponeAccumulated = createServerFn({ method: "POST" })
@@ -5083,9 +5278,14 @@ export const postponeAccumulated = createServerFn({ method: "POST" })
             [context.userId, today],
           );
     let moved = 0;
+    let failed = 0;
     const names: string[] = [];
+    const moves: { name: string; date: string }[] = [];
     for (const row of rows) {
-      await moveJobToDate(context.userId, intId(row.id), intId(row.client_id), target);
+      // 1.5.96 (BZ-33): la razón de pospuesto se escribe SOLO si el trabajo se
+      // movió de verdad, y el conteo y las fechas son los reales.
+      const real = await moveJobToDate(context.userId, intId(row.id), intId(row.client_id), target);
+      if (real == null) { failed += 1; continue; }
       if (data.reason) {
         await sql.query(`update jobs set postpone_reason = $3 where user_id = $1 and id = $2`, [
           context.userId,
@@ -5095,8 +5295,9 @@ export const postponeAccumulated = createServerFn({ method: "POST" })
       }
       moved += 1;
       names.push(row.name);
+      moves.push({ name: row.name, date: real });
     }
-    return { ok: true as const, moved, date: target, names };
+    return { ok: true as const, moved, failed, date: target, names, moves };
   });
 
 export const moveDayJobs = createServerFn({ method: "POST" })
@@ -5110,7 +5311,7 @@ export const moveDayJobs = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ context, data }) => {
-    if (data.from === data.to) return { ok: true as const, moved: 0, date: data.to, names: [] as string[] };
+    if (data.from === data.to) return { ok: true as const, moved: 0, failed: 0, date: data.to, names: [] as string[], moves: [] as { name: string; date: string }[] };
     const sql = await getSql();
     const target = data.to;
     const rows = await sql.query<{ id: number; client_id: number; name: string }>(
@@ -5120,13 +5321,17 @@ export const moveDayJobs = createServerFn({ method: "POST" })
       [context.userId, data.from],
     );
     let moved = 0;
+    let failed = 0;
     const names: string[] = [];
+    const moves: { name: string; date: string }[] = [];
     for (const row of rows) {
-      await moveJobToDate(context.userId, intId(row.id), intId(row.client_id), target);
+      const real = await moveJobToDate(context.userId, intId(row.id), intId(row.client_id), target);
+      if (real == null) { failed += 1; continue; }
       moved += 1;
       names.push(row.name);
+      moves.push({ name: row.name, date: real });
     }
-    return { ok: true as const, moved, date: target, names };
+    return { ok: true as const, moved, failed, date: target, names, moves };
   });
 
 export const updatePayMode = createServerFn({ method: "POST" })
@@ -5224,6 +5429,19 @@ export const restoreClientChange = createServerFn({ method: "POST" })
       await sql.query(
         `update clients set ${sets.join(", ")} where user_id = $1 and id = $2`,
         params,
+      );
+    }
+    // 1.5.96 (campaña Prejuicio, BZ-41): restaurar un PRECIO repricea las
+    // visitas ya sembradas con la misma sentencia de updateClient (con la
+    // guarda de origen de BZ-40). Antes solo nacían al precio restaurado las
+    // fechas nuevas: la ficha decía un precio y la agenda cobraba otro.
+    if (snap.pricePerCut !== undefined) {
+      await sql.query(
+        `update jobs set amount = $3
+          where user_id = $1 and client_id = $2 and kind = 'cut' and status = 'pending'
+            and scheduled_date >= $4::date
+            and (origin_date is null or origin_date >= $4::date)`,
+        [context.userId, data.clientId, money(snap.pricePerCut), todayISO()],
       );
     }
     // Hallazgo 4: restaurar un cambio de tipo reconcilia los trabajos igual que editar.
@@ -5407,9 +5625,19 @@ export const setBlacklist = createServerFn({ method: "POST" })
       data.blacklisted,
     ]);
     if (data.blacklisted) {
+      // 1.5.96 (campaña Prejuicio, BZ-23): como la pausa — del futuro solo se
+      // borran los CORTES generados; extras y trabajos de una vez se cancelan
+      // A LA VISTA con su razón. Antes la sentencia sin filtro de kind
+      // evaporaba también un extra pagado por adelantado, sin historial.
       await sql.query(
         `delete from jobs
-          where user_id = $1 and client_id = $2 and status = 'pending' and scheduled_date >= $3::date`,
+          where user_id = $1 and client_id = $2 and status = 'pending' and kind = 'cut' and scheduled_date >= $3::date`,
+        [context.userId, data.id, todayISO()],
+      );
+      await sql.query(
+        `update jobs set status = 'cancelled',
+                postpone_reason = coalesce(nullif(postpone_reason, ''), 'Lista negra')
+          where user_id = $1 and client_id = $2 and status = 'pending' and kind <> 'cut' and scheduled_date >= $3::date`,
         [context.userId, data.id, todayISO()],
       );
       // Hallazgo 9: los pendientes VENCIDOS también se resuelven — cancelados a la vista
@@ -5604,14 +5832,19 @@ export const toggleOffDate = createServerFn({ method: "POST" })
     );
     const names: string[] = [];
     const reason = data.reason.trim() || "Día libre";
-    for (const row of rows) {
-      await moveJobToDate(context.userId, intId(row.id), intId(row.client_id), target);
-      await sql.query(`update jobs set postpone_reason = $3 where user_id = $1 and id = $2`, [
-        context.userId,
-        intId(row.id),
-        reason,
-      ]);
-      names.push(row.name);
+    // 1.5.96 (BZ-60/33): sin día abierto en 28 días no se mueve nada (target
+    // null) y la razón se escribe solo en los trabajos que sí se movieron.
+    if (target != null) {
+      for (const row of rows) {
+        const real = await moveJobToDate(context.userId, intId(row.id), intId(row.client_id), target);
+        if (real == null) continue;
+        await sql.query(`update jobs set postpone_reason = $3 where user_id = $1 and id = $2`, [
+          context.userId,
+          intId(row.id),
+          reason,
+        ]);
+        names.push(row.name);
+      }
     }
     await sql.query(
       `insert into day_marks (user_id, mark_date, reason, detail, kind)
@@ -5620,7 +5853,7 @@ export const toggleOffDate = createServerFn({ method: "POST" })
        do update set detail = excluded.detail`,
       [context.userId, data.date, reason, names.join(", ")],
     );
-    return { on: true as const, moved: names.length, names, date: target };
+    return { on: true as const, moved: names.length, names, date: target ?? data.date };
   });
 
 export const saveDayNote = createServerFn({ method: "POST" })
@@ -5677,19 +5910,28 @@ export const shiftForRain = createServerFn({ method: "POST" })
           and c.is_active = true and c.service_paused = false`,
       [context.userId, today],
     );
-    const people: { id: number; name: string; phone: string | null }[] = [];
-    const seen = new Set<number>();
-    for (const row of rows) {
-      await moveJobToDate(context.userId, intId(row.id), intId(row.client_id), target);
-      await sql.query(`update jobs set postpone_reason = $3 where user_id = $1 and id = $2`, [
-        context.userId,
-        intId(row.id),
-        data.reason,
-      ]);
-      const cid = intId(row.client_id);
-      if (!seen.has(cid)) {
-        seen.add(cid);
-        people.push({ id: cid, name: row.name, phone: row.phone });
+    // 1.5.96 (BZ-33): cada persona lleva SU fecha real — el mensaje al cliente
+    // se compone por cliente con la fecha a la que de verdad pasó su patio;
+    // la razón se escribe solo en los trabajos movidos y el conteo es real.
+    // Sin día abierto en 28 días (target null) no se mueve nada.
+    const people: { id: number; name: string; phone: string | null; date: string }[] = [];
+    const seen = new Map<number, string>();
+    let movedCount = 0;
+    if (target != null) {
+      for (const row of rows) {
+        const real = await moveJobToDate(context.userId, intId(row.id), intId(row.client_id), target);
+        if (real == null) continue;
+        movedCount += 1;
+        await sql.query(`update jobs set postpone_reason = $3 where user_id = $1 and id = $2`, [
+          context.userId,
+          intId(row.id),
+          data.reason,
+        ]);
+        const cid = intId(row.client_id);
+        if (!seen.has(cid)) {
+          seen.set(cid, real);
+          people.push({ id: cid, name: row.name, phone: row.phone, date: real });
+        }
       }
     }
     await ensureWorkDay(context.userId, today);
@@ -5699,7 +5941,7 @@ export const shiftForRain = createServerFn({ method: "POST" })
         where user_id = $1 and work_date = $2::date`,
       [context.userId, today, data.reason, nowHHMM()],
     );
-    return { ok: true as const, moved: rows.length, date: target, people, reason: data.reason, at: new Date().toISOString() };
+    return { ok: true as const, moved: movedCount, date: target ?? today, people, reason: data.reason, at: new Date().toISOString() };
   });
 
 export const getJobPhoto = createServerFn({ method: "GET" })

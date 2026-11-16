@@ -212,7 +212,7 @@ function ClientDetailPage() {
       {editing ? (
         <div>
           <ClientForm
-            initial={formFromClient(client)}
+            initial={formFromClient(client, (data?.jobs ?? []).find((j) => j.kind === "one_time" && j.status === "pending")?.scheduledDate)}
             submitLabel={tx("Guardar cambios", "Save changes")}
             pending={save.isPending}
             onSubmit={(v) => {

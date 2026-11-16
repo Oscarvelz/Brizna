@@ -1034,12 +1034,12 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Choose departure and return: what is pending on those dates, and what is late, shifts to after you come back.",
         ],
         how: [
-          "En Ajustes, Vacaciones, elige el primer y el último día fuera.\nGuarda: Brizna dice cuántos patios movió.\nSi cambias las fechas, primero deshace el corrimiento anterior y luego aplica el nuevo.\nQuitar vacaciones devuelve los patios a sus días.",
-          "In Settings, Time off, pick the first and last day away.\nSave: Brizna says how many yards it moved.\nIf you change the dates, it first undoes the earlier shift and then applies the new one.\nRemove time off sends the yards back to their days.",
+          "En Ajustes, Vacaciones, elige el primer y el último día fuera.\nGuarda: Brizna dice cuántos patios movió.\nSi cambias las fechas, primero deshace el corrimiento anterior y luego aplica el nuevo.\nQuitar vacaciones devuelve a sus días solo los patios que el viaje corrió.",
+          "In Settings, Time off, pick the first and last day away.\nSave: Brizna says how many yards it moved.\nIf you change the dates, it first undoes the earlier shift and then applies the new one.\nRemoving time off sends back only the yards the trip itself shifted.",
         ],
         calc: [
-          "Cada patio pendiente dentro de las fechas se corre tantos días como dura el viaje, así conserva su orden. Lo atrasado de antes de irte pasa al día del regreso. Los días de vacaciones no cuentan para la Meta del mes.",
-          "Each pending yard inside the dates shifts by as many days as the trip lasts, so it keeps its order. Late work from before you leave goes to the return day. Vacation days do not count toward the Month goal.",
+          "Cada patio pendiente dentro de las fechas se corre tantos días como dura el viaje, así conserva su orden. Lo atrasado de antes de irte pasa al día del regreso. Mientras las vacaciones están puestas, tampoco nace ninguna visita nueva dentro de esas fechas: la primera visita de un cliente nuevo cae después del regreso. Los días de vacaciones no cuentan para la Meta del mes.",
+          "Each pending yard inside the dates shifts by as many days as the trip lasts, so it keeps its order. Late work from before you leave goes to the return day. While the time off stands, no new visit is born inside those dates either: a new client's first visit lands after you return. Vacation days do not count toward the Month goal.",
         ],
         example: [
           "Te vas a Managua del 20 al 26 de diciembre (7 días). El corte de los Pérez del 20 pasa al 27 y el de Ana del 23 pasa al 30. Un patio que iba atrasado desde el 18 sale el 27, el día que vuelves.",

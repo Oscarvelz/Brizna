@@ -319,12 +319,13 @@ function AgendaPage() {
   const moveMut = useMutation({
     mutationFn: (to: string) => moveDayJobs({ data: { from: moveFrom ?? today, to } }),
     onSuccess: async (res) => {
-      const who = res.names.slice(0, 4).join(", ");
-      toast.success(
-        res.names.length
-          ? tx(`Pasados al ${formatDay(res.date, "EEE d")}: ${who}${res.names.length > 4 ? "…" : ""}`, `Moved to ${formatDay(res.date, "EEE d")}: ${who}${res.names.length > 4 ? "…" : ""}`)
-          : tx(`${res.moved} trabajos pasados al ${formatDay(res.date, "EEE d")}`, `${res.moved} jobs moved to ${formatDay(res.date, "EEE d")}`),
-      );
+      // 1.5.96 (BZ-33): el aviso agrupa por la fecha REAL de cada trabajo y
+      // nombra los que no se pudieron mover.
+      const byDate = new Map<string, string[]>();
+      for (const m of res.moves) { const l = byDate.get(m.date) ?? []; l.push(m.name); byDate.set(m.date, l); }
+      const parts = [...byDate.entries()].map(([d, ns]) => `${tx("Pasados al", "Moved to")} ${formatDay(d, "EEE d")}: ${ns.slice(0, 4).join(", ")}${ns.length > 4 ? "…" : ""}`);
+      if (parts.length) toast.success(parts.join(" · "));
+      if (res.failed > 0) toast.warning(tx(`${res.failed} no se pudieron mover y quedaron en su día.`, `${res.failed} could not be moved and stayed on their day.`));
       setMoveFrom(null);
       await invalidateLawn(qc);
     },
@@ -333,12 +334,11 @@ function AgendaPage() {
     mutationFn: (input: { scope: "overdue" | "today"; date: string }) =>
       postponeAccumulated({ data: { date: input.date, scope: input.scope, reason: accReason } }),
     onSuccess: async (res) => {
-      const who = res.names.slice(0, 4).join(", ");
-      toast.success(
-        res.names.length
-          ? tx(`Pasados al ${formatDay(res.date, "EEE d")}: ${who}${res.names.length > 4 ? "…" : ""}`, `Moved to ${formatDay(res.date, "EEE d")}: ${who}${res.names.length > 4 ? "…" : ""}`)
-          : tx(`${res.moved} trabajos pasados al ${formatDay(res.date, "EEE d")}`, `${res.moved} jobs moved to ${formatDay(res.date, "EEE d")}`),
-      );
+      const byDate = new Map<string, string[]>();
+      for (const m of res.moves) { const l = byDate.get(m.date) ?? []; l.push(m.name); byDate.set(m.date, l); }
+      const parts = [...byDate.entries()].map(([d, ns]) => `${tx("Pasados al", "Moved to")} ${formatDay(d, "EEE d")}: ${ns.slice(0, 4).join(", ")}${ns.length > 4 ? "…" : ""}`);
+      if (parts.length) toast.success(parts.join(" · "));
+      if (res.failed > 0) toast.warning(tx(`${res.failed} no se pudieron mover y quedaron en su día.`, `${res.failed} could not be moved and stayed on their day.`));
       setAskAcc(null);
       await invalidateLawn(qc);
       await qc.invalidateQueries({ queryKey: ["week-off"] });

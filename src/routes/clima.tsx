@@ -80,7 +80,7 @@ function ClimaPage() {
   const [rainReady, setRainReady] = useState<{
     date: string;
     text: string;
-    people: { id: number; name: string; phone: string | null }[];
+    people: { id: number; name: string; phone: string | null; date: string }[];
   } | null>(null);
   const [place, setPlace] = useState<WeatherPlace>(() => readWeatherPlace());
   const [editPlace, setEditPlace] = useState(false);
@@ -419,8 +419,12 @@ function ClimaPage() {
             <p className="font-semibold text-hold">{tx("Mensajes listos", "Messages ready")}</p>
             <p className="mt-1 text-sm text-muted">
               {tx(
-                `Los patios de hoy pasaron al ${formatLongDay(rainReady.date)}. Tú envías cada mensaje.`,
-                `Today's yards moved to ${formatLongDay(rainReady.date)}. You send each message.`,
+                rainReady.people.every((p) => p.date === rainReady.date)
+                  ? `Los patios de hoy pasaron al ${formatLongDay(rainReady.date)}. Tú envías cada mensaje.`
+                  : `Cada patio pasó a su día: revisa la fecha en cada mensaje. Tú envías cada mensaje.`,
+                rainReady.people.every((p) => p.date === rainReady.date)
+                  ? `Today's yards moved to ${formatLongDay(rainReady.date)}. You send each message.`
+                  : `Each yard moved to its own day: check the date in each message. You send each message.`,
               )}
             </p>
             <textarea
@@ -435,8 +439,9 @@ function ClimaPage() {
                   <li key={person.id} className="flex items-center justify-between gap-2">
                     <span className="min-w-0 truncate text-sm font-semibold">{person.name}</span>
                     <span className="flex shrink-0 gap-1">
-                      <MessageComposer phone={person.phone} name={person.name} compact initialText={rainReady.text} />
-                      <MessageComposer phone={person.phone} name={person.name} compact channel="whatsapp" initialText={rainReady.text} />
+                      {/* 1.5.96 (BZ-33): el mensaje de cada cliente lleva SU fecha real. */}
+                      <MessageComposer phone={person.phone} name={person.name} compact initialText={person.date === rainReady.date ? rainReady.text : rainReady.text.replace(formatLongDay(rainReady.date), formatLongDay(person.date))} />
+                      <MessageComposer phone={person.phone} name={person.name} compact channel="whatsapp" initialText={person.date === rainReady.date ? rainReady.text : rainReady.text.replace(formatLongDay(rainReady.date), formatLongDay(person.date))} />
                     </span>
                   </li>
                 ) : (
