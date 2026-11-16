@@ -1,3 +1,5 @@
+import { nativePickContacts } from "@/spa/native";
+
 export type PickedContact = {
   name: string;
   phone: string;
@@ -51,6 +53,14 @@ function mapContact(c: NativeContact): PickedContact | null {
 }
 
 export async function pickPhoneContacts(multiple = false): Promise<PickedContact[]> {
+  // android-11: inside the app, the shell picks the contact itself. The WebView's own
+  // navigator.contacts exists but its picker fails on real phones — the promise rejected even
+  // when the user had picked someone, and the form reported "No se eligió ningún contacto".
+  const nativePick = nativePickContacts(multiple);
+  if (nativePick) {
+    const raw = await nativePick;
+    return raw.map(mapContact).filter((c): c is PickedContact => Boolean(c));
+  }
   const api = contactsApi();
   if (!api || typeof api.select !== "function") {
     throw new Error("contacts-unavailable");
@@ -82,6 +92,8 @@ export async function pickPhoneContacts(multiple = false): Promise<PickedContact
         return await trySelect(["name", "tel"]);
       }
     }
+    // Backing out of the picker is a choice, not a failure: the form stays silent about it.
+    if (err instanceof DOMException && err.name === "AbortError") throw new Error("contacts-cancelled");
     throw err;
   }
 }

@@ -23,6 +23,8 @@
              resolveActivity() answered null and Dictate's last rung (the system screen) never opened. -->
         <intent><action android:name="android.speech.action.RECOGNIZE_SPEECH" /></intent>
         <intent><action android:name="android.media.action.IMAGE_CAPTURE" /></intent>
+        <!-- android-11: "Del teléfono" — the system's contact picker must be visible to be reachable. -->
+        <intent><action android:name="android.intent.action.PICK" /></intent>
         <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="https" /></intent>
         <intent><action android:name="android.intent.action.DIAL" /></intent>
         <intent><action android:name="android.intent.action.SENDTO" /><data android:scheme="sms" /></intent>

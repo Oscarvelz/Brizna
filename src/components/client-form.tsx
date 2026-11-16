@@ -254,6 +254,15 @@ export function ClientForm({
             ? tx("La app Brizna aún no lee Contactos. Escribe el nombre y el teléfono.", "The Brizna app can't read Contacts yet. Type the name and phone.")
             : tx("Este navegador no lee Contactos. Escribe el nombre y el teléfono.", "This browser can't read Contacts. Type the name and phone."),
         );
+      } else if (msg === "contacts-cancelled") {
+        // El usuario abrió el selector y salió sin elegir: no es un error y no se anuncia nada.
+      } else if (msg === "contacts-failed") {
+        toast.error(
+          tx(
+            "No se pudo leer el contacto. Inténtalo de nuevo o escribe los datos a mano.",
+            "The contact couldn't be read. Try again or type the details by hand.",
+          ),
+        );
       } else {
         toast(tx("No se eligió ningún contacto", "No contact was chosen"));
       }

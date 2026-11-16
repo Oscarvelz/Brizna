@@ -14,6 +14,8 @@
  * - "A inglés" (android-3): lib/translate.ts asks translate(); ML Kit translates on the phone (model downloaded once).
  * - "Dictar" (android-4): lib/dictate.ts asks dictate(); the phone's speech recognizer listens (on-device first) and
  *   streams partial text; Android's microphone permission is asked the first time.
+ * - "Del teléfono" (android-11): lib/contacts.ts asks pickContacts(); the shell opens the system's contact picker
+ *   and reads only the entry the user picks (no contacts permission, the rest of the address book is never seen).
  * - Reminders and the "Hoy" widget: lib/native-plan.ts works out the schedule and hands it over (setSchedule/setWidget).
  */
 
@@ -49,6 +51,10 @@ export type BriznaNativeBridge = {
   dictateStop?(id: string): void;
   dictateCancel?(): void;
   dictateState?(): string;
+  /** android-11: "Del teléfono" — the shell opens the system's contact picker (the WebView's own
+   *  navigator.contacts picker fails on real phones); replies with CustomEvent "briznanative-contacts". */
+  pickContacts?(id: string, multiple: boolean): void;
+  pickContactsCancel?(): void;
 };
 
 type W = Window & { BriznaNative?: BriznaNativeBridge; BriznaBack?: () => string; __bzNativeOn?: boolean };
@@ -96,6 +102,54 @@ export function nativeAuth(): Promise<boolean> {
       clearTimeout(timer);
       window.removeEventListener("briznanative-auth", on);
       resolve(false);
+    }
+  });
+}
+
+/* ---------- contacts (android-11) ---------- */
+
+export type NativePickedContact = {
+  name?: string[];
+  tel?: string[];
+  address?: { addressLine?: string[]; city?: string; region?: string; postalCode?: string; country?: string }[];
+};
+
+/**
+ * "Del teléfono" inside the app: the shell opens the phone's own contact picker and hands back only
+ * the picked entries, in the Web Contacts API shape. Returns null when the shell has no picker
+ * (browser, PWA, or an older shell), so the caller falls back to navigator.contacts.
+ * Rejects with Error("contacts-cancelled") when the user backs out, Error("contacts-failed") otherwise.
+ */
+export function nativePickContacts(multiple: boolean): Promise<NativePickedContact[]> | null {
+  const n = native();
+  if (!n?.pickContacts) return null;
+  const pick = n.pickContacts.bind(n);
+  const id = Math.random().toString(36).slice(2);
+  return new Promise((resolve, reject) => {
+    // Picking a contact is a human browsing their address book: two minutes, not the auth prompt's 30 s.
+    // If the shell never answers, the form must not spin forever either (the C4 lesson).
+    const timer = setTimeout(() => {
+      cleanup();
+      try { n.pickContactsCancel?.(); } catch { /* the shell is gone anyway */ }
+      reject(new Error("contacts-failed"));
+    }, 120_000);
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ id: string; ok: boolean; error?: string; contacts?: NativePickedContact[] }>).detail;
+      if (!d || d.id !== id) return;
+      cleanup();
+      if (d.ok) resolve(d.contacts ?? []);
+      else reject(new Error(d.error === "cancelled" ? "contacts-cancelled" : "contacts-failed"));
+    };
+    const cleanup = () => {
+      clearTimeout(timer);
+      window.removeEventListener("briznanative-contacts", on);
+    };
+    window.addEventListener("briznanative-contacts", on);
+    try {
+      pick(id, multiple);
+    } catch {
+      cleanup();
+      reject(new Error("contacts-failed"));
     }
   });
 }

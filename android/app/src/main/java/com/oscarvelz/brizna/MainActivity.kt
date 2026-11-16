@@ -54,7 +54,8 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * The page talks to the app through window.BriznaNative (src/spa/native.ts in the web source, feature-detected there):
  * Back (BriznaBack / atRoot), bar colours, downloads into Downloads/Brizna, the share sheet, printing, the phone's
- * BiometricPrompt for the fingerprint lock, local reminders (Notify.kt), the battery exemption and the "Hoy" widget.
+ * BiometricPrompt for the fingerprint lock, local reminders (Notify.kt), the battery exemption, the "Hoy" widget
+ * and (android-11) the system's contact picker for "Del teléfono" (Contacts.kt).
  * Nothing in the web app changes when BriznaNative is absent.
  */
 class MainActivity : Activity() {
@@ -88,6 +89,20 @@ class MainActivity : Activity() {
             dc.systemFallback = { id, lang -> launchSpeechUi(id, lang) }
         }
     }
+    // android-11: "Del teléfono" — the WebView's own contact picker (navigator.contacts) fails on real
+    // phones even when the user picks someone, so the shell opens the system's contact picker itself.
+    private val contactPicker by lazy {
+        ContactPicker(this) { d -> event("briznanative-contacts", d) }.also { cp ->
+            cp.launch = { intent -> launchContactPicker(intent) }
+        }
+    }
+
+    /** android-11: open the system's contact picker (the phone's own Contacts app). False when none exists. */
+    private fun launchContactPicker(intent: Intent): Boolean {
+        if (intent.resolveActivity(packageManager) == null) return false
+        return try { startActivityForResult(intent, RQ_CONTACTS); true }
+        catch (e: ActivityNotFoundException) { false }
+    }
     /** The dictation id waiting on the system's speech screen (RQ_SPEECH), or null. */
     private var speechAsk: String? = null
 
@@ -118,6 +133,7 @@ class MainActivity : Activity() {
         private const val RQ_MIC = 11
         private const val RQ_WEBMIC = 12
         private const val RQ_SPEECH = 13
+        private const val RQ_CONTACTS = 14
         private const val HOST = "oscarvelz.github.io"
         private const val AUTH = BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL
         private const val REPO_RELEASES = "https://api.github.com/repos/Oscarvelz/Brizna/releases?per_page=30"
@@ -411,6 +427,10 @@ class MainActivity : Activity() {
                     dictation.deliverSystem(ask, text)
                 }
             }
+            RQ_CONTACTS -> {
+                // android-11: the system's contact picker closed — hand the pick (or the backing-out) to ContactPicker.
+                contactPicker.onResult(rc == RESULT_OK, d)
+            }
             else -> super.onActivityResult(rq, rc, d)
         }
     }
@@ -490,6 +510,14 @@ class MainActivity : Activity() {
         /* dictation (android-4) */
 
         /** "ready" (allowed), "ask" (Android will ask), "blocked" (refused for good: only app settings can allow it), "none" (no recognizer). */
+        /* contacts (android-11): "Del teléfono" — the shell opens the system's contact picker itself,
+           because the WebView's navigator.contacts picker fails on real phones. */
+        @JavascriptInterface fun pickContacts(id: String, multiple: Boolean) {
+            if (!trusted) { event("briznanative-contacts", JSONObject().put("id", id).put("ok", false).put("error", "failed")); return }
+            runOnUiThread { contactPicker.start(id, multiple) }
+        }
+        @JavascriptInterface fun pickContactsCancel() { runOnUiThread { contactPicker.cancel() } }
+
         @JavascriptInterface fun dictateState(): String = when {
             !dictation.available() -> "none"
             micGranted() -> "ready"
