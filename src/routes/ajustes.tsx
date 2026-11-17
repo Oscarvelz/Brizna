@@ -560,6 +560,12 @@ function AjustesPage() {
           toast.error(tx("Las vacaciones pueden durar hasta 180 días. Parte el viaje en dos si es más largo.", "Time off can span up to 180 days. Split the trip in two if it is longer."));
           return;
         }
+        // 1.6.06 (R3B-4): un trabajo del viaje anterior no pudo volver a su
+        // fecha — el viaje nuevo no se sella encima y se dice por qué.
+        if (res.reason === "stuck") {
+          toast.error(tx("Un trabajo del viaje anterior no pudo volver a su fecha. Revisa la agenda y vuelve a intentarlo.", "A job from the previous trip could not go back to its date. Check the schedule and try again."));
+          return;
+        }
         toast.error(tx("Revisa las fechas: el fin no puede ser antes del inicio.", "Check the dates: the end cannot be before the start."));
         return;
       }
@@ -569,7 +575,13 @@ function AjustesPage() {
   });
   const vacOff = useMutation({
     mutationFn: () => clearVacation(),
-    onSuccess: async () => {
+    onSuccess: async (res) => {
+      // 1.6.06 (R3B-4): si un trabajo no pudo volver, las vacaciones siguen
+      // puestas — cantar «quitadas» sería mentir sobre la agenda.
+      if (!res.ok) {
+        toast.error(tx("Un trabajo no pudo volver a su fecha, así que las vacaciones siguen puestas. Revisa la agenda y vuelve a intentarlo.", "A job could not go back to its date, so the time off is still on. Check the schedule and try again."));
+        return;
+      }
       toast.success(tx("Vacaciones quitadas. La agenda vuelve a su sitio.", "Time off removed. The schedule goes back in place."));
       await invalidateLawn(qc);
     },

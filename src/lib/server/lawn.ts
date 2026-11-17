@@ -1314,6 +1314,12 @@ async function undoVacationShift(userId: string): Promise<number> {
         : addDaysISO(asIsoDate(row.scheduled_date), -mark));
     const real = await moveJobToDate(userId, intId(row.id), intId(row.client_id), back, { keepVacMark: true });
     if (real == null) continue;
+    // 1.6.06 (Prejuicio R3, R3B-2): si el aterrizaje chocó y cayó en otro
+    // día (real ≠ back), el trabajo NO volvió a casa: el sello se queda —
+    // contarlo como vuelto y soltar el sello era la deriva silenciosa de
+    // R2B-2 en la pierna del deshacer. La fila queda sellada sobre su fecha
+    // exacta y un deshacer futuro lo reintenta.
+    if (real !== back) continue;
     await sql.query(`update jobs set vacation_shift = 0, vacation_from = null where user_id = $1 and id = $2`, [
       userId,
       intId(row.id),
@@ -1321,6 +1327,17 @@ async function undoVacationShift(userId: string): Promise<number> {
     moved += 1;
   }
   return moved;
+}
+
+/** 1.6.06 (R3B-4): cuántas filas siguen selladas — la bandera de Ajustes y
+ *  los sellos son dos registros de un mismo hecho y no pueden discrepar. */
+async function sealedPendingCount(userId: string): Promise<number> {
+  const sql = await getSql();
+  const rows = await sql.query<{ n: unknown }>(
+    `select count(*) as n from jobs where user_id = $1 and status = 'pending' and vacation_shift <> 0`,
+    [userId],
+  );
+  return intId(rows[0]?.n);
 }
 
 function csvCell(v: unknown): string {
@@ -2031,7 +2048,8 @@ export const updateClient = createServerFn({ method: "POST" })
           await sql.query(
             `update jobs
                 set scheduled_date = $3::date,
-                    origin_date = coalesce(origin_date, scheduled_date)
+                    origin_date = coalesce(origin_date, scheduled_date),
+                    vacation_shift = 0, vacation_from = null
               where user_id = $1 and id = $2 and status = 'pending'`,
             [context.userId, intId(ot.id), data.oneTimeDate],
           );
@@ -2618,8 +2636,11 @@ export const reopenJob = createServerFn({ method: "POST" })
         looseCreditOut = looseCredit;
         unaccountedOut = unaccounted;
       }    }
+    // 1.6.06 (Prejuicio R3, R3B-3): reabrir también retira el sello — la
+    // transición inversa recibe la misma orden que las terminales (R2B-5);
+    // una fila restaurada con sello viejo no debe volver a pendiente sellada.
     await sql.query(
-      `update jobs set status = 'pending', completed_at = null,
+      `update jobs set status = 'pending', completed_at = null, vacation_shift = 0, vacation_from = null,
          notes = case when notes like 'Adelanto:%' or notes like '%Hecho:%' then null else notes end
         where user_id = $1 and id = $2`,
       [context.userId, data.id],
@@ -4704,7 +4725,8 @@ export const rescheduleJob = createServerFn({ method: "POST" })
         `update jobs
             set scheduled_date = $3::date,
                 origin_date = coalesce(origin_date, scheduled_date),
-                postpone_reason = case when $4 = '' then postpone_reason else $4 end
+                postpone_reason = case when $4 = '' then postpone_reason else $4 end,
+                vacation_shift = 0, vacation_from = null
           where user_id = $1 and id = $2 and status = 'pending'`,
         [context.userId, data.id, data.date, data.reason],
       );
@@ -4734,7 +4756,8 @@ export const undoPostpone = createServerFn({ method: "POST" })
         `update jobs
             set scheduled_date = $3::date,
                 origin_date = null,
-                postpone_reason = null
+                postpone_reason = null,
+                vacation_shift = 0, vacation_from = null
           where user_id = $1 and id = $2 and status = 'pending'`,
         [context.userId, data.id, date],
       );
@@ -5383,6 +5406,10 @@ export const applyVacation = createServerFn({ method: "POST" })
       // 1.5.96 (BZ-13): reaplicar deshace SOLO las filas selladas por el
       // corrimiento anterior, no todo lo pendiente desde su inicio.
       await undoVacationShift(context.userId);
+      // 1.6.06 (R3B-4): si alguna fila no pudo volver, el viaje nuevo no se
+      // sella encima — se niega en voz alta, como el viaje demasiado largo.
+      const remaining = await sealedPendingCount(context.userId);
+      if (remaining > 0) return { ok: false as const, reason: "stuck" as const, moved: 0 };
     }
     let days = 0;
     let cursor = data.start;
@@ -5439,6 +5466,13 @@ export const clearVacation = createServerFn({ method: "POST" })
       // el inicio del viaje hasta el fin del horizonte (un año entero).
       await undoVacationShift(context.userId);
     }
+    // 1.6.06 (Prejuicio R3, R3B-4): si alguna fila no pudo volver, las
+    // vacaciones NO se quitan — la bandera y los sellos son dos registros
+    // del mismo hecho; apagar la bandera con sellos vivos dejaba el libro
+    // en desacuerdo consigo mismo y el viaje siguiente sellaba sobre la
+    // fecha ya corrida, destruyendo la fecha verdadera.
+    const remaining = await sealedPendingCount(context.userId);
+    if (remaining > 0) return { ok: false as const, reason: "stuck" as const, remaining };
     const sql = await getSql();
     await sql.query(
       `update app_settings
