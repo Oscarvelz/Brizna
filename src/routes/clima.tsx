@@ -15,6 +15,7 @@ import { formatLongDay, formatTime } from "@/lib/format";
 import { fetchWithTimeout } from "@/lib/fetch-timeout";
 import { reasonLabel, useI18n, useTx } from "@/lib/i18n";
 import { getDashboard, shiftForRain } from "@/lib/server/lawn";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import { STOP_REASONS } from "@/lib/types";
 import { askGps, findPlace, gpsAlreadyAllowed, readWeatherPlace, saveWeatherPlace, type WeatherPlace } from "@/lib/weather-place";
 import { cn } from "@/lib/utils";
@@ -96,6 +97,10 @@ function ClimaPage() {
   }
 
   async function tapGps() {
+    // 1.6.18 (Prejuicio R5, R6D-1): con el sello puesto, ni el GPS real
+    // ni el texto tecleado salen del escenario — las dos puertas que
+    // R4D-2 cerró en el formulario de cliente y aquí quedaron abiertas.
+    if (sealedOn()) return;
     setPlaceBusy(true);
     setGpsNote("");
     const got = await askGps();
@@ -123,6 +128,7 @@ function ClimaPage() {
   }
 
   async function searchPlace() {
+    if (sealedOn()) return;
     setPlaceBusy(true);
     const found = await findPlace(placeText, !en);
     setPlaceBusy(false);

@@ -143,10 +143,10 @@ export const AD6: Module = {
     {
       id: "ad6-vacaciones-quitar", chapter: "vacaciones", anchors: ["ajustes-vacaciones-quitar", "agenda"],
       keys: [["quitar vacaciones", "remove time off"], ["volver", "come back"]],
-      verify: "VERIFY V-4 (censo C): «Quitar vacaciones» aplica −vacationShift en bloque desde el inicio guardado; no restaura la fecha original registrada de cada patio. Tras choques o movimientos manuales, la vuelta puede no coincidir con el día de antes del viaje. Ningún pie promete una vuelta literal.",
+      verify: "VERIFY V-4 (censo C): «Quitar vacaciones» restaura la fecha exacta registrada de cada patio (vacation_from, desde 1.6.02); solo los sellos legados sin esa fecha usan el corrimiento inverso. Lo movido a mano tras el viaje se queda donde la mano lo dejó (1.6.06).",
       steps: [
         { kind: "go", screen: "/ajustes" },
-        { kind: "show", anchor: "ajustes-vacaciones-quitar", caption: ["Quitar vacaciones corre los patios de vuelta y regenera.", "Removing vacations shifts yards back and regenerates."], contexto: ["La vuelta es el corrimiento inverso, no una foto del antes.", "The return is the reverse shift, not a snapshot of before."] },
+        { kind: "show", anchor: "ajustes-vacaciones-quitar", caption: ["Quitar vacaciones devuelve cada patio a su día de antes.", "Removing time off returns every yard to its day from before."], contexto: ["La vuelta restaura el día exacto de antes del viaje, el que quedó registrado.", "The return restores the exact day from before the trip, the one on record."] },
         { kind: "show", anchor: "ajustes-vacaciones-quitar", caption: ["Si moviste algo a mano, eso se queda como quedó.", "If you moved something by hand, it stays as it ended."] },
         { kind: "do", anchor: "ajustes-vacaciones-quitar", caption: ["Toca Quitar vacaciones: los patios corren de vuelta ahora.", "Tap Remove time off: the yards shift back right now."] },
         { kind: "go", screen: "/agenda" },

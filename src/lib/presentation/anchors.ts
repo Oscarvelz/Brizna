@@ -26,6 +26,11 @@ export interface AnchorRec {
   file: string;
   serves: string;
   presence: "siempre" | `estado: ${string}`;
+  // 1.6.18 (Prejuicio R5, R6D-3): el pliegue que guarda esta ancla,
+  // cuando vive dentro de uno — el conductor lo abre (ols-open-fold)
+  // antes de esperar el ancla, así la lección produce el estado que
+  // su `presence` declara en vez de saltarse con gracia.
+  fold?: string;
 }
 
 /** Primer elemento VISIBLE que casa con el selector (el anillo del Manual hace igual). */
@@ -142,7 +147,7 @@ export const ANCHORS: readonly AnchorRec[] = [
   // Las pistas (?) y el Manual (hint / user-manual / manual).
   { id: "pista-boton", by: "present", value: "pista-boton", file: "components/hint.tsx", serves: "Q1/Q6 H (cada botón (?) de la app; un solo sitio emisor)", presence: "siempre" },
   { id: "pista-burbuja", by: "present", value: "pista-burbuja", file: "components/hint.tsx", serves: "Q6 H (la burbuja de la pista)", presence: "estado: una pista (?) está abierta" },
-  { id: "manual-abrir", by: "present", value: "manual-abrir", file: "components/user-manual.tsx", serves: "Q6 F (botón Abrir el manual)", presence: "estado: el pliegue del Manual está desplegado" },
+  { id: "manual-abrir", by: "present", value: "manual-abrir", file: "components/user-manual.tsx", serves: "Q6 F (botón Abrir el manual)", presence: "estado: el pliegue del Manual está desplegado", fold: "aj-manual" },
   { id: "manual-tema", by: "present", value: "manual-tema", file: "routes/manual.tsx", serves: "Q6 F (cada tema del Manual; familia por tema)", presence: "siempre" },
   { id: "manual-ver-en-app", by: "present", value: "manual-ver-en-app", file: "routes/manual.tsx", serves: "Q6 F/H-19 («Ver en la app»: salta al control y lo rodea de luz)", presence: "estado: un tema con destino en la app está a la vista" },
 
@@ -261,7 +266,7 @@ export const ANCHORS: readonly AnchorRec[] = [
   { id: "dup-usar", by: "present", value: "dup-usar", file: "components/dup-compare.tsx", serves: "AD3 ad3-otras-decisiones · AD4 ad4-repetido-libro (el botón Usar existente)", presence: "estado: el diálogo de repetidos está abierto" },
   { id: "dup-otro", by: "present", value: "dup-otro", file: "components/dup-compare.tsx", serves: "AD3 ad3-otras-decisiones (el botón «Es otro cliente»)", presence: "estado: el diálogo de repetidos está abierto" },
   { id: "dup-unir", by: "present", value: "dup-unir", file: "components/dup-compare.tsx", serves: "AD3 ad3-unir (el botón Unir)", presence: "estado: el diálogo de repetidos está abierto" },
-  { id: "dup-deshacer", by: "present", value: "dup-deshacer", file: "routes/clientes.$id.tsx", serves: "AD3 ad3-deshacer (el botón Deshacer unión en Cambios hechos)", presence: "estado: el pliegue Cambios hechos está desplegado con una unión por deshacer" },
+  { id: "dup-deshacer", by: "present", value: "dup-deshacer", file: "routes/clientes.$id.tsx", serves: "AD3 ad3-deshacer (el botón Deshacer unión en Cambios hechos)", presence: "estado: el pliegue Cambios hechos está desplegado con una unión por deshacer", fold: "cambios-hechos" },
   // La ficha del cliente a fondo (clientes.$id; pausa y seguir en sus piezas).
   { id: "ficha-tarjeta", by: "present", value: "ficha-tarjeta", file: "routes/clientes.$id.tsx", serves: "AD2 ad2-tarjeta/ad2-una-vez (la tarjeta principal de la ficha)", presence: "siempre" },
   { id: "ficha-fiabilidad", by: "present", value: "ficha-fiabilidad", file: "routes/clientes.$id.tsx", serves: "AD2 ad2-tarjeta (la sección Fiabilidad de la ficha)", presence: "siempre" },
@@ -338,19 +343,19 @@ export const ANCHORS: readonly AnchorRec[] = [
   // Ajustes por dentro (routes/ajustes y sus piezas).
   { id: "ajustes-buscar", by: "present", value: "ajustes-buscar", file: "routes/ajustes.tsx", serves: "AD14 ad14-buscar (la lupa de Ajustes; emisión en app-shell TitleSearch)", presence: "siempre" },
   { id: "ajustes-orden", by: "present", value: "ajustes-orden", file: "components/settings-order-button.tsx", serves: "AD14 ad14-orden (el botón Orden de los ajustes)", presence: "siempre" },
-  { id: "ajustes-temporada-interruptor", by: "present", value: "ajustes-temporada-interruptor", file: "routes/ajustes.tsx", serves: "AD6 ad6-global-ritmo (el interruptor «Usar temporada»)", presence: "estado: el pliegue Temporada para todos está desplegado" },
-  { id: "ajustes-temporada-fechas", by: "present", value: "ajustes-temporada-fechas", file: "routes/ajustes.tsx", serves: "AD6 ad6-global-fechas (la fila «Empieza» de la temporada)", presence: "estado: el pliegue Temporada está desplegado y la temporada está activada" },
-  { id: "ajustes-temporada-ritmo", by: "present", value: "ajustes-temporada-ritmo", file: "routes/ajustes.tsx", serves: "AD6 ad6-global-ritmo (la fila «Cada cuántos días»)", presence: "estado: el pliegue Temporada está desplegado y la temporada está activada" },
-  { id: "ajustes-vacaciones-activar", by: "present", value: "ajustes-vacaciones-activar", file: "routes/ajustes.tsx", serves: "AD6 ad6-vacaciones-activar (el botón Activar/Actualizar vacaciones)", presence: "estado: el pliegue Vacaciones está desplegado" },
-  { id: "ajustes-vacaciones-quitar", by: "present", value: "ajustes-vacaciones-quitar", file: "routes/ajustes.tsx", serves: "AD6 ad6-vacaciones-quitar (el botón Quitar vacaciones)", presence: "estado: el pliegue Vacaciones está desplegado y hay vacaciones activas" },
-  { id: "aj-rapidos", by: "present", value: "aj-rapidos", file: "components/user-manual.tsx", serves: "AD14 ad14-rapidos (la fila Ajustes rápidos del Manual)", presence: "estado: el pliegue del Manual está desplegado" },
+  { id: "ajustes-temporada-interruptor", by: "present", value: "ajustes-temporada-interruptor", file: "routes/ajustes.tsx", serves: "AD6 ad6-global-ritmo (el interruptor «Usar temporada»)", presence: "estado: el pliegue Temporada para todos está desplegado", fold: "aj-temporada" },
+  { id: "ajustes-temporada-fechas", by: "present", value: "ajustes-temporada-fechas", file: "routes/ajustes.tsx", serves: "AD6 ad6-global-fechas (la fila «Empieza» de la temporada)", presence: "estado: el pliegue Temporada está desplegado y la temporada está activada", fold: "aj-temporada" },
+  { id: "ajustes-temporada-ritmo", by: "present", value: "ajustes-temporada-ritmo", file: "routes/ajustes.tsx", serves: "AD6 ad6-global-ritmo (la fila «Cada cuántos días»)", presence: "estado: el pliegue Temporada está desplegado y la temporada está activada", fold: "aj-temporada" },
+  { id: "ajustes-vacaciones-activar", by: "present", value: "ajustes-vacaciones-activar", file: "routes/ajustes.tsx", serves: "AD6 ad6-vacaciones-activar (el botón Activar/Actualizar vacaciones)", presence: "estado: el pliegue Vacaciones está desplegado", fold: "aj-vacaciones" },
+  { id: "ajustes-vacaciones-quitar", by: "present", value: "ajustes-vacaciones-quitar", file: "routes/ajustes.tsx", serves: "AD6 ad6-vacaciones-quitar (el botón Quitar vacaciones)", presence: "estado: el pliegue Vacaciones está desplegado y hay vacaciones activas", fold: "aj-vacaciones" },
+  { id: "aj-rapidos", by: "present", value: "aj-rapidos", file: "components/user-manual.tsx", serves: "AD14 ad14-rapidos (la fila Ajustes rápidos del Manual)", presence: "estado: el pliegue del Manual está desplegado", fold: "aj-manual" },
   { id: "aj-salir", by: "present", value: "aj-salir", file: "routes/ajustes.tsx", serves: "AD14 ad14-salir (la sección de salir de la cuenta)", presence: "siempre" },
   { id: "aj-version", by: "present", value: "aj-version", file: "routes/ajustes.tsx", serves: "AD14 ad14-version (el pie de versión al fondo de Ajustes)", presence: "siempre" },
   // Copias de seguridad (routes/ajustes; quitar el ejemplo vive en sample-data).
-  { id: "copia-guardar", by: "present", value: "copia-guardar", file: "routes/ajustes.tsx", serves: "AD15 ad15-guardar (el botón «Guardar copia ahora»)", presence: "estado: el pliegue Copia de seguridad está desplegado" },
-  { id: "copia-archivo", by: "present", value: "copia-archivo", file: "routes/ajustes.tsx", serves: "AD15 ad15-archivo (el botón Restaurar archivo)", presence: "estado: el pliegue Copia de seguridad está desplegado" },
-  { id: "copia-restaurar", by: "present", value: "copia-restaurar", file: "routes/ajustes.tsx", serves: "AD15 ad15-lista/ad15-restaurar (el botón Restaurar de cada copia; emisión familiar)", presence: "estado: hay copias guardadas y el pliegue Copia está desplegado" },
-  { id: "ejemplo-quitar", by: "present", value: "ejemplo-quitar", file: "components/sample-data.tsx", serves: "AD15 ad15-muestra-quitar (el botón Quitar ejemplo)", presence: "estado: el ejemplo está cargado (sin cargar, el botón se deshabilita) y el pliegue Datos de ejemplo está desplegado" },
+  { id: "copia-guardar", by: "present", value: "copia-guardar", file: "routes/ajustes.tsx", serves: "AD15 ad15-guardar (el botón «Guardar copia ahora»)", presence: "estado: el pliegue Copia de seguridad está desplegado", fold: "aj-copia" },
+  { id: "copia-archivo", by: "present", value: "copia-archivo", file: "routes/ajustes.tsx", serves: "AD15 ad15-archivo (el botón Restaurar archivo)", presence: "estado: el pliegue Copia de seguridad está desplegado", fold: "aj-copia" },
+  { id: "copia-restaurar", by: "present", value: "copia-restaurar", file: "routes/ajustes.tsx", serves: "AD15 ad15-lista/ad15-restaurar (el botón Restaurar de cada copia; emisión familiar)", presence: "estado: hay copias guardadas y el pliegue Copia está desplegado", fold: "aj-copia" },
+  { id: "ejemplo-quitar", by: "present", value: "ejemplo-quitar", file: "components/sample-data.tsx", serves: "AD15 ad15-muestra-quitar (el botón Quitar ejemplo)", presence: "estado: el ejemplo está cargado (sin cargar, el botón se deshabilita) y el pliegue Datos de ejemplo está desplegado", fold: "aj-ejemplo" },
   // El teatro de ventanas (widget-theatre; ya emitido por el constructor del teatro).
   { id: "teatro-hoy-cobrar", by: "present", value: "teatro-hoy-cobrar", file: "components/presentation/widget-theatre.tsx", serves: "AD16 ad16-hoy-cobrar/ad16-config (el botón Cobrar de la pieza Hoy)", presence: "estado: el teatro de ventanas está abierto en esa pieza" },
   { id: "teatro-hoy-cuerpo", by: "present", value: "teatro-hoy-cuerpo", file: "components/presentation/widget-theatre.tsx", serves: "AD16 ad16-teatro-hoy/ad16-hoy-cuerpo (el cuerpo de la pieza Hoy)", presence: "estado: el teatro de ventanas está abierto en esa pieza" },

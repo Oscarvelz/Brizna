@@ -100,6 +100,12 @@ export function localStoreExcluded(key: string): boolean {
     key === "brizna.lock" ||
     key.startsWith("brizna.lock.") ||
     key.startsWith("brizna.lockSeen.") ||
+    // 1.6.18 (Prejuicio R5, R6C-2): la tercera pata de la familia — «ya
+    // se ofreció la huella en ESTE aparato» (`brizna.lockAsked.<uid>`,
+    // nacida de constantes, invisible al escáner de literales). Si
+    // viajara, el aparato restaurado jamás vería la oferta.
+    key === "brizna.lockAsked" ||
+    key.startsWith("brizna.lockAsked.") ||
     key.startsWith("brizna.clima.") ||
     // 1.6.01 (R2C-1): the presentation's own state never travels — above all
     // the pref guard's photograph (`bz.pres.prefguard`), whose CONTENT is a

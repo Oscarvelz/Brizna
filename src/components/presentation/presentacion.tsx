@@ -34,7 +34,7 @@ import { enterStage, exitStage, stageOn, STAGE_EVENT } from "@/lib/presentation/
 import { inAndroidApp } from "@/spa/native";
 import { readStoredLocale } from "@/lib/theme";
 import { toast } from "sonner";
-import { resolveAnchor } from "@/lib/presentation/anchors";
+import { anchorById, resolveAnchor } from "@/lib/presentation/anchors";
 import { STAGE_SEEDS, stageCtx } from "@/lib/presentation/stage-seeds";
 import { findTopic } from "@/lib/manual/topics";
 import { rememberOrigin } from "@/lib/manual/nav";
@@ -154,6 +154,12 @@ function resolveScreen(screen: string): string {
 }
 
 function waitAnchor(anchor: string, timeout = 2200): Promise<HTMLElement | null> {
+  // 1.6.18 (Prejuicio R5, R6D-3): si el ancla vive dentro de un pliegue,
+  // el conductor lo abre antes de esperar — trece escenas anclaban en
+  // cuerpos de pliegues nacidos cerrados que ninguna escena podía
+  // abrir, y sus módulos jamás se anotaban como aprendidos.
+  const fold = anchorById(anchor)?.fold;
+  if (fold) window.dispatchEvent(new CustomEvent("ols-open-fold", { detail: fold }));
   return new Promise((resolve) => {
     const t0 = performance.now();
     const tick = () => {
@@ -175,7 +181,14 @@ const interactiveTarget = (el: HTMLElement): HTMLElement =>
 
 /** El toque del conductor. */
 const tapEl = (el: HTMLElement) => {
-  interactiveTarget(el).dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+  // 1.6.18 (Prejuicio R5, R6D-2): el toque automático es un toque de
+  // verdad — pointerdown, pointerup y click, como el dedo. Solo con
+  // click, los controles que actúan al soltar (la calculadora de la
+  // nota) jamás se abrían en Automático y su escena no completaba.
+  const t = interactiveTarget(el);
+  t.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, view: window }));
+  t.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, cancelable: true, view: window }));
+  t.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
 };
 
 /* LA HUELLA DE UNA DEMOSTRACIÓN (principios 4, 8 y 11): los anclas cuya

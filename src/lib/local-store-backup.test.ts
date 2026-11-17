@@ -51,6 +51,8 @@ const EXCLUDED_KEYS = [
   "bz.seen.pres",
   // 1.6.01 (R2C-7): la contabilidad del bloqueo es de este aparato.
   "brizna.lockSeen.3f2a91c0-0000-4000-8000-000000000000",
+  // 1.6.18 (R6C-2): la oferta de huella ya hecha en este aparato.
+  "brizna.lockAsked.3f2a91c0-0000-4000-8000-000000000000",
   // 1.6.09 (Prejuicio R3, R3C-2/3/4): la credencial «keep» de la sesión, la
   // marca de ediciones provisionales (contabilidad de sync) y la caché del
   // cielo con hora — la segunda caza las halló viajando contra la ley de la

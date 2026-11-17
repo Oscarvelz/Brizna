@@ -362,10 +362,16 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
   // la poda borraba la .json recién escrita cantando éxito. Dentro de una
   // familia el nombre trae su fecha y el orden lexicográfico es el orden
   // del tiempo; entre familias nadie desplaza a nadie.
+  // 1.6.18 (Prejuicio R5, R6C-1): lo que ESTA llamada acaba de escribir
+  // jamás cae en su propia poda — el orden por nombre es el reloj del
+  // aparato, y con cinco sellos posteriores en la carpeta (reloj
+  // corregido, carpeta compartida) la recién escrita ordenaba la
+  // primera de su familia y se borraba a sí misma cantando éxito.
+  const fresh = new Set(files.map((f) => f.name));
   const keep = (ext: string) => {
     const doomed: string[] = [];
     for (const prefix of ["Brizna_", "Podalia_", "oscar-copia-"]) {
-      const group = names.filter((name) => name.startsWith(prefix) && name.endsWith(ext)).sort();
+      const group = names.filter((name) => name.startsWith(prefix) && name.endsWith(ext) && !fresh.has(name)).sort();
       doomed.push(...group.slice(0, Math.max(0, group.length - 5)));
     }
     return doomed;

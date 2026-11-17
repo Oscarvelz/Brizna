@@ -148,6 +148,10 @@ export function MessageComposer({
         }
         const local = punctuate(piece);
         applyPiece(local);
+        // 1.6.18 (Prejuicio R5, R6D-5): el pulido automático del dictado
+        // también lee el sello — era la única llamada del compositor
+        // que no lo hacía (su hermana «Corregir» sí, desde 1.6.11).
+        if (sealedOn()) return;
         void polishYardText({ data: { text: local, lang: locale } }).then((res) => {
           if (!res.ok || !res.text) return;
           setText((prev) => {

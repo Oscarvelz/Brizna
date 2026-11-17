@@ -741,6 +741,17 @@ function ChangeHistory({ clientId }: { clientId: number }) {
   const tx = useTx();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  // 1.6.18 (Prejuicio R5, R6D-3): la Presentación puede abrir esta
+  // sección con el mismo evento que abre los pliegues (su sección no
+  // es un Fold) — ad3-deshacer ancla dentro y nacía cerrada en toda
+  // pantalla, así que la escena moría siempre.
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === "cambios-hechos") setOpen(true);
+    };
+    window.addEventListener("ols-open-fold", onOpen);
+    return () => window.removeEventListener("ols-open-fold", onOpen);
+  }, []);
   const [restoreId, setRestoreId] = useState<number | null>(null);
   const [undoId, setUndoId] = useState<string | null>(null);
   const [undoing, setUndoing] = useState(false);
