@@ -1628,6 +1628,17 @@ function HistoryBlock({
 }) {
   const tx = useTx();
   const [open, toggle] = useFoldMemory(`ols-hist-${clientId}`);
+  // 1.6.21 (Prejuicio R6, R7D-3): el Historial no es el Fold compartido
+  // y ningún listener lo alcanzaba — la Presentación pide abrirlo con
+  // el mismo evento (detalle «historial») y la escena ad2-historial
+  // puede por fin tocarlo. Solo abre; jamás escribe la memoria.
+  useEffect(() => {
+    const onOpenFold = (e: Event) => {
+      if ((e as CustomEvent<string>).detail === "historial" && !open) toggle();
+    };
+    window.addEventListener("ols-open-fold", onOpenFold);
+    return () => window.removeEventListener("ols-open-fold", onOpenFold);
+  }, [open, toggle]);
   const done = jobs.filter((job) => job.status === "done").length;
   const years = yearsAsClient(since);
   const yearLabel =

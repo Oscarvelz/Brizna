@@ -97,9 +97,11 @@ export const AD3: Module = {
       ],
     },
     {
-      id: "ad3-comparar-filas", chapter: "comparar", anchors: ["dup-comparar", "dup-cambiar"],
+      id: "ad3-comparar-filas", chapter: "comparar", anchors: ["dup-escanear", "dup-grupo", "dup-comparar", "dup-cambiar"],
       keys: [["comparación", "comparison"], ["deuda", "debt"]],
       steps: [
+        { kind: "do", anchor: "dup-escanear", caption: ["Toca Revisar y mira los grupos parecidos.", "Tap Review and look at the look-alike groups."] },
+        { kind: "do", anchor: "dup-grupo", caption: ["Toca el grupo de los Luis: compara lado a lado.", "Tap the Luis group: it compares side by side."] },
         { kind: "show", anchor: "dup-comparar", caption: ["Fila a fila juzgas si es el mismo: lo que coincide lleva marca.", "Row by row you judge sameness: whatever matches carries a check."], contexto: ["Lo que coincide lleva un visto: la igualdad se ve, no se adivina.", "Matches carry a check: sameness is seen, not guessed."] },
         { kind: "show", anchor: "dup-cambiar", caption: ["Queda quien tiene más cortes hechos; Cambiar invierte esa elección.", "Whoever has more finished cuts stays; Change swaps that choice."] },
         { kind: "ref", topic: "clientes-repetidos" },

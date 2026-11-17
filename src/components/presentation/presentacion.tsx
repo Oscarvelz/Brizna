@@ -21,6 +21,7 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, ty
 import { BookOpen, Check, ChevronLeft, ChevronRight, Gauge, Hand, List, Pause, Play, X } from "lucide-react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { readTabletEnabled } from "@/lib/tablet-mode";
 import { useI18n, useTx } from "@/lib/i18n";
 import {
   WORDS_PER_MINUTE, dwellMs, durationLabel, effSpeed, moduleById, pick, playableScenes, stepMs, wordCount,
@@ -338,7 +339,7 @@ export function Presentacion() {
     // jamás podía marcarse aprendido allí. En Android corren todas.
     // 1.6.11 (R4D-4): el filtro es playableScenes, el mismo que usan el
     // registro de búsqueda y la duración del índice.
-    const mod = { ...found, scenes: playableScenes(found, inAndroidApp()) };
+    const mod = { ...found, scenes: playableScenes(found, inAndroidApp(), readTabletEnabled()) };
     if (!mod.scenes.length) return;
     const prefs = readPresState();
     const startIdx = launch.sceneId
@@ -1147,7 +1148,7 @@ export function Presentacion() {
       <div className="pres-stayveil">
         <div className="pres-staynote pres-intro" role="dialog" aria-label={pick(m.title, lang)}>
           <p className="pres-note-title">{pick(m.title, lang)}</p>
-          <p className="pres-intro-sub">{durationLabel(m, lang, inAndroidApp())} · {tx("La app, en vivo, paso a paso", "The app, live, step by step")}</p>
+          <p className="pres-intro-sub">{durationLabel(m, lang, inAndroidApp(), readTabletEnabled())} · {tx("La app, en vivo, paso a paso", "The app, live, step by step")}</p>
           <p>
             {tx(
               "Puedes verla sola o hacerla tú. En Automático, la presentación avanza y toca cada función por ti; en Interactivo, avanzas tú y tocas tú. Puedes cambiar cuando quieras con el botón de modo de la tarjeta.",

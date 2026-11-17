@@ -132,6 +132,18 @@ function AgendaPage() {
       return true;
     }
   });
+  // 1.6.21 (Prejuicio R6, R7D-5): si el usuario des-fijó el panel
+  // alguna vez («0» guardado), su cuerpo no se pinta y las escenas de
+  // AD5 morían sin remedio. La Presentación pide fijarlo con el evento
+  // de pliegues (detalle «agenda-dias-libres»): solo estado en pantalla
+  // durante la lección — la preferencia guardada no se toca.
+  useEffect(() => {
+    const onOpenFold = (e: Event) => {
+      if ((e as CustomEvent<string>).detail === "agenda-dias-libres") setPinnedOff(true);
+    };
+    window.addEventListener("ols-open-fold", onOpenFold);
+    return () => window.removeEventListener("ols-open-fold", onOpenFold);
+  }, []);
   const [cal, setCal] = useState(false);
   const [calCursor, setCalCursor] = useState(now);
   const [weekOf, setWeekOf] = useState(today);

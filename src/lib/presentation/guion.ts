@@ -98,6 +98,10 @@ export interface Scene {
    *  jamás llegaba, la escena se saltaba siempre y el módulo no podía
    *  marcarse aprendido allí nunca. */
   androidOnly?: boolean;
+  /** 1.6.21 (Prejuicio R6, R7D-5): la escena vive del modo tableta —
+   *  con «ols-tablet-mode» apagado su control no existe en la app, y
+   *  la misma ley de playableScenes la retira de la oferta. */
+  tabletOnly?: boolean;
 }
 
 export interface Chapter {
@@ -199,18 +203,18 @@ export const sceneMs = (scene: Scene, lang: string): number =>
  * lanzar con esta misma función; desde 1.6.11 (R4D-4) también filtran el
  * registro de búsqueda y la duración del índice — una sola ley, tres
  * puertas: lo que la plataforma no puede tocar no se ofrece ni se promete. */
-export const playableScenes = (mod: Module, android: boolean): Scene[] =>
-  android ? mod.scenes : mod.scenes.filter((s) => !s.androidOnly);
+export const playableScenes = (mod: Module, android: boolean, tablet = true): Scene[] =>
+  mod.scenes.filter((s) => (android || !s.androidOnly) && (tablet || !s.tabletOnly));
 
 /** La duración honesta del índice: automática a 1×, en segundos. */
-export const moduleSeconds = (mod: Module, lang: string, android = true): number =>
-  Math.round(playableScenes(mod, android).reduce((sum, s) => sum + sceneMs(s, lang), 0) / 1000);
+export const moduleSeconds = (mod: Module, lang: string, android = true, tablet = true): number =>
+  Math.round(playableScenes(mod, android, tablet).reduce((sum, s) => sum + sceneMs(s, lang), 0) / 1000);
 
 /** «Aprox. N min» / «Approx. N min» — aproximada y honesta, nunca exacta.
  * Ley de Oscar (2026-11-14): la duración completa se etiqueta «Aprox.» /
  * "Approx." — nunca «unos» / "about". */
-export function durationLabel(mod: Module, lang: string, android = true): string {
-  const sec = moduleSeconds(mod, lang, android);
+export function durationLabel(mod: Module, lang: string, android = true, tablet = true): string {
+  const sec = moduleSeconds(mod, lang, android, tablet);
   const min = Math.max(1, Math.round(sec / 60));
   return lang === "en" ? `Approx. ${min} min` : `Aprox. ${min} min`;
 }

@@ -78,7 +78,7 @@ export const AD13: Module = {
       ],
     },
     {
-      id: "ad13-vista-menu", chapter: "dos-sitios", anchors: ["vista-menu"],
+      id: "ad13-vista-menu", chapter: "dos-sitios", tabletOnly: true, anchors: ["vista-menu"],
       keys: [["vista", "view"], ["2 pantallas", "2 screens"]],
       steps: [
         { kind: "show", anchor: "vista-menu", caption: ["El menú Vista parte la pantalla y abre la ventana flotante.", "The View menu splits the screen and opens the floating window."] },
@@ -86,7 +86,7 @@ export const AD13: Module = {
       ],
     },
     {
-      id: "ad13-partida", chapter: "dos-sitios", anchors: ["vista-menu"],
+      id: "ad13-partida", chapter: "dos-sitios", tabletOnly: true, anchors: ["vista-menu"],
       keys: [["barra del medio", "middle bar"], ["reparte el espacio", "shares the space"]],
       steps: [
         { kind: "show", anchor: "vista-menu", caption: ["Partida: arrastra el divisor central para repartir el espacio.", "Split: drag the center divider to share the space."], contexto: ["Las flechas del teclado mueven el divisor de cuatro en cuatro.", "The keyboard arrows move the divider four percent at a time."] },
@@ -94,7 +94,7 @@ export const AD13: Module = {
       ],
     },
     {
-      id: "ad13-partida-doble", chapter: "dos-sitios", anchors: ["vista-menu"],
+      id: "ad13-partida-doble", chapter: "dos-sitios", tabletOnly: true, anchors: ["vista-menu"],
       keys: [["doble toque", "double tap"], ["barra del medio", "middle bar"]],
       steps: [
         { kind: "ask", anchor: "vista-menu", caption: ["¿Divisor desparejo? Doble toque sobre él.", "Divider uneven? Double-tap on it."] },
@@ -104,7 +104,7 @@ export const AD13: Module = {
       verify: "Censo H V-3: el colapso de un panel a tira de iconos no se localizó en el código — esta escena no lo enseña.",
     },
     {
-      id: "ad13-flotante", chapter: "dos-sitios", anchors: ["vista-menu"],
+      id: "ad13-flotante", chapter: "dos-sitios", tabletOnly: true, anchors: ["vista-menu"],
       keys: [["flotante", "floating"], ["ventana", "window"]],
       steps: [
         { kind: "show", anchor: "vista-menu", caption: ["La flotante se mueve por su barra y crece desde cualquier borde.", "The floater moves by its bar and grows from any edge."], contexto: ["Dentro lleva sus cinco pestañas; Alt más F la abre o la pliega.", "It carries its five tabs inside; Alt plus F opens or folds it."] },
@@ -112,7 +112,7 @@ export const AD13: Module = {
       ],
     },
     {
-      id: "ad13-flotante-doble", chapter: "dos-sitios", anchors: ["vista-menu"],
+      id: "ad13-flotante-doble", chapter: "dos-sitios", tabletOnly: true, anchors: ["vista-menu"],
       keys: [["doble toque", "double tap"], ["flotante", "floating"]],
       steps: [
         { kind: "ask", anchor: "vista-menu", caption: ["¿Otro doble toque? Este vive en los bordes flotantes.", "Another double tap? This one lives on the floater's edges."] },
@@ -121,7 +121,7 @@ export const AD13: Module = {
       ],
     },
     {
-      id: "ad13-flotante-burbuja", chapter: "dos-sitios", anchors: ["vista-menu"],
+      id: "ad13-flotante-burbuja", chapter: "dos-sitios", tabletOnly: true, anchors: ["vista-menu"],
       keys: [["burbuja", "bubble"], ["flotante", "floating"], ["plegar en burbuja", "fold into bubble"]],
       steps: [
         { kind: "show", anchor: "vista-menu", caption: ["El menos la pliega en burbuja; tocarla la despliega.", "The minus folds it into a bubble; tapping it unfolds it."], contexto: ["Su botón de transparencia cicla: entera, ochenta, sesenta, entera.", "Its transparency button cycles: full, eighty, sixty, full."] },

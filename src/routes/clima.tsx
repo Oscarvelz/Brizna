@@ -149,6 +149,10 @@ function ClimaPage() {
 
   useEffect(() => {
     // Refresh GPS silently only when location is already allowed; never pop the prompt on open.
+    // 1.6.21 (Prejuicio R6, R7D-1): con el sello puesto, ni en silencio —
+    // este efecto era la tercera puerta de /clima: leía las coordenadas
+    // reales al montar y las guardaba, sin tocar ningún botón.
+    if (sealedOn()) return;
     if (place.source !== "gps") return;
     void gpsAlreadyAllowed().then((ok) => {
       if (!ok) return;

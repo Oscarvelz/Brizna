@@ -22,6 +22,7 @@
  */
 import { fold } from "../fuzzy.ts";
 import { inAndroidApp } from "../../spa/native.ts";
+import { readTabletEnabled } from "../tablet-mode.ts";
 import { MODULES, playableScenes, type Module, type Pair, type Scene, type Step } from "./guion.ts";
 
 export interface PresSearchEntry {
@@ -86,7 +87,7 @@ const dedupeKeys = (keys: Pair[]): Pair[] => {
  * La derivación pura (exportada para que la cerca la ejercite con módulos
  * de juguete: el piso Advanced entra solo cuando guion.ts lo marque ready).
  */
-export function buildRegistry(modules: readonly Module[], android = true): PresSearchEntry[] {
+export function buildRegistry(modules: readonly Module[], android = true, tablet = true): PresSearchEntry[] {
   const out: PresSearchEntry[] = [];
   for (const mod of modules) {
     if (!mod.ready) continue;
@@ -94,7 +95,7 @@ export function buildRegistry(modules: readonly Module[], android = true): PresS
     // esta plataforma puede tocar (playableScenes) — en la web, las
     // androidOnly no se ofrecen ni alimentan las claves del módulo: elegir
     // una aterrizaba en silencio en la primera escena del módulo.
-    const playable = playableScenes(mod, android);
+    const playable = playableScenes(mod, android, tablet);
     let current = "/";
     const scenes = playable.map((scene) => {
       const go = scene.steps.find((s): s is GoStep => s.kind === "go");
@@ -142,7 +143,7 @@ export function buildRegistry(modules: readonly Module[], android = true): PresS
 
 /** El registro vivo: una entrada por módulo listo y una por cada escena suya
  * que esta plataforma puede tocar (1.6.11, R4D-4). */
-export const PRESENTATION_SEARCH: readonly PresSearchEntry[] = buildRegistry(MODULES, inAndroidApp());
+export const PRESENTATION_SEARCH: readonly PresSearchEntry[] = buildRegistry(MODULES, inAndroidApp(), readTabletEnabled());
 
 /* ============================ el buscador (espejo del Manual) ============================ */
 

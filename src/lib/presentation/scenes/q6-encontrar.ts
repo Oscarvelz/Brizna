@@ -75,9 +75,11 @@ export const Q6: Module = {
       ],
     },
     {
-      id: "q6-mas", chapter: "pistas", anchors: ["pista-burbuja"],
+      id: "q6-mas", chapter: "pistas", anchors: ["pista-boton", "pista-burbuja"],
       keys: [["más en el manual", "more in the manual"], ["tema", "topic"]],
       steps: [
+        { kind: "go", screen: "/" },
+        { kind: "do", anchor: "pista-boton", caption: ["¿Prisa? Toca cualquier (?) junto a un título.", "In a hurry? Tap any (?) beside a title."] },
         { kind: "show", anchor: "pista-burbuja", caption: ["«Más en el manual» te lleva a ese tema exacto.", "“More in the manual” takes you to that exact topic."] },
         { kind: "ref", topic: "manual-uso" },
       ],
