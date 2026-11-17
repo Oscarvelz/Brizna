@@ -25,7 +25,7 @@ import { PHOTOS_ENABLED } from "@/lib/photos-flag";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { smartHit } from "@/lib/fuzzy";
 import { backupContentChecksum, checksumMatches, idsToKeep, withChecksum } from "@/lib/backup-plan";
-import { applyLocalStore, collectLocalStore, sanitizeLocalStore } from "@/lib/local-store-backup";
+import { applyLocalStore, collectLocalStore, collectLocalStoreOmissions, sanitizeLocalStore } from "@/lib/local-store-backup";
 import { nameKey } from "@/lib/dup-match";
 import { reconcileBalance } from "@/lib/balance-reconcile";
 import { sealedOn } from "@/lib/presentation/seal-flag";
@@ -637,12 +637,18 @@ async function collectBackup(userId: string) {
   // snapshot skip below, which since 1.5.93 compares the layer's own fingerprint
   // too (BZ-56), so a preference-only change no longer slips past every copy.
   let localStore: Record<string, string> = {};
+  let localOmitted = 0;
   try {
-    if (typeof localStorage !== "undefined") localStore = collectLocalStore(localStorage);
+    if (typeof localStorage !== "undefined") {
+      localStore = collectLocalStore(localStorage);
+      // 1.6.01 (R2C-5): lo que el presupuesto de tamaño dejó fuera se cuenta
+      // y la copia lo declara dentro de sí misma — nunca cae en silencio.
+      localOmitted = collectLocalStoreOmissions(localStorage);
+    }
   } catch { /* a copy without the layer is still a copy */ }
   const contentChecksum = backupContentChecksum(body);
   const localChecksum = backupContentChecksum(localStore);
-  return withChecksum({ ...body, contentChecksum, localChecksum, ...(Object.keys(localStore).length ? { localStore } : {}) });
+  return withChecksum({ ...body, contentChecksum, localChecksum, ...(Object.keys(localStore).length ? { localStore } : {}), ...(localOmitted ? { localOmitted } : {}) });
 }
 
 const BACKUP_GAP_MS = 10 * 60 * 1000;
@@ -3729,6 +3735,9 @@ type BackupPayload = {
   // v6 copies only (1.5.52, D4): the device layer, already sanitized — a copy
   // without it (older, or made on the server) leaves this device's layer untouched.
   localStore?: Record<string, string>;
+  // 1.6.01 (R2C-5): how many travel-worthy entries the size budget left out
+  // when this copy was made — the copy declares its own gaps.
+  localOmitted?: number;
 };
 
 function asRecordArray(v: unknown): Record<string, unknown>[] {
@@ -3777,6 +3786,7 @@ function parseBackup(raw: unknown, trusted = false): BackupPayload {
     // Sanitized on the way in as well: even a hand-made file cannot plant a session,
     // a sync state or a queue through this section (lib/local-store-backup.ts).
     localStore: data.localStore ? sanitizeLocalStore(data.localStore) : undefined,
+    localOmitted: typeof data.localOmitted === "number" && data.localOmitted > 0 ? Math.floor(data.localOmitted) : undefined,
   };
 }
 
@@ -3849,7 +3859,7 @@ const BASE_CLIENT_KEYS = new Set([
   "credit", "rich_notes", "richNotes", "service_paused", "servicePaused",
 ]);
 
-async function applyBackup(userId: string, payload: BackupPayload): Promise<{ clients: number; jobs: number; localChanged: boolean; dropped: { jobs: number; payments: number; changes: number; links: number } }> {
+async function applyBackup(userId: string, payload: BackupPayload): Promise<{ clients: number; jobs: number; localChanged: boolean; localOmitted: number; dropped: { jobs: number; payments: number; changes: number; links: number } }> {
   // 1.5.93 (campaña Prejuicio, BZ-71): D2's anti-empty guard lived only on the
   // FILE door (importBackupJson) — the on-device copies door had none, and a
   // stored copy with 0 clients (a first-day snapshot, an empty cloud-conflict
@@ -4129,7 +4139,7 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
       if (typeof localStorage !== "undefined") localChanged = applyLocalStore(localStorage, payload.localStore);
     } catch { /* the book is restored; the layer can be re-applied from the same copy */ }
   }
-  return { ...counts, localChanged, dropped };
+  return { ...counts, localChanged, dropped, localOmitted: payload.localOmitted ?? 0 };
 }
 
 // Rows as the copy holds them, only the columns this table has (a missing column takes its default).

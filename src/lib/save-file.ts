@@ -266,22 +266,36 @@ function downloadDirect(name: string, blob: Blob) {
 // Ola 4 (BZ-70): un archivo de copia nace como «.tmp» y solo gana su nombre
 // bueno cuando su contenido quedó entero en disco — un corte a mitad nunca
 // deja un archivo con nombre de copia buena y contenido truncado.
+// 1.6.01 (campaña Prejuicio R2, R2C-8): el camino sin `move()` escribía el
+// nombre final DIRECTO, y un fallo a mitad de esa escritura dejaba el
+// archivo truncado con su nombre bueno puesto (el paquete limpiaba en su
+// catch; la rotativa no). Ahora la propia writeDirFile limpia ante cualquier
+// fallo — temporal y, si la escritura final llegó a tocarse, también el
+// nombre final — y ambas rutas heredan la disciplina.
 async function writeDirFile(dir: DirHandle, name: string, blob: Blob): Promise<void> {
   const tmpName = `${name}.tmp`;
-  const tmp = await dir.getFileHandle(tmpName, { create: true });
-  const writable = await tmp.createWritable();
-  await writable.write(blob);
-  await writable.close();
-  const movable = tmp as unknown as { move?: (dest: string) => Promise<void> };
-  if (typeof movable.move === "function") {
-    await movable.move(name);
-    return;
+  let finalTouched = false;
+  try {
+    const tmp = await dir.getFileHandle(tmpName, { create: true });
+    const writable = await tmp.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    const movable = tmp as unknown as { move?: (dest: string) => Promise<void> };
+    if (typeof movable.move === "function") {
+      await movable.move(name);
+      return;
+    }
+    finalTouched = true;
+    const final = await dir.getFileHandle(name, { create: true });
+    const w2 = await final.createWritable();
+    await w2.write(blob);
+    await w2.close();
+    await dir.removeEntry(tmpName);
+  } catch (err) {
+    await dir.removeEntry(tmpName).catch(() => undefined);
+    if (finalTouched) await dir.removeEntry(name).catch(() => undefined);
+    throw err;
   }
-  const final = await dir.getFileHandle(name, { create: true });
-  const w2 = await final.createWritable();
-  await w2.write(blob);
-  await w2.close();
-  await dir.removeEntry(tmpName);
 }
 
 export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; xls: Uint8Array }): Promise<"folder" | "downloaded"> {

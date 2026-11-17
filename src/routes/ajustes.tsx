@@ -413,9 +413,23 @@ function AjustesPage() {
     stop.name = "AbortError";
     return stop;
   }
+  // 1.6.01 (R2C-5): lo que la última copia dejó fuera por tamaño, para que
+  // el aviso de éxito lo declare — saveFullCopy lo anota y las mutaciones lo
+  // leen al terminar.
+  let lastCopyOmitted = 0;
+  function declareCopyOmitted() {
+    if (!lastCopyOmitted) return;
+    toast.warning(
+      tx(
+        `Ojo: ${lastCopyOmitted} datos grandes de este aparato no cupieron en la copia y quedaron fuera.`,
+        `Careful: ${lastCopyOmitted} large items from this device did not fit in the copy and were left out.`,
+      ),
+    );
+  }
   async function saveFullCopy() {
     if (sealedOn()) throw refuseSealedCopy();
     const [copy, report] = await Promise.all([exportBackup(), exportReport()]);
+    lastCopyOmitted = (copy as { localOmitted?: number }).localOmitted ?? 0;
     const pdf = Uint8Array.from(atob(report.pdf), (c) => c.charCodeAt(0));
     const xls = Uint8Array.from(atob(report.xls), (c) => c.charCodeAt(0));
     return writeBackupBundle({ json: copy.json, pdf, xls });
@@ -428,6 +442,7 @@ function AjustesPage() {
           ? tx("Copia, PDF y hoja guardados en la carpeta.", "Copy, PDF, and sheet saved in the folder.")
           : tx("Se descargó el paquete: copia, PDF y hoja.", "The package downloaded: copy, PDF, and sheet."),
       );
+      declareCopyOmitted();
       await qc.invalidateQueries({ queryKey: ["settings"] });
       await qc.invalidateQueries({ queryKey: ["backups"] });
     },
@@ -449,6 +464,7 @@ function AjustesPage() {
           ? tx("Copia, PDF y hoja guardados en la carpeta.", "Copy, PDF, and sheet saved in the folder.")
           : tx("Se descargó el paquete: copia, PDF y hoja.", "The package downloaded: copy, PDF, and sheet."),
       );
+      declareCopyOmitted();
       await qc.invalidateQueries({ queryKey: ["settings"] });
       await qc.invalidateQueries({ queryKey: ["backups"] });
     },
@@ -479,6 +495,19 @@ function AjustesPage() {
       ),
     );
   }
+  // 1.6.01 (R2C-5): si la copia declaró que su presupuesto de tamaño dejó
+  // datos de este aparato fuera al hacerse, la restauración lo dice también
+  // — la capa local que falta no se nota de otra manera.
+  function warnOmitted(res: { localOmitted?: number }) {
+    const n = res.localOmitted ?? 0;
+    if (!n) return;
+    toast.warning(
+      tx(
+        `Ojo: esa copia no trajo ${n} datos grandes de este aparato (no cupieron al hacerse).`,
+        `Careful: that copy did not bring ${n} large items from this device (they did not fit when it was made).`,
+      ),
+    );
+  }
   const restore = useMutation({
     mutationFn: (id: number) => restoreBackup({ data: { id } }),
     onSuccess: async (res) => {
@@ -487,6 +516,7 @@ function AjustesPage() {
         return;
       }
       warnDropped(res);
+      warnOmitted(res);
       // 1.5.51 (auditoría interna, D1): the restore remapped every id — anything still
       // queued against the old book is quarantined (visible), never flushed into it.
       quarantineOutbox("restore");
@@ -508,6 +538,7 @@ function AjustesPage() {
     onSuccess: async (res) => {
       quarantineOutbox("restore");
       warnDropped(res);
+      warnOmitted(res);
       if (res.localChanged) {
         toast.success(tx("Archivo restaurado. Se recarga para aplicar también tus carpetas y tu apariencia.", "File restored. Reloading to also apply your folders and your look."));
         setTimeout(() => location.reload(), 900);

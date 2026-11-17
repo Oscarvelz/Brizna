@@ -16,6 +16,15 @@
  *
  * Nunca lanza: un guardián que rompe la entrada o la salida sería peor que la
  * fuga que evita.
+ *
+ * 1.6.01 (campaña Prejuicio R2, R2C-6/R2D-2): el «nunca lanza» escondía una
+ * muerte silenciosa — si la fotografía no cabía (cuota), el setItem fallaba,
+ * el catch lo tragaba y la lección entraba SIN guardián: las preferencias de
+ * la ficción se quedaban en la casa real para siempre. Ahora armar DEVUELVE
+ * si la fotografía quedó puesta, y la entrada al escenario (stage.ts) se
+ * niega en voz alta cuando no hay foto: sin fotografía no hay escenario. El
+ * guardián sigue sin lanzar jamás; lo que cambió es que su fracaso ya no es
+ * invisible.
  */
 
 export interface StoreLike {
@@ -52,10 +61,12 @@ function keysOf(store: StoreLike): string[] {
 }
 
 /** Fotografía el almacén. Si ya hay una fotografía (una entrada anterior que
- *  la muerte interrumpió), se conserva la ORIGINAL: es la casa verdadera. */
-export function armPrefGuard(store: StoreLike, guardKey: string = PREF_GUARD_KEY): void {
+ *  la muerte interrumpió), se conserva la ORIGINAL: es la casa verdadera.
+ *  Devuelve true si al terminar hay una fotografía puesta (la nueva o la
+ *  original conservada); false si no cupo — la entrada debe negarse. */
+export function armPrefGuard(store: StoreLike, guardKey: string = PREF_GUARD_KEY): boolean {
   try {
-    if (store.getItem(guardKey)) return;
+    if (store.getItem(guardKey)) return true;
     const snap: Record<string, string> = {};
     for (const k of keysOf(store)) {
       if (excluded(k)) continue;
@@ -63,8 +74,9 @@ export function armPrefGuard(store: StoreLike, guardKey: string = PREF_GUARD_KEY
       if (v !== null) snap[k] = v;
     }
     store.setItem(guardKey, JSON.stringify(snap));
+    return store.getItem(guardKey) !== null;
   } catch {
-    /* el guardián nunca rompe la entrada */
+    return false;
   }
 }
 
@@ -98,10 +110,11 @@ function here(): StoreLike | null {
   }
 }
 
-/** Arma el guardián sobre el localStorage real (stage.ts, al entrar). */
-export function armPrefGuardHere(): void {
+/** Arma el guardián sobre el localStorage real (stage.ts, al entrar).
+ *  Devuelve si la fotografía quedó puesta. */
+export function armPrefGuardHere(): boolean {
   const s = here();
-  if (s) armPrefGuard(s);
+  return s ? armPrefGuard(s) : false;
 }
 
 /** Restaura si el guardián está armado (stage.ts, al salir y al arrancar). */
@@ -120,10 +133,10 @@ function sessionHere(): StoreLike | null {
 
 /** Arma el guardián sobre el sessionStorage real (stage.ts, al entrar): los
  *  borradores del Bloc quedan fotografiados antes de que la ficción escriba
- *  los suyos en las mismas claves. */
-export function armSessionGuardHere(): void {
+ *  los suyos en las mismas claves. Devuelve si la fotografía quedó puesta. */
+export function armSessionGuardHere(): boolean {
   const s = sessionHere();
-  if (s) armPrefGuard(s, SESSION_GUARD_KEY);
+  return s ? armPrefGuard(s, SESSION_GUARD_KEY) : false;
 }
 
 /** Restaura el guardián de sesión si está armado (stage.ts, al salir y al arrancar). */

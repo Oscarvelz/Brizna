@@ -1,9 +1,22 @@
 import { saveBinaryFile } from "@/lib/save-file";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import { printDoc } from "./print";
 import { renderReport, reportPdfBytes } from "./report-pdf";
 import { reportXlsxBytes } from "./report-xlsx";
 import type { Model } from "./model";
 import type { ExportOptions } from "./options";
+
+/** 1.6.01 (campaña Prejuicio R2, R2D-1): con el sello puesto, el libro
+ *  abierto es el escenario de práctica y NINGÚN informe suyo sale del equipo
+ *  — la puerta del respaldo ya se negaba (BZ-3) pero esta hoja no tenía
+ *  puerta en ninguna capa. El embudo se niega aquí, en cada salida, con el
+ *  AbortError nombrado que la puerta (export-center) ya sabe callar tras
+ *  decir el motivo; y la puerta misma se niega antes de construir nada. */
+function refuseSealed(): never {
+  const stop = new Error("sealed");
+  stop.name = "AbortError";
+  throw stop;
+}
 
 export const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -28,14 +41,17 @@ export function fileBase(m: Model, o: ExportOptions) {
 }
 
 export async function downloadPdf(m: Model, o: ExportOptions) {
+  if (sealedOn()) refuseSealed();
   return saveBinaryFile(`${fileBase(m, o)}.pdf`, reportPdfBytes(m), m.tx("Informe PDF", "PDF report"), ".pdf", "application/pdf");
 }
 
 export async function downloadSheet(m: Model, o: ExportOptions) {
+  if (sealedOn()) refuseSealed();
   return saveBinaryFile(`${fileBase(m, o)}.xlsx`, reportXlsxBytes(m), m.tx("Hoja de cálculo", "Worksheet"), ".xlsx", XLSX_MIME);
 }
 
 export async function printReport(m: Model) {
+  if (sealedOn()) refuseSealed();
   const { doc, title } = renderReport(m);
   await printDoc(doc, title);
 }
@@ -52,6 +68,7 @@ export function canShareFiles(): boolean {
 
 /** Shares one file with the phone's share sheet (WhatsApp, mail, Drive…). */
 export async function shareFile(m: Model, o: ExportOptions, kind: "pdf" | "xlsx"): Promise<"shared" | "saved"> {
+  if (sealedOn()) refuseSealed();
   const bytes = kind === "pdf" ? reportPdfBytes(m) : reportXlsxBytes(m);
   const name = `${fileBase(m, o)}.${kind}`;
   const type = kind === "pdf" ? "application/pdf" : XLSX_MIME;

@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { todayISO } from "@/lib/dates";
 import { canShareFiles, downloadPdf, downloadSheet, printReport, shareFile } from "@/lib/export/actions";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import { buildModel, dayLong, type AdvisorWords } from "@/lib/export/model";
 import {
   chosenSections,
@@ -276,6 +277,13 @@ export function ExportSheet({ open, preset, onClose }: { open: boolean; preset: 
 
   async function run(kind: "pdf" | "xlsx" | "print" | "share") {
     if (!model || busy) return;
+    // 1.6.01 (R2D-1): la puerta de esta hoja — con el sello puesto no sale
+    // ningún informe de la ficción, y el motivo se dice aquí; el embudo
+    // (export/actions.ts) se niega también, por defensa en profundidad.
+    if (sealedOn()) {
+      toast.info(tx("Durante una presentación no se exportan informes: estás en el escenario de práctica, no en tu libro.", "During a presentation no reports are exported: you are on the practice stage, not in your book."));
+      return;
+    }
     setBusy(kind);
     try {
       if (kind === "pdf") {

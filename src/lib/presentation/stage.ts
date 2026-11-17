@@ -72,13 +72,25 @@ export async function enterStage(): Promise<void> {
   // tocan preferencias del dispositivo (densidad, vista del Estudio, tema)
   // que viven fuera del libro; su fotografía es lo que las devuelve intactas
   // al salir, por cualquier puerta (pref-guard.ts, principio 13).
-  armPrefGuardHere();
+  const localGuarded = armPrefGuardHere();
   // 1.5.94 (campaña Prejuicio, BZ-2): el gemelo de sesión se arma a la vez —
   // los borradores del Bloc viven en sessionStorage sin identidad de libro, y
   // la lección de AD11 escribe los suyos en las mismas claves; sin fotografía,
   // la ficción se pintaba en el Bloc real al salir (y un Guardar la hacía
   // permanente) y un borrador real podía perderse en el libro-escenario.
-  armSessionGuardHere();
+  const sessionGuarded = armSessionGuardHere();
+  // 1.6.01 (campaña Prejuicio R2, R2C-6/R2D-2): si alguna fotografía no cupo,
+  // NO hay escenario. Entrar sin guardián dejaba las preferencias de la
+  // ficción viviendo en la casa real para siempre, en silencio; la entrada
+  // se niega en voz alta (launchPresentation lo anuncia) y lo que sí se armó
+  // se desarma, para no dejar una foto huérfana gobernando el próximo arranque.
+  if (!localGuarded || !sessionGuarded) {
+    if (localGuarded) restorePrefGuardHere();
+    if (sessionGuarded) restoreSessionGuardHere();
+    const refused = new Error("the preference guard could not take its snapshot");
+    refused.name = "GuardRefused";
+    throw refused;
+  }
   await deleteStageStore();
   setSealed(true);
   await switchDatabase(STAGE_DB_NAME);

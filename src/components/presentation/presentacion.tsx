@@ -31,6 +31,8 @@ import {
   type PresState,
 } from "@/lib/presentation/state";
 import { enterStage, exitStage, stageOn, STAGE_EVENT } from "@/lib/presentation/stage";
+import { readStoredLocale } from "@/lib/theme";
+import { toast } from "sonner";
 import { resolveAnchor } from "@/lib/presentation/anchors";
 import { STAGE_SEEDS, stageCtx } from "@/lib/presentation/stage-seeds";
 import { findTopic } from "@/lib/manual/topics";
@@ -52,6 +54,11 @@ const PRESS_BREATHE_MS = 150;
  * ventana de apertura en el mismo toque, sin esperar al escenario. */
 const LAUNCH_EVENT = "bz-pres-launch";
 
+/** 1.6.01 (R2C-6/R2D-2): la entrada al escenario se negó — el guardián de
+ * preferencias no pudo tomar su fotografía. El conductor lo escucha para
+ * retirar la ventana de apertura como cuando el alumno cancela la entrada. */
+const REFUSED_EVENT = "bz-pres-refused";
+
 /** Lanza un módulo: la intención viaja en sessionStorage y el conductor, ya
  * montado en la raíz, entra en el escenario (la app se remonta sobre el libro
  * de escenario vía StageHost). La escena de arranque, si viene, es el
@@ -61,7 +68,21 @@ const LAUNCH_EVENT = "bz-pres-launch";
 export function launchPresentation(moduleId: string, sceneId?: string) {
   setLaunch({ moduleId, sceneId });
   window.dispatchEvent(new Event(LAUNCH_EVENT));
-  void enterStage();
+  void enterStage().catch((err: unknown) => {
+    // 1.6.01 (R2C-6/R2D-2): sin fotografía del guardián no hay escenario —
+    // la intención se retira, el conductor cierra la ventana de apertura y
+    // el motivo se dice en voz alta. Cualquier otro fallo conserva el
+    // comportamiento de siempre.
+    if (err instanceof Error && err.name === "GuardRefused") {
+      clearLaunch();
+      window.dispatchEvent(new Event(REFUSED_EVENT));
+      toast.error(
+        readStoredLocale() === "en"
+          ? "The presentation couldn't start: there was no room for the snapshot that protects your settings. Free up space on this device and try again."
+          : "La presentación no pudo empezar: no cupo la foto que protege tus ajustes. Libera espacio en este aparato y prueba otra vez.",
+      );
+    }
+  });
 }
 
 /* ================================ StageHost ================================ */
@@ -211,6 +232,20 @@ export function Presentacion() {
     };
     window.addEventListener(LAUNCH_EVENT, onLaunch);
     return () => window.removeEventListener(LAUNCH_EVENT, onLaunch);
+  }, []);
+  // 1.6.01 (R2C-6/R2D-2): la entrada negada (sin fotografía del guardián)
+  // retira la ventana de apertura como una cancelación durante la entrada:
+  // sin intención viva y con la marca puesta, nada queda esperando un
+  // escenario que no va a nacer.
+  useEffect(() => {
+    const onRefused = () => {
+      if (runRef.current) return;
+      cancelledLaunchRef.current = true;
+      clearLaunch();
+      setIntro(null);
+    };
+    window.addEventListener(REFUSED_EVENT, onRefused);
+    return () => window.removeEventListener(REFUSED_EVENT, onRefused);
   }, []);
   /** La entrada del módulo en curso: el velo y el hueco nacen apagados y
    * se encienden en 300ms (la clase vive un respiro en la raíz). */
