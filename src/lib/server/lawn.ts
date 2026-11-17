@@ -5419,7 +5419,13 @@ export const applyVacation = createServerFn({ method: "POST" })
     if (span > 180) return { ok: false as const, reason: "too-long" as const, moved: 0 };
     const sql = await getSql();
     const prefs = await loadPrefs(context.userId);
-    if (prefs.vacationShift) {
+    const hadTrip = !!prefs.vacationShift;
+    // 1.6.13 (Prejuicio R4, R5B-2): la puerta del deshacer previo la mandan
+    // LOS SELLOS, no la bandera — un sello huérfano sin bandera (un rollback
+    // interrumpido por un segundo escritor) también se deshace aquí, antes
+    // de que la recogida del viaje nuevo sobrescriba su vacation_from.
+    const sealsBefore = await sealedPendingCount(context.userId);
+    if (hadTrip || sealsBefore > 0) {
       // 1.5.96 (BZ-13): reaplicar deshace SOLO las filas selladas por el
       // corrimiento anterior, no todo lo pendiente desde su inicio.
       await undoVacationShift(context.userId);
@@ -5476,6 +5482,27 @@ export const applyVacation = createServerFn({ method: "POST" })
     const failed = shiftFailed + overdueFailed;
     if (failed > 0) {
       await undoVacationShift(context.userId);
+      // 1.6.13 (Prejuicio R4, R5B-2): el rollback también se VERIFICA — era
+      // el único deshacer del sistema cuyo resultado nadie leía. Si alguna
+      // fila sigue sellada, la negativa honesta es «stuck», no «blocked»:
+      // «Quitar vacaciones» ya puede reintentarla (su deshacer manda por
+      // sellos desde esta misma ola).
+      const leftSealed = await sealedPendingCount(context.userId);
+      if (leftSealed > 0) return { ok: false as const, reason: "stuck" as const, moved: 0, remaining: leftSealed };
+      // 1.6.13 (Prejuicio R4, R5B-1): si había un viaje puesto, el deshacer
+      // previo ya lo desarmó — la negativa «todo quedó como estaba» era
+      // falsa: el estado final verdadero es SIN vacaciones, y la bandera
+      // se apaga para que bandera y sellos cuenten el mismo hecho. El
+      // aviso de Ajustes dice la verdad con `replaced`.
+      if (hadTrip) {
+        await sql.query(
+          `update app_settings
+              set vacation_start = null, vacation_end = null, vacation_shift = 0, updated_at = now()
+            where user_id = $1`,
+          [context.userId],
+        );
+        return { ok: false as const, reason: "blocked" as const, moved: 0, failed, replaced: true as const };
+      }
       return { ok: false as const, reason: "blocked" as const, moved: 0, failed };
     }
     await sql.query(
@@ -5493,7 +5520,12 @@ export const clearVacation = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const prefs = await loadPrefs(context.userId);
-    if (prefs.vacationShift && prefs.vacationStart) {
+    // 1.6.13 (Prejuicio R4, R5B-2): el deshacer se intenta siempre que haya
+    // SELLOS vivos, aunque la bandera esté apagada — un sello huérfano sin
+    // bandera quedaba antes fuera de toda puerta: esta función se negaba
+    // «stuck» para siempre sin intentar moverlo jamás.
+    const sealsNow = await sealedPendingCount(context.userId);
+    if ((prefs.vacationShift && prefs.vacationStart) || sealsNow > 0) {
       // 1.5.96 (BZ-13): quitar las vacaciones deshace SOLO las filas que el
       // corrimiento selló — antes corría hacia atrás todo lo pendiente desde
       // el inicio del viaje hasta el fin del horizonte (un año entero).

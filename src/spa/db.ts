@@ -182,6 +182,11 @@ if (typeof document !== "undefined") {
     // en cada llamada JS, pero la sesión solo la leía al abrir.
     else void resyncSessionZone();
   });
+  // 1.6.13 (Prejuicio R4, R5B-3): el cambio de zona CON la app en primer
+  // plano (el coche cruza una zona con la agenda abierta, o se vuelve de
+  // Ajustes del sistema por Recientes sin que la vista se oculte) no
+  // dispara visibilitychange — el foco es la segunda puerta.
+  window.addEventListener("focus", () => void resyncSessionZone());
   window.addEventListener("pagehide", () => void flushDb());
 }
 let sqlPromise: Promise<Sql> | null = null;
@@ -208,8 +213,11 @@ async function open(): Promise<PGlite> {
   // teléfono: un pago podía ser de noviembre en pantalla y de diciembre en
   // las sumas. El nombre IANA viene de Intl; se valida antes de interpolar.
   const sessionTz = /^[A-Za-z0-9_/+-]+$/.test(deviceTZ()) ? deviceTZ() : "America/New_York";
-  await pg.exec(`set time zone '${sessionTz}'`).catch(() => undefined);
-  appliedSessionTz = sessionTz;
+  // 1.6.13 (Prejuicio R4, R5B-3): el rastreador solo avanza si el exec
+  // REALMENTE aplicó la zona — un catch silencioso con la asignación
+  // incondicional dejaba la sesión en la zona vieja creyéndose nueva.
+  const bootZoneOk = await pg.exec(`set time zone '${sessionTz}'`).then(() => true).catch(() => false);
+  if (bootZoneOk) appliedSessionTz = sessionTz;
   (globalThis as any).__bzTrace?.push(["db-ready", "", Date.now()]);
   await pg.exec("create table if not exists _migrations (name text primary key, applied_at timestamptz not null default now())");
   const migrations = import.meta.glob("../../migrations/*.sql", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
@@ -251,8 +259,11 @@ async function resyncSessionZone(): Promise<void> {
   if (tz === appliedSessionTz) return;
   const pg = await pgPromise.catch(() => null);
   if (!pg) return;
-  await pg.exec(`set time zone '${tz}'`).catch(() => undefined);
-  appliedSessionTz = tz;
+  // 1.6.13 (R5B-3): si el exec falla, el rastreador NO avanza — la próxima
+  // vuelta a primer plano (o el próximo foco) lo reintenta; antes el fallo
+  // se tragaba y la asignación cerraba la puerta por toda la sesión.
+  const ok = await pg.exec(`set time zone '${tz}'`).then(() => true).catch(() => false);
+  if (ok) appliedSessionTz = tz;
 }
 
 type Run = <T>(text: string, params: unknown[]) => Promise<T[]>;

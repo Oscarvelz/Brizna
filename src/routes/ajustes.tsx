@@ -581,6 +581,13 @@ function AjustesPage() {
           return;
         }
         if (res.reason === "blocked") {
+          // 1.6.13 (Prejuicio R4, R5B-1): si el viaje anterior ya se había
+          // deshecho para hacer sitio, la negativa dice la verdad entera:
+          // el libro quedó SIN vacaciones, no «como estaba».
+          if ("replaced" in res && res.replaced) {
+            toast.error(tx("Las vacaciones anteriores se quitaron para hacer sitio, pero las nuevas no pudieron ponerse: algunos trabajos no caben en esas fechas (sus días están llenos). El libro quedó sin vacaciones.", "The previous time off was removed to make room, but the new one could not be set: some jobs do not fit those dates (their days are full). The book is left with no time off."));
+            return;
+          }
           toast.error(tx("Algunos trabajos no pudieron moverse (sus días están llenos), así que las vacaciones no se pusieron y todo quedó como estaba.", "Some jobs could not move (their days are full), so the time off was not set and everything stayed as it was."));
           return;
         }
