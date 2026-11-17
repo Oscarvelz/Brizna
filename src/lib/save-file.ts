@@ -363,11 +363,16 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
     if (entry.kind !== "file") continue;
     if (entryName.startsWith("Brizna_") || entryName.startsWith("Podalia_") || entryName.startsWith("oscar-copia-")) {
       // 1.6.26 (Prejuicio R8, R9C-1): la poda ordena por el tiempo
-      // REAL del archivo, no por el nombre — el nombre trae el
-      // reloj del aparato al escribir, y tras una corrección de
-      // reloj nombre y tiempo se divorcian: la copia real anterior
-      // caía bajo cinco sellos de un año imposible. Sin hora
-      // legible queda 0 y el nombre desempata, como antes.
+      // REAL del archivo, no por el nombre.
+      // 1.6.29 (Prejuicio R9, R10C-1/R10C-2): pero nombre y hora
+      // nacen del MISMO reloj del aparato — escritos con el reloj
+      // adelantado, los dos dicen 2999 y no hay divorcio que valga;
+      // y sin hora legible, el 0 ordenaba la copia como de 1970.
+      // La hora en la que la poda cree («eff») se compone así: si el
+      // nombre o la hora caen en el FUTURO, la copia es sospechosa
+      // y baja a la clase más vieja (nada en la carpeta puede ser
+      // más nuevo que la copia que se está escribiendo ahora); si
+      // la hora no se lee, la copia hereda la que su nombre declara.
       let mtime = 0;
       try { mtime = (await (entry as FileSystemFileHandle).getFile()).lastModified; } catch { mtime = 0; }
       entries.push({ name: entryName, mtime });
@@ -385,12 +390,25 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
   // corregido, carpeta compartida) la recién escrita ordenaba la
   // primera de su familia y se borraba a sí misma cantando éxito.
   const fresh = new Set(files.map((f) => f.name));
+  const nowMs = Date.now();
+  const stampOf = (name: string): number => {
+    const m = name.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})/);
+    return m ? new Date(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!).getTime() : 0;
+  };
+  const effOf = (e: { name: string; mtime: number }): number => {
+    const stamp = stampOf(e.name);
+    if (stamp > nowMs || e.mtime > nowMs) return -1;
+    return e.mtime > 0 ? e.mtime : stamp;
+  };
   const keep = (ext: string) => {
     const doomed: string[] = [];
     for (const prefix of ["Brizna_", "Podalia_", "oscar-copia-"]) {
       const group = entries
         .filter((e) => e.name.startsWith(prefix) && e.name.endsWith(ext) && !fresh.has(e.name))
-        .sort((a, b) => a.mtime - b.mtime || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+        // 1.6.29 (Prejuicio R9, R10C-3): en el empate de horas manda
+        // el sello más cercano a «ahora», no el nombre mayor — el
+        // mayor era sistemáticamente el sello futuro.
+        .sort((a, b) => effOf(a) - effOf(b) || (Math.abs(stampOf(b.name) - nowMs) - Math.abs(stampOf(a.name) - nowMs)) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
       doomed.push(...group.slice(0, Math.max(0, group.length - 5)).map((e) => e.name));
     }
     return doomed;
@@ -399,8 +417,12 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
   // fuera de todo catch (la app cerrada a mitad, el aparato
   // apagado) se recogen al cumplir una hora: un temporal vivo es
   // cosa de segundos; uno de hace una hora es de escritura muerta.
+  // 1.6.29 (Prejuicio R9, R10C-4): la recogida lee la misma hora
+  // «eff» — el temporal sin hora legible hereda la de su nombre, y
+  // el de sello futuro es de la clase sospechosa: ninguno es ya
+  // inmortal, y un temporal vivo (su hora es «ahora») no se toca.
   const tmpDoomed = entries
-    .filter((e) => e.name.endsWith(".tmp") && e.mtime > 0 && e.mtime < Date.now() - 3_600_000)
+    .filter((e) => e.name.endsWith(".tmp") && effOf(e) < nowMs - 3_600_000)
     .map((e) => e.name);
   for (const old of [...keep(".json"), ...keep(".pdf"), ...keep(".xls"), ...tmpDoomed]) await dir.removeEntry(old);
   } catch {
