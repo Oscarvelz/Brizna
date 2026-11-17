@@ -1235,8 +1235,8 @@ async function shiftPendingJobs(
   fromDate: string,
   toDate?: string,
   mark?: number,
-): Promise<number> {
-  if (days === 0) return 0;
+): Promise<{ moved: number; failed: number }> {
+  if (days === 0) return { moved: 0, failed: 0 };
   const sql = await getSql();
   const rows = await sql.query<{ id: number; client_id: number; scheduled_date: unknown }>(
     `select id, client_id, scheduled_date from jobs
@@ -1247,6 +1247,7 @@ async function shiftPendingJobs(
     toDate ? [userId, fromDate, toDate] : [userId, fromDate],
   );
   let moved = 0;
+  let failed = 0;
   for (const row of rows) {
     const prev = asIsoDate(row.scheduled_date);
     const next = addDaysISO(prev, days);
@@ -1254,7 +1255,10 @@ async function shiftPendingJobs(
     // corrimiento de vacaciones, BZ-13) la fila movida queda sellada con los
     // días corridos para que el deshacer toque solo esas filas.
     const real = await moveJobToDate(userId, intId(row.id), intId(row.client_id), next, { keepVacMark: true });
-    if (real == null) continue;
+    // 1.6.10 (Prejuicio R3, R4B-1): el fallo también se cuenta — antes la
+    // pierna aplicadora callaba lo que la de deshacer aprendió a gritar en
+    // 1.6.06, y applyVacation decide con los dos conteos en la mano.
+    if (real == null) { failed += 1; continue; }
     moved += 1;
     if (mark) {
       // 1.6.02 (Prejuicio R2, R2B-2): el sello guarda también la fecha que el
@@ -1270,7 +1274,7 @@ async function shiftPendingJobs(
       ]);
     }
   }
-  return moved;
+  return { moved, failed };
 }
 
 /**
@@ -5430,7 +5434,7 @@ export const applyVacation = createServerFn({ method: "POST" })
       days += 1;
       cursor = addDaysISO(cursor, 1);
     }
-    const moved = await shiftPendingJobs(context.userId, days, data.start, data.end, days);
+    const { moved, failed: shiftFailed } = await shiftPendingJobs(context.userId, days, data.start, data.end, days);
     const overdue = await sql.query<{ id: number; client_id: number; scheduled_date: unknown }>(
       `select id, client_id, scheduled_date from jobs
         where user_id = $1 and status = 'pending' and scheduled_date < $2::date
@@ -5439,10 +5443,12 @@ export const applyVacation = createServerFn({ method: "POST" })
     );
     const returnDate = addDaysISO(data.end, 1);
     let overdueMoved = 0;
+    let overdueFailed = 0;
     for (const row of overdue) {
       // 1.5.96 (BZ-33): el conteo suma solo movimientos reales.
       const real = await moveJobToDate(context.userId, intId(row.id), intId(row.client_id), returnDate);
-      if (real == null) continue;
+      // 1.6.10 (R4B-1): el fallo de la recogida también se cuenta.
+      if (real == null) { overdueFailed += 1; continue; }
       overdueMoved += 1;
       // 1.5.96 (BZ-13, segunda mitad): lo atrasado que las vacaciones juntaron
       // en el día del regreso lleva el sello -1 — al quitar las vacaciones
@@ -5457,6 +5463,20 @@ export const applyVacation = createServerFn({ method: "POST" })
         intId(row.id),
         asIsoDate(row.scheduled_date),
       ]);
+    }
+    // 1.6.10 (Prejuicio R3, R4B-1): si alguna fila no pudo moverse, el viaje
+    // NO se anuncia: lo ya movido se deshace por su sello exacto y la
+    // operación se niega en voz alta, como su espejo del deshacer (R3B-4).
+    // Antes la pierna aplicadora callaba el fallo — la bandera se escribía
+    // igual, la fila quedaba dentro del viaje sin sello ni registro, y sus
+    // cortes maduraban atrasados durante unas vacaciones que para ella
+    // nunca ocurrieron (un cliente de corte diario llena los 21 intentos
+    // con su propia cadencia; el corte atrasado número 22 no cabe en la
+    // pila del regreso).
+    const failed = shiftFailed + overdueFailed;
+    if (failed > 0) {
+      await undoVacationShift(context.userId);
+      return { ok: false as const, reason: "blocked" as const, moved: 0, failed };
     }
     await sql.query(
       `insert into app_settings (user_id, vacation_start, vacation_end, vacation_shift, updated_at)

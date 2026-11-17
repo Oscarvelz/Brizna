@@ -580,6 +580,10 @@ function AjustesPage() {
           toast.error(tx("Un trabajo del viaje anterior no pudo volver a su fecha. Revisa la agenda y vuelve a intentarlo.", "A job from the previous trip could not go back to its date. Check the schedule and try again."));
           return;
         }
+        if (res.reason === "blocked") {
+          toast.error(tx("Algunos trabajos no pudieron moverse (sus días están llenos), así que las vacaciones no se pusieron y todo quedó como estaba.", "Some jobs could not move (their days are full), so the time off was not set and everything stayed as it was."));
+          return;
+        }
         toast.error(tx("Revisa las fechas: el fin no puede ser antes del inicio.", "Check the dates: the end cannot be before the start."));
         return;
       }

@@ -175,7 +175,13 @@ export async function switchDatabase(name: string | null): Promise<void> {
 }
 
 if (typeof document !== "undefined") {
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") void flushDb(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") void flushDb();
+    // 1.6.10 (Prejuicio R3, R4B-2): al volver a mirar la app, la zona de la
+    // sesión SQL se re-sincroniza con la del aparato — deviceTZ() se relee
+    // en cada llamada JS, pero la sesión solo la leía al abrir.
+    else void resyncSessionZone();
+  });
   window.addEventListener("pagehide", () => void flushDb());
 }
 let sqlPromise: Promise<Sql> | null = null;
@@ -203,6 +209,7 @@ async function open(): Promise<PGlite> {
   // las sumas. El nombre IANA viene de Intl; se valida antes de interpolar.
   const sessionTz = /^[A-Za-z0-9_/+-]+$/.test(deviceTZ()) ? deviceTZ() : "America/New_York";
   await pg.exec(`set time zone '${sessionTz}'`).catch(() => undefined);
+  appliedSessionTz = sessionTz;
   (globalThis as any).__bzTrace?.push(["db-ready", "", Date.now()]);
   await pg.exec("create table if not exists _migrations (name text primary key, applied_at timestamptz not null default now())");
   const migrations = import.meta.glob("../../migrations/*.sql", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
@@ -228,6 +235,24 @@ export function getPglite(): Promise<PGlite> {
     .then((pg) => { noteDbSuccess(); return pg; })
     .catch((err) => { noteDbFailure(); pgPromise = null; throw err; });
   return pgPromise;
+}
+
+/** 1.6.10 (Prejuicio R3, R4B-2): la zona aplicada a la sesión viva. La
+ *  sesión la leía una sola vez al abrir, mientras deviceTZ() se relee en
+ *  cada llamada: tras un cambio de zona a mitad de sesión (un vuelo con la
+ *  app viva), las pantallas ya leían el día nuevo y cada ::date de SQL
+ *  seguía en la zona de arranque — un pago, dos calendarios, hasta
+ *  reiniciar. Al volver la app a primer plano se compara y se reaplica. */
+let appliedSessionTz = "";
+
+async function resyncSessionZone(): Promise<void> {
+  if (!pgPromise) return;
+  const tz = /^[A-Za-z0-9_/+-]+$/.test(deviceTZ()) ? deviceTZ() : "America/New_York";
+  if (tz === appliedSessionTz) return;
+  const pg = await pgPromise.catch(() => null);
+  if (!pg) return;
+  await pg.exec(`set time zone '${tz}'`).catch(() => undefined);
+  appliedSessionTz = tz;
 }
 
 type Run = <T>(text: string, params: unknown[]) => Promise<T[]>;
