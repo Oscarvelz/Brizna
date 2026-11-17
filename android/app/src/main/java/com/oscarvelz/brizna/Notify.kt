@@ -83,6 +83,23 @@ object Notify {
                 .put("title", o.optString("title").take(120)).put("body", o.optString("body").take(600)).put("route", o.optString("route", "/"))
                 .put("wall", o.optString("wall")).put("hash", o.optString("hash")))
         }
+        // android-14 (Prejuicio R3, R3E-2): la página solo manda su ventana
+        // de 6 h, así que un store() al abrir la app borraba de la cáscara
+        // los avisos perdidos que aún no se habían podido resumir — el
+        // resumen quedaba abolido, no pospuesto. Los perdidos sin marcar y
+        // de menos de un día se acarrean a la lista nueva: el resumen sigue
+        // pudiendo decirse hasta que suene o cumpla el día.
+        val nowS = System.currentTimeMillis()
+        val firedNow = fired(ctx)
+        for (o in read(ctx)) {
+            if (o.id in ids || o.id in firedNow) continue
+            if (o.at <= nowS - LATE_LIMIT && o.at > nowS - LATE_LIMIT - 24 * 60 * 60 * 1000L) {
+                ids.add(o.id)
+                clean.put(JSONObject().put("id", o.id).put("at", o.at).put("kind", o.kind)
+                    .put("title", o.title).put("body", o.body).put("route", o.route)
+                    .put("wall", o.wall).put("hash", o.hash))
+            }
+        }
         val keep = fired(ctx).filter { id -> id in ids && oldHash[id] == readHash(clean, id) }.toSet()
         prefs(ctx).edit().putString("items", clean.toString()).putStringSet("fired", keep).putLong("storedAt", System.currentTimeMillis()).apply()
         arm(ctx)
@@ -118,11 +135,24 @@ object Notify {
      *  apagadas), fireDue pide el respiro largo: con el piso de 3 s la cura
      *  de BZ-63 se volvía un bucle de alarmas de ~7 200 despertares en 6 h. */
     fun arm(ctx: Context, floorMs: Long = 3000) {
+        val next = nextAt(ctx)
+        if (next <= 0) { armAt(ctx, 0); return }
+        armAt(ctx, maxOf(next, System.currentTimeMillis() + floorMs))
+    }
+
+    /** Arms the one alarm for an explicit instant (or clears it when atMs <= 0).
+     *  android-14 (Prejuicio R3, R3E-1/R3E-2): fireDue termina armando por
+     *  poblaciones separadas — el próximo aviso futuro conserva SU hora (el
+     *  respiro de un aviso bloqueado ya no se le cobra a él a través de la
+     *  única alarma compartida) y el reintento de lo bloqueado entra como
+     *  candidato propio, así el conjunto perdido — que nextAt excluye por
+     *  construcción — sí recibe su reintento en vez de ver la alarma
+     *  cancelada. */
+    private fun armAt(ctx: Context, atMs: Long) {
         val am = ctx.getSystemService(AlarmManager::class.java) ?: return
         val pi = firePending(ctx)
-        val next = nextAt(ctx)
-        if (next <= 0) { am.cancel(pi); return }
-        val at = maxOf(next, System.currentTimeMillis() + floorMs)
+        if (atMs <= 0) { am.cancel(pi); return }
+        val at = maxOf(atMs, System.currentTimeMillis() + 3000)
         try {
             if (canExact(ctx)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
             else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
@@ -149,7 +179,13 @@ object Notify {
         var blocked = false
         val due = items.filter { it.id !in done && it.at <= now + 60_000 && it.at > now - LATE_LIMIT }
         for (it in due) { if (show(ctx, it)) done.add(it.id) else blocked = true }
-        val missed = items.filter { it.id !in done && it.at <= now - LATE_LIMIT }
+        // android-14 (R3E-2): lo perdido se intenta como resumen durante un
+        // día entero de reintentos; pasado ese día se retira en silencio —
+        // la cadena de reintentos no puede ser eterna con las notificaciones
+        // apagadas para siempre.
+        val missedAll = items.filter { it.id !in done && it.at <= now - LATE_LIMIT }
+        val missed = missedAll.filter { it.at > now - LATE_LIMIT - 24 * 60 * 60 * 1000L }
+        (missedAll - missed.toSet()).forEach { done.add(it.id) }
         if (missed.isNotEmpty()) {
             val titles = missed.joinToString(" · ") { it.title }.take(600)
             val summary = Item(
@@ -160,7 +196,14 @@ object Notify {
             if (show(ctx, summary)) missed.forEach { done.add(it.id) } else blocked = true
         }
         prefs(ctx).edit().putStringSet("fired", done).apply()
-        arm(ctx, if (blocked) BLOCKED_RETRY_MS else 3000L)
+        // android-14 (R3E-1/R3E-2): la alarma final es la más temprana de dos
+        // candidatas honestas — la hora PROPIA del próximo aviso futuro (el
+        // respiro de lo bloqueado no se le cobra) y, solo si algo no pudo
+        // mostrarse, el reintento a 30 min (que así alcanza también al
+        // resumen perdido, al que nextAt no puede nombrar).
+        val nextFuture = items.filter { it.id !in done && it.at > now }.minOfOrNull { it.at } ?: 0L
+        val retry = if (blocked) now + BLOCKED_RETRY_MS else 0L
+        armAt(ctx, listOf(nextFuture, retry).filter { it > 0 }.minOrNull() ?: 0L)
     }
 
     /** True only when the notification was actually published. */

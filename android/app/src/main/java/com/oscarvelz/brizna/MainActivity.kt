@@ -209,6 +209,9 @@ class MainActivity : Activity() {
         fileLostPending = state.getBoolean("bzFilePending", false)
         // android-13 (R2E-3): el id vencido de contactos también vuelve.
         contactPicker.restoreLast(state.getString("bzContactsLast"))
+        // android-14 (R3E-4): y la hora de lanzamiento, para que el detector
+        // de selector ausente pueda cerrar una pregunta restaurada.
+        contactsLaunchedAt = state.getLong("bzContactsLaunched", 0L)
         val cid = state.getString("bzContactsId")
         if (cid != null) {
             val pickedArr = runCatching { JSONArray(state.getString("bzContactsPicked") ?: "[]") }.getOrDefault(JSONArray())
@@ -682,7 +685,14 @@ class MainActivity : Activity() {
             // y delete() sobre un directorio con archivos nunca borra nada —
             // la limpieza era código muerto y cada envío dejaba sus archivos
             // para siempre. El borrado recursivo la vuelve real.
-            dir.listFiles()?.forEach { if (System.currentTimeMillis() - it.lastModified() > 3_600_000L) runCatching { it.deleteRecursively() } }
+            // android-14 (Prejuicio R3, R3E-5): el reloj del segador no puede
+            // ser el mtime del directorio — no avanza mientras un envío vivo
+            // sigue escribiendo en su archivo ya creado, y un envío abierto
+            // más de una hora se borraba a mitad de vuelo. Los directorios de
+            // los envíos VIVOS (en el mapa `shares`) no se tocan: el segador
+            // recoge huérfanos, no envíos en curso.
+            val liveDirs = shares.keys.map { it.take(8) }.toSet()
+            dir.listFiles()?.forEach { if (it.name !in liveDirs && System.currentTimeMillis() - it.lastModified() > 3_600_000L) runCatching { it.deleteRecursively() } }
             val id = java.util.UUID.randomUUID().toString()
             shares[id] = Share(ArrayList(), null)
             return id
@@ -987,6 +997,12 @@ class MainActivity : Activity() {
             out.putBoolean("bzContactsMultiple", multi)
             out.putString("bzContactsPicked", contactPicker.pickedSoFar().toString())
         }
+        // android-14 (Prejuicio R3, R3E-4): la hora de lanzamiento viaja
+        // también — sin ella, el detector de «el selector se fue sin
+        // responder» de onResume nace desarmado en la instancia recreada y
+        // una pregunta restaurada cuyo selector nunca vuelve queda inmortal,
+        // respondiendo «busy» a cada elección futura.
+        if (contactsLaunchedAt > 0L) out.putLong("bzContactsLaunched", contactsLaunchedAt)
         // android-13 (R2E-3): el id vencido viaja también, aunque ya no haya
         // pregunta viva — es lo único que una elección tardía necesita.
         contactPicker.lastExpired()?.let { out.putString("bzContactsLast", it) }

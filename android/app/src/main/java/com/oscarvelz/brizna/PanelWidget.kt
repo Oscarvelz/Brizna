@@ -102,8 +102,13 @@ class PanelWidget : AppWidgetProvider() {
             v.setTextColor(R.id.owed, if (WidgetLook.packStale(data)) muted else accent)
             if (todayIdx == -1) v.setViewVisibility(R.id.owed, View.GONE)
             if (!WidgetLook.showOwed(ctx, widgetId)) v.setViewVisibility(R.id.owed_zone, View.GONE)
+            // android-14 (Prejuicio R3, R3E-3): la línea de alerta obedece la
+            // misma ley BZ-34 que el total y los deudores — si hoy ya no está
+            // en el paquete se oculta, y si el paquete es viejo se atenúa:
+            // unos conteos viejos sin fecha serían una mentira con número.
             v.setTextViewText(R.id.alert, data?.optString("alertLine") ?: "")
-            v.setViewVisibility(R.id.alert, if (data?.optString("alertLine").isNullOrBlank()) View.GONE else View.VISIBLE)
+            v.setTextColor(R.id.alert, if (WidgetLook.packStale(data)) muted else warn)
+            v.setViewVisibility(R.id.alert, if (data?.optString("alertLine").isNullOrBlank() || todayIdx == -1) View.GONE else View.VISIBLE)
 
             // Por cobrar: the top debtors the page sent (nothing when nobody owes).
             // android-13 (Prejuicio R2, R2E-4): los deudores obedecen la misma

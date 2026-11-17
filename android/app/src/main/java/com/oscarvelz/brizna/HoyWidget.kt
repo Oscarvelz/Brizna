@@ -211,14 +211,18 @@ class HoyWidget : AppWidgetProvider() {
             v.setTextColor(R.id.title, accent)
             v.setTextColor(R.id.owed, if (WidgetLook.packStale(data)) muted else accent)
             v.setTextColor(R.id.count, fg)
-            v.setTextColor(R.id.alert, warn)
+            // android-14 (Prejuicio R3, R3E-3): la línea de alerta, igual que
+            // en el Panel — con el paquete viejo se atenúa, y si hoy ya no
+            // está en el paquete no se pinta: conteos viejos sin fecha
+            // serían una mentira con número (BZ-34).
+            v.setTextColor(R.id.alert, if (WidgetLook.packStale(data)) muted else warn)
             for (x in intArrayOf(R.id.date, R.id.countLabel, R.id.owedLabel)) v.setTextColor(x, muted)
             v.setTextViewText(R.id.title, data?.optString("title")?.ifBlank { null } ?: "Hoy")
             v.setTextViewText(R.id.owedLabel, WidgetLook.owedLabel(data, data?.optString("owedLabel")?.ifBlank { null } ?: "Por cobrar"))
             v.setTextViewText(R.id.owed, data?.optString("owed")?.ifBlank { null } ?: "$0")
             val alert = data?.optString("alertLine") ?: ""
             v.setTextViewText(R.id.alert, alert)
-            v.setViewVisibility(R.id.alert, if (alert.isBlank()) View.GONE else View.VISIBLE)
+            v.setViewVisibility(R.id.alert, if (alert.isBlank() || todayEntry(data) == null) View.GONE else View.VISIBLE)
 
             val day = todayEntry(data)
             if (day == null) {
