@@ -6,6 +6,7 @@ import { methodLabel } from "@/components/method-field";
 import { Button } from "@/components/ui/button";
 import { formatDay, money } from "@/lib/format";
 import { useTx } from "@/lib/i18n";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import { exportScope, getSettings, listClients, listJobs } from "@/lib/server/lawn";
 
 function readIso(value: unknown): string | undefined {
@@ -79,7 +80,7 @@ function ScopedPrint({ from, to }: { from: string; to: string }) {
     <AppShell
       title={tx("Imprimir", "Print")}
       action={
-        <Button size="sm" className="print:hidden" onClick={() => window.print()}>
+        <Button size="sm" className="print:hidden" onClick={() => { if (!sealedOn()) window.print(); }}>
           <Printer className="size-4" />
           {tx("Imprimir", "Print")}
         </Button>
@@ -186,7 +187,7 @@ function RosterPrint() {
     <AppShell
       title={tx("Imprimir", "Print")}
       action={
-        <Button size="sm" className="print:hidden" onClick={() => window.print()}>
+        <Button size="sm" className="print:hidden" onClick={() => { if (!sealedOn()) window.print(); }}>
           <Printer className="size-4" />
           {tx("Imprimir", "Print")}
         </Button>

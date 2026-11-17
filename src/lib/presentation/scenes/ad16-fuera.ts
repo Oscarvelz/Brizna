@@ -177,6 +177,7 @@ export const AD16: Module = {
     },
     {
       id: "ad16-notif-pliegue", chapter: "avisos", anchors: ["aj-notificaciones"],
+      androidOnly: true,
       keys: [["notificaciones", "notifications"], ["permitir", "allow"]],
       steps: [
         { kind: "go", screen: "/ajustes" },
@@ -186,6 +187,7 @@ export const AD16: Module = {
     },
     {
       id: "ad16-notif-tipos", chapter: "avisos", anchors: ["aj-notificaciones"],
+      androidOnly: true,
       keys: [["notificaciones", "notifications"], ["avisos", "alerts"]],
       steps: [
         { kind: "show", anchor: "aj-notificaciones", caption: ["Cuatro avisos, cuatro cuidados: mañana tus patios, pagos por cobrar, riesgo y lluvia.", "Four alerts, four cares: tomorrow's yards, payments due, risk, and rain."], contexto: ["La hora de la noche se elige; las demás son fijas: 7:30.", "The evening hour is yours; the others are fixed: 7:30."] },
@@ -194,6 +196,7 @@ export const AD16: Module = {
     },
     {
       id: "ad16-exacta", chapter: "avisos", anchors: ["aj-notificaciones"],
+      androidOnly: true,
       keys: [["hora exacta", "exact time"], ["alarma", "alarm"]],
       steps: [
         { kind: "show", anchor: "aj-notificaciones", caption: ["Con hora exacta, el aviso cae exacto; sin ella, algo tarde.", "With exact time, the alert lands exact; without, somewhat late."], contexto: ["La fila de hora exacta solo aparece cuando falta.", "The exact-time row only appears when it is missing."] },

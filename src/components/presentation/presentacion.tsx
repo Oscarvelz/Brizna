@@ -31,6 +31,7 @@ import {
   type PresState,
 } from "@/lib/presentation/state";
 import { enterStage, exitStage, stageOn, STAGE_EVENT } from "@/lib/presentation/stage";
+import { inAndroidApp } from "@/spa/native";
 import { readStoredLocale } from "@/lib/theme";
 import { toast } from "sonner";
 import { resolveAnchor } from "@/lib/presentation/anchors";
@@ -316,8 +317,14 @@ export function Presentacion() {
       }
       return;
     }
-    const mod = moduleById(launch.moduleId);
-    if (!mod || !mod.ready || !mod.scenes.length) return;
+    const found = moduleById(launch.moduleId);
+    if (!found || !found.ready || !found.scenes.length) return;
+    // 1.6.09 (Prejuicio R3, R3D-4): fuera de Android, las escenas marcadas
+    // androidOnly no entran en la corrida — su ancla (el pliegue de
+    // notificaciones) no existe en la web, se saltaban siempre y el módulo
+    // jamás podía marcarse aprendido allí. En Android corren todas.
+    const mod = inAndroidApp() ? found : { ...found, scenes: found.scenes.filter((s) => !s.androidOnly) };
+    if (!mod.scenes.length) return;
     const prefs = readPresState();
     const startIdx = launch.sceneId
       ? Math.max(0, mod.scenes.findIndex((s) => s.id === launch.sceneId))

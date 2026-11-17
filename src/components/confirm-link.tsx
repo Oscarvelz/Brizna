@@ -1,5 +1,7 @@
 import { useRef, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import { useTx } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -97,6 +99,13 @@ export function ConfirmLink({
         confirmLabel={copy.confirm}
         onConfirm={() => {
           setOpen(false);
+          // 1.6.09 (Prejuicio R3, R3D-2): los saltos externos (llamada, SMS,
+          // mapas) también leen el sello — todo botón de contacto de la app
+          // emboca en este componente, y en el escenario ningún salto sale.
+          if (sealedOn()) {
+            toast.info(tx("Durante una presentación no se sale de la app: estás en el escenario de práctica, no en tu libro.", "During a presentation the app does not jump out: you are on the practice stage, not in your book."));
+            return;
+          }
           if (kind === "maps") window.open(href, "_blank", "noopener,noreferrer");
           else window.location.href = href;
         }}

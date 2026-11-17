@@ -56,6 +56,20 @@ export function localStoreExcluded(key: string): boolean {
     key === "ols.had-user" ||
     key === "bz-dict-error" ||
     key === "ols-weather" ||
+    // 1.6.09 (Prejuicio R3, R3C-2): el portador «keep» de la sesión
+    // (`ols.keep-bearer`, el token Bearer que client.ts guarda al mantener
+    // la sesión) es una credencial como la de `brizna-auth` — su escritor
+    // duerme hoy en el paquete, pero la ley de la cabecera no espera a que
+    // despierte: ninguna copia lo lleva ni lo planta.
+    key === "ols.keep-bearer" ||
+    // 1.6.09 (R3C-3): la marca de ediciones de la sesión provisional
+    // (`brizna.prov-edited`) es contabilidad de sync como `brizna.sync.*`:
+    // el aparato que restaura debe nacer en cero y observar la nube primero;
+    // con la marca ajena nacía con una «edición» que no hizo.
+    key === "brizna.prov-edited" ||
+    // 1.6.09 (R3C-4): `brizna.sky` es la lectura del cielo con su hora —
+    // una caché con hora como los packs de clima; solo el LUGAR viaja.
+    key === "brizna.sky" ||
     key.startsWith("brizna.sync") ||
     key.startsWith("brizna.screens.") ||
     key.startsWith("brizna.ensured.") ||

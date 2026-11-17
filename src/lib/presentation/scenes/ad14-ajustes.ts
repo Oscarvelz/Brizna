@@ -174,6 +174,7 @@ export const AD14: Module = {
     },
     {
       id: "ad14-notificaciones", chapter: "trabajo", anchors: ["aj-notificaciones"],
+      androidOnly: true,
       keys: [["notificaciones", "notifications"], ["avisos", "alerts"]],
       steps: [
         { kind: "show", anchor: "aj-notificaciones", caption: ["Notificaciones: el pliegue de avisos que solo existe en Android.", "Notifications: the alerts fold that only exists on Android."], contexto: ["Su lección entera vive en «Fuera de la app», sin tocar nada.", "Its whole lesson lives in “Outside the app”, touching nothing."] },

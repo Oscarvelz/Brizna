@@ -92,6 +92,12 @@ export interface Scene {
   steps: Step[];
   /** Lo que falta contrastar en aparato antes de enseñar esto como hecho (cerca F-4). */
   verify?: string;
+  /** 1.6.09 (Prejuicio R3, R3D-4): la escena solo existe dentro de la app
+   *  Android (su ancla vive en un pliegue que la web no tiene). El conductor
+   *  la filtra al arrancar fuera de Android: ofrecida en la web, su ancla
+   *  jamás llegaba, la escena se saltaba siempre y el módulo no podía
+   *  marcarse aprendido allí nunca. */
+  androidOnly?: boolean;
 }
 
 export interface Chapter {

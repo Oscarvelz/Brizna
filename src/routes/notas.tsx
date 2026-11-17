@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import { AppShell } from "@/components/app-shell";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Hint } from "@/components/hint";
@@ -1058,6 +1059,12 @@ function NotePhotos({
   });
 
   async function share(src: string, name: string) {
+    // 1.6.09 (R3, observación de la caza 2): con el sello puesto, compartir
+    // una foto no sale del aparato — la puerta dice el motivo.
+    if (sealedOn()) {
+      toast.info(tx("Durante una presentación no se comparte nada: estás en el escenario de práctica, no en tu libro.", "During a presentation nothing is shared: you are on the practice stage, not in your book."));
+      return;
+    }
     try {
       const blob = await (await fetch(src)).blob();
       const file = new File([blob], `${name}.jpg`, { type: blob.type || "image/jpeg" });
@@ -1076,6 +1083,10 @@ function NotePhotos({
   }
 
   async function savePhoto(src: string, name: string) {
+    if (sealedOn()) {
+      toast.info(tx("Durante una presentación no se descarga nada: estás en el escenario de práctica, no en tu libro.", "During a presentation nothing is downloaded: you are on the practice stage, not in your book."));
+      return;
+    }
     const file = `${name.replace(/[^\w\s.-]+/g, "").trim().slice(0, 40) || "nota"}.jpg`;
     try {
       await downloadHref(file, src);

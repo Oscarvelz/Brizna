@@ -136,14 +136,13 @@ export const AD2: Module = {
         { kind: "ref", topic: "precio" },
       ],
     },
-    {
-      id: "ad2-foto-corte", chapter: "registro", anchors: ["ficha-foto-corte"],
-      keys: [["foto", "photo"], ["historial", "history"]],
-      verify: "Las fotos DE LA FICHA están apagadas por bandera en 1.5.66 (PHOTOS_ENABLED=false, censo B VERIFY-1): no se enseñan. Las fotos de cada corte en el Historial sí están vivas en código (B-112); su render en aparato real no se contrastó en esta línea.",
-      steps: [
-        { kind: "show", anchor: "ficha-foto-corte", caption: ["La foto de cada corte vive aquí: ver, compartir, descargar.", "Each cut's photo lives here: view, share, download."], contexto: ["Quitar la foto no borra el trabajo: el corte se queda.", "Removing the photo does not delete the job: the cut stays."] },
-      ],
-    },
+    // 1.6.09 (Prejuicio R3, R3D-3): la escena «ad2-foto-corte» se retira del
+    // guion. Enseñaba la foto de cada corte, pero las fotos están apagadas
+    // por bandera en toda la app (PHOTOS_ENABLED = false: ni la ficha ni el
+    // Historial pueden tener una foto, y ninguna semilla del escenario crea
+    // una), así que su ancla jamás existía, la escena se saltaba en cada
+    // corrida y AD2 no podía marcarse aprendido en ningún aparato. La
+    // escena vuelve al guion el día que la bandera se encienda.
     {
       id: "ad2-cambios", chapter: "registro", anchors: ["ficha-cambios"],
       keys: [["historial", "history"], ["restaurar", "restore"]],

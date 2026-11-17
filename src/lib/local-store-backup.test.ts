@@ -50,6 +50,14 @@ const EXCLUDED_KEYS = [
   "bz.seen.pres",
   // 1.6.01 (R2C-7): la contabilidad del bloqueo es de este aparato.
   "brizna.lockSeen.3f2a91c0-0000-4000-8000-000000000000",
+  // 1.6.09 (Prejuicio R3, R3C-2/3/4): la credencial «keep» de la sesión, la
+  // marca de ediciones provisionales (contabilidad de sync) y la caché del
+  // cielo con hora — la segunda caza las halló viajando contra la ley de la
+  // cabecera; su censo de escritores no las vio porque nacen de constantes,
+  // no de literales, y aquí quedan nombradas.
+  "ols.keep-bearer",
+  "brizna.prov-edited",
+  "brizna.sky",
 ];
 
 // What the user authored or chose: these must TRAVEL (predicate must not exclude).

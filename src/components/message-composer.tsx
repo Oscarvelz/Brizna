@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import { Button } from "@/components/ui/button";
 import { smsHref, waHref } from "@/lib/format";
 import { useTx, useI18n } from "@/lib/i18n";
@@ -275,6 +276,14 @@ export function MessageComposer({
   function send() {
     setAsk(false);
     setOpen(false);
+    // 1.6.09 (Prejuicio R3, R3D-1): la puerta de envío también lee el sello —
+    // en el escenario nada sale del aparato, ni siquiera el mensaje de la
+    // lección a su número de ficción (la ley de seal-flag: todo camino de
+    // salida se apaga; las lecciones Q5/AD10 caminan hasta esta puerta).
+    if (sealedOn()) {
+      toast.info(tx("Durante una presentación no se envían mensajes: estás en el escenario de práctica, no en tu libro.", "During a presentation no messages are sent: you are on the practice stage, not in your book."));
+      return;
+    }
     if (channel === "whatsapp") {
       const href = waHref(phone, text);
       if (href) window.open(href, "_blank", "noopener,noreferrer");

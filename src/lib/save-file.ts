@@ -1,4 +1,5 @@
 import { inAndroidApp, nativeSaveOutcome } from "@/spa/native";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 
 // Ola 4 (BZ-9): dentro de la app, un clic en un enlace de descarga lo
 // recoge el puente y el guardado termina DESPUÉS del clic. Quien anuncia
@@ -18,6 +19,15 @@ async function settleNativeSave(name: string): Promise<void> {
 }
 
 export async function downloadHref(filename: string, src: string) {
+  // 1.6.09 (Prejuicio R3, observación de la caza 2 hecha cerca): con el
+  // sello puesto nada se descarga — este embudo solo sirve hoy a las fotos,
+  // y el día que las fotos se enciendan la puerta ya está cerrada. La
+  // puerta (savePhoto) dice el motivo; aquí se niega en silencio.
+  if (sealedOn()) {
+    const err = new Error("sealed: no downloads during a presentation");
+    err.name = "AbortError";
+    throw err;
+  }
   const blob = await (await fetch(src)).blob();
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
