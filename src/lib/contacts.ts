@@ -1,5 +1,5 @@
 import { nativePickContacts } from "@/spa/native";
-import { foldText } from "@/lib/dup-match";
+import { digitsOf, foldText } from "@/lib/dup-match";
 
 export type PickedContact = {
   name: string;
@@ -208,7 +208,7 @@ function vcardPhone(block: string): string {
       cell: tokens.some((t) => t === "CELL" || t === "MOBILE" || t === "CELLULAR"),
     });
   }
-  const real = entries.filter((e) => e.v.replace(/\D/g, "").length >= 7);
+  const real = entries.filter((e) => digitsOf(e.v).replace(/\D/g, "").length >= 7);
   const pick = real.find((e) => e.cell) ?? real.find((e) => !e.fax) ?? real[0];
   return pick?.v ?? entries.find((e) => e.v !== "")?.v ?? "";
 }
@@ -277,7 +277,7 @@ export function parseVcard(text: string): PickedContact[] {
     const adr = parseAdr(vcardRawValue(block, "ADR"));
     // Cerca de cordura (BZ-52): sin FN y sin teléfono de ≥7 dígitos, la
     // tarjeta no nace.
-    if (!fn.trim() && tel.replace(/\D/g, "").length < 7) continue;
+    if (!fn.trim() && digitsOf(tel).replace(/\D/g, "").length < 7) continue;
     out.push({ name: fn.trim() || tel.trim(), phone: tel.trim(), address: adr });
   }
   return out;
@@ -287,6 +287,15 @@ export function parseVcard(text: string): PickedContact[] {
  *  coma y SALTOS DE LÍNEA (una dirección entrecomillada con «\n» dentro es una
  *  sola celda, no un cliente inventado). */
 function splitCsvRows(text: string): string[][] {
+  // 1.6.16 (Prejuicio R5, R6F-9): un export separado por TABULADORES
+  // (Excel/CRM) importaba cero — el lector solo partía por coma o
+  // punto y coma. El delimitador se huele en la primera línea: si
+  // los tabuladores mandan, manda el tabulador en todo el archivo.
+  const firstNl = text.indexOf("\n");
+  const firstLine = firstNl < 0 ? text : text.slice(0, firstNl);
+  const tabs = (firstLine.match(/\t/g) ?? []).length;
+  const commas = (firstLine.match(/,/g) ?? []).length + (firstLine.match(/;/g) ?? []).length;
+  const delim = tabs > 0 && tabs >= commas ? "\t" : ",";
   const rows: string[][] = [];
   let row: string[] = [];
   let cur = "";
@@ -321,7 +330,7 @@ function splitCsvRows(text: string): string[][] {
         if (text[i + 1] === "\n") i += 1;
       } else cur += ch;
     } else if (ch === '"' && fieldStart) q = true;
-    else if (ch === "," || ch === ";") pushCell();
+    else if (ch === delim || (delim === "," && ch === ";")) pushCell();
     else if (ch === "\n") pushRow();
     else if (ch !== "\r") {
       cur += ch;
@@ -379,7 +388,7 @@ function parseCsv(text: string): PickedContact[] {
   for (let i = 0; i < Math.min(rows.length, 10); i += 1) {
     const cells = rows[i]!.map(foldHead);
     const known = cells.filter((c) => HEADER_WORDS[c]).length;
-    const phoneLike = cells.some((c) => c.replace(/\D/g, "").length >= 7);
+    const phoneLike = cells.some((c) => digitsOf(c).replace(/\D/g, "").length >= 7);
     if (known >= 2 || (known === 1 && !phoneLike)) {
       headAt = i;
       break;
@@ -410,7 +419,13 @@ function parseCsv(text: string): PickedContact[] {
     address: hasHeader ? addrCol : 2,
   };
   const out: PickedContact[] = [];
-  for (const cols of hasHeader ? rows.slice(headAt + 1) : rows) {
+  // 1.6.16 (Prejuicio R5, R6F-4): la fila de encabezado detectada
+  // (headAt) se salta SIEMPRE, aunque ninguna columna suya case con
+  // el vocabulario — antes un archivo solo de direcciones la releía
+  // como datos y nacía un cliente llamado «Dirección» con teléfono
+  // «Ciudad», y cada fila real entraba girada. Sin columnas leídas,
+  // las filas de datos se leen por posición, como sin encabezado.
+  for (const cols of headAt >= 0 ? rows.slice(headAt + 1) : rows) {
     // Una fila de una sola celda en un archivo de varias columnas es una
     // línea suelta (un título, una nota), no una persona: no nace.
     if (cols.length < 2) continue;

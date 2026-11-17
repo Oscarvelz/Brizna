@@ -36,15 +36,39 @@ export function foldText(s: string | null | undefined): string {
   // descompuesta (Mn + vocal) se unifican a mano: NFD no lo descompone.
   // 1.6.14 (R5F-6): el tatweel árabe (ـ, Lm) es alargamiento puro, nunca
   // distingue a nadie: se quita entero.
+  // 1.6.16 (Prejuicio R5, R6F-6): NFKC primero — las formas de
+  // presentación árabes y el latín de ancho completo no se descomponen
+  // con NFD y la identidad se partía al pegar desde un PDF o un IME.
+  // 1.6.16 (R6F-2): las variantes de teclado árabe/persa se unifican
+  // (yeh persa U+06CC a yeh U+064A; keheh U+06A9 a kaf U+0643; alef
+  // maksura U+0649 a yeh): dos teclados para la misma lengua, y las
+  // listas reales mezclan ambas formas. 1.6.16 (R6F-5): el chillu
+  // malayalam y su forma consonante+virama+ZWJ se unifican ANTES de
+  // quitar el ZWJ. 1.6.16 (R6F-10): el ZWNJ/ZWJ restante se quita —
+  // invisible, y partía la clave de tanda en dos tokens. 1.6.16
+  // (R6F-1): el virama a FINAL de palabra SÍ es identidad (en tamil el
+  // pulli final es la ortografía normal de la consonante final): se
+  // protege de la tira como el nukta; el virama interno (los
+  // conjuntos) sigue cayendo. 1.6.16 (R6F-3): la sigma final griega
+  // (U+03C2) se unifica con la sigma normal tras las minúsculas.
   return String(s ?? "")
+    .normalize("NFKC")
+    .replace(/([കണനരലള])്‍/g, (m, c: string) => CHILLU[c] ?? m)
     .normalize("NFD")
     .replace(/\u0640/g, "")
     .replace(/\u0E33/g, "\u0E4D\u0E32")
     .replace(/\u0EB3/g, "\u0ECD\u0EB2")
     .replace(/[\u093C\u09BC\u0A3C\u0ABC\u0B3C\u0D3C]/g, (ch) => NUKTA_SLOTS[ch] ?? ch)
+    .replace(/\u06CC/g, "ي")
+    .replace(/\u06A9/g, "ك")
+    .replace(/\u0649/g, "ي")
+    .replace(/[‌‍]/g, "")
+    .replace(/([्\u09cd\u0a4d\u0acd\u0b4d\u0bcd\u0c4d\u0ccd\u0d4d])(?=$|[^\p{L}\p{M}\p{N}])/gu, (ch) => VIRAMA_SLOTS[ch] ?? ch)
     .replace(/[\p{Mn}\p{Me}]/gu, "")
     .replace(/[\uE000-\uE005]/g, (ch) => NUKTA_BACK[ch] ?? ch)
+    .replace(/[\uE010-\uE018]/g, (ch) => VIRAMA_BACK[ch] ?? ch)
     .toLowerCase()
+    .replace(/ς/g, "σ")
     .replace(/[^\p{L}\p{N}\p{M}]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -58,6 +82,25 @@ const NUKTA_SLOTS: Record<string, string> = {
 };
 const NUKTA_BACK: Record<string, string> = Object.fromEntries(
   Object.entries(NUKTA_SLOTS).map(([k, v]) => [v, k]),
+);
+
+// 1.6.16 (R6F-5): el chillu malayalam y su forma larga (consonante +
+// virama + ZWJ) — el mapa de la unificación en foldText.
+const CHILLU: Record<string, string> = {
+  "\u0D15": "\u0D7F", "\u0D23": "\u0D7A", "\u0D28": "\u0D7B",
+  "\u0D30": "\u0D7C", "\u0D32": "\u0D7D", "\u0D33": "\u0D7E",
+};
+
+// 1.6.16 (R6F-1): los viramas índicos — a final de palabra distinguen
+// personas (Kumar con pulli final no es Kumara). Se esconden tras
+// marcadores de uso privado mientras la tira Mn+Me pasa, como el nukta.
+const VIRAMA_SLOTS: Record<string, string> = {
+  "\u094D": "\uE010", "\u09CD": "\uE011", "\u0A4D": "\uE012",
+  "\u0ACD": "\uE013", "\u0B4D": "\uE014", "\u0BCD": "\uE015",
+  "\u0C4D": "\uE016", "\u0CCD": "\uE017", "\u0D4D": "\uE018",
+};
+const VIRAMA_BACK: Record<string, string> = Object.fromEntries(
+  Object.entries(VIRAMA_SLOTS).map(([k, v]) => [v, k]),
 );
 
 export function nameKey(name: string): string {
@@ -124,8 +167,22 @@ export function nameMatch(a: string, b: string): "same" | "near" | null {
   return null;
 }
 
+// 1.6.16 (Prejuicio R5, R6F-7): los dígitos decimales de cualquier
+// escritura (arábigo-índicos, de ancho completo, devanagari…) valen
+// como dígitos — \d solo conoce el ASCII y la identidad telefónica
+// de esos números nacía muerta.
+const ND_ZEROS = [0x30, 0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66, 0xae6, 0xb66, 0xbe6, 0xc66, 0xce6, 0xd66, 0xde6, 0xe50, 0xed0, 0xf20, 0x1040, 0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0, 0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0, 0xff10];
+
+export function digitsOf(s: string | null | undefined): string {
+  return String(s ?? "").replace(/\p{Nd}/gu, (ch) => {
+    const cp = ch.codePointAt(0)!;
+    for (const z of ND_ZEROS) if (cp >= z && cp <= z + 9) return String(cp - z);
+    return ch;
+  });
+}
+
 export function phoneTail(phone: string | null | undefined): string {
-  const digits = String(phone ?? "").replace(/\D/g, "");
+  const digits = digitsOf(phone).replace(/\D/g, "");
   return digits.length >= 7 ? digits.slice(-10) : "";
 }
 
