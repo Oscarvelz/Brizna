@@ -655,11 +655,18 @@ export function Presentacion() {
    * abraza a la pantalla con esa medida (la tarjeta nunca se corta). */
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [cardH, setCardH] = useState(0);
+  // 1.6.38 (Prejuicio R10, R11D2-1): la ventanita de contexto también
+  // se mide — cuelga de la tarjeta sin contar en su offsetHeight, y
+  // la colocación que no la cuenta la siente sobre el objetivo.
+  const [ctxH, setCtxH] = useState(0);
   useLayoutEffect(() => {
     const el = cardRef.current;
     if (!el) return;
     const h = el.offsetHeight;
     if (h > 0 && Math.abs(h - cardH) > 1) setCardH(h);
+    const ctx = el.querySelector(".pres-contexto") as HTMLElement | null;
+    const ch = ctx ? ctx.offsetHeight : 0;
+    if (Math.abs(ch - ctxH) > 1) setCtxH(ch);
   });
   useEffect(() => { if (rect) lastRectRef.current = rect; }, [rect]);
   useEffect(() => {
@@ -722,8 +729,15 @@ export function Presentacion() {
         el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
         return;
       }
-      const cardBottom = cardRef.current?.getBoundingClientRect().bottom ?? 0;
-      const targetTop = Math.max(64, Math.round(cardBottom > 0 ? cardBottom + 16 : 232));
+      // 1.6.38 (Prejuicio R10, R11D2-2): el control demostrado se
+      // coloca bajo el CONJUNTO entero — con el asiento de arriba la
+      // ventanita cuelga BAJO la tarjeta y su borde, no el de la
+      // tarjeta, es el que manda en el desplazamiento.
+      const cardEl = cardRef.current;
+      const cardBottom = cardEl?.getBoundingClientRect().bottom ?? 0;
+      const ctxEl = cardEl?.querySelector(".pres-contexto") as HTMLElement | null;
+      const stackBottom = Math.max(cardBottom, ctxEl ? ctxEl.getBoundingClientRect().bottom : 0);
+      const targetTop = Math.max(64, Math.round(stackBottom > 0 ? stackBottom + 16 : 232));
       const delta = el.getBoundingClientRect().top - targetTop;
       if (Math.abs(delta) < 4) return;
       let node: HTMLElement | null = el;
@@ -1283,7 +1297,7 @@ export function Presentacion() {
     // dice que la lección sigue viva y ofrece sus dos salidas de
     // siempre, con sus ventanas enteras.
     return (
-      <div className="pres-root">
+      <div className={`pres-root${entering ? " is-entering" : ""}${leaving ? " is-leaving" : ""}`}>
         <div className="pres-parked" role="note">
           <span>{tx("Tu lección sigue viva: vuelve atrás para continuarla.", "Your lesson is still live: go back to continue it.")}</span>
           <span className="pres-parked-acts">
@@ -1380,14 +1394,35 @@ export function Presentacion() {
    * su casa anterior y luego se desliza a la nueva — nunca al parqueo
    * del centro a mitad de corrida. */
   const cardHole = hole ?? (lastRectRef.current ? containHole(lastRectRef.current) : null);
-  const cardBelow = cardHole ? (window.innerHeight - (cardHole.top + cardHole.height)) > 240 : true;
-  // La tarjeta se centra sobre el foco y se abraza a los bordes — con SU
-  // ancho real en cada ancho de pantalla (370 bajo 48rem; 442 desde ahí;
-  // siempre 100vw−20 como techo). La fórmula anterior llevaba el 370 fijo
-  // en la sangre: a 320px el tope derecho (100vw−380) salía negativo y la
-  // tarjeta amanecía 60px fuera de la pantalla (banco, 2026-11-14).
   const vwNow = window.innerWidth;
   const cardW = Math.min(vwNow >= 768 ? 442 : 370, vwNow - 20);
+  const seatTop = !!(step && "anchor" in step && typeof step.anchor === "string" && isFootprint(step.anchor));
+  /* 1.6.38 (Prejuicio R10, pista G): el asiento se calcula sobre el
+   * CONJUNTO que la lección pinta — tarjeta + ventanita de contexto
+   * que cuelga sobre ella (R11D2-1: sin contar, tapaba 19–55px del
+   * objetivo en 233 pasos) —; el lado se elige con la altura MEDIDA
+   * del conjunto, no con 240px fijos (R11D2-4); contra el teatro el
+   * asiento es contra la CAJA entera, no contra la zona (R11D2-3:
+   * la tarjeta tapaba un cuarto de la pieza); y en pantallas anchas
+   * la tarjeta se sienta AL LADO del foco cuando el lado la admite,
+   * aunque sea estrechándose a 320px (R11D2-5). */
+  const ctxExtra = ctxH > 0 && !seatTop ? ctxH + 9 : 0;
+  const stackH = cardH + ctxExtra;
+  const anchorTheatre = !!(step && "anchor" in step && typeof step.anchor === "string" && step.anchor.startsWith("teatro-"));
+  const theatreBox = anchorTheatre && typeof document !== "undefined" ? document.querySelector(".pres-theatre")?.getBoundingClientRect() ?? null : null;
+  const seatHole = theatreBox ? containHole(theatreBox) : cardHole;
+  const vhForSeat = window.innerHeight;
+  const belowSpace = seatHole ? vhForSeat - (seatHole.top + seatHole.height) : 0;
+  const aboveSpace = seatHole ? seatHole.top : 0;
+  const fitsBelow = seatHole ? belowSpace >= stackH + 22 : false;
+  const fitsAbove = seatHole ? aboveSpace >= stackH + 22 : false;
+  const cardBelow = seatHole ? (fitsBelow ? true : fitsAbove ? false : belowSpace > aboveSpace) : true;
+  const latRoom = (side: "left" | "right") => (side === "left" ? seatHole!.left - 10 : vwNow - (seatHole!.left + seatHole!.width) - 10);
+  const latSide: "left" | "right" | null =
+    vwNow >= 1024 && seatHole && !seatTop
+      ? latRoom("left") >= 320 + 24 ? "left" : latRoom("right") >= 320 + 24 ? "right" : null
+      : null;
+  const latW = latSide ? Math.min(cardW, latRoom(latSide) - 24) : cardW;
   /* LA TARJETA NUNCA SE CORTA POR ARRIBA NI POR ABAJO (defecto cazado por
    * Faro en su verificación de la ley 15, 2026-11-14, y presente aquí con
    * la misma forma): la regla «debajo si quedan más de 240px» suponía una
@@ -1408,20 +1443,24 @@ export function Presentacion() {
    * vistas el efecto vive ABAJO (la lista que se achica y crece), así
    * que la tarjeta SUBE: arriba del todo, donde no vive nada de la
    * lección. El foco (hueco y anillo) sigue en el selector. */
-  const seatTop = !!(step && "anchor" in step && typeof step.anchor === "string" && isFootprint(step.anchor));
   const desiredTop = seatTop
     ? 10
-    : cardHole
-      ? cardBelow
-        ? cardHole.top + cardHole.height + 14
-        : cardHole.top - 14 - cardH
-      : 0;
+    : latSide && seatHole
+      ? seatHole.top + seatHole.height / 2 - stackH / 2 + ctxExtra
+      : seatHole
+        ? cardBelow
+          ? seatHole.top + seatHole.height + 14 + ctxExtra
+          : seatHole.top - 14 - cardH
+        : 0;
   const clampedTop = cardH > 0
-    ? Math.min(Math.max(8, desiredTop), Math.max(8, vhNow - cardH - 8))
+    ? Math.min(Math.max(8 + ctxExtra, desiredTop), Math.max(8, vhNow - cardH - 8))
     : desiredTop;
-  const cardStyle: React.CSSProperties = cardHole ? {
-    left: Math.min(Math.max(10, cardHole.left + cardHole.width / 2 - cardW / 2), vwNow - cardW - 10),
+  const cardStyle: React.CSSProperties = seatHole ? {
+    left: latSide
+      ? latSide === "left" ? seatHole.left - 14 - latW : seatHole.left + seatHole.width + 14
+      : Math.min(Math.max(10, seatHole.left + seatHole.width / 2 - cardW / 2), vwNow - cardW - 10),
     top: clampedTop,
+    ...(latSide ? { width: latW } : {}),
   } : { left: "50%", top: "38%", transform: "translateX(-50%)" };
 
   const jumpToScene = (idx: number) => {
@@ -1529,8 +1568,13 @@ export function Presentacion() {
       : step?.kind === "stage"
         ? null
         : (() => {
+          // 1.6.38 (Prejuicio R10, R11D-1): la pieza se deriva SOLO
+          // de un ancla de teatro — el segundo segmento suelto
+          // («pestana-hoy», «dia-hoy», «cif-semana») montaba la
+          // tarjeta del teatro en 21 pasos de 7 módulos que jamás
+          // la pidieron, Q0 entre ellos.
           const a =
-            (step && "anchor" in step && typeof step.anchor === "string" ? step.anchor : null)
+            (step && "anchor" in step && typeof step.anchor === "string" && step.anchor.startsWith("teatro-") ? step.anchor : null)
             ?? scene?.anchors.find((x) => x.startsWith("teatro-"));
           const seg = a?.split("-")[1];
           return seg === "hoy" || seg === "semana" || seg === "panel" ? seg : null;

@@ -56,6 +56,17 @@ export function Hint({
   const id = useId();
   const btn = useRef<HTMLButtonElement>(null);
   const aria = label ?? t("hint.label");
+  // 1.6.38 (Prejuicio R10, R11D-2): si el alumno sigue el enlace
+  // «Más en el manual» de ESTA burbuja durante una lección, la
+  // burbuja se reabre al volver — la visita nació de ella, y el
+  // paso que la enseña (show pista-burbuja) la espera viva; sin
+  // esto la escena moría saltada en q6-pista y q6-mas.
+  const reopenRef = useRef(false);
+  useEffect(() => {
+    if (pathname === "/manual" || !reopenRef.current) return;
+    reopenRef.current = false;
+    if (typeof document !== "undefined" && document.querySelector(".pres-root")) setOpen(true);
+  }, [pathname]);
 
   useLayoutEffect(() => {
     if (!open || !btn.current) return;
@@ -156,6 +167,7 @@ export function Hint({
                         e.stopPropagation();
                       }}
                       onClick={() => {
+                        reopenRef.current = true;
                         setOpen(false);
                         rememberOrigin(pathname);
                         closeAllSheets(() => void navigate({ to: "/manual", search: { t: entry.topic.id }, resetScroll: false }));
