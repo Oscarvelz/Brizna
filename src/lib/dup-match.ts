@@ -54,6 +54,13 @@ export function foldText(s: string | null | undefined): string {
   return String(s ?? "")
     .normalize("NFKC")
     .replace(/([കണനരലള])്‍/g, (m, c: string) => CHILLU[c] ?? m)
+    // 1.6.22 (Prejuicio R7, R8F-9): el chillu también se escribe
+    // consonante+virama A SECAS (sin ZWJ) a final de palabra — las
+    // fuentes lo pintan igual, y sin esta unificación la forma seca
+    // caía bajo la protección del virama final y partía a la persona
+    // en dos. Solo a final de palabra y solo las seis letras chillu:
+    // el chillu sigue distinto de la consonante desnuda.
+    .replace(/([കണനരലള])്(?!\p{M}*[\p{L}\p{N}])/gu, (m, c: string) => CHILLU[c] ?? m)
     .normalize("NFD")
     .replace(/\u0640/g, "")
     .replace(/\u0E33/g, "\u0E4D\u0E32")
@@ -62,6 +69,14 @@ export function foldText(s: string | null | undefined): string {
     .replace(/\u06CC/g, "ي")
     .replace(/\u06A9/g, "ك")
     .replace(/\u0649/g, "ي")
+    // 1.6.22 (Prejuicio R7, R8F-7/R8F-8): la familia heh urdu
+    // (U+06C1 final, U+06BE medial) es la misma letra que la heh
+    // árabe (U+0647), y el alef wasla (U+0671) es un alef (U+0627)
+    // — sin unificar, el mismo nombre en teclado urdu o copiado de
+    // un texto con wasla partía su identidad en dos.
+    .replace(/\u06C1/g, "ه")
+    .replace(/\u06BE/g, "ه")
+    .replace(/\u0671/g, "ا")
     // 1.6.19 (Prejuicio R6, R7F-12): las letras finales hebreas son la
     // misma letra al final de la palabra (ך כ, ם מ, ן נ, ף פ, ץ צ) —
     // sin unificar, אברהם y su grafía no final nacían dos personas.
@@ -201,7 +216,11 @@ const ND_ZEROS = [0x30, 0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66, 0xae6, 0xb66, 
   // osmanya, sharada, takri, adlam y el resto de escrituras con
   // dígitos propios; sin su cero, el dígito volvía intacto y el \D
   // posterior lo borraba: esos teléfonos nacían sin identidad.
-  0x104a0, 0x10d30, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x112f0, 0x11450, 0x114d0, 0x11650, 0x116c0, 0x11730, 0x118e0, 0x11950, 0x11c50, 0x11d50, 0x11da0, 0x11f50, 0x16a60, 0x16ac0, 0x16b50, 0x1d7ce, 0x1d7d8, 0x1d7e2, 0x1d7ec, 0x1d7f6, 0x1e140, 0x1e2f0, 0x1e4f0, 0x1e950, 0x1fbf0];
+  0x104a0, 0x10d30, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x112f0, 0x11450, 0x114d0, 0x11650, 0x116c0, 0x11730, 0x118e0, 0x11950, 0x11c50, 0x11d50, 0x11da0, 0x11f50, 0x16a60, 0x16ac0, 0x16b50, 0x1d7ce, 0x1d7d8, 0x1d7e2, 0x1d7ec, 0x1d7f6, 0x1e140, 0x1e2f0, 0x1e4f0, 0x1e950, 0x1fbf0,
+  // 1.6.22 (Prejuicio R7, R8F-10): los bloques Nd de Unicode 16/17
+  // (garay, kirat rai y los demás) — la tabla se cierra contra el
+  // barrido exhaustivo de bloques del runtime, no de memoria.
+  0x10d40, 0x116d0, 0x116da, 0x11bf0, 0x11de0, 0x16130, 0x16d70, 0x1ccf0, 0x1e5f1];
 
 export function digitsOf(s: string | null | undefined): string {
   return String(s ?? "").replace(/\p{Nd}/gu, (ch) => {
@@ -215,7 +234,7 @@ export function phoneTail(phone: string | null | undefined): string {
   // 1.6.19 (Prejuicio R6, R7F-7): la extensión anotada («ext 89») sumaba
   // sus dígitos al final y desplazaba la ventana de 10 fuera del
   // número — el mismo teléfono con y sin extensión no casaba consigo.
-  const bare = String(phone ?? "").replace(/(?:\bext\.?|\bx|#)\s*\d{1,6}\s*$/i, "");
+  const bare = String(phone ?? "").replace(/(?:\bext\.?\s*:?\s*|\bextension\s+|[x#]\s*)\d{1,6}\s*$/i, "");
   const digits = digitsOf(bare).replace(/\D/g, "");
   return digits.length >= 7 ? digits.slice(-10) : "";
 }

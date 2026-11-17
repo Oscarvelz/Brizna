@@ -3,13 +3,19 @@ import { Calculator, GripHorizontal, PanelRightClose } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { digitsOf } from "@/lib/dup-match";
 import { money } from "@/lib/format";
 import { useTx } from "@/lib/i18n";
 import { DEFAULT_ABONO_PRESETS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function evalAmount(expr: string): number | null {
-  const cleaned = expr.replace(/,/g, ".").replace(/\s/g, "");
+  // 1.6.22 (Prejuicio R7, R8F-3): la ley de los dígitos llega al
+  // dinero — digitsOf traduce cualquier dígito decimal (arábigo,
+  // de ancho completo…) a ASCII antes de juzgar el texto; sin ella
+  // una propina «٥» nacía $0 en silencio y un precio «٤٥» se
+  // rechazaba siendo perfectamente legible.
+  const cleaned = digitsOf(expr).replace(/,/g, ".").replace(/\s/g, "");
   if (!cleaned || !/^[\d.+\-*/()]+$/.test(cleaned)) return null;
   if (/[+\-*/.]{2,}/.test(cleaned.replace(/\.\d/g, "0"))) return null;
   try {

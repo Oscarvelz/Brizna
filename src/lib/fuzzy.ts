@@ -2,6 +2,7 @@ export function fold(value: string): string {
   return value
     .normalize("NFKC")
     .replace(/([കണനരലള])്‍/g, (m, c: string) => FZ_CHILLU[c] ?? m)
+    .replace(/([കണനരലള])്(?!\p{M}*[\p{L}\p{N}])/gu, (m, c: string) => FZ_CHILLU[c] ?? m)
     .normalize("NFD")
     // 1.6.14 (Prejuicio R4, R5F-4/R5F-5/R5F-6): los mismos pasos previos
     // que foldText (dup-match.ts) — tatweel fuera, «am» tailandés/lao
@@ -13,6 +14,9 @@ export function fold(value: string): string {
     .replace(/ی/g, "ي")
     .replace(/ک/g, "ك")
     .replace(/ى/g, "ي")
+    .replace(/ہ/g, "ه")
+    .replace(/ھ/g, "ه")
+    .replace(/ٱ/g, "ا")
     .replace(/[\u05DA\u05DD\u05DF\u05E3\u05E5]/g, (ch) => FZ_HEBREW[ch] ?? ch)
     .replace(/[‌‍]/g, "")
     .replace(/[़়া\u09bc\u0a3c\u0abc\u0b3c\u0d3c\u0e4d\u0ecd\u1037]/g, (ch) => FZ_NUKTA[ch] ?? ch)

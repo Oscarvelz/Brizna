@@ -307,12 +307,19 @@ export function parseVcard(text: string): PickedContact[] {
  *  coma y SALTOS DE LÍNEA (una dirección entrecomillada con «\n» dentro es una
  *  sola celda, no un cliente inventado). */
 function splitCsvRows(text: string): string[][] {
+  // 1.6.22 (Prejuicio R7, R8F-5): los finales Mac clásicos (solo
+  // «\r») colapsaban el archivo entero en un cliente basura cosido
+  // con trozos de todos — el lector solo partía en «\n». Todo final
+  // se normaliza a «\n» al entrar; dentro de una celda citada el
+  // salto queda como «\n», la convención de la casa (R2F-16).
+  text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   // 1.6.16 (Prejuicio R5, R6F-9): un export separado por TABULADORES
   // (Excel/CRM) importaba cero — el lector solo partía por coma o
   // punto y coma. El delimitador se huele en la primera línea: si
   // los tabuladores mandan, manda el tabulador en todo el archivo.
   const firstNl = text.indexOf("\n");
   const firstLine = firstNl < 0 ? text : text.slice(0, firstNl);
+  void firstLine;
   // 1.6.19 (Prejuicio R6, R7F-5): la olida cuenta FUERA de las comillas —
   // una celda citada con tabuladores dentro («"Lista\tde\tclientes"»)
   // inclinaba la cuenta y un CSV de comas entero se partía por
@@ -333,7 +340,49 @@ function splitCsvRows(text: string): string[][] {
   }
   const tabs = (bare.match(/\t/g) ?? []).length;
   const commas = (bare.match(/,/g) ?? []).length + (bare.match(/;/g) ?? []).length;
-  const delim = tabs > 0 && tabs >= commas ? "\t" : ",";
+  // 1.6.22 (Prejuicio R7, R8F-2/R8F-6): la olida de una sola línea
+  // volvía a caer — un título SIN comillas con tabuladores dentro
+  // (el tabulador no es especial en un CSV de comas y se exporta a
+  // secas) inclinaba la cuenta y el archivo entero se partía por
+  // tabulador. Ahora la olida mira las primeras ocho líneas y gana
+  // el delimitador presente en MÁS líneas (el título es una; los
+  // datos son las demás), y conoce la barra vertical «|», que
+  // importaba cero en silencio.
+  let delim = tabs > 0 && tabs >= commas ? "\t" : ",";
+  {
+    const bareLine = (line: string): string => {
+      let out = "";
+      let q = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i]!;
+        if (q) {
+          if (ch === '"') {
+            if (line[i + 1] === '"') i++;
+            else q = false;
+          }
+          continue;
+        }
+        if (ch === '"') { q = true; continue; }
+        out += ch;
+      }
+      return out;
+    };
+    let tabLines = 0, commaLines = 0, pipeLines = 0, tabTotal = 0, commaTotal = 0, pipeTotal = 0;
+    for (const line of text.split("\n").slice(0, 8)) {
+      const b = bareLine(line);
+      const t = (b.match(/\t/g) ?? []).length;
+      const c = (b.match(/[,;]/g) ?? []).length;
+      const pp = (b.match(/\|/g) ?? []).length;
+      if (t) tabLines++;
+      if (c) commaLines++;
+      if (pp) pipeLines++;
+      tabTotal += t; commaTotal += c; pipeTotal += pp;
+    }
+    const score = (lines: number, total: number) => lines * 1000 + total;
+    if (score(tabLines, tabTotal) > score(commaLines, commaTotal) && score(tabLines, tabTotal) >= score(pipeLines, pipeTotal)) delim = "\t";
+    else if (score(pipeLines, pipeTotal) > score(commaLines, commaTotal)) delim = "|";
+    else delim = ",";
+  }
   const rows: string[][] = [];
   let row: string[] = [];
   let cur = "";
@@ -386,9 +435,9 @@ const HEADER_WORDS: Record<string, "name" | "phone" | "address" | "first" | "las
 // 1.6.04 (Prejuicio R2, R2F-6): el vocabulario crece con los encabezados que
 // los exportadores reales usan — «Client Name» no estaba y la columna del
 // nombre jamás se leía: cada contacto nacía nombrado por su teléfono.
-for (const w of ["name", "nombre", "nombre completo", "full name", "contacto", "contact", "client name", "customer name", "contact name", "nombre y apellido", "nombre del cliente", "client", "customer", "naam"]) HEADER_WORDS[w] = "name";
-for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone", "phone 1 value", "phone 2 value", "mobile phone", "cell phone", "telefono movil", "numero de celular", "telefono 1 valor", "telefono 2 valor", "home phone", "work phone", "business phone", "primary phone", "telefono casa", "telefono trabajo", "telefono de casa", "telefon", "telefoon", "telefonnummer", "mobiltelefon", "rufnummer", "handynummer"]) HEADER_WORDS[w] = "phone";
-for (const w of ["address", "direccion", "domicilio", "addr", "address 1 formatted", "direccion 1 formateada", "address 1", "direccion 1", "adresse", "adres", "anschrift"]) HEADER_WORDS[w] = "address";
+for (const w of ["name", "nombre", "nombre completo", "full name", "contacto", "contact", "client name", "customer name", "contact name", "nombre y apellido", "nombre del cliente", "client", "customer", "naam", "nome"]) HEADER_WORDS[w] = "name";
+for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone", "phone 1 value", "phone 2 value", "mobile phone", "cell phone", "telefono movil", "numero de celular", "telefono 1 valor", "telefono 2 valor", "home phone", "work phone", "business phone", "primary phone", "telefono casa", "telefono trabajo", "telefono de casa", "telefon", "telefoon", "telefonnummer", "mobiltelefon", "rufnummer", "handynummer", "telefone"]) HEADER_WORDS[w] = "phone";
+for (const w of ["address", "direccion", "domicilio", "addr", "address 1 formatted", "direccion 1 formateada", "address 1", "direccion 1", "adresse", "adres", "anschrift", "endereco", "morada"]) HEADER_WORDS[w] = "address";
 // 1.6.08 (Prejuicio R3, R3F-3): el nombre partido en dos columnas (la forma
 // de Outlook: «First Name,Last Name,Phone») — sin estas dos palabras el
 // apellido jamás se leía y cada contacto nacía con medio nombre.
