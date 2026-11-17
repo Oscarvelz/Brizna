@@ -192,10 +192,13 @@ async function usableDir(): Promise<DirHandle | null> {
   return perm === "granted" ? handle : null;
 }
 
-function stampBase() {
-  const d = new Date();
+function stampBaseAt(d: Date) {
   const p = (n: number) => String(n).padStart(2, "0");
   return `Brizna_${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
+function stampBase() {
+  return stampBaseAt(new Date());
 }
 
 function bytesBlob(bytes: Uint8Array, mime: string) {
@@ -309,13 +312,34 @@ async function writeDirFile(dir: DirHandle, name: string, blob: Blob): Promise<v
 }
 
 export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; xls: Uint8Array }): Promise<"folder" | "downloaded"> {
-  const stamp = stampBase();
+  const dir = await usableDir();
+  // 1.6.41 (Prejuicio R11, R12C-2): el sello tiene resolución de
+  // segundo y es hora local — dos paquetes pueden nacer con el
+  // mismo (el mismo segundo, el reloj que retrocede, la hora
+  // repetida del cambio de horario, dos aparatos contra la misma
+  // carpeta). Si un archivo de este sello ya vive en la carpeta,
+  // el sello avanza de segundo en segundo hasta ser SOLO de este
+  // intento: su limpieza de fracaso jamás podrá nombrar un archivo
+  // de un paquete anterior ya cantado.
+  let stamp = stampBase();
+  if (dir) {
+    const when = new Date();
+    for (;;) {
+      let clash = false;
+      for (const ext of [".json", ".pdf", ".xls"]) {
+        const taken = await dir.getFileHandle(`${stamp}${ext}`, { create: false }).catch(() => null);
+        if (taken) { clash = true; break; }
+      }
+      if (!clash) break;
+      when.setSeconds(when.getSeconds() + 1);
+      stamp = stampBaseAt(when);
+    }
+  }
   const files = [
     { name: `${stamp}.json`, blob: new Blob([parts.json], { type: "application/json" }) },
     { name: `${stamp}.pdf`, blob: bytesBlob(parts.pdf, "application/pdf") },
     { name: `${stamp}.xls`, blob: bytesBlob(parts.xls, "application/vnd.ms-excel") },
   ];
-  const dir = await usableDir();
   if (!dir) {
     const packed = zipStore([
       { name: `${stamp}.json`, data: new TextEncoder().encode(parts.json) },
@@ -334,10 +358,17 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
   // nombre al completarse; si uno falla, se borra todo lo de este sello
   // (finales y temporales) y el error nombra el archivo que falló, para
   // que el aviso lo diga — nunca queda un paquete a medias con buen nombre.
+  // 1.6.41 (R12C-2, segunda capa): la limpieza del fracaso borra
+  // los finales SOLO de los archivos que ESTE intento completó
+  // (los temporales, de todos: son de este intento o basura de la
+  // recogida). Antes borraba los tres finales del sello, y con un
+  // sello compartido se llevaba el paquete bueno anterior entero.
+  const written: string[] = [];
   try {
     for (const file of files) {
       try {
         await writeDirFile(dir, file.name, file.blob);
+        written.push(file.name);
       } catch {
         const err = new Error(file.name);
         err.name = "BundleFileError";
@@ -345,10 +376,8 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
       }
     }
   } catch (err) {
-    for (const file of files) {
-      await dir.removeEntry(file.name).catch(() => undefined);
-      await dir.removeEntry(`${file.name}.tmp`).catch(() => undefined);
-    }
+    for (const name of written) await dir.removeEntry(name).catch(() => undefined);
+    for (const file of files) await dir.removeEntry(`${file.name}.tmp`).catch(() => undefined);
     throw err;
   }
   // 1.6.23 (Prejuicio R7, R8C-1): la poda entera vive en un
@@ -394,13 +423,24 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
   const fresh = new Set(files.map((f) => f.name));
   const nowMs = Date.now();
   const stampOf = (name: string): number => {
+    // 1.6.41 (Prejuicio R11, R12C-3): los componentes se VALIDAN por
+    // viaje de ida y vuelta — new Date() rueda el día 48 al mes
+    // siguiente y el mes 13 al año siguiente, y un nombre mutilado
+    // heredaba así un sello plausible (el 48 de octubre «era» el 17
+    // de noviembre, hoy, y desplazaba a la genuina más vieja). Un
+    // nombre cuyos componentes no vuelven iguales no declara sello:
+    // 0, ilegible, y la hora manda.
+    const roundTrip = (dt: Date, y: number, mo: number, d: number, h: number, mi: number, s: number) =>
+      dt.getFullYear() === y && dt.getMonth() === mo && dt.getDate() === d && dt.getHours() === h && dt.getMinutes() === mi && dt.getSeconds() === s
+        ? dt.getTime()
+        : 0;
     const m = name.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})/);
-    if (m) return new Date(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!).getTime();
+    if (m) return roundTrip(new Date(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!), +m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!);
     // 1.6.36 (Prejuicio R10, R11C-3): el nombre legado de la familia
     // «oscar-copia-» declara solo la fecha — la herencia la oye como
     // la medianoche de ese día, no como 1970.
     const d = name.match(/(\d{4})-(\d{2})-(\d{2})/);
-    return d ? new Date(+d[1]!, +d[2]! - 1, +d[3]!).getTime() : 0;
+    return d ? roundTrip(new Date(+d[1]!, +d[2]! - 1, +d[3]!), +d[1]!, +d[2]! - 1, +d[3]!, 0, 0, 0) : 0;
   };
   // 1.6.36 (Prejuicio R10, R11C-1): se desconfía de la MARCA, no de
   // la copia. Cada marca se juzga por separado: la hora real manda
@@ -412,7 +452,15 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
     const stamp = stampOf(e.name);
     const mtimeTrue = e.mtime > 0 && e.mtime <= nowMs ? e.mtime : 0;
     const stampTrue = stamp > 0 && stamp <= nowMs ? stamp : 0;
-    const truth = mtimeTrue || stampTrue;
+    // 1.6.41 (Prejuicio R11, R12C-1): cuando la hora es veraz pero
+    // pasa del sello veraz por más de un mes, las dos marcas ya no
+    // describen la misma escritura — describen una escritura y una
+    // RE-COPIA: manda el sello, que es la edad de la copia. Así la
+    // antigüedad de 2025 re-copiada hoy ya no entierra a las
+    // genuinas. Dentro del mes, la discrepancia es ruido de reloj
+    // o de lote de sync y manda la hora, como siempre (el empate
+    // por lotes de W2 se deshace luego contra el sello futuro).
+    const truth = mtimeTrue && stampTrue && mtimeTrue - stampTrue > 30 * 86_400_000 ? stampTrue : mtimeTrue || stampTrue;
     if (truth > 0) return truth;
     if (e.mtime === 0 && stamp === 0) return 0;
     return -1;
@@ -456,8 +504,14 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
   // pestaña en este instante: la recogida no lo toca aunque su
   // sello lo haga sospechoso. La clase sospechosa de la poda de
   // paquetes no es la de la recogida de temporales.
+  // 1.6.41 (Prejuicio R11, R12C-4): el escudo exige frescura
+  // CUERDA — una hora hasta dos días por delante de ahora puede
+  // ser un reloj que patina entre aparatos (husos, horario de
+  // verano); una hora en 2999 no es un patinazo, es una marca
+  // rota, y las marcas rotas no escudan: el temporal de 2999 ya
+  // no es inmortal para la recogida.
   const tmpDoomed = entries
-    .filter((e) => e.name.endsWith(".tmp") && effOf(e) < nowMs - 3_600_000 && !(e.mtime > nowMs - 3_600_000))
+    .filter((e) => e.name.endsWith(".tmp") && effOf(e) < nowMs - 3_600_000 && !(e.mtime > nowMs - 3_600_000 && e.mtime <= nowMs + 48 * 3_600_000))
     .map((e) => e.name);
   for (const old of [...keep(".json"), ...keep(".pdf"), ...keep(".xls"), ...tmpDoomed]) await dir.removeEntry(old);
   } catch {
