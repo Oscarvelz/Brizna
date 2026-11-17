@@ -248,6 +248,7 @@ function FicheroPage() {
           />
           <button
             type="button"
+            data-present="fichero-ajustes"
             aria-label={tx("Ajustes de carpetas", "Folder settings")}
             onClick={() => setGear(true)}
             className="grid size-10 shrink-0 place-items-center rounded-full text-fg"

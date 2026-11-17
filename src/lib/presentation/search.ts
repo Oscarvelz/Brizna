@@ -142,8 +142,23 @@ export function buildRegistry(modules: readonly Module[], android = true, tablet
 }
 
 /** El registro vivo: una entrada por módulo listo y una por cada escena suya
- * que esta plataforma puede tocar (1.6.11, R4D-4). */
-export const PRESENTATION_SEARCH: readonly PresSearchEntry[] = buildRegistry(MODULES, inAndroidApp(), readTabletEnabled());
+ * que esta plataforma puede tocar (1.6.11, R4D-4).
+ * 1.6.24 (Prejuicio R7, R8D-4): se lee EN VIVO en cada búsqueda —
+ * el modo tableta es un interruptor de Ajustes que puede cambiar
+ * a mitad de sesión, y la foto tomada al cargar el módulo seguía
+ * ofreciendo (o escondiendo) las escenas de vista de AD13 contra
+ * el filtro vivo del conductor: elegir una aterrizaba en silencio
+ * en la primera escena del módulo, el fallo exacto que el filtro
+ * nació para impedir. La caché se reconstruye solo cuando la
+ * plataforma (android, tableta) cambia de verdad. */
+let searchCache: { key: string; entries: readonly PresSearchEntry[] } | null = null;
+export function presentationSearch(): readonly PresSearchEntry[] {
+  const key = `${inAndroidApp()}|${readTabletEnabled()}`;
+  if (!searchCache || searchCache.key !== key) {
+    searchCache = { key, entries: buildRegistry(MODULES, inAndroidApp(), readTabletEnabled()) };
+  }
+  return searchCache.entries;
+}
 
 /* ============================ el buscador (espejo del Manual) ============================ */
 
@@ -195,7 +210,7 @@ export function matchPresentations(words: string[]): PresSearchEntry[] {
     if (words.length && words.every((w) => keys.includes(w))) return 1;
     return 2;
   };
-  return PRESENTATION_SEARCH.map((entry, i) => ({ entry, i, r: rank(entry) }))
+  return presentationSearch().map((entry, i) => ({ entry, i, r: rank(entry) }))
     .filter((x) => presentationHit(words, x.entry.searchText))
     .sort((a, b) => a.r - b.r || a.i - b.i)
     .map((x) => x.entry);

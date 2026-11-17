@@ -216,6 +216,7 @@ export const ANCHORS: readonly AnchorRec[] = [
   { id: "agenda-conteo", by: "present", value: "agenda-conteo", file: "routes/agenda.tsx", serves: "AD5 ad5-horizonte (el conteo de la Agenda: hechos, pendientes, días)", presence: "siempre" },
   { id: "agenda-mover-dia", by: "present", value: "agenda-mover-dia", file: "routes/agenda.tsx", serves: "AD5 ad5-mover-dia (el botón Mover de un día; emisión familiar)", presence: "estado: hay un día con pendientes en la vista de Agenda" },
   { id: "agenda-mover-fecha", by: "present", value: "agenda-mover-fecha", file: "routes/agenda.tsx", serves: "AD5 ad5-mover-dia (la fecha destino del diálogo Mover; emisión en ui/input → picker-field)", presence: "estado: el diálogo «Mover todo el día» está abierto" },
+  { id: "agenda-mover-confirmar", by: "present", value: "agenda-mover-confirmar", file: "routes/agenda.tsx", serves: "AD5 ad5-domingo (confirmar el diálogo Mover; emisión en confirm-dialog)", presence: "estado: el diálogo «Mover todo el día» está abierto" },
   { id: "agenda-reordenar", by: "present", value: "agenda-reordenar", file: "components/reorder-jobs.tsx", serves: "AD5 ad5-reordenar (la lista arrastrable de un día)", presence: "estado: un día en Pendiente con más de un trabajo (la lista arrastrable)" },
   { id: "agenda-acumulado", by: "present", value: "agenda-acumulado", file: "routes/agenda.tsx", serves: "AD5 ad5-acumulado (la caja Trabajo acumulado)", presence: "estado: hay atrasados o pendientes de hoy en Agenda" },
   { id: "agenda-pasar-atrasados", by: "present", value: "agenda-pasar-atrasados", file: "routes/agenda.tsx", serves: "AD5 ad5-acumulado (el botón Pasar atrasados)", presence: "estado: hay atrasados o pendientes de hoy en Agenda" },
@@ -340,6 +341,7 @@ export const ANCHORS: readonly AnchorRec[] = [
   { id: "ficha-nota-enlace", by: "present", value: "ficha-nota-enlace", file: "routes/clientes.$id.tsx", serves: "AD11 ad11-cliente-enlaces/ad11-fijada-hoy (cada página del Bloc enlazada en la ficha; emisión familiar)", presence: "estado: la ficha lista páginas del Bloc enlazadas a este cliente" },
   // La Papelera del Fichero.
   { id: "fichero-papelera", by: "present", value: "fichero-papelera", file: "routes/fichero.tsx", serves: "AD11 ad11-papelera (la sección Papelera de la hoja de carpetas)", presence: "estado: la hoja de ajustes de carpetas está abierta" },
+  { id: "fichero-ajustes", by: "present", value: "fichero-ajustes", file: "routes/fichero.tsx", serves: "AD11 ad11-papelera (el botón de engranaje que abre la hoja de carpetas)", presence: "siempre" },
   // Ajustes por dentro (routes/ajustes y sus piezas).
   { id: "ajustes-buscar", by: "present", value: "ajustes-buscar", file: "routes/ajustes.tsx", serves: "AD14 ad14-buscar (la lupa de Ajustes; emisión en app-shell TitleSearch)", presence: "siempre" },
   { id: "ajustes-orden", by: "present", value: "ajustes-orden", file: "components/settings-order-button.tsx", serves: "AD14 ad14-orden (el botón Orden de los ajustes)", presence: "siempre" },

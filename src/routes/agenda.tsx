@@ -815,6 +815,7 @@ function AgendaPage() {
           </div>
         }
         confirmLabel={tx("Sí, mover", "Yes, move")}
+        presentConfirm="agenda-mover-confirmar"
         pending={moveMut.isPending}
         onConfirm={() => {
           if (!moveFrom) return;

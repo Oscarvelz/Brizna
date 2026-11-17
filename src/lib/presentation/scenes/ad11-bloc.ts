@@ -264,9 +264,10 @@ export const AD11: Module = {
       ],
     },
     {
-      id: "ad11-papelera", chapter: "fichero", anchors: ["fichero-papelera", "fichero"],
+      id: "ad11-papelera", chapter: "fichero", anchors: ["fichero-ajustes", "fichero-papelera", "fichero"],
       keys: [["papelera", "trash"], ["restaurar", "restore"], ["días", "days"]],
       steps: [
+        { kind: "do", anchor: "fichero-ajustes", caption: ["Toca el engranaje: la hoja de carpetas se abre.", "Tap the gear: the folder sheet opens."] },
         { kind: "show", anchor: "fichero-papelera", caption: ["Borrar manda a la papelera: nada se pierde al primer toque.", "Deleting sends to the trash: nothing is lost at first tap."] },
         { kind: "show", anchor: "fichero", caption: ["La papelera caduca a los 30 días; ajústalo de 1 a 365.", "The trash expires at 30 days; adjust it from 1 to 365."], contexto: ["Restaurar devuelve nota o carpeta entera; vaciar pide el conteo exacto.", "Restore returns a note or a whole folder; emptying asks the exact count."] },
         { kind: "ref", topic: "fichero" },

@@ -200,10 +200,11 @@ export const AD13: Module = {
       id: "ad13-deshacer", chapter: "memoria", anchors: ["deshacer-barra"],
       keys: [["deshacer", "undo"], ["memoria", "memory"]],
       steps: [
+        { kind: "stage", build: "manos-deshacer" },
         { kind: "show", anchor: "deshacer-barra", caption: ["Deshacer guarda veinte acciones, solo en esta apertura.", "Undo holds twenty actions, only in this opening."], contexto: ["Recargar vacía la pila: lo hecho queda hecho en el libro.", "Reloading empties the stack: what is done stays in the book."] },
         { kind: "ref", topic: "deshacer" },
       ],
-      verify: "Censo H V-2: la semilla decía que las flechas nunca se desactivan; el código no pinta la barra sin historial. Se enseña el código.",
+      verify: "Censo H V-2: la semilla decía que las flechas nunca se desactivan; el código no pinta la barra sin historial. Se enseña el código. 1.6.24 (R8D-3): la barra la produce la siembra manos-deshacer con una acción verdadera del escenario y su entrada real en la pila — ni el módulo ni ninguna corrida anterior la producían.",
     },
     {
       id: "ad13-puente", chapter: "memoria", anchors: ["pestana-agenda"],

@@ -39,7 +39,7 @@ import { fileURLToPath } from "node:url";
 import { anchorById } from "./anchors.ts";
 import { MODULES, moduleById, type Module } from "./guion.ts";
 import {
-  PRESENTATION_SEARCH,
+  presentationSearch,
   buildRegistry,
   presentationWords,
   searchPresentations,
@@ -78,7 +78,7 @@ test("(a) completitud: una entrada por módulo listo y una por escena, sin dupli
     // El registro vivo (web en node): ninguna escena androidOnly se ofrece,
     // y cada escena tocable tiene su entrada.
     for (const scene of mod.scenes) {
-      const live = PRESENTATION_SEARCH.filter((e) => e.moduleId === mod.id && e.sceneId === scene.id);
+      const live = presentationSearch().filter((e) => e.moduleId === mod.id && e.sceneId === scene.id);
       assert.equal(live.length, scene.androidOnly ? 0 : 1, `${mod.id}/${scene.id}: el registro vivo debe ${scene.androidOnly ? "omitir" : "traer"} esta escena`);
     }
   }
@@ -91,11 +91,11 @@ test("(b) solo lo listo: ningún módulo en preparación aparece en el registro"
   // toda entrada del registro pertenece a un módulo listo.
   for (const mod of notReady) {
     assert.ok(
-      !PRESENTATION_SEARCH.some((e) => e.moduleId === mod.id),
+      !presentationSearch().some((e) => e.moduleId === mod.id),
       `${mod.id} no está listo y no debe aparecer en la búsqueda`,
     );
   }
-  for (const entry of PRESENTATION_SEARCH) {
+  for (const entry of presentationSearch()) {
     assert.equal(moduleById(entry.moduleId)?.ready, true, `${entry.moduleId}: toda entrada es de un módulo listo`);
   }
 });

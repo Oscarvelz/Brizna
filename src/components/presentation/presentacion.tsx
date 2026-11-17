@@ -134,6 +134,14 @@ type RunState = {
    * re-ejecutar la maquinaria (un `stage` re-sembraría el escenario a mitad
    * de módulo) ni caer en una pantalla que el compás no pisó. */
   back: { sceneIdx: number; stepIdx: number }[];
+  /** 1.6.24 (Prejuicio R7, R8D-1): el camino que la corrida está
+   * repitiendo en silencio para llegar a su escena de arranque —
+   * mientras sceneIdx < replayUntil, el motor ejecuta solo la
+   * maquinaria de esas escenas (sin pies ni esperas de lectura),
+   * para que la escena destino nazca con la pantalla, las
+   * superficies y la historia que su guion hereda de las
+   * anteriores. */
+  replayUntil?: number;
 };
 
 /** Las rutas `go` pueden nombrar a cualquier cliente del escenario por su
@@ -345,15 +353,24 @@ export function Presentacion() {
     const startIdx = launch.sceneId
       ? Math.max(0, mod.scenes.findIndex((s) => s.id === launch.sceneId))
       : 0;
+    // 1.6.24 (Prejuicio R7, R8D-1): un arranque a mitad de módulo
+    // REPITE EL CAMINO. Las escenas están escritas como capítulos
+    // de un viaje: heredan de las anteriores la pantalla, las
+    // superficies abiertas y la historia de la sesión, y lanzadas
+    // solas morían en su primer ancla (183 de 349 en la caza 7).
+    // La corrida nace en la primera escena con replayUntil en la
+    // destino: el motor ejecuta solo la maquinaria del camino y
+    // la escena destino nace con el estado que su guion hereda.
+    const road = startIdx > 0;
     // El escenario amanece en Hoy, como la app misma — salvo que la primera
     // escena del arranque abra con su propio `go`.
-    const firstGo = mod.scenes[startIdx]?.steps.find((s) => s.kind === "go");
+    const firstGo = mod.scenes[road ? 0 : startIdx]?.steps.find((s) => s.kind === "go");
     const startPath =
       firstGo && firstGo.kind === "go" ? resolveScreen(firstGo.screen) : "/";
     void navigate({ to: startPath as never });
     later(() => {
       setRun({
-        mod, sceneIdx: startIdx, stepIdx: 0,
+        mod, sceneIdx: road ? 0 : startIdx, stepIdx: 0, replayUntil: road ? startIdx : undefined,
         mode: prefs.mode, speed: prefs.speed,
         playing: true, won: false, finished: false, chaptersOpen: false, speedOpen: false, stayOpen: false, exitOpen: false, skipped: [], back: [],
       });
@@ -392,7 +409,10 @@ export function Presentacion() {
     // Al salir de un compás con pie, su posición entra en la pila de
     // retorno: «Anterior» vuelve exactamente a donde el alumno ya estuvo.
     const curStep = r.mod.scenes[r.sceneIdx]?.steps[r.stepIdx];
-    const back = curStep && "caption" in curStep
+    // En el camino repetido el alumno no ha ocupado ninguna
+    // posición: nada entra en su pila de retorno (1.6.24, R8D-1).
+    const onRoad = r.replayUntil != null && r.sceneIdx < r.replayUntil;
+    const back = curStep && "caption" in curStep && !onRoad
       ? [...r.back, { sceneIdx: r.sceneIdx, stepIdx: r.stepIdx }]
       : r.back;
     if (r.stepIdx + 1 < (r.mod.scenes[r.sceneIdx]?.steps.length ?? 0)) {
@@ -797,7 +817,31 @@ export function Presentacion() {
        * mide, la tarjeta ya tiene casa y «Empezar» se enciende), pero
        * ningún compás actúa ni avanza: la lección empieza cuando el
        * alumno toca «Empezar», con la tarjeta naciendo en su sitio. */
-      if (introRef.current) {
+      /* 1.6.24 (Prejuicio R7, R8D-1): EL CAMINO SE REPITE EN
+       * SILENCIO. Mientras la corrida lleva replayUntil, las
+       * escenas anteriores a la destino ejecutan solo su
+       * maquinaria: mostrar/preguntar/teatro avanzan sin pausa (su
+       * enseñanza pertenece a la corrida entera, no a este
+       * tránsito), la ventana de apertura no detiene el camino
+       * (detiene la LECCIÓN, que empieza en la escena destino), un
+       * ancla muerta en el camino no salta ni anota la escena — el
+       * estado se produce a mejor esfuerzo y la escena destino
+       * juzga sus propias anclas con las reglas de siempre — y los
+       * gestos los hace el conductor aunque la lección sea
+       * interactiva, con el reloj comprimido. */
+      const replaying = r.replayUntil != null && r.sceneIdx < r.replayUntil;
+      if (r.replayUntil != null && !replaying) {
+        // El camino terminó: la corrida sigue en su escena con
+        // las reglas normales (ventana de apertura incluida).
+        setRun((cur) => (cur ? { ...cur, replayUntil: undefined } : cur));
+        return;
+      }
+      if (replaying && (step.kind === "show" || step.kind === "ask" || step.kind === "theatre" || step.kind === "ref")) {
+        advance();
+        return;
+      }
+      const speed = replaying ? 8 : effSpeed(r.speed);
+      if (introRef.current && !replaying) {
         if (step.kind === "stage" || step.kind === "go" || step.kind === "ref") {
           // La maquinaria sigue su curso: cae al despacho normal.
         } else if (hasCaption(step)) {
@@ -858,7 +902,7 @@ export function Presentacion() {
         // Un token sin resolver (`:lucia` sin cliente en el contexto) jamás
         // navega a la URL literal: la escena se salta con gracia (ley de
         // mantenimiento — nunca señalar a un fantasma).
-        if (target.includes(":")) { skipScene(scene.id); return; }
+        if (target.includes(":")) { if (replaying) { advance(); return; } skipScene(scene.id); return; }
         void navigate({ to: target as never });
         later(() => { if (!cancelled) advance(); }, stepMs(step, lang) / r.speed); // stepMs ya trae la escala recalibrada: se divide entre la ETIQUETA, no entre la efectiva
         return;
@@ -866,13 +910,15 @@ export function Presentacion() {
       if (step.kind === "ref") { advance(); return; }
       const el = await waitAnchor(step.anchor);
       if (cancelled) return;
-      if (!el) { skipScene(scene.id); return; } // ancla muerta: la escena se salta con gracia
+      if (!el) { if (replaying) { advance(); return; } skipScene(scene.id); return; } // ancla muerta: la escena se salta con gracia
       scrollDemonstration(el, step.anchor);
       later(() => { if (!cancelled) armRect(el); }, reduce ? 60 : 380);
       // La permanencia del paso: el pie + la lectura de la ventanita, si la hay.
-      const capDwell = hasCaption(step)
-        ? dwellMs(step.caption, lang) + (step.contexto ? Math.round((wordCount(pick(step.contexto, lang)) / WORDS_PER_MINUTE) * 60_000) : 0)
-        : 0;
+      const capDwell = replaying
+        ? 0
+        : hasCaption(step)
+          ? dwellMs(step.caption, lang) + (step.contexto ? Math.round((wordCount(pick(step.contexto, lang)) / WORDS_PER_MINUTE) * 60_000) : 0)
+          : 0;
 
       if (step.kind === "tap") {
         // Un micro-toque de maquinaria: el tipo tap no lleva pie propio,
@@ -900,7 +946,7 @@ export function Presentacion() {
         const editable = !input
           ? ((el as HTMLElement).isContentEditable ? (el as HTMLElement) : el.querySelector<HTMLElement>("[contenteditable]"))
           : null;
-        if (!input && !editable) { skipScene(scene.id); return; }
+        if (!input && !editable) { if (replaying) { advance(); return; } skipScene(scene.id); return; }
         const dwell = capDwell / speed;
         later(() => {
           if (cancelled) return;
@@ -934,7 +980,7 @@ export function Presentacion() {
         return;
       }
       if (step.kind === "press") {
-        if (r.mode === "interactive") {
+        if (r.mode === "interactive" && !replaying) {
           // La presión debe ser REAL y durar al menos `ms` de reloj verdadero:
           // el temporizador de la app (550ms en ConfirmLink) no conoce la
           // velocidad de la presentación. Un toque rápido no cuenta: sacude.
@@ -1001,7 +1047,7 @@ export function Presentacion() {
         return;
       }
       if (step.kind === "swipe") {
-        if (r.mode === "interactive") {
+        if (r.mode === "interactive" && !replaying) {
           // El arrastre debe ser REAL: se sigue el puntero del usuario sobre
           // la tarjeta y solo cuenta un deslizamiento claro a la izquierda.
           let downX = 0;
@@ -1055,7 +1101,7 @@ export function Presentacion() {
         return;
       }
       // do: el compás interactivo
-      if (r.mode === "interactive") {
+      if (r.mode === "interactive" && !replaying) {
         const onTap = (e: Event) => {
           if (el.contains(e.target as Node)) {
             document.removeEventListener("pointerdown", onTap, true);
@@ -1085,7 +1131,7 @@ export function Presentacion() {
     void runStep();
     return () => { cancelled = true; clearTimers(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run?.sceneIdx, run?.stepIdx, run?.mode, run?.playing, run?.speed, run?.chaptersOpen, run?.speedOpen, run?.stayOpen, run?.exitOpen, run?.finished, inManual, intro]);
+  }, [run?.sceneIdx, run?.stepIdx, run?.mode, run?.playing, run?.speed, run?.replayUntil, run?.chaptersOpen, run?.speedOpen, run?.stayOpen, run?.exitOpen, run?.finished, inManual, intro]);
 
   /* Esc: una capa a la vez (velocidad → capítulos → salir al índice). */
   useEffect(() => {
@@ -1273,7 +1319,19 @@ export function Presentacion() {
   const jumpToScene = (idx: number) => {
     clearTimers();
     setRect(null);
-    const next = { ...run, sceneIdx: idx, stepIdx: 0, won: false, chaptersOpen: false, speedOpen: false, finished: false, back: [] };
+    // 1.6.24 (Prejuicio R7, R8D-1): un salto HACIA ADELANTE repite
+    // la maquinaria de las escenas saltadas (replayUntil), igual
+    // que un arranque a mitad de módulo — la escena destino hereda
+    // su estado. Un salto hacia atrás conserva la historia ya
+    // producida por esta corrida: repetirla aplicaría dos veces
+    // sus acciones (un interruptor se apagaría, un cobro se
+    // duplicaría), así que allí la escena se apoya en lo vivido y,
+    // si su superficie ya se consumió, se salta con la honestidad
+    // del principio 17.
+    const fwd = idx > run.sceneIdx;
+    const next = fwd
+      ? { ...run, sceneIdx: run.sceneIdx + 1, stepIdx: 0, won: false, chaptersOpen: false, speedOpen: false, finished: false, back: [] as { sceneIdx: number; stepIdx: number }[], replayUntil: idx, playing: true }
+      : { ...run, sceneIdx: idx, stepIdx: 0, won: false, chaptersOpen: false, speedOpen: false, finished: false, back: [] };
     setRun(next);
     saveProgress(next, false);
   };
@@ -1401,8 +1459,8 @@ export function Presentacion() {
           {run.skipped.length ? (
             <p className="pres-done-note">
               {tx(
-                "Algunas escenas se saltaron: una parte de esta lección ya no coincide con tu Brizna. Quedan marcadas para revisión.",
-                "Some scenes were skipped: part of this lesson no longer matches your Brizna. They are flagged for review.",
+                "Algunas escenas no pudieron mostrarse en esta pasada, así que el módulo no se marca como aprendido.",
+                "Some scenes could not be shown this time through, so the module is not marked as learned.",
               )}
             </p>
           ) : null}

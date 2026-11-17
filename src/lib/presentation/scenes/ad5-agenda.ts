@@ -176,9 +176,12 @@ export const AD5: Module = {
       ],
     },
     {
-      id: "ad5-domingo", chapter: "libres", anchors: ["agenda-dia-raro"],
+      id: "ad5-domingo", chapter: "libres", anchors: ["agenda-mover-dia", "agenda-mover-fecha", "agenda-mover-confirmar", "agenda-dia-raro"],
       keys: [["domingo", "sunday"], ["casi nunca", "almost never"]],
       steps: [
+        { kind: "do", anchor: "agenda-mover-dia", caption: ["Toco Mover en un día con patios pendientes.", "I tap Move on a day with pending yards."] },
+        { kind: "type", anchor: "agenda-mover-fecha", text: ["2027-01-03", "2027-01-03"], caption: ["Escribo un domingo como destino del pase.", "I type a Sunday as the move's target."] },
+        { kind: "do", anchor: "agenda-mover-confirmar", caption: ["Confirmo: antes de mover a un domingo, la app pregunta.", "I confirm: before moving to a Sunday, the app asks."] },
         { kind: "show", anchor: "agenda-dia-raro", caption: ["El domingo siempre pregunta antes de recibir trabajo.", "Sunday always asks before receiving work."], contexto: ["El guardia vive en toda la app: tarjeta, alta, ficha y Agenda.", "The guard lives app-wide: card, signup, file, and Schedule."] },
         { kind: "show", anchor: "agenda-dia-raro", caption: ["Puedes dejarlo ese domingo o pasarlo al lunes.", "You can leave it that Sunday or shift it to Monday."] },
       ],

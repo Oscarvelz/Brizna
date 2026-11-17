@@ -13,7 +13,8 @@
  * con `:aurelio`, igual que en el piso Quick.
  */
 import { addDaysISO, todayISO, weekdayFromISO } from "@/lib/dates";
-import { createClient } from "@/lib/server/lawn";
+import { completeJob, createClient, listJobs, reopenJob } from "@/lib/server/lawn";
+import { useUndo } from "@/lib/undo";
 import { stageCtx } from "./stage-seeds.ts";
 
 type NewClient = {
@@ -112,9 +113,32 @@ async function rutaWidget(): Promise<void> {
   await mkClient({ name: "Elena Mar", phone: "305 555 0154", address: "7 Ocean Drive", pricePerCut: 35, startDate: addDaysISO(today, 1) });
 }
 
+/**
+ * manos-deshacer — la barra de Deshacer de AD13 nace de una acción
+ * VERDADERA (1.6.24, Prejuicio R7 R8D-3): la siembra marca hecho un
+ * corte de hoy por la función de la casa y empuja su entrada real
+ * en la pila, con la misma forma que empuja la tarjeta («Hecho:
+ * <nombre>», deshacer = reabrir, rehacer = completar). Ni el
+ * módulo ni ninguna escena producían historial, y la barra no se
+ * pinta sin él: la escena nacía muerta en cualquier corrida.
+ */
+async function manosDeshacer(): Promise<void> {
+  const today = todayISO();
+  const jobs = await listJobs({ data: {} });
+  const job = jobs.find((j) => j.scheduledDate === today && j.status === "pending");
+  if (!job) return;
+  await completeJob({ data: { id: job.id, settlement: "owe" } });
+  useUndo.getState().push({
+    label: `Hecho: ${job.clientName}`,
+    undo: async () => { await reopenJob({ data: { id: job.id } }); },
+    redo: async () => { await completeJob({ data: { id: job.id, settlement: "owe" } }); },
+  });
+}
+
 /** Las siembras del grupo D, tal como las citan los pasos `stage`. */
 export const SEEDS_W2_D: Record<string, () => Promise<void>> = {
   "ruta-manos": rutaManos,
+  "manos-deshacer": manosDeshacer,
   "ruta-ajustes": rutaAjustes,
   "ruta-datos": rutaDatos,
   "ruta-widget": rutaWidget,

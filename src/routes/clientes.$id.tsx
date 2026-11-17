@@ -1631,7 +1631,9 @@ function HistoryBlock({
   // 1.6.21 (Prejuicio R6, R7D-3): el Historial no es el Fold compartido
   // y ningún listener lo alcanzaba — la Presentación pide abrirlo con
   // el mismo evento (detalle «historial») y la escena ad2-historial
-  // puede por fin tocarlo. Solo abre; jamás escribe la memoria.
+  // puede por fin tocarlo. Solo abre; la memoria que el toggle
+  // escribe vive en el localStorage fotografiado del escenario y
+  // se restaura al salir, así que el libro real no se entera.
   useEffect(() => {
     const onOpenFold = (e: Event) => {
       if ((e as CustomEvent<string>).detail === "historial" && !open) toggle();
