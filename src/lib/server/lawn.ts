@@ -204,6 +204,23 @@ function daysBetween(from: string, to: string): number {
   return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000);
 }
 
+/* 1.6.40 (Prejuicio R11, R12B-2/B-3): UNA sola ley de validez para
+ * la bandera de vacaciones en el servidor — loadPrefs (el motor)
+ * y exportCenterData (el PDF) la honran por esta función; los
+ * anuncios de Hoy/Agenda la honran por su espejo cliente
+ * vacationHonored (lib/dates.ts). getSettings queda CRUDO a
+ * propósito: es la foto del editor de Ajustes, desde la que el
+ * jardinero ve la bandera plantada y la quita. La cota es la del
+ * ESCRITOR contada como él la cuenta: applyVacation mide el tramo
+ * INCLUSIVO (diff + 1) y niega lo que pasa de 180, así que la
+ * bandera es válida con diff < 180. El lector de 1.6.37 admitía
+ * diff ≤ 180 — un día más ancho que su escritor — y los anuncios
+ * no acotaban nada: Hoy proclamaba «el trabajo se movió al
+ * regreso» de una bandera que el motor ignoraba. */
+function validVacation(start: string | null, end: string | null): [string, string] | null {
+  return start && end && end >= start && daysBetween(start, end) < 180 ? [start, end] : null;
+}
+
 function parseExtras(raw: string | null | undefined): string[] {
   if (!raw) return [];
   const seen = new Set<string>();
@@ -1171,19 +1188,21 @@ async function loadPrefs(userId: string) {
   const horizon = Number(r?.horizon_months);
   const every = Number(r?.season_every);
   // 1.6.37 (Prejuicio R10, R11B-3): the vacation flag is read with
-  // the same bounds its writer enforces (applyVacation: end not
-  // before start, span ≤ 180 days). A planted flag outside those
+  // the bounds its writer enforces. A planted flag outside those
   // bounds — an old backup's 9999 end — used to close the whole
   // generation horizon and silently stop every client's seeding;
   // read as no vacation instead, like the other clamped fields.
-  const vacStart = r?.vacation_start ? asIsoDate(r.vacation_start) : null;
-  const vacEnd = r?.vacation_end ? asIsoDate(r.vacation_end) : null;
-  const vacOk = vacStart && vacEnd && vacEnd >= vacStart && daysBetween(vacStart, vacEnd) <= 180;
+  // 1.6.40: the bound itself now lives in validVacation, counted
+  // the writer's way (inclusive span ≤ 180 ⇒ diff < 180).
+  const vac = validVacation(
+    r?.vacation_start ? asIsoDate(r.vacation_start) : null,
+    r?.vacation_end ? asIsoDate(r.vacation_end) : null,
+  );
   return {
     weekGoals: parseWeekGoals(r?.week_goals),
     abonoPresets: parseNumList(r?.abono_presets, DEFAULT_ABONO_PRESETS),
-    vacationStart: vacOk ? vacStart : null,
-    vacationEnd: vacOk ? vacEnd : null,
+    vacationStart: vac ? vac[0] : null,
+    vacationEnd: vac ? vac[1] : null,
     vacationShift: Number(r?.vacation_shift) || 0,
     excludedWeekdays: parseExcluded(r?.excluded_weekdays),
     horizonMonths: horizon >= 4 && horizon <= 18 ? horizon : 12,
@@ -3433,6 +3452,10 @@ export const getSettings = createServerFn({ method: "GET" })
       jobCount: intId(counts[0]?.jobs),
       weekGoals: parseWeekGoals(row.week_goals),
       abonoPresets: parseNumList(row.abono_presets, DEFAULT_ABONO_PRESETS),
+      // getSettings devuelve la bandera CRUDA a propósito: es la
+      // foto que el editor de Ajustes muestra y desde la que el
+      // jardinero la quita (validVacation manda en el motor, en el
+      // PDF y en los anuncios de Hoy/Agenda, no en el editor).
       vacationStart: row.vacation_start ? asIsoDate(row.vacation_start) : null,
       vacationEnd: row.vacation_end ? asIsoDate(row.vacation_end) : null,
       vacationShift: Number(row.vacation_shift) || 0,
@@ -8475,8 +8498,14 @@ export const exportCenterData = createServerFn({ method: "GET" })
         aging[c.id] = row;
       }
     }
-    const vs = settings[0]?.vacation_start ? asIsoDate(settings[0].vacation_start) : null;
-    const ve = settings[0]?.vacation_end ? asIsoDate(settings[0].vacation_end) : null;
+    // 1.6.40 (R12B-2): el PDF anuncia la misma bandera válida que
+    // el motor honra (validVacation), no la cruda de la base.
+    const vacExp = validVacation(
+      settings[0]?.vacation_start ? asIsoDate(settings[0].vacation_start) : null,
+      settings[0]?.vacation_end ? asIsoDate(settings[0].vacation_end) : null,
+    );
+    const vs = vacExp ? vacExp[0] : null;
+    const ve = vacExp ? vacExp[1] : null;
     return {
       today,
       from,

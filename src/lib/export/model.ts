@@ -260,19 +260,25 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
     o: "[oó]", ó: "[oó]", O: "[OÓ]", Ó: "[OÓ]",
     u: "[uúü]", ú: "[uú]", ü: "[uü]", U: "[UÚÜ]", Ú: "[UÚ]", Ü: "[UÜ]",
   };
+  // 1.6.40 (Prejuicio R11, R12A-1/A-2): el nombre se compone a NFC
+  // antes de patrullarlo (un nombre guardado descompuesto no cazaba
+  // su mención compuesta, y la mención descompuesta dejaba la tilde
+  // combinante colgando del reemplazo), y el espacio y el guión son
+  // LA MISMA junta («Ana María» caza «Ana-María» y al revés).
   const swapPattern = (name: string) =>
     name
+      .normalize("NFC")
       .trim()
-      .split(/\s+/)
+      .split(/[\s-]+/)
       .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/[aáeéiíoóuúüAÁEÉIÍOÓUÚÜ]/g, (ch) => swapFold[ch] ?? ch))
-      .join("\\s+");
+      .join("[\\s-]+");
   const nameSwaps = o.names
     ? []
     : raw.clients
         .filter((c) => c.name.trim().length >= 3)
         .sort((a, b) => b.name.length - a.name.length)
         .map((c) => [new RegExp(`(?<![\\p{L}\\p{N}_])${swapPattern(c.name)}(?![\\p{L}\\p{N}_])`, "giu"), nameOf(c.id)] as const);
-  const clean = (text: string) => nameSwaps.reduce((t, [re, to2]) => t.replace(re, to2), stripHtml(text));
+  const clean = (text: string) => nameSwaps.reduce((t, [re, to2]) => t.replace(re, to2), stripHtml(text).normalize("NFC"));
   const phoneOf = (c: ClientRow | undefined) => (o.phones && c?.phone ? c.phone : "");
   const byId = new Map(raw.clients.map((c) => [c.id, c]));
 
@@ -444,7 +450,11 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   };
 
   /* ---------- trabajos */
-  const jobWord = (j: ExportRawJob) => (j.title?.trim() ? j.title.trim() : jobKindLabel(j.kind));
+  // 1.6.40 (Prejuicio R11, R12A-3): el título libre del trabajo
+  // también pasa por el canje — «Poda en casa de Ana» imprimía el
+  // nombre entero en modo sin nombres mientras la nota del mismo
+  // trabajo salía canjeada.
+  const jobWord = (j: ExportRawJob) => clean(j.title?.trim() ? j.title.trim() : jobKindLabel(j.kind));
   const workClient = new Map<number, { name: string; jobs: number; value: number }>();
   for (const j of done) {
     const row = workClient.get(j.clientId) ?? { name: nameOf(j.clientId), jobs: 0, value: 0 };
@@ -468,7 +478,7 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
       phone: phoneOf(c),
       address: c?.address ?? "",
       time: (j.arrivalTime ?? c?.arrivalTime ?? "").slice(0, 5),
-      job: jobWord(j) + (extras && j.kind === "cut" ? ` + ${extras}` : ""),
+      job: jobWord(j) + (extras && j.kind === "cut" ? ` + ${clean(extras)}` : ""),
       amount: j.amount,
       owes: c && c.balance > 0.004 ? c.balance : 0,
       cue: clean([c?.cue ?? "", j.notes ?? ""].filter((x) => x.trim()).join(" · ")),
@@ -618,7 +628,7 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   const reasonMap = new Map<string, number>();
   for (const r of posRows) reasonMap.set(r.reason, (reasonMap.get(r.reason) ?? 0) + 1);
   const offDays = [
-    ...raw.offDays.map((d) => ({ date: d.date, reason: [reasonLabel(locale, d.reason), d.detail].filter(Boolean).join(" · ") })),
+    ...raw.offDays.map((d) => ({ date: d.date, reason: [reasonLabel(locale, d.reason), d.detail ? clean(d.detail) : d.detail].filter(Boolean).join(" · ") })),
     ...raw.work.filter((w) => w.stopped).map((w) => ({ date: w.date, reason: `${tx("Paró temprano", "Stopped early")}: ${reasonLabel(locale, w.stopped!)}` })),
   ].sort((a, b) => a.date.localeCompare(b.date));
   const pospuestos: Model["pospuestos"] = {
@@ -654,8 +664,13 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
             sub: v.sub,
             moves: advisor.actions.slice(0, 3).map((a) => {
               const w = words.actionWords(a, advisor, tx);
-              const people = !o.names ? a.people.map((p) => p.name) : [];
-              const swap = (t: string) => people.reduce((acc, nm) => acc.split(nm).join(initialsOf(nm)), t);
+              // 1.6.40 (Prejuicio R11, R12A-4): el canje del Asesor
+              // usa el rótulo NUMERADO del documento (nameOf por
+              // id), no las iniciales peladas — con dos clientes de
+              // las mismas iniciales, el movimiento del segundo
+              // imprimía el rótulo del primero.
+              const people = !o.names ? a.people.map((p) => [p.name, nameOf(p.id)] as const) : [];
+              const swap = (t: string) => people.reduce((acc, [nm, lb]) => acc.split(nm).join(lb), t);
               return { title: swap(w.title), line: swap(w.line), impact: `${w.sign}${money(Math.round(a.impact))} ${w.unit}` };
             }),
             checks: advisor.pillars.map((p) => ({ label: tx(...(pillarName[p.key] ?? ["", ""])), status: p.status, line: words.pillarWords(p, advisor, tx).line })),

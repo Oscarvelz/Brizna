@@ -29,6 +29,7 @@ import {
   monthParts,
   startOfWeekISO,
   todayISO,
+  vacationHonored,
   weekdayFromISO,
 } from "@/lib/dates";
 import { viewGrid } from "@/lib/density";
@@ -221,7 +222,7 @@ function AgendaPage() {
   const settingsQ = useQuery({ queryKey: ["settings"], queryFn: () => getSettings() });
   const offQ = useQuery({ queryKey: ["week-off"], queryFn: () => getWeekOff() });
   const excluded = settingsQ.data?.excludedWeekdays ?? [];
-  const vacationOn = Boolean(settingsQ.data?.vacationStart && settingsQ.data?.vacationEnd);
+  const vacationOn = vacationHonored(settingsQ.data?.vacationStart, settingsQ.data?.vacationEnd);
   const status = filter === "all" ? "pending" : filter;
   const query = useQuery({
     queryKey: ["jobs", { filter: onlyMoved ? "all" : status, range, q }],

@@ -75,6 +75,22 @@ export function clock12(value: string): string {
  *  travelled until the database's ::date cast killed the whole operation with an error
  *  that never named the cause. Round-trips through Date.UTC: a rolled-over result is a
  *  different day than the one written, so it is not real. */
+/* 1.6.40 (Prejuicio R11, familia R12B): Date.UTC lee los años
+ * 0–99 como 1900+año. La cura de 1.6.37 restauraba el año en
+ * addDaysISO con un espejo (−1900) que el febrero del año 0000
+ * rompía (1900 no es bisiesto; el 0 sí), y sus hermanas —
+ * weekdayFromISO, addMonths, las de último día y semana — nunca
+ * recibieron ni eso: un ancla restaurada de la banda sembraba en
+ * el día de semana de 1999 y su vista de cortes salía vacía. Toda
+ * fecha construida desde un año de datos nace ahora por aquí:
+ * setUTCFullYear fija el año LITERAL, con su propio febrero. */
+export function utcLiteral(y: number, m0: number, d: number): Date {
+  const dt = new Date(0);
+  dt.setUTCFullYear(y, m0, d);
+  dt.setUTCHours(0, 0, 0, 0);
+  return dt;
+}
+
 export function isRealISODate(value: string): boolean {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!m) return false;
@@ -82,19 +98,27 @@ export function isRealISODate(value: string): boolean {
   const mo = Number(m[2]);
   const d = Number(m[3]);
   if (mo < 1 || mo > 12 || d < 1 || d > 31) return false;
-  const dt = new Date(Date.UTC(y, mo - 1, d));
+  const dt = utcLiteral(y, mo - 1, d);
   return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+}
+
+/* 1.6.40 (Prejuicio R11, R12B-2): el espejo cliente de
+ * validVacation (server/lawn.ts) — los anuncios de Hoy y Agenda
+ * solo proclaman la bandera que el motor honra (fin ≥ inicio y
+ * tramo inclusivo ≤ 180, es decir diff < 180). El editor de
+ * Ajustes lee la bandera cruda y conserva su poder de quitarla. */
+export function vacationHonored(start: string | null | undefined, end: string | null | undefined): boolean {
+  return !!start && !!end && end >= start && addDaysISO(start, 180) > end;
 }
 
 export function addDaysISO(iso: string, days: number): string {
   const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d + days));
-  // 1.6.37 (Prejuicio R10, R11B-2): Date.UTC reads years 0–99 as
-  // 1900+year, so a restored anchor in that band walked ~1,900
-  // years past the range and the client silently never seeded
-  // again. Shifting the built date back 1,900 years restores the
-  // literal year, boundary crossings included.
-  if (y < 100) dt.setUTCFullYear(dt.getUTCFullYear() - 1900);
+  // 1.6.40: nace por utcLiteral (ver arriba) — el espejo −1900 de
+  // 1.6.37 (R11B-2) restauraba el año pero heredaba el febrero de
+  // 1900: sobre 0000-02-29 la identidad devolvía 0000-03-01
+  // (R12B-5). setUTCDate suma los días sobre el año verdadero.
+  const dt = utcLiteral(y, m - 1, d);
+  dt.setUTCDate(dt.getUTCDate() + days);
   return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`;
 }
 
@@ -104,13 +128,19 @@ export function monthParts(iso: string): { year: number; month: number } {
 }
 
 export function addMonths(year: number, month: number, n: number) {
-  const dt = new Date(Date.UTC(year, month - 1 + n, 1));
-  return { year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1 };
+  // 1.6.40 (R12B-4): aritmética pura — vía Date.UTC el año 99 + 1
+  // mes daba 1999 y la vista previa de cortes salía vacía.
+  const total = year * 12 + (month - 1) + n;
+  const y = Math.floor(total / 12);
+  return { year: y, month: total - y * 12 + 1 };
 }
 
 export function weekdayFromISO(iso: string): number {
   const [y, m, d] = iso.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  // 1.6.40 (R12B-1): el día de semana se lee del año LITERAL — la
+  // generación deriva el día del start_date crudo, y un ancla
+  // restaurada de la banda sembraba en el día de 19xx para siempre.
+  return utcLiteral(y, m - 1, d).getUTCDay();
 }
 
 export function weekdayDatesInMonth(
@@ -119,9 +149,9 @@ export function weekdayDatesInMonth(
   weekday: number,
 ): string[] {
   const out: string[] = [];
-  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const last = utcLiteral(year, month, 0).getUTCDate();
   for (let day = 1; day <= last; day += 1) {
-    const dt = new Date(Date.UTC(year, month - 1, day));
+    const dt = utcLiteral(year, month - 1, day);
     if (dt.getUTCDay() === weekday) {
       out.push(`${year}-${pad(month)}-${pad(day)}`);
     }
@@ -177,7 +207,7 @@ export function everyNDaysInRange(
 
 export function sameMonthDay(startISO: string, year: number, month: number): string {
   const day = Number(startISO.slice(8, 10)) || 1;
-  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const last = utcLiteral(year, month, 0).getUTCDate();
   const d = Math.min(Math.max(1, day), last);
   return `${year}-${pad(month)}-${pad(d)}`;
 }
@@ -277,10 +307,10 @@ export function previewUpcomingCuts(opts: {
 
 export function startOfWeekISO(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d));
+  const dt = utcLiteral(y, m - 1, d);
   const day = dt.getUTCDay();
   const mondayOffset = day === 0 ? -6 : 1 - day;
-  const monday = new Date(Date.UTC(y, m - 1, d + mondayOffset));
+  const monday = utcLiteral(y, m - 1, d + mondayOffset);
   return `${monday.getUTCFullYear()}-${pad(monday.getUTCMonth() + 1)}-${pad(monday.getUTCDate())}`;
 }
 
@@ -289,7 +319,7 @@ export function endOfWeekISO(iso: string): string {
 }
 
 export function lastDayOfMonthISO(year: number, month: number): string {
-  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const last = utcLiteral(year, month, 0).getUTCDate();
   return `${year}-${pad(month)}-${pad(last)}`;
 }
 
@@ -299,7 +329,7 @@ export function maxISO(a: string, b: string): string {
 
 export function payDueISO(dueDay: number, fromISO: string): string {
   const { year, month } = monthParts(fromISO);
-  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const last = utcLiteral(year, month, 0).getUTCDate();
   const d = Math.min(Math.max(1, Math.floor(dueDay) || 1), last);
   return `${year}-${pad(month)}-${pad(d)}`;
 }
@@ -348,14 +378,14 @@ export function isPaymentLate(
 }
 
 function nthWeekday(year: number, month: number, weekday: number, n: number): string {
-  const first = new Date(Date.UTC(year, month - 1, 1));
+  const first = utcLiteral(year, month - 1, 1);
   const delta = (weekday - first.getUTCDay() + 7) % 7;
   const day = 1 + delta + (n - 1) * 7;
   return `${year}-${pad(month)}-${pad(day)}`;
 }
 
 function lastWeekday(year: number, month: number, weekday: number): string {
-  const last = new Date(Date.UTC(year, month, 0));
+  const last = utcLiteral(year, month, 0);
   const delta = (last.getUTCDay() - weekday + 7) % 7;
   return `${year}-${pad(month)}-${pad(last.getUTCDate() - delta)}`;
 }

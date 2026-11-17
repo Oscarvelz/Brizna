@@ -25,7 +25,7 @@ import { ReasonChips } from "@/components/reason-chips";
 import { SettleDay } from "@/components/settle-day";
 import { WorkDayCard } from "@/components/work-day";
 import { MessageComposer } from "@/components/message-composer";
-import { addDaysISO, todayISO } from "@/lib/dates";
+import { addDaysISO, todayISO, vacationHonored } from "@/lib/dates";
 import { viewGrid } from "@/lib/density";
 import { PackedGrid } from "@/components/wide-layout";
 import { formatDay, formatLongDay, money, weekdayOptions } from "@/lib/format";
@@ -196,7 +196,7 @@ function Home() {
         </section>
       ) : null}
 
-      {settings.data?.vacationStart ? (
+      {settings.data?.vacationStart && vacationHonored(settings.data.vacationStart, settings.data.vacationEnd) ? (
         <div className="mb-4 flex items-start gap-2 rounded-xl border-l-4 border-pending bg-pending-bg p-3">
           <Palmtree className="mt-0.5 size-5 shrink-0 text-pending" />
           <div className="min-w-0">
