@@ -287,6 +287,11 @@ export function Presentacion() {
    * nombre): la siembra previa del conductor y el paso `stage` comparten
    * este registro para no sembrar dos veces la misma ficción. */
   const sownBuildsRef = useRef<Set<string>>(new Set());
+  /** Escenas que ESTA corrida ya produjo (por índice): el camino no
+   * re-ejecuta lo vivido — lo producido ya está producido (1.6.27,
+   * Prejuicio R8, R9D-5). Nace vacío en cada lanzamiento, como los
+   * registros de siembra. */
+  const producedRef = useRef<Set<number>>(new Set());
   const runRef = useRef<RunState | null>(null);
   runRef.current = run;
   const timers = useRef<number[]>([]);
@@ -361,6 +366,17 @@ export function Presentacion() {
     // La corrida nace en la primera escena con replayUntil en la
     // destino: el motor ejecuta solo la maquinaria del camino y
     // la escena destino nace con el estado que su guion hereda.
+    // 1.6.27 (Prejuicio R8, R9D-1/R9D-5): corrida nueva, libro
+    // nuevo — los registros del conductor viven lo que dura UNA
+    // corrida, no la sesión de la app. `enterStage` garantiza un
+    // libro vacío en cada entrada, pero la siembra sobrevivía en
+    // los refs y la segunda corrida del mismo módulo nacía sin
+    // ficción que sembrar: cada ancla moría y el módulo se saltaba
+    // entero en silencio. El registro de escenas producidas nace
+    // vacío en el mismo acto.
+    stagedRef.current.clear();
+    sownBuildsRef.current.clear();
+    producedRef.current.clear();
     const road = startIdx > 0;
     // El escenario amanece en Hoy, como la app misma — salvo que la primera
     // escena del arranque abra con su propio `go`.
@@ -387,6 +403,16 @@ export function Presentacion() {
 
   const scene: Scene | null = run ? (run.mod.scenes[run.sceneIdx] ?? null) : null;
   const step: Step | null = run && scene ? (scene.steps[run.stepIdx] ?? null) : null;
+  // 1.6.27 (Prejuicio R8, R9D-2): la escena ENSEÑA el Manual cuando
+  // sus anclas declaradas viven en routes/manual.tsx — el registro
+  // lo dice, no el guion a mano. En esa escena el conductor sigue
+  // despierto DENTRO del Manual: su escenario es el Manual mismo.
+  // La visita libre del alumno por el puente «Más en el manual»
+  // sigue bajo la ley vieja — el conductor se apaga y Atrás rearma
+  // el compás. Sin esta distinción, q6-portada se atrapaba en su
+  // propio go (cada Atrás lo rearmaba) y q6-tema/q6-ver no podían
+  // despachar jamás.
+  const manualScene = scene != null && scene.anchors.some((a) => anchorById(a)?.file === "routes/manual.tsx");
 
   const saveProgress = useCallback((r: RunState, done: boolean) => {
     const prefs: PresState = readPresState();
@@ -422,11 +448,13 @@ export function Presentacion() {
       return;
     }
     if (r.sceneIdx + 1 < r.mod.scenes.length) {
+      producedRef.current.add(r.sceneIdx);
       const next = { ...r, sceneIdx: r.sceneIdx + 1, stepIdx: 0, won: false, back };
       setRun(next);
       saveProgress(next, false);
       return;
     }
+    producedRef.current.add(r.sceneIdx);
     const done = { ...r, finished: true, won: false, back };
     setRun(done);
     // LA LECCIÓN QUE NO PUDO ENSEÑARSE LO DICE (principio 17): si alguna
@@ -661,7 +689,7 @@ export function Presentacion() {
 
   /* ------------------------------ el motor de pasos ------------------------------ */
   useEffect(() => {
-    if (!run || !scene || !step || run.finished || run.chaptersOpen || run.speedOpen || run.stayOpen || run.exitOpen || inManual) return;
+    if (!run || !scene || !step || run.finished || run.chaptersOpen || run.speedOpen || run.stayOpen || run.exitOpen || (inManual && !manualScene)) return;
     const r = run;
     let cancelled = false;
     // La velocidad EFECTIVA: la etiqueta del selector por el factor de la
@@ -834,6 +862,15 @@ export function Presentacion() {
         // El camino terminó: la corrida sigue en su escena con
         // las reglas normales (ventana de apertura incluida).
         setRun((cur) => (cur ? { ...cur, replayUntil: undefined } : cur));
+        return;
+      }
+      // 1.6.27 (Prejuicio R8, R9D-5): en el camino, una escena
+      // que esta corrida YA produjo no se re-ejecuta — el camino
+      // existe para producir lo no vivido; lo vivido ya está
+      // producido. Se avanza sin tocar nada, con la misma prisa
+      // silenciosa de la maquinaria del camino.
+      if (replaying && producedRef.current.has(r.sceneIdx)) {
+        advance();
         return;
       }
       if (replaying && (step.kind === "show" || step.kind === "ask" || step.kind === "theatre" || step.kind === "ref")) {
@@ -1232,7 +1269,7 @@ export function Presentacion() {
     // está — el toque recibió su respuesta en el mismo fotograma.
     return <div className="pres-root is-introonly">{renderIntroWindow(false)}</div>;
   }
-  if (!stageActive || !run || inManual) return null;
+  if (!stageActive || !run || (inManual && !manualScene)) return null;
 
   const mod = run.mod;
   const chapter = scene ? mod.chapters.find((c) => c.id === scene.chapter) : null;
@@ -1328,10 +1365,14 @@ export function Presentacion() {
     // duplicaría), así que allí la escena se apoya en lo vivido y,
     // si su superficie ya se consumió, se salta con la honestidad
     // del principio 17.
+    // 1.6.27 (Prejuicio R8, R9D-4): el salto atrás — y el salto a
+    // la misma escena — APAGA el camino: la rama de atrás esparcía
+    // `...run` sin nombrar replayUntil, así que un camino vivo
+    // sobrevivía al salto y re-ejecutaba el tramo ya repetido.
     const fwd = idx > run.sceneIdx;
     const next = fwd
       ? { ...run, sceneIdx: run.sceneIdx + 1, stepIdx: 0, won: false, chaptersOpen: false, speedOpen: false, finished: false, back: [] as { sceneIdx: number; stepIdx: number }[], replayUntil: idx, playing: true }
-      : { ...run, sceneIdx: idx, stepIdx: 0, won: false, chaptersOpen: false, speedOpen: false, finished: false, back: [] };
+      : { ...run, sceneIdx: idx, stepIdx: 0, won: false, chaptersOpen: false, speedOpen: false, finished: false, back: [], replayUntil: undefined };
     setRun(next);
     saveProgress(next, false);
   };
@@ -1399,6 +1440,24 @@ export function Presentacion() {
     { left: clearHole.left + clearHole.width, top: clearHole.top, right: 0, height: clearHole.height },
   ] : [{ left: 0, top: 0, width: "100%", height: "100%" }];
 
+  // 1.6.27 (Prejuicio R8, R9D-3): el teatro se queda mientras
+  // la escena lo enseña — no solo mientras dura un paso `theatre`:
+  // las escenas de zonas muestran anclas teatro-* con pasos `show`,
+  // y el teatro se desmontaba con el paso anterior, así que las
+  // nueve morían en su primer ancla. La pieza se lee de la propia
+  // ancla (teatro-hoy/semana/panel-*), así que cada escena pinta
+  // su pieza sin depender de la escena anterior.
+  const theatrePiece: "hoy" | "semana" | "panel" | null =
+    step?.kind === "theatre"
+      ? step.piece
+      : (() => {
+          const a =
+            (step && "anchor" in step && typeof step.anchor === "string" ? step.anchor : null)
+            ?? scene?.anchors.find((x) => x.startsWith("teatro-"));
+          const seg = a?.split("-")[1];
+          return seg === "hoy" || seg === "semana" || seg === "panel" ? seg : null;
+        })();
+
   return (
     <div className={`pres-root${entering ? " is-entering" : ""}${leaving ? " is-leaving" : ""}${!cardShown ? " is-unplaced" : ""}`} role="dialog" aria-modal="false" aria-label={pick(mod.title, lang)} data-skipped={run.skipped.join(" ")}>
       {/* el escudo rodea el recorte: ningún toque desvía el guion, y el objetivo del
@@ -1427,9 +1486,9 @@ export function Presentacion() {
       ) : null}
       <div className="pres-thread" aria-hidden><i style={{ width: `${((run.sceneIdx + (run.finished ? 1 : 0)) / totalScenes) * 100}%` }} /></div>
 
-      {step?.kind === "theatre" && !run.finished ? (
+      {theatrePiece && !run.finished ? (
         <div className="pres-theatre" aria-hidden={false}>
-          <WidgetTheatre piece={step.piece} />
+          <WidgetTheatre piece={theatrePiece} />
         </div>
       ) : null}
 

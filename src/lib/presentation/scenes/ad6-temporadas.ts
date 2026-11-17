@@ -79,11 +79,17 @@ export const AD6: Module = {
       ],
     },
     {
-      id: "ad6-cliente-abrir", chapter: "cliente", anchors: ["ficha-temporada"],
+      id: "ad6-cliente-abrir", chapter: "cliente", anchors: ["ficha-editar", "ficha-temporada"],
       keys: [["temporada", "season"], ["cliente", "client"]],
       steps: [
         { kind: "stage", build: "temporada-cliente" },
         { kind: "go", screen: "/clientes/:lucia" },
+        // 1.6.27 (Prejuicio R8, R9D-6): la escena produce su estado
+        // — ficha-temporada solo se emite DENTRO del formulario, y
+        // ninguna escena abría el formulario. Tocar Editar abre la
+        // ficha en edición y el campo Temporada (y Frecuencia, para
+        // la escena siguiente) nacen con su ancla en su sitio.
+        { kind: "do", anchor: "ficha-editar", caption: ["Toca Editar: su temporada vive en su formulario.", "Tap Edit: her season lives on her form."] },
         { kind: "show", anchor: "ficha-temporada", caption: ["Lucía lleva su propia temporada en su ficha.", "Lucía carries her own season on her file."] },
         { kind: "show", anchor: "ficha-temporada", caption: ["Sus fechas y su número son solo suyos.", "Her dates and her number are hers alone."] },
         { kind: "ref", topic: "temporada" },
