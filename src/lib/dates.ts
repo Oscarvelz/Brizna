@@ -337,7 +337,13 @@ export function previewUpcomingCuts(opts: {
       }),
     );
   }
-  const unique = [...new Set(dates)].sort();
+  // 1.6.56 (Prejuicio R14, R15B-1): la unión de cuatro meses se
+  // ordena POR VALOR, no por cadena — al cruzar el borde
+  // 9999→10000 la cadena de cinco dígitos ordena antes que
+  // cualquier «9999-…» y la vista previa escondía los cortes
+  // inminentes y enseñaba los lejanos. La 1.6.51 blindó el filtro
+  // de scheduleDatesForMonth y dejó esta ordenación al lado.
+  const unique = [...new Set(dates)].sort(compareISO);
   return unique.slice(0, opts.count ?? 4);
 }
 

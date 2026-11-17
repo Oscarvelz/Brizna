@@ -199,8 +199,14 @@ function stampBaseAt(d: Date) {
   // los dos extremos y la línea de 24 h de effOf es exacta en
   // términos absolutos para todo paquete nuevo, se lea donde se
   // lea. (Los nombres viejos, escritos con campos locales, se
-  // leen desplazados por el huso de su escritor — ≤ 14 h,
-  // dentro de la línea.) El año va relleno a cuatro, como manda
+  // leen desplazados por el huso de su escritor — ≤ 14 h.
+  // 1.6.56, declaración R15C-1: ese desplazamiento se SUMA a la
+  // línea — la ventana de frescura prestada de un nombre legado
+  // es 24 h + el huso de su escritor, hasta 38 h en el extremo
+  // este; el lector no puede saber el huso de quien escribió, y
+  // la población legada no vuelve a nacer. Lo que la 1.6.52
+  // declaró «dentro de la línea» era corto en esta junta.) El
+  // año va relleno a cuatro, como manda
   // la familia de dates.ts desde 1.6.44: sin relleno, un reloj
   // en un año de tres dígitos escribía un nombre que stampOf no
   // sabe leer.
@@ -504,12 +510,21 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
       dt.setUTCHours(h, mi, s, 0);
       return roundTrip(dt, y, mo, d, h, mi, s);
     };
-    const m = name.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})/);
+    // 1.6.56 (Prejuicio R14, R15C-2): el año se lee ENTERO
+    // (\d{4,}), no por sus últimos cuatro dígitos — la regex sin
+    // anclar encontraba su coincidencia empezando en el segundo
+    // dígito de un año de cinco y el paquete del año 12026 (que
+    // el propio escritor produce con un reloj en ese año) nacía
+    // con un sello falso de 2026, veraz a ojos de effOf, y caía
+    // podado el primero siendo el más nuevo. Leído entero, su
+    // sello es el futuro que es y recibe el tratamiento asentado
+    // de los sellos futuros.
+    const m = name.match(/(\d{4,})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})/);
     if (m) return utcOf(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!);
     // 1.6.36 (Prejuicio R10, R11C-3): el nombre legado de la familia
     // «oscar-copia-» declara solo la fecha — la herencia la oye como
     // la medianoche de ese día, no como 1970.
-    const d = name.match(/(\d{4})-(\d{2})-(\d{2})/);
+    const d = name.match(/(\d{4,})-(\d{2})-(\d{2})/);
     return d ? utcOf(+d[1]!, +d[2]! - 1, +d[3]!, 0, 0, 0) : 0;
   };
   // 1.6.36 (Prejuicio R10, R11C-1): se desconfía de la MARCA, no de
