@@ -368,7 +368,7 @@ function splitCsvRows(text: string): string[][] {
       return out;
     };
     let tabLines = 0, commaLines = 0, pipeLines = 0, tabTotal = 0, commaTotal = 0, pipeTotal = 0;
-    for (const line of text.split("\n").slice(0, 8)) {
+    for (const line of text.split("\n").slice(0, 10)) {
       const b = bareLine(line);
       const t = (b.match(/\t/g) ?? []).length;
       const c = (b.match(/[,;]/g) ?? []).length;
@@ -382,6 +382,61 @@ function splitCsvRows(text: string): string[][] {
     if (score(tabLines, tabTotal) > score(commaLines, commaTotal) && score(tabLines, tabTotal) >= score(pipeLines, pipeTotal)) delim = "\t";
     else if (score(pipeLines, pipeTotal) > score(commaLines, commaTotal)) delim = "|";
     else delim = ",";
+    // 1.6.25 (Prejuicio R8, R9F-7/R9F-8): la cuenta ya no decide
+    // sola — dos testigos la confirman o la corrigen, en orden.
+    // (1) EL ENCABEZADO: si partir las primeras diez líneas con un
+    // candidato deja ver la fila de encabezado que el lector va a
+    // buscar (su misma regla), ese candidato es el delimitador:
+    // un preámbulo de informe con tabuladores llenaba la ventana
+    // y el archivo se partía por tabulador antes de que una línea
+    // de datos votara; y un título con comas inclinaba el total
+    // contra la barra, porque el total contaba también las comas
+    // que viven DENTRO de las direcciones.
+    // (2) EL TELÉFONO: sin encabezado a la vista, el delimitador
+    // cuya segunda columna trae números con pinta de teléfono es
+    // el bueno — es la lectura posicional que el importador hará.
+    // Si ningún testigo habla, manda la cuenta de siempre.
+    const scores: Record<string, number> = { "\t": score(tabLines, tabTotal), "|": score(pipeLines, pipeTotal), ",": score(commaLines, commaTotal) };
+    const sample = text.split("\n").slice(0, 10);
+    const splitFor = (line: string, d: string): string[] => {
+      const cells: string[] = [];
+      let cur = "";
+      let q = false;
+      let fieldStart = true;
+      for (let i = 0; i < line.length; i += 1) {
+        const ch = line[i]!;
+        if (q) {
+          if (ch === '"' && line[i + 1] === '"') { cur += '"'; i += 1; }
+          else if (ch === '"') q = false;
+          else cur += ch;
+        } else if (ch === '"' && fieldStart) q = true;
+        else if (ch === d || (d === "," && ch === ";")) { cells.push(cur); cur = ""; fieldStart = true; }
+        else if (ch !== "\r") { cur += ch; fieldStart = false; }
+      }
+      cells.push(cur);
+      return cells;
+    };
+    const headerWith = (d: string): boolean => sample.some((line) => {
+      const cells = splitFor(line, d).map(foldHead);
+      const known = cells.filter((c) => HEADER_WORDS[c]).length;
+      // El testigo pide DOS palabras conocidas, más que la regla
+      // del lector: una sola es justo la forma del preámbulo de
+      // informe («Origen⇥Telefono»), que no debe coronar al
+      // tabulador como delimitador del archivo.
+      return known >= 2;
+    });
+    const phoneColWith = (d: string): boolean => sample.some((line) => {
+      const cells = splitFor(line, d);
+      return cells.length >= 2 && digitsOf(cells[1]!).replace(/\D/g, "").length >= 7;
+    });
+    const cands = ["\t", "|", ","] as const;
+    const headCands = cands.filter((d) => headerWith(d));
+    if (headCands.length > 0 && !headCands.some((d) => d === delim)) {
+      delim = [...headCands].sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0))[0]!;
+    } else if (headCands.length === 0 && !phoneColWith(delim)) {
+      const phoneCands = cands.filter((d) => phoneColWith(d));
+      if (phoneCands.length === 1) delim = phoneCands[0]!;
+    }
   }
   const rows: string[][] = [];
   let row: string[] = [];
@@ -436,13 +491,13 @@ const HEADER_WORDS: Record<string, "name" | "phone" | "address" | "first" | "las
 // los exportadores reales usan — «Client Name» no estaba y la columna del
 // nombre jamás se leía: cada contacto nacía nombrado por su teléfono.
 for (const w of ["name", "nombre", "nombre completo", "full name", "contacto", "contact", "client name", "customer name", "contact name", "nombre y apellido", "nombre del cliente", "client", "customer", "naam", "nome"]) HEADER_WORDS[w] = "name";
-for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone", "phone 1 value", "phone 2 value", "mobile phone", "cell phone", "telefono movil", "numero de celular", "telefono 1 valor", "telefono 2 valor", "home phone", "work phone", "business phone", "primary phone", "telefono casa", "telefono trabajo", "telefono de casa", "telefon", "telefoon", "telefonnummer", "mobiltelefon", "rufnummer", "handynummer", "telefone"]) HEADER_WORDS[w] = "phone";
-for (const w of ["address", "direccion", "domicilio", "addr", "address 1 formatted", "direccion 1 formateada", "address 1", "direccion 1", "adresse", "adres", "anschrift", "endereco", "morada"]) HEADER_WORDS[w] = "address";
+for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone", "phone 1 value", "phone 2 value", "mobile phone", "cell phone", "telefono movil", "numero de celular", "telefono 1 valor", "telefono 2 valor", "home phone", "work phone", "business phone", "primary phone", "telefono casa", "telefono trabajo", "telefono de casa", "telefon", "telefoon", "telefonnummer", "mobiltelefon", "rufnummer", "handynummer", "telefone", "telefone 1 valor", "telefone 2 valor", "telefon 1 wert", "telefon 2 wert", "telephone 1 valeur", "telephone 2 valeur", "telemovel"]) HEADER_WORDS[w] = "phone";
+for (const w of ["address", "direccion", "domicilio", "addr", "address 1 formatted", "direccion 1 formateada", "address 1", "direccion 1", "adresse", "adres", "anschrift", "endereco", "morada", "endereco 1 formatado", "adresse 1 formatiert", "adresse 1 formatee", "indirizzo"]) HEADER_WORDS[w] = "address";
 // 1.6.08 (Prejuicio R3, R3F-3): el nombre partido en dos columnas (la forma
 // de Outlook: «First Name,Last Name,Phone») — sin estas dos palabras el
 // apellido jamás se leía y cada contacto nacía con medio nombre.
-for (const w of ["first name", "nombre de pila", "given name", "vorname", "voornaam"]) HEADER_WORDS[w] = "first";
-for (const w of ["last name", "apellido", "apellidos", "family name", "surname", "nachname", "achternaam"]) HEADER_WORDS[w] = "last";
+for (const w of ["first name", "nombre de pila", "given name", "vorname", "voornaam", "prenom"]) HEADER_WORDS[w] = "first";
+for (const w of ["last name", "apellido", "apellidos", "family name", "surname", "nachname", "achternaam", "nom", "nom de famille", "cognome", "sobrenome"]) HEADER_WORDS[w] = "last";
 
 function foldHead(cell: string): string {
   return cell

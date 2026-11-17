@@ -15,7 +15,11 @@ function evalAmount(expr: string): number | null {
   // de ancho completo…) a ASCII antes de juzgar el texto; sin ella
   // una propina «٥» nacía $0 en silencio y un precio «٤٥» se
   // rechazaba siendo perfectamente legible.
-  const cleaned = digitsOf(expr).replace(/,/g, ".").replace(/\s/g, "");
+  // 1.6.25 (Prejuicio R8, R9F-5): la puntuación árabe viaja con sus
+  // dígitos — el separador decimal U+066B es un punto y el de miles
+  // U+066C se retira; sin traducirlos, «٤٫٥» de propina nacía $0 en
+  // silencio, la forma exacta que R8F-3 vino a matar.
+  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/,/g, ".").replace(/\s/g, "");
   if (!cleaned || !/^[\d.+\-*/()]+$/.test(cleaned)) return null;
   if (/[+\-*/.]{2,}/.test(cleaned.replace(/\.\d/g, "0"))) return null;
   try {

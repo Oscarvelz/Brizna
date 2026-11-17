@@ -67,6 +67,10 @@ export function foldText(s: string | null | undefined): string {
     .replace(/\u0EB3/g, "\u0ECD\u0EB2")
     .replace(/[\u093C\u09BC\u0A3C\u0ABC\u0B3C\u0D3C\u0E4D\u0ECD\u1037]/g, (ch) => NUKTA_SLOTS[ch] ?? ch)
     .replace(/\u06CC/g, "ي")
+    // 1.6.25 (Prejuicio R8, R9F-4): el yeh barree urdu (U+06D2) es
+    // la misma terminación que el yeh arábigo en علی y tantos
+    // nombres — sin unificar, el nombre suelto no casaba consigo.
+    .replace(/\u06D2/g, "ي")
     .replace(/\u06A9/g, "ك")
     .replace(/\u0649/g, "ي")
     // 1.6.22 (Prejuicio R7, R8F-7/R8F-8): la familia heh urdu
@@ -234,7 +238,11 @@ export function phoneTail(phone: string | null | undefined): string {
   // 1.6.19 (Prejuicio R6, R7F-7): la extensión anotada («ext 89») sumaba
   // sus dígitos al final y desplazaba la ventana de 10 fuera del
   // número — el mismo teléfono con y sin extensión no casaba consigo.
-  const bare = String(phone ?? "").replace(/(?:\bext\.?\s*:?\s*|\bextension\s+|[x#]\s*)\d{1,6}\s*$/i, "");
+  // 1.6.25 (Prejuicio R8, R9F-3): la familia crece — «extension:» con
+  // dos puntos, «ext-» con guion, la palabra española entera
+  // «extensión», extensiones de hasta diez dígitos y el paréntesis
+  // de cierre tras los dígitos ya no envenenan la cola.
+  const bare = String(phone ?? "").replace(/(?:\bext(?:ensi[oó]n)?\.?\s*[-:]?\s*|[x#]\s*)\d{1,10}\s*\)?\s*$/i, "");
   const digits = digitsOf(bare).replace(/\D/g, "");
   return digits.length >= 7 ? digits.slice(-10) : "";
 }
@@ -251,7 +259,11 @@ const SUFFIX = new Set(["st", "ave", "rd", "dr", "ct", "pl", "ln", "blvd", "ter"
 /** House number + the street words up to the street type (St, Ave, Terr…), abbreviations folded, so the city or
  *  zip written or not does not matter; "" when there is no number to anchor it. */
 export function addressKey(address: string | null | undefined): string {
-  const words = foldText(address).split(" ").filter(Boolean).map((w) => ABBR[w] ?? w);
+  // 1.6.25 (Prejuicio R8, R9F-6): el número de la casa también se
+  // lee en cualquier sistema de dígitos — la ley de digitsOf llega
+  // por fin a la puerta de la dirección: «٣٠٥ Calle Sol» ancla
+  // igual que «305 Calle Sol».
+  const words = digitsOf(foldText(address)).split(" ").filter(Boolean).map((w) => ABBR[w] ?? w);
   const at = words.findIndex((w) => /^\d+$/.test(w));
   if (at < 0) return "";
   const rest = words.slice(at, at + 6);

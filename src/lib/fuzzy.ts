@@ -12,6 +12,7 @@ export function fold(value: string): string {
     .replace(/ำ/g, "ํา")
     .replace(/ຳ/g, "຅າ".replace("຅", "ໍ"))
     .replace(/ی/g, "ي")
+    .replace(/ے/g, "ي")
     .replace(/ک/g, "ك")
     .replace(/ى/g, "ي")
     .replace(/ہ/g, "ه")
