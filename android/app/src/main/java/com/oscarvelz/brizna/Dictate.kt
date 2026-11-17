@@ -227,7 +227,7 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
                         // (los nombres se repiten en el plan) y la continuación
                         // diferida respeta una parada explícita: sin !stopping, el
                         // reintento resucitaba un dictado que el usuario ya cerró.
-                        if (busyRetryIdx != step.idx) { busyRetryIdx = step.idx; plan.add(0, step); runCatching { rec?.cancel() }; main.postDelayed({ if (id == cur && !stopping) next() }, 400) }
+                        if (busyRetryIdx != step.idx) { busyRetryIdx = step.idx; plan.add(0, step); runCatching { rec?.cancel() }; main.postDelayed({ if (id == cur) { if (!stopping) next() else finish(fail("no-speech")) } }, 400) }
                         else finish(fail("busy"))
                     }
                     SpeechRecognizer.ERROR_CLIENT -> if (stopping) finish(fail("no-speech")) else if (!heard) later(cur) else finish(fail("failed"))
@@ -266,8 +266,14 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
     /** The next recognizer, after this callback returns (never destroy a recognizer inside its own callback).
      *  android-19 (Prejuicio R7, R8E-2): la continuación diferida también
      *  respeta `stopping` — tras una parada explícita no arranca el
-     *  siguiente reconocedor. */
-    private fun later(cur: String) = main.post { if (id == cur && !stopping) next() }
+     *  siguiente reconocedor.
+     *  android-20 (Prejuicio R8, R9E-1): respetar la parada no es
+     *  tragarla — si la parada llegó en la ventana de la continuación,
+     *  la sesión recibe su respuesta final (finish(fail("no-speech")),
+     *  la forma honesta que ERROR_CLIENT ya usaba ante `stopping`),
+     *  porque el contrato de stop() promete que el resultado sigue.
+     *  La misma forma cierra el reintento diferido de la rama BUSY. */
+    private fun later(cur: String) = main.post { if (id == cur) { if (!stopping) next() else finish(fail("no-speech")) } }
 
     private fun finish(j: JSONObject) {
         if (id == null) return
