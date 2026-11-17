@@ -200,8 +200,20 @@ type JobDb = {
 function daysBetween(from: string, to: string): number {
   const [ay, am, ad] = from.slice(0, 10).split("-").map(Number);
   const [by, bm, bd] = to.slice(0, 10).split("-").map(Number);
-  if (!ay || !by) return 0;
-  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000);
+  // 1.6.44 (Prejuicio R12, R13B-4): los años se leen LITERALES,
+  // como la familia de dates.ts desde 1.6.40 — Date.UTC leía los
+  // años 0–99 como 1900+año, así que un tramo que cruzaba 99→100
+  // medía negativo y validVacation honraba «vacaciones» de 729
+  // días; y la guarda vieja (`!ay`) leía el año 0000 como «sin
+  // año». La ausencia se juzga ahora por NaN, no por el cero.
+  if (ay === undefined || by === undefined || Number.isNaN(ay) || Number.isNaN(by)) return 0;
+  const a = new Date(0);
+  a.setUTCFullYear(ay, am - 1, ad);
+  a.setUTCHours(0, 0, 0, 0);
+  const b = new Date(0);
+  b.setUTCFullYear(by, bm - 1, bd);
+  b.setUTCHours(0, 0, 0, 0);
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
 }
 
 /* 1.6.40 (Prejuicio R11, R12B-2/B-3): UNA sola ley de validez para

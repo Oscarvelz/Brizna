@@ -19,6 +19,17 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
+/* 1.6.44 (Prejuicio R12, R13B): el año de TODA salida ISO viaja
+ * con relleno a cuatro — la familia calculaba con el año literal
+ * (utcLiteral, 1.6.40) pero lo escribía desnudo («99-01-15»), y
+ * cada comparación de cadenas aguas abajo leía otro siglo: el
+ * avance del vencimiento que manda no avanzaba, el atraso jamás
+ * disparaba, la cota de vacationHonored quedaba muerta y los
+ * rangos de la vista previa corrían sobre 1999. */
+function padYear(y: number) {
+  return String(y).padStart(4, "0");
+}
+
 export function todayISO(timeZone?: string): string {
   return new Intl.DateTimeFormat("en-CA", {
     ...(timeZone ? { timeZone } : {}),
@@ -119,7 +130,7 @@ export function addDaysISO(iso: string, days: number): string {
   // (R12B-5). setUTCDate suma los días sobre el año verdadero.
   const dt = utcLiteral(y, m - 1, d);
   dt.setUTCDate(dt.getUTCDate() + days);
-  return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`;
+  return `${padYear(dt.getUTCFullYear())}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`;
 }
 
 export function monthParts(iso: string): { year: number; month: number } {
@@ -153,7 +164,7 @@ export function weekdayDatesInMonth(
   for (let day = 1; day <= last; day += 1) {
     const dt = utcLiteral(year, month - 1, day);
     if (dt.getUTCDay() === weekday) {
-      out.push(`${year}-${pad(month)}-${pad(day)}`);
+      out.push(`${padYear(year)}-${pad(month)}-${pad(day)}`);
     }
   }
   return out;
@@ -209,7 +220,7 @@ export function sameMonthDay(startISO: string, year: number, month: number): str
   const day = Number(startISO.slice(8, 10)) || 1;
   const last = utcLiteral(year, month, 0).getUTCDate();
   const d = Math.min(Math.max(1, day), last);
-  return `${year}-${pad(month)}-${pad(d)}`;
+  return `${padYear(year)}-${pad(month)}-${pad(d)}`;
 }
 
 /** Days between cuts when the first cut is the start date. */
@@ -249,7 +260,7 @@ export function scheduleDatesForMonth(opts: {
   startDate?: string | null;
   today: string;
 }): string[] {
-  const monthStart = `${opts.year}-${pad(opts.month)}-01`;
+  const monthStart = `${padYear(opts.year)}-${pad(opts.month)}-01`;
   const monthEnd = lastDayOfMonthISO(opts.year, opts.month);
   const anchor = opts.startDate && opts.startDate.length >= 8 ? opts.startDate : opts.today;
   const minDate = anchor > opts.today ? anchor : opts.today;
@@ -311,7 +322,7 @@ export function startOfWeekISO(iso: string): string {
   const day = dt.getUTCDay();
   const mondayOffset = day === 0 ? -6 : 1 - day;
   const monday = utcLiteral(y, m - 1, d + mondayOffset);
-  return `${monday.getUTCFullYear()}-${pad(monday.getUTCMonth() + 1)}-${pad(monday.getUTCDate())}`;
+  return `${padYear(monday.getUTCFullYear())}-${pad(monday.getUTCMonth() + 1)}-${pad(monday.getUTCDate())}`;
 }
 
 export function endOfWeekISO(iso: string): string {
@@ -320,7 +331,7 @@ export function endOfWeekISO(iso: string): string {
 
 export function lastDayOfMonthISO(year: number, month: number): string {
   const last = utcLiteral(year, month, 0).getUTCDate();
-  return `${year}-${pad(month)}-${pad(last)}`;
+  return `${padYear(year)}-${pad(month)}-${pad(last)}`;
 }
 
 export function maxISO(a: string, b: string): string {
@@ -331,7 +342,7 @@ export function payDueISO(dueDay: number, fromISO: string): string {
   const { year, month } = monthParts(fromISO);
   const last = utcLiteral(year, month, 0).getUTCDate();
   const d = Math.min(Math.max(1, Math.floor(dueDay) || 1), last);
-  return `${year}-${pad(month)}-${pad(d)}`;
+  return `${padYear(year)}-${pad(month)}-${pad(d)}`;
 }
 
 /* Ola 5 (BZ-15): el vencimiento que MANDA para decir «atrasado». Antes
@@ -355,7 +366,7 @@ export function governingDueISO(dueDay: number, today: string, unpaidSince?: str
     let due = payDueISO(dueDay, unpaidSince);
     if (due < unpaidSince) {
       const { year, month } = monthParts(unpaidSince);
-      const next = month === 12 ? `${year + 1}-01-15` : `${year}-${pad(month + 1)}-15`;
+      const next = month === 12 ? `${padYear(year + 1)}-01-15` : `${padYear(year)}-${pad(month + 1)}-15`;
       due = payDueISO(dueDay, next);
     }
     return due.length > 10 ? "9999-12-31" : due;
@@ -363,7 +374,7 @@ export function governingDueISO(dueDay: number, today: string, unpaidSince?: str
   const thisDue = payDueISO(dueDay, today);
   if (today > thisDue) return thisDue;
   const { year, month } = monthParts(today);
-  const prev = month === 1 ? `${year - 1}-12-15` : `${year}-${pad(month - 1)}-15`;
+  const prev = month === 1 ? `${padYear(year - 1)}-12-15` : `${padYear(year)}-${pad(month - 1)}-15`;
   return payDueISO(dueDay, prev);
 }
 
@@ -381,13 +392,13 @@ function nthWeekday(year: number, month: number, weekday: number, n: number): st
   const first = utcLiteral(year, month - 1, 1);
   const delta = (weekday - first.getUTCDay() + 7) % 7;
   const day = 1 + delta + (n - 1) * 7;
-  return `${year}-${pad(month)}-${pad(day)}`;
+  return `${padYear(year)}-${pad(month)}-${pad(day)}`;
 }
 
 function lastWeekday(year: number, month: number, weekday: number): string {
   const last = utcLiteral(year, month, 0);
   const delta = (last.getUTCDay() - weekday + 7) % 7;
-  return `${year}-${pad(month)}-${pad(last.getUTCDate() - delta)}`;
+  return `${padYear(year)}-${pad(month)}-${pad(last.getUTCDate() - delta)}`;
 }
 
 /** Major US holidays plus Nochebuena and víspera. Soft label only — never hides a count. */
@@ -440,7 +451,7 @@ export function holidayHits(query: string, year: number): { iso: string; name: s
   for (let month = 1; month <= 12; month += 1) {
     const last = Number(lastDayOfMonthISO(year, month).slice(8));
     for (let day = 1; day <= last; day += 1) {
-      const iso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const iso = `${padYear(year)}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
       const name = holidayName(iso);
       if (!name) continue;
       const blob = `${name} ${HOLIDAY_ALIASES[name] ?? ""}`;
@@ -471,9 +482,9 @@ export function seasonCuts(opts: {
   const endYear = Number(opts.until.slice(0, 4)) + 1;
   const out: string[] = [];
   for (let year = startYear; year <= endYear; year += 1) {
-    const windowStart = `${year}-${opts.seasonStart}`;
+    const windowStart = `${padYear(year)}-${opts.seasonStart}`;
     const wraps = opts.seasonStart > opts.seasonEnd;
-    const windowEnd = wraps ? `${year + 1}-${opts.seasonEnd}` : `${year}-${opts.seasonEnd}`;
+    const windowEnd = wraps ? `${padYear(year + 1)}-${opts.seasonEnd}` : `${padYear(year)}-${opts.seasonEnd}`;
     const anchor = opts.anchor > windowStart ? opts.anchor : windowStart;
     for (const date of everyNDaysInRange(anchor, windowStart, windowEnd, every)) {
       if (date < opts.from || date > opts.until) continue;
