@@ -945,9 +945,14 @@ export function Presentacion() {
         return;
       }
       if (step.kind === "ref") { advance(); return; }
-      const el = await waitAnchor(step.anchor);
+      // 1.6.30 (Prejuicio R9, R10D-1): si el gesto de ESTE paso ya
+      // cayó (r.won), el ancla recibe solo una gracia corta — puede
+      // haber muerto PORQUE el gesto funcionó (el toque de «Ver en
+      // la app» navega fuera del Manual) — y su muerte no salta la
+      // escena: el gesto se hizo, la escena se enseñó.
+      const el = await waitAnchor(step.anchor, r.won ? 350 : undefined);
       if (cancelled) return;
-      if (!el) { if (replaying) { advance(); return; } skipScene(scene.id); return; } // ancla muerta: la escena se salta con gracia
+      if (!el) { if (replaying || r.won) { advance(); return; } skipScene(scene.id); return; } // ancla muerta: la escena se salta con gracia
       scrollDemonstration(el, step.anchor);
       later(() => { if (!cancelled) armRect(el); }, reduce ? 60 : 380);
       // La permanencia del paso: el pie + la lectura de la ventanita, si la hay.
@@ -1269,7 +1274,73 @@ export function Presentacion() {
     // está — el toque recibió su respuesta en el mismo fotograma.
     return <div className="pres-root is-introonly">{renderIntroWindow(false)}</div>;
   }
-  if (!stageActive || !run || (inManual && !manualScene)) return null;
+  if (!stageActive || !run) return null;
+  if (inManual && !manualScene) {
+    // 1.6.30 (Prejuicio R9, R10D-3): aparcar dentro del Manual no es
+    // desaparecer — el camino que entra por q6-abrir dejaba la
+    // corrida viva sin tarjeta, sin ventana y sin señal, rescatable
+    // solo por el botón atrás propio del Manual. La barra aparcada
+    // dice que la lección sigue viva y ofrece sus dos salidas de
+    // siempre, con sus ventanas enteras.
+    return (
+      <div className="pres-root">
+        <div className="pres-parked" role="note">
+          <span>{tx("Tu lección sigue viva: vuelve atrás para continuarla.", "Your lesson is still live: go back to continue it.")}</span>
+          <span className="pres-parked-acts">
+            <button type="button" className="pres-parked-btn" onClick={openStay}>{tx("Quedarme aquí", "Stay here")}</button>
+            <button type="button" className="pres-parked-btn" onClick={openExit} aria-label={tx("Salir de la lección", "Leave the lesson")}><X aria-hidden /></button>
+          </span>
+        </div>
+        {run.stayOpen && !run.finished ? (
+          <div className="pres-stayveil">
+            <div className="pres-staynote" role="dialog" aria-label={tx("Quedarme aquí", "Stay here")}>
+              <p>
+                {tx(
+                  "Si quieres continuar después, podrás seguir este módulo justo donde lo dejas, sin empezar de nuevo.",
+                  "If you'd like to continue later, you can pick this module up right where you left it, without starting over.",
+                )}
+              </p>
+              <p>
+                {tx(
+                  "Lo encuentras en Ajustes → Presentaciones: esta ficha quedará la primera de la lista.",
+                  "You'll find it under Settings → Presentations: this card will be the first in the list.",
+                )}
+              </p>
+              <div className="pres-stayacts">
+                <button type="button" className="pres-btn ghost" onClick={closeStay}>{tx("Seguir viendo", "Keep watching")}</button>
+                <button type="button" className="pres-btn" onClick={stayHere}>{tx("Quedarme aquí", "Stay here")}</button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {run.exitOpen && !run.finished ? (
+          <div className="pres-stayveil">
+            <div className="pres-staynote" role="dialog" aria-label={tx("Salir de la lección", "Leave the lesson")}>
+              <p className="pres-note-title">
+                {tx("¿Salir de la lección?", "Leave the lesson?")}
+              </p>
+              <p>
+                {tx(
+                  "Podrás seguir justo desde aquí: el módulo queda guardado.",
+                  "You can pick up right from here: the module is saved.",
+                )}
+              </p>
+              <p>
+                {tx(
+                  "Su ficha será la primera en Ajustes → Presentaciones.",
+                  "Its card will be the first in Settings → Presentations.",
+                )}
+              </p>
+              <div className="pres-stayacts">
+                <button type="button" className="pres-btn ghost" onClick={closeExit}>{tx("Seguir viendo", "Keep watching")}</button>
+                <button type="button" className="pres-btn" onClick={exitToIndex}>{tx("Salir", "Leave")}</button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   const mod = run.mod;
   const chapter = scene ? mod.chapters.find((c) => c.id === scene.chapter) : null;
@@ -1447,16 +1518,23 @@ export function Presentacion() {
   // nueve morían en su primer ancla. La pieza se lee de la propia
   // ancla (teatro-hoy/semana/panel-*), así que cada escena pinta
   // su pieza sin depender de la escena anterior.
+  // 1.6.30 (Prejuicio R9, R10D-4): durante el paso `stage` el
+  // teatro NO se monta — la foto (getNativePlan) se lee al montar,
+  // y montar antes de que la siembra del propio paso exista la
+  // dejaba vacía y congelada para todo el capítulo. Desde el paso
+  // siguiente el libro ya está sembrado, como antes de R9D-3.
   const theatrePiece: "hoy" | "semana" | "panel" | null =
     step?.kind === "theatre"
       ? step.piece
-      : (() => {
+      : step?.kind === "stage"
+        ? null
+        : (() => {
           const a =
             (step && "anchor" in step && typeof step.anchor === "string" ? step.anchor : null)
             ?? scene?.anchors.find((x) => x.startsWith("teatro-"));
           const seg = a?.split("-")[1];
           return seg === "hoy" || seg === "semana" || seg === "panel" ? seg : null;
-        })();
+          })();
 
   return (
     <div className={`pres-root${entering ? " is-entering" : ""}${leaving ? " is-leaving" : ""}${!cardShown ? " is-unplaced" : ""}`} role="dialog" aria-modal="false" aria-label={pick(mod.title, lang)} data-skipped={run.skipped.join(" ")}>
@@ -1603,7 +1681,10 @@ export function Presentacion() {
                   {tx("Muéstrame tú", "Show me")}
                 </button>
               ) : null}
-              {manualTopic ? (
+              {/* 1.6.30 (Prejuicio R9, R10D-2): dentro del Manual el
+                  puente no se pinta — su destino es ESTA página, y su
+                  toque aparcaba la corrida sin rearmar nada. */}
+              {manualTopic && !inManual ? (
                 <button type="button" className="pres-manualbtn" onClick={openManual}>
                   <BookOpen aria-hidden />{tx("Más en el manual", "More in the manual")}
                 </button>
