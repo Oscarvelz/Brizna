@@ -19,6 +19,7 @@ import { Fold } from "@/components/fold";
 import { Button } from "@/components/ui/button";
 import { useI18n, useTx } from "@/lib/i18n";
 import { MODULES, durationLabel, pick, type Module } from "@/lib/presentation/guion";
+import { inAndroidApp } from "@/spa/native";
 import { overallProgress } from "@/lib/presentation/progress";
 import { peekStay, readPresState } from "@/lib/presentation/state";
 import { stageOn } from "@/lib/presentation/stage";
@@ -49,7 +50,7 @@ function ModuleRow({
         <span className="text-sm font-semibold text-muted tabular-nums">{mod.n}</span>
         <span className="min-w-0 flex-1 text-base font-semibold">{pick(mod.title, locale)}</span>
         {mod.ready ? (
-          <span className="text-xs font-semibold text-muted tabular-nums">{durationLabel(mod, locale)}</span>
+          <span className="text-xs font-semibold text-muted tabular-nums">{durationLabel(mod, locale, inAndroidApp())}</span>
         ) : null}
         {saved?.done ? (
           <span className="inline-flex h-6 items-center gap-1 rounded-full bg-done-bg px-2 text-xs font-semibold text-done ring-1 ring-done/30">

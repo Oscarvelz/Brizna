@@ -29,6 +29,7 @@ const EXCLUDED_KEYS = [
   "brizna.device",
   "brizna-quiet-boot",
   "ols.had-user",
+  "ols.last-email",
   "bz-dict-error",
   "ols-weather",
   "brizna.sync.3f2a91c0-0000-4000-8000-000000000000",

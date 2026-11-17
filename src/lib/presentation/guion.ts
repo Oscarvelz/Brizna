@@ -194,15 +194,23 @@ export function stepMs(step: Step, lang: string): number {
 export const sceneMs = (scene: Scene, lang: string): number =>
   scene.steps.reduce((sum, s) => sum + stepMs(s, lang), 0);
 
+/** Las escenas que ESTA plataforma puede tocar: las `androidOnly` solo
+ * existen dentro de la app Android (1.6.09, R3D-4). El director filtra al
+ * lanzar con esta misma función; desde 1.6.11 (R4D-4) también filtran el
+ * registro de búsqueda y la duración del índice — una sola ley, tres
+ * puertas: lo que la plataforma no puede tocar no se ofrece ni se promete. */
+export const playableScenes = (mod: Module, android: boolean): Scene[] =>
+  android ? mod.scenes : mod.scenes.filter((s) => !s.androidOnly);
+
 /** La duración honesta del índice: automática a 1×, en segundos. */
-export const moduleSeconds = (mod: Module, lang: string): number =>
-  Math.round(mod.scenes.reduce((sum, s) => sum + sceneMs(s, lang), 0) / 1000);
+export const moduleSeconds = (mod: Module, lang: string, android = true): number =>
+  Math.round(playableScenes(mod, android).reduce((sum, s) => sum + sceneMs(s, lang), 0) / 1000);
 
 /** «Aprox. N min» / «Approx. N min» — aproximada y honesta, nunca exacta.
  * Ley de Oscar (2026-11-14): la duración completa se etiqueta «Aprox.» /
  * "Approx." — nunca «unos» / "about". */
-export function durationLabel(mod: Module, lang: string): string {
-  const sec = moduleSeconds(mod, lang);
+export function durationLabel(mod: Module, lang: string, android = true): string {
+  const sec = moduleSeconds(mod, lang, android);
   const min = Math.max(1, Math.round(sec / 60));
   return lang === "en" ? `Approx. ${min} min` : `Aprox. ${min} min`;
 }

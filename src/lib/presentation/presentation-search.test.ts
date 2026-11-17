@@ -51,24 +51,35 @@ const SRC = join(HERE, "..", "..");
 const ready = MODULES.filter((m) => m.ready);
 const notReady = MODULES.filter((m) => !m.ready);
 const keyOf = (e: { moduleId: string; sceneId?: string }) => `${e.moduleId}::${e.sceneId ?? ""}`;
+// 1.6.11 (Prejuicio R3, R4D-4): el registro vivo es el de ESTA plataforma
+// (en node, la web): las escenas androidOnly no se ofrecen fuera de Android.
+// La completitud se mide contra el registro Android (el guion entero,
+// buildRegistry(MODULES, true)); el vivo se comprueba contra su filtro.
+const FULL = buildRegistry(MODULES, true);
 
 test("(a) completitud: una entrada por módulo listo y una por escena, sin duplicados", () => {
   const expected = ready.reduce((n, m) => n + 1 + m.scenes.length, 0);
   assert.equal(
-    PRESENTATION_SEARCH.length,
+    FULL.length,
     expected,
-    `el registro debe traer ${expected} entradas (módulos listos + sus escenas) y trae ${PRESENTATION_SEARCH.length}`,
+    `el registro debe traer ${expected} entradas (módulos listos + sus escenas) y trae ${FULL.length}`,
   );
-  const seen = new Set(PRESENTATION_SEARCH.map(keyOf));
-  assert.equal(seen.size, PRESENTATION_SEARCH.length, "hay entradas duplicadas en el registro");
+  const seen = new Set(FULL.map(keyOf));
+  assert.equal(seen.size, FULL.length, "hay entradas duplicadas en el registro");
   for (const mod of ready) {
-    const moduleEntries = PRESENTATION_SEARCH.filter((e) => e.moduleId === mod.id && e.kind === "module");
+    const moduleEntries = FULL.filter((e) => e.moduleId === mod.id && e.kind === "module");
     assert.equal(moduleEntries.length, 1, `${mod.id}: debe tener exactamente una entrada de módulo`);
     assert.equal(moduleEntries[0]?.sceneId, undefined, `${mod.id}: la entrada de módulo no lleva sceneId`);
     for (const scene of mod.scenes) {
-      const hits = PRESENTATION_SEARCH.filter((e) => e.moduleId === mod.id && e.sceneId === scene.id);
+      const hits = FULL.filter((e) => e.moduleId === mod.id && e.sceneId === scene.id);
       assert.equal(hits.length, 1, `${mod.id}/${scene.id}: debe tener exactamente una entrada de escena`);
       assert.equal(hits[0]?.kind, "scene", `${mod.id}/${scene.id}: su entrada debe ser de escena`);
+    }
+    // El registro vivo (web en node): ninguna escena androidOnly se ofrece,
+    // y cada escena tocable tiene su entrada.
+    for (const scene of mod.scenes) {
+      const live = PRESENTATION_SEARCH.filter((e) => e.moduleId === mod.id && e.sceneId === scene.id);
+      assert.equal(live.length, scene.androidOnly ? 0 : 1, `${mod.id}/${scene.id}: el registro vivo debe ${scene.androidOnly ? "omitir" : "traer"} esta escena`);
     }
   }
 });
@@ -90,7 +101,7 @@ test("(b) solo lo listo: ningún módulo en preparación aparece en el registro"
 });
 
 test("(c) forma: claves íntegras, primera ancla viva y goScreen real en cada entrada", () => {
-  for (const entry of PRESENTATION_SEARCH) {
+  for (const entry of FULL) {
     const what = `${entry.moduleId}/${entry.sceneId ?? "módulo"}`;
     assert.ok(entry.keys.length >= 1, `${what}: debe llevar al menos un par de claves`);
     for (const key of entry.keys) {
@@ -109,11 +120,11 @@ test("(c) forma: claves íntegras, primera ancla viva y goScreen real en cada en
   // La primera ancla y el título de cada escena son los de su guion, no una copia.
   for (const mod of ready) {
     for (const scene of mod.scenes) {
-      const entry = PRESENTATION_SEARCH.find((e) => e.moduleId === mod.id && e.sceneId === scene.id);
+      const entry = FULL.find((e) => e.moduleId === mod.id && e.sceneId === scene.id);
       assert.equal(entry?.firstAnchor, scene.anchors[0], `${mod.id}/${scene.id}: firstAnchor debe ser la primera ancla del guion`);
     }
     // Las claves del módulo son la unión de las de sus escenas.
-    const moduleEntry = PRESENTATION_SEARCH.find((e) => e.moduleId === mod.id && e.kind === "module");
+    const moduleEntry = FULL.find((e) => e.moduleId === mod.id && e.kind === "module");
     const union = new Set(mod.scenes.flatMap((s) => s.keys.map((k) => `${k[0]}${k[1]}`)));
     assert.equal(moduleEntry?.keys.length, union.size, `${mod.id}: las claves del módulo deben ser la unión de sus escenas`);
   }
@@ -128,7 +139,7 @@ test("(d) nombres: cada clave vive en el Manual o en el código de las anclas de
   };
   for (const mod of ready) {
     for (const scene of mod.scenes) {
-      const entry = PRESENTATION_SEARCH.find((e) => e.moduleId === mod.id && e.sceneId === scene.id);
+      const entry = FULL.find((e) => e.moduleId === mod.id && e.sceneId === scene.id);
       assert.ok(entry, `${mod.id}/${scene.id}: falta su entrada`);
       const anchorTexts = scene.anchors
         .map((id) => anchorById(id))

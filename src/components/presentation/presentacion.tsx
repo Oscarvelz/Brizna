@@ -23,7 +23,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useI18n, useTx } from "@/lib/i18n";
 import {
-  WORDS_PER_MINUTE, dwellMs, durationLabel, effSpeed, moduleById, pick, stepMs, wordCount,
+  WORDS_PER_MINUTE, dwellMs, durationLabel, effSpeed, moduleById, pick, playableScenes, stepMs, wordCount,
   type Module, type Scene, type Step,
 } from "@/lib/presentation/guion";
 import {
@@ -323,7 +323,9 @@ export function Presentacion() {
     // androidOnly no entran en la corrida — su ancla (el pliegue de
     // notificaciones) no existe en la web, se saltaban siempre y el módulo
     // jamás podía marcarse aprendido allí. En Android corren todas.
-    const mod = inAndroidApp() ? found : { ...found, scenes: found.scenes.filter((s) => !s.androidOnly) };
+    // 1.6.11 (R4D-4): el filtro es playableScenes, el mismo que usan el
+    // registro de búsqueda y la duración del índice.
+    const mod = { ...found, scenes: playableScenes(found, inAndroidApp()) };
     if (!mod.scenes.length) return;
     const prefs = readPresState();
     const startIdx = launch.sceneId

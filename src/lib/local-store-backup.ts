@@ -62,6 +62,13 @@ export function localStoreExcluded(key: string): boolean {
     // duerme hoy en el paquete, pero la ley de la cabecera no espera a que
     // despierte: ninguna copia lo lleva ni lo planta.
     key === "ols.keep-bearer" ||
+    // 1.6.11 (Prejuicio R3, R4C-1): el correo guardado del inicio de sesión
+    // (`ols.last-email`, login-email.ts) es material de identidad como
+    // `brizna.lastUser` — la cabecera lo prohíbe («never carry a credential
+    // or decide who you are»): una copia no dice quién eres en el aparato
+    // que la restaure. Su escritor vive tras una constante, así que el
+    // censo de literales de la suite no lo veía; la clave entra al censo.
+    key === "ols.last-email" ||
     // 1.6.09 (R3C-3): la marca de ediciones de la sesión provisional
     // (`brizna.prov-edited`) es contabilidad de sync como `brizna.sync.*`:
     // el aparato que restaura debe nacer en cero y observar la nube primero;

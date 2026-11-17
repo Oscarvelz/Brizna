@@ -204,6 +204,14 @@ export function MessageComposer({
   // 1.5.71: the chain's result is wrapped so the sheet can SAY which engine translated —
   // no silent fallbacks ever again (the 1.5.68 lesson, learned at Oscar's expense).
   async function translateSmart(text: string, onState?: (s: TrState) => void) {
+    // 1.6.11 (Prejuicio R3, R4D-1): el embudo de traducción también lee el
+    // sello — «A inglés» y el dictado que lo dispara solo enviaban el texto
+    // del escenario a Microsoft / el afinado / Google / MyMemory. send() se
+    // selló en 1.6.09; sus dos puertas hermanas de la misma hoja, no. Con el
+    // sello puesto, la cadena en línea ni se intenta y el aviso lo dice.
+    if (sealedOn()) {
+      return { ok: false as const, error: tx("Durante una presentación el texto no sale a servicios en línea: es un escenario de práctica, no tu libro.", "During a presentation the text does not go out to online services: it is a practice stage, not your book.") };
+    }
     const r = await translateChain(text, onState);
     if (r.ok) {
       const label = {
@@ -532,6 +540,14 @@ function ComposerSheet({
               onClick={() => {
                 const current = text.trim();
                 if (!current) return;
+                // 1.6.11 (R4D-1): la puerta de «Corregir» también lee el
+                // sello — en el escenario no se envía el texto a ningún
+                // servicio; el pulido local tampoco corre, para que la
+                // lección no prometa una corrección que no ocurrió.
+                if (sealedOn()) {
+                  toast.info(tx("Durante una presentación no se corrige en línea: es un escenario de práctica, no tu libro.", "During a presentation there is no online fixing: it is a practice stage, not your book."));
+                  return;
+                }
                 setFixing(true);
                 setFixNote("");
                 void (async () => {

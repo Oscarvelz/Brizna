@@ -21,7 +21,8 @@
  * semántica con sondas vivas (saldo/balance/errata/nonsense).
  */
 import { fold } from "../fuzzy.ts";
-import { MODULES, type Module, type Pair, type Scene, type Step } from "./guion.ts";
+import { inAndroidApp } from "../../spa/native.ts";
+import { MODULES, playableScenes, type Module, type Pair, type Scene, type Step } from "./guion.ts";
 
 export interface PresSearchEntry {
   kind: "module" | "scene";
@@ -85,12 +86,17 @@ const dedupeKeys = (keys: Pair[]): Pair[] => {
  * La derivación pura (exportada para que la cerca la ejercite con módulos
  * de juguete: el piso Advanced entra solo cuando guion.ts lo marque ready).
  */
-export function buildRegistry(modules: readonly Module[]): PresSearchEntry[] {
+export function buildRegistry(modules: readonly Module[], android = true): PresSearchEntry[] {
   const out: PresSearchEntry[] = [];
   for (const mod of modules) {
     if (!mod.ready) continue;
+    // 1.6.11 (Prejuicio R3, R4D-4): el registro ofrece solo las escenas que
+    // esta plataforma puede tocar (playableScenes) — en la web, las
+    // androidOnly no se ofrecen ni alimentan las claves del módulo: elegir
+    // una aterrizaba en silencio en la primera escena del módulo.
+    const playable = playableScenes(mod, android);
     let current = "/";
-    const scenes = mod.scenes.map((scene) => {
+    const scenes = playable.map((scene) => {
       const go = scene.steps.find((s): s is GoStep => s.kind === "go");
       if (go) current = stripGoScreen(go.screen);
       return { scene, goScreen: current, caption: firstCaption(scene) };
@@ -100,15 +106,15 @@ export function buildRegistry(modules: readonly Module[]): PresSearchEntry[] {
       moduleId: mod.id,
       moduleTitle: mod.title,
       title: mod.title,
-      keys: dedupeKeys(mod.scenes.flatMap((s) => s.keys)),
-      firstAnchor: mod.scenes[0]?.anchors[0] ?? "",
+      keys: dedupeKeys(playable.flatMap((s) => s.keys)),
+      firstAnchor: playable[0]?.anchors[0] ?? "",
       goScreen: scenes[0]?.goScreen ?? "/",
       searchText: [
         mod.title[0],
         mod.title[1],
         mod.promise[0],
         mod.promise[1],
-        ...mod.scenes.flatMap((s) => s.keys.flatMap((k) => [k[0], k[1]])),
+        ...playable.flatMap((s) => s.keys.flatMap((k) => [k[0], k[1]])),
         ...scenes.flatMap((d) => (d.caption ? [d.caption[0], d.caption[1]] : [])),
       ].join(" "),
     });
@@ -134,8 +140,9 @@ export function buildRegistry(modules: readonly Module[]): PresSearchEntry[] {
   return out;
 }
 
-/** El registro vivo: una entrada por módulo listo y una por cada escena suya. */
-export const PRESENTATION_SEARCH: readonly PresSearchEntry[] = buildRegistry(MODULES);
+/** El registro vivo: una entrada por módulo listo y una por cada escena suya
+ * que esta plataforma puede tocar (1.6.11, R4D-4). */
+export const PRESENTATION_SEARCH: readonly PresSearchEntry[] = buildRegistry(MODULES, inAndroidApp());
 
 /* ============================ el buscador (espejo del Manual) ============================ */
 

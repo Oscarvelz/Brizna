@@ -10,6 +10,7 @@ import { Input, Label, NativeSelect } from "@/components/ui/input";
 import { onLatePickedContacts, pickPhoneContacts } from "@/lib/contacts";
 import { PhotoPicker } from "@/components/photo-picker";
 import { PHOTOS_ENABLED } from "@/lib/photos-flag";
+import { sealedOn } from "@/lib/presentation/seal-flag";
 import { previewUpcomingCuts, todayISO, weekdayFromISO } from "@/lib/dates";
 import { formatDay, mapsHref, money, weekdayLabel, weekdayOptions } from "@/lib/format";
 import { useTx } from "@/lib/i18n";
@@ -506,6 +507,14 @@ export function ClientForm({
             size="sm"
             disabled={locating}
             onClick={() => {
+              // 1.6.11 (Prejuicio R3, R4D-2): con el sello puesto, el GPS
+              // real del aparato no viaja a ningún mapa ni su dirección
+              // real entra en el formulario del escenario — el aislamiento
+              // se rompe en las dos direcciones.
+              if (sealedOn()) {
+                toast.info(tx("Durante una presentación no se usa tu ubicación real: es un escenario de práctica.", "During a presentation your real location is not used: it is a practice stage."));
+                return;
+              }
               if (!navigator.geolocation) {
                 toast.error(tx("Este teléfono no comparte la ubicación.", "This phone does not share location."));
                 return;
@@ -541,6 +550,12 @@ export function ClientForm({
             variant="outline"
             size="sm"
             onClick={() => {
+              // 1.6.11 (R4D-2): la búsqueda de direcciones también lee el
+              // sello — el texto del escenario no sale a servicios de mapas.
+              if (sealedOn()) {
+                toast.info(tx("Durante una presentación no se busca en mapas en línea: es un escenario de práctica.", "During a presentation there is no online map search: it is a practice stage."));
+                return;
+              }
               const q = value.address.trim();
               if (q.length < 3) {
                 toast.error(tx("Escribe parte de la dirección y luego busca.", "Type part of the address, then search."));

@@ -1030,7 +1030,13 @@ export function reportXlsxBytes(m: Model): Uint8Array {
           { key: "jobs", h: tx("Trabajos", "Jobs"), type: "int", total: "sum" },
           { key: "value", h: tx("Valor del trabajo", "Work value"), type: "money", total: "sum", money: true },
           { key: "perHour", h: tx("$ por hora", "$ an hour"), type: "money", money: true, color: MONEY, bold: true, scale: "high" },
-          { key: "collected", h: tx("Cobrado ese día", "Collected that day"), type: "money", total: "sum", money: true },
+          // 1.6.11 (Prejuicio R3, R4A-1): «Cobrado ese día» NO lleva total de
+          // columna. La hoja lista solo los días con horas (o con nota), así
+          // que su suma dejaba fuera el cobro de los días sin fichar y el
+          // Total decía $420 donde el Resumen del mismo libro decía $465.
+          // Cada fila es un hecho; el total oficial de lo cobrado vive en el
+          // Resumen, bajo la regla única (precedente R2A-2 / R3A-1).
+          { key: "collected", h: tx("Cobrado ese día", "Collected that day"), type: "money", money: true },
           { key: "stopped", h: tx("Nota", "Note"), type: "text", optional: true },
         ],
         rows: rows.map((r) => (L, row) => ({ date: r.date, in: r.clockIn, out: r.clockOut, hours: r.hours, jobs: r.jobs, value: r.value, perHour: r.hours > 0 ? { f: `IF(N(${L("hours")}${row})>0,${L("value")}${row}/${L("hours")}${row},"")`, v: Math.round((r.value / r.hours) * 100) / 100 } : null, collected: r.collected, stopped: r.stopped })),

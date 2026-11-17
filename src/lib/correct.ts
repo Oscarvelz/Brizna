@@ -8,6 +8,7 @@
  * Offline or service down → null, and the composer falls back to its local polish as before.
  * Only the box's text is sent, when Oscar taps the button himself.
  */
+import { sealedOn } from "./presentation/seal-flag.ts";
 type LtMatch = {
   offset: number;
   length: number;
@@ -41,6 +42,11 @@ function safeFix(m: LtMatch): boolean {
 }
 
 export async function correctOnline(text: string, lang: "es" | "en"): Promise<{ text: string; fixes: number } | null> {
+  // 1.6.11 (Prejuicio R3, R4D-1): con el sello de la Presentación puesto,
+  // el texto no viaja a LanguageTool — se devuelve null y el compositor
+  // cae a su pulido local, como sin conexión. La puerta del compositor lo
+  // dice en voz alta; este embudo es la segunda cerradura.
+  if (sealedOn()) return null;
   if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
   try {
     const ctl = new AbortController();
