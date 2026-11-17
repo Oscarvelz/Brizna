@@ -715,6 +715,17 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
     // portada lo declara cuando el alcance elegido es parcial, para que la
     // hoja no declare un alcance y entregue otro.
     sections.includes("horas") && (o.pick?.length || !(o.groups.active && o.groups.oneTime && o.groups.archived)) && tx("Horas: siempre el negocio entero", "Hours: always the whole business"),
+    // 1.6.07 (Prejuicio R3, R3A-3): un corte de escala del Centro se declara
+    // en la misma línea de alcance — trae X de N — como en el Leeme del
+    // paquete (R2A-3). Solo se nombran las clases cortadas.
+    ...(raw.caps
+      ? [
+          raw.caps.jobs > 20000 && tx(`trabajos del periodo: trae 20 000 de ${raw.caps.jobs}`, `jobs in the period: shows 20,000 of ${raw.caps.jobs}`),
+          raw.caps.payments > 20000 && tx(`pagos del periodo: trae 20 000 de ${raw.caps.payments}`, `payments in the period: shows 20,000 of ${raw.caps.payments}`),
+          raw.caps.upcoming > 3000 && tx(`agenda: trae 3 000 de ${raw.caps.upcoming}`, `schedule: shows 3,000 of ${raw.caps.upcoming}`),
+          raw.caps.notes > 400 && tx(`notas del fichero: trae 400 de ${raw.caps.notes}`, `notebook notes: shows 400 of ${raw.caps.notes}`),
+        ].filter(Boolean) as string[]
+      : []),
   ].filter(Boolean) as string[];
   const scope = cap(o.pick?.length ? scopeBits.join(" · ") : `${tx("Clientes", "Clients")}: ${scopeBits.join(" · ")}`);
   const now = new Date();

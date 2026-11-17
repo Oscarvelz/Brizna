@@ -714,7 +714,11 @@ function drawPagos(ctx: Ctx) {
         r.tip ? usd(r.tip) : "",
         { text: r.note, color: C.muted },
       ]),
-      { totals: [tx(`${p.rows.length} filas`, `${p.rows.length} rows`), "", { text: usd(k.collected), bold: true, color: C.money }, "", "", usd(k.tips), ""] },
+      // 1.6.07 (Prejuicio R3, R3A-1): el total de «Monto» es la suma de SU
+      // columna (entró + perdonado, cada fila marcada con su tipo); antes
+      // imprimía solo lo cobrado y la tabla no sumaba sus propias filas.
+      // El desglose oficial vive en las cifras de arriba (COBRADO/PERDONADO).
+      { totals: [tx(`${p.rows.length} filas`, `${p.rows.length} rows`), "", { text: usd(p.rows.reduce((n, r) => n + r.amount, 0)), bold: true, color: C.money }, "", "", usd(k.tips), ""] },
     );
     return;
   }

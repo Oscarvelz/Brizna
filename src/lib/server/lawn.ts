@@ -3953,7 +3953,7 @@ const BASE_CLIENT_KEYS = new Set([
   "credit", "rich_notes", "richNotes", "service_paused", "servicePaused",
 ]);
 
-async function applyBackup(userId: string, payload: BackupPayload): Promise<{ clients: number; jobs: number; localChanged: boolean; localOmitted: number; dropped: { jobs: number; payments: number; changes: number; links: number } }> {
+async function applyBackup(userId: string, payload: BackupPayload): Promise<{ clients: number; jobs: number; localChanged: boolean; localFailed: boolean; localOmitted: number; dropped: { jobs: number; payments: number; changes: number; links: number } }> {
   // 1.5.93 (campaña Prejuicio, BZ-71): D2's anti-empty guard lived only on the
   // FILE door (importBackupJson) — the on-device copies door had none, and a
   // stored copy with 0 clients (a first-day snapshot, an empty cloud-conflict
@@ -4254,12 +4254,17 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
   // flag tells Ajustes to reload, so preferences the boot reads (look, folders,
   // orders) come up as the copy holds them.
   let localChanged = false;
+  // 1.6.07 (Prejuicio R3, R3C-1): el fallo de la capa ya no se traga — la
+  // atomicidad de R2C-4 relanza el error y este catch lo convertía en un
+  // éxito plano de Ajustes. El resultado ahora lo declara (localFailed) y
+  // Ajustes avisa: el libro volvió, la capa de este aparato no.
+  let localFailed = false;
   if (payload.localStore && Object.keys(payload.localStore).length) {
     try {
       if (typeof localStorage !== "undefined") localChanged = applyLocalStore(localStorage, payload.localStore);
-    } catch { /* the book is restored; the layer can be re-applied from the same copy */ }
+    } catch { localFailed = true; }
   }
-  return { ...counts, localChanged, dropped, localOmitted: payload.localOmitted ?? 0 };
+  return { ...counts, localChanged, localFailed, dropped, localOmitted: payload.localOmitted ?? 0 };
 }
 
 // Rows as the copy holds them, only the columns this table has (a missing column takes its default).
@@ -8198,6 +8203,10 @@ export type ExportRaw = {
   offDays: { date: string; reason: string; detail: string }[];
   /** Done jobs before `from` (count and value), so "all time" and period figures can be put in context. */
   before: { jobs: number; value: number };
+  /** 1.6.07 (Prejuicio R3, R3A-3): totales SIN tope de cada consulta cortada
+   *  del Centro — el gemelo de R2A-3 que la Ola 5 no alcanzó. El modelo los
+   *  declara en la línea de alcance cuando un tope muerde. */
+  caps: { jobs: number; upcoming: number; payments: number; notes: number };
 };
 
 export const exportCenterData = createServerFn({ method: "GET" })
@@ -8292,6 +8301,23 @@ export const exportCenterData = createServerFn({ method: "GET" })
         where user_id = $1 and status = 'done' and scheduled_date < $2::date`,
       [uid, from],
     );
+    // 1.6.07 (R3A-3): los totales sin tope de las cuatro consultas cortadas
+    // de arriba — mismos filtros, sin limit — para que el Centro declare
+    // cualquier corte en vez de nacer cortado en silencio.
+    const capRows = await sql.query<{ jobs: unknown; upcoming: unknown; payments: unknown; notes: unknown }>(
+      `select
+         (select count(*) from jobs where user_id = $1 and scheduled_date >= $2::date and scheduled_date <= $3::date) as jobs,
+         (select count(*) from jobs where user_id = $1 and status = 'pending' and scheduled_date <= $4::date and scheduled_date >= ($5::date - interval '60 days')) as upcoming,
+         (select count(*) from payments where user_id = $1 and paid_at >= $2::date and paid_at < ($3::date + interval '1 day')) as payments,
+         (select count(*) from pad_pages where user_id = $1 and deleted_at is null) as notes`,
+      [uid, from, to, aheadTo, today],
+    );
+    const caps = {
+      jobs: intId(capRows[0]?.jobs),
+      upcoming: intId(capRows[0]?.upcoming),
+      payments: intId(capRows[0]?.payments),
+      notes: intId(capRows[0]?.notes),
+    };
     // Who owes, and since when: the balance is laid on their newest done jobs first
     // (the same reading the Estudio uses). What is left is the opening balance.
     const owing = clients.filter((c) => c.balance > 0);
@@ -8375,6 +8401,7 @@ export const exportCenterData = createServerFn({ method: "GET" })
       })),
       offDays: offDays.map((o) => ({ date: asIsoDate(o.mark_date), reason: o.reason, detail: o.detail ?? "" })),
       before: { jobs: intId(before[0]?.n), value: money(before[0]?.v) },
+      caps,
     };
   });
 

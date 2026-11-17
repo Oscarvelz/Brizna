@@ -508,6 +508,18 @@ function AjustesPage() {
       ),
     );
   }
+  // 1.6.07 (Prejuicio R3, R3C-1): la capa local VENÍA y no se pudo aplicar
+  // (almacén lleno): el libro volvió, pero carpetas, apariencia y borradores
+  // no — se dice en voz alta, no se canta éxito plano.
+  function warnLocalFailed(res: { localFailed?: boolean }) {
+    if (!res.localFailed) return;
+    toast.warning(
+      tx(
+        "El libro se restauró, pero las carpetas, la apariencia y los borradores de la copia no se pudieron aplicar: este aparato está lleno. Libera espacio y restaura la misma copia otra vez.",
+        "The book was restored, but the copy's folders, look and drafts could not be applied: this device is full. Free some space and restore the same copy again.",
+      ),
+    );
+  }
   const restore = useMutation({
     mutationFn: (id: number) => restoreBackup({ data: { id } }),
     onSuccess: async (res) => {
@@ -517,6 +529,7 @@ function AjustesPage() {
       }
       warnDropped(res);
       warnOmitted(res);
+      warnLocalFailed(res);
       // 1.5.51 (auditoría interna, D1): the restore remapped every id — anything still
       // queued against the old book is quarantined (visible), never flushed into it.
       quarantineOutbox("restore");
@@ -539,6 +552,7 @@ function AjustesPage() {
       quarantineOutbox("restore");
       warnDropped(res);
       warnOmitted(res);
+      warnLocalFailed(res);
       if (res.localChanged) {
         toast.success(tx("Archivo restaurado. Se recarga para aplicar también tus carpetas y tu apariencia.", "File restored. Reloading to also apply your folders and your look."));
         setTimeout(() => location.reload(), 900);

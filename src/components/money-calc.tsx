@@ -31,6 +31,15 @@ export function tipFromText(text: string): number {
   return evalAmount(text) ?? 0;
 }
 
+/** 1.6.07 (Prejuicio R3, R3F-1): el lector de dinero para campos donde un
+ *  texto ilegible NO puede valer 0 en silencio — devuelve null y el llamador
+ *  se niega en voz alta. El editor de precio del trabajo leía con Number()
+ *  crudo: «45,50» daba NaN → 0, el precio se pisaba a $0 y el toast cantaba
+ *  éxito. La propina tolera el 0 (campo opcional); un precio, no. */
+export function moneyFromText(text: string): number | null {
+  return evalAmount(text);
+}
+
 const CALC_KEYS = ["7", "8", "9", "÷", "×", "4", "5", "6", "-", "+", "1", "2", "3", "C", "⌫", "0", ".", "="];
 
 function applyKey(expr: string, ch: string, preview: number | null) {

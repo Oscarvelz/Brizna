@@ -1,4 +1,5 @@
 import { WideSplit } from "@/components/wide-layout";
+import { moneyFromText } from "@/components/money-calc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { MessageComposer, WhatsAppButton } from "@/components/message-composer";
@@ -1732,7 +1733,16 @@ function JobHistory({ jobs }: { jobs: JobRow[] }) {
                   type="button"
                   size="sm"
                   onClick={() => {
-                    void adjustJobAmount({ data: { id: job.id, amount: Number(price.value) || 0 } }).then(async () => {
+                    // 1.6.07 (Prejuicio R3, R3F-1): el precio se lee con la ley
+                    // de los montos (la coma es decimal) y un texto ilegible se
+                    // niega en voz alta — antes Number() crudo pisaba «45,50»
+                    // a $0 y el toast cantaba éxito sobre el destrozo.
+                    const amount = moneyFromText(price.value);
+                    if (amount == null) {
+                      toast.error(tx("Ese precio no se entiende. Escríbelo como 45.50.", "That price cannot be read. Write it like 45.50."));
+                      return;
+                    }
+                    void adjustJobAmount({ data: { id: job.id, amount } }).then(async () => {
                       setPrice(null);
                       toast.success(tx("Precio actualizado. La cuenta sigue el nuevo monto.", "Price updated. The account follows the new amount."));
                       await invalidateLawn(qc);

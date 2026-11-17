@@ -886,7 +886,12 @@ export function reportXlsxBytes(m: Model): Uint8Array {
         cols: [
           { key: "date", h: tx("Fecha", "Date"), type: "date" },
           { key: "name", h: tx("Cliente", "Client"), type: "text", bold: true },
-          { key: "amount", h: tx("Monto", "Amount"), type: "money", total: "sum", money: true, color: MONEY, bold: true, bar: MONEY_BAR },
+          // 1.6.07 (Prejuicio R3, R3A-1): «Monto» SIN total — las filas mezclan
+          // lo que entró con lo perdonado (marcado en su fila), y un SUBTOTAL
+          // los sumaba como cobrado, desdeciendo el Resumen del mismo libro.
+          // Los totales oficiales viven en el subtítulo de esta hoja y en el
+          // Resumen, separados: entró tanto, se perdonó tanto (como R2A-2).
+          { key: "amount", h: tx("Monto", "Amount"), type: "money", money: true, color: MONEY, bold: true, bar: MONEY_BAR },
           { key: "kind", h: tx("Tipo", "Type"), type: "pill", pills: { [tx("Pago", "Payment")]: GREEN, [tx("Adelanto", "Advance")]: MONEY, [tx("Perdonado", "Forgiven")]: PENDING }, min: 12 },
           { key: "method", h: tx("Medio", "Method"), type: "text" },
           { key: "tip", h: tx("Propina", "Tip"), type: "money", total: "sum", money: true, optional: true },
@@ -927,7 +932,11 @@ export function reportXlsxBytes(m: Model): Uint8Array {
           { key: "phone", h: tx("Teléfono", "Phone"), type: "text", optional: true },
           { key: "time", h: tx("Hora", "Time"), type: "text", optional: true },
           { key: "job", h: tx("Trabajo", "Job"), type: "text" },
-          { key: "price", h: tx("Precio", "Price"), type: "money", total: "sum", money: true },
+          // 1.6.07 (R3A-2): «Precio» SIN total — las filas incluyen los
+          // atrasados y el total sumaba próximos + atrasados, desdeciendo la
+          // frase de la propia hoja (que valora solo lo próximo). El PDF hace
+          // lo mismo: subtotales por día, ningún total general.
+          { key: "price", h: tx("Precio", "Price"), type: "money", money: true },
           { key: "owes", h: tx("Debe", "Owes"), type: "money", money: true, owe: true, optional: true },
           { key: "late", h: tx("Atrasado", "Overdue"), type: "text", flag: true, optional: true, min: 10 },
           { key: "cue", h: tx("Nota", "Note"), type: "text", optional: true, max: 40 },
