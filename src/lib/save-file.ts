@@ -194,7 +194,17 @@ async function usableDir(): Promise<DirHandle | null> {
 
 function stampBaseAt(d: Date) {
   const p = (n: number) => String(n).padStart(2, "0");
-  return `Brizna_${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  // 1.6.52 (Prejuicio R13, R14C-1): el nombre lleva los campos
+  // UTC del instante — el par escritor/lector queda sin zona en
+  // los dos extremos y la línea de 24 h de effOf es exacta en
+  // términos absolutos para todo paquete nuevo, se lea donde se
+  // lea. (Los nombres viejos, escritos con campos locales, se
+  // leen desplazados por el huso de su escritor — ≤ 14 h,
+  // dentro de la línea.) El año va relleno a cuatro, como manda
+  // la familia de dates.ts desde 1.6.44: sin relleno, un reloj
+  // en un año de tres dígitos escribía un nombre que stampOf no
+  // sabe leer.
+  return `Brizna_${String(d.getUTCFullYear()).padStart(4, "0")}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}_${p(d.getUTCHours())}${p(d.getUTCMinutes())}${p(d.getUTCSeconds())}`;
 }
 
 function stampBase() {
@@ -207,7 +217,14 @@ function stampBase() {
  * aparatos en el mismo segundo de pared, con la sync aún sin
  * traer los archivos del primero a la vista del segundo, ya no
  * comparten nombre (la colisión exigiría el mismo segundo Y la
- * misma marca entre ~60 millones). El sello del nombre se sigue
+ * misma marca). 1.6.52 (Prejuicio R13, R14C-2): la cifra de esa
+ * colisión estaba mal declarada — la fórmula corta los cinco
+ * dígitos MÁS significativos de la base 36, de distribución
+ * concentrada (toda marca «1xxxx» reúne 1333 sorteos): la
+ * probabilidad real por par en el mismo segundo es Σp² =
+ * 1,6168×10⁻⁷, ~1 entre 6,19 millones de pares, no ~60
+ * millones (el espacio crudo 36⁵). La puerta sigue irreal; la
+ * cuenta, ya no. El sello del nombre se sigue
  * leyendo igual: stampOf busca la fecha-hora sin anclar, y la
  * familia de la poda solo pide el prefijo y la extensión. */
 function attemptSuffix() {
@@ -467,17 +484,33 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
     // de noviembre, hoy, y desplazaba a la genuina más vieja). Un
     // nombre cuyos componentes no vuelven iguales no declara sello:
     // 0, ilegible, y la hora manda.
+    // 1.6.52 (Prejuicio R13, R14C-1): el sello se lee SIN ZONA —
+    // los campos del nombre se interpretan como UTC, no en la
+    // zona de quien lee. Antes, un paquete escrito en UTC−11 y
+    // leído en UTC+14 veía su sello desplazado 25 h: cruzaba la
+    // línea de 24 h de effOf y el paquete más nuevo caía podado
+    // el primero. Leído sin zona, el sello queda a lo sumo a la
+    // distancia del huso del ESCRITOR (≤ 14 h, dentro de la
+    // línea) y la zona del lector aporta cero. La construcción
+    // es la de años literales de daysBetween (1.6.44): Date.UTC
+    // crudo leería 0–99 como 1900+año.
     const roundTrip = (dt: Date, y: number, mo: number, d: number, h: number, mi: number, s: number) =>
-      dt.getFullYear() === y && dt.getMonth() === mo && dt.getDate() === d && dt.getHours() === h && dt.getMinutes() === mi && dt.getSeconds() === s
+      dt.getUTCFullYear() === y && dt.getUTCMonth() === mo && dt.getUTCDate() === d && dt.getUTCHours() === h && dt.getUTCMinutes() === mi && dt.getUTCSeconds() === s
         ? dt.getTime()
         : 0;
+    const utcOf = (y: number, mo: number, d: number, h: number, mi: number, s: number) => {
+      const dt = new Date(0);
+      dt.setUTCFullYear(y, mo, d);
+      dt.setUTCHours(h, mi, s, 0);
+      return roundTrip(dt, y, mo, d, h, mi, s);
+    };
     const m = name.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})/);
-    if (m) return roundTrip(new Date(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!), +m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!);
+    if (m) return utcOf(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!);
     // 1.6.36 (Prejuicio R10, R11C-3): el nombre legado de la familia
     // «oscar-copia-» declara solo la fecha — la herencia la oye como
     // la medianoche de ese día, no como 1970.
     const d = name.match(/(\d{4})-(\d{2})-(\d{2})/);
-    return d ? roundTrip(new Date(+d[1]!, +d[2]! - 1, +d[3]!), +d[1]!, +d[2]! - 1, +d[3]!, 0, 0, 0) : 0;
+    return d ? utcOf(+d[1]!, +d[2]! - 1, +d[3]!, 0, 0, 0) : 0;
   };
   // 1.6.36 (Prejuicio R10, R11C-1): se desconfía de la MARCA, no de
   // la copia. Cada marca se juzga por separado: la hora real manda
