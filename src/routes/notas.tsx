@@ -1,5 +1,6 @@
 import { usePageWidth, WideSplit } from "@/components/wide-layout";
 import { DeskDivider, DeskStrip, NotesListPanel, useDesk, type DeskMode } from "@/components/notes-desk";
+import { NewNoteButton } from "@/components/new-note-button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Calculator, CalendarDays, ChevronDown, ChevronLeft, Download, FolderInput, FolderOpen, NotebookPen, Pencil, Pin, Plus, Search, Share2, Trash2, X } from "lucide-react";
@@ -482,10 +483,19 @@ function PadBody({
       <section ref={editorRef} data-spot="notas" className={cn("note-halo p-3", mode && "bz-nb-editor")}>
         <div className="mb-2 flex items-center gap-1">
           {mode ? (
-            <span className="bz-nb-where">
-              <FolderOpen className="size-4 shrink-0" aria-hidden />
-              <span>{draftOn ? fresh || folderFromBack(back) || tx("Nota nueva", "New note") : page?.folder || tx("No especificada", "Unspecified")}</span>
-            </span>
+            page && !draftOn ? (
+              // 1.6.12 (Prejuicio R3, R4D-3): en el escritorio la pastilla de
+              // carpeta ES la puerta de mover — abre la misma lista que el
+              // «Mover a…» del teléfono. Antes la pastilla solo nombraba y el
+              // escritorio no tenía puerta de mover en el lector (el
+              // comentario de la línea del teléfono lo daba por hecho).
+              <MoveDoor variant="pill" folderName={page.folder || tx("No especificada", "Unspecified")} onOpen={() => setAskMove(true)} moveLabel={tx("Mover a…", "Move to…")} moveAria={tx("Mover a otra carpeta", "Move to another folder")} />
+            ) : (
+              <span className="bz-nb-where">
+                <FolderOpen className="size-4 shrink-0" aria-hidden />
+                <span>{draftOn ? fresh || folderFromBack(back) || tx("Nota nueva", "New note") : page?.folder || tx("No especificada", "Unspecified")}</span>
+              </span>
+            )
           ) : (
           <button
             type="button"
@@ -574,21 +584,13 @@ function PadBody({
         {calcOn && !calcDocked ? <QuickPad present="nota-calculadora" onClose={() => setCalcOn(false)} /> : null}
         {/* 1.5.65 (censo de botones, oleada 3): en el teléfono el lector no decía en qué
             carpeta vive la nota ni ofrecía moverla sin el gesto del Fichero. Esta línea
-            dice la carpeta y trae el botón «Mover a…». En el escritorio no hace falta:
-            la pastilla de carpeta de la barra y la lista de al lado ya lo hacen. */}
+            dice la carpeta y trae el botón «Mover a…». En el escritorio la pastilla de
+            carpeta de la barra hace las dos cosas (1.6.12, R4D-3). */}
         {!mode && page && !draftOn ? (
           <div className="mb-2 flex items-center gap-2 text-sm">
             <FolderOpen className="size-4 shrink-0 text-muted" aria-hidden />
             <span className="min-w-0 flex-1 truncate text-muted">{homeName}</span>
-            <button
-              type="button"
-              data-present="nota-mover"
-              onClick={() => setAskMove(true)}
-              className="inline-flex shrink-0 items-center gap-1 font-semibold text-primary"
-            >
-              <FolderInput className="size-4" aria-hidden />
-              {tx("Mover a…", "Move to…")}
-            </button>
+            <MoveDoor variant="line" folderName={homeName} onOpen={() => setAskMove(true)} moveLabel={tx("Mover a…", "Move to…")} moveAria={tx("Mover a otra carpeta", "Move to another folder")} />
           </div>
         ) : null}
         {pinned.length > 0 ? (
@@ -920,17 +922,50 @@ function PadBody({
         />
       ) : null}
       {mode ? null : (
-      <button
-        type="button"
-        data-present="nota-nueva"
-        onClick={() => startBlank()}
-        className="fixed right-4 bottom-[calc(5.25rem+var(--bz-chin))] z-20 grid size-14 place-items-center rounded-full bg-primary text-primary-fg shadow-card md:bottom-6"
-        aria-label={t("notes.new")}
-      >
-        <Plus className="size-6" />
-      </button>
+        <NewNoteButton variant="floating" onPress={() => startBlank()} label={t("notes.new")} newLabel={tx("Nota nueva", "New note")} writingLabel={tx("Escribiendo", "Writing")} />
       )}
     </>
+  );
+}
+
+/** La puerta de mover del lector, en sus dos cuerpos: la pastilla de
+ * carpeta de la barra (escritorio) y el botón «Mover a…» de la línea
+ * (teléfono). Un solo elemento en el código lleva el ancla `nota-mover`
+ * (la ley de las anclas) — 1.6.12 (Prejuicio R3, R4D-3). */
+function MoveDoor({
+  variant,
+  folderName,
+  onOpen,
+  moveLabel,
+  moveAria,
+}: {
+  variant: "pill" | "line";
+  folderName: string;
+  onOpen: () => void;
+  moveLabel: string;
+  moveAria: string;
+}) {
+  const pill = variant === "pill";
+  return (
+    <button
+      type="button"
+      data-present="nota-mover"
+      onClick={onOpen}
+      className={pill ? "bz-nb-where" : "inline-flex shrink-0 items-center gap-1 font-semibold text-primary"}
+      aria-label={pill ? moveAria : undefined}
+    >
+      {pill ? (
+        <>
+          <FolderOpen className="size-4 shrink-0" aria-hidden />
+          <span>{folderName}</span>
+        </>
+      ) : (
+        <>
+          <FolderInput className="size-4" aria-hidden />
+          {moveLabel}
+        </>
+      )}
+    </button>
   );
 }
 

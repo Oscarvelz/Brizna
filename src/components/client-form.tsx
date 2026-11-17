@@ -11,6 +11,7 @@ import { onLatePickedContacts, pickPhoneContacts } from "@/lib/contacts";
 import { PhotoPicker } from "@/components/photo-picker";
 import { PHOTOS_ENABLED } from "@/lib/photos-flag";
 import { sealedOn } from "@/lib/presentation/seal-flag";
+import { moneyFromText } from "@/components/money-calc";
 import { previewUpcomingCuts, todayISO, weekdayFromISO } from "@/lib/dates";
 import { formatDay, mapsHref, money, weekdayLabel, weekdayOptions } from "@/lib/format";
 import { useTx } from "@/lib/i18n";
@@ -161,6 +162,24 @@ export function payloadFromForm(value: ClientFormValue) {
     seasonEvery: value.seasonOn ? Number(value.seasonEvery) || 21 : null,
     openingBalance: Number(value.openingBalance) || 0,
   };
+}
+
+/** 1.6.12 (Prejuicio R3, R4F-1): las líneas de las listas de precios y
+ * montos se leen con moneyFromText — la ley del dinero tecleado (la coma
+ * ES decimal; un $ inicial se tolera). Antes era Number() crudo: «45,50»
+ * y «$25,75» caían del filtro en silencio y el toast cantaba «guardados»
+ * sobre la lista mutilada. Lo que no se entiende se CUENTA y se dice. */
+function presetLines(draft: string): { values: number[]; dropped: number } {
+  const values: number[] = [];
+  let dropped = 0;
+  for (const line of draft.split("\n")) {
+    if (!line.trim()) continue;
+    const n = moneyFromText(line.trim().replace(/^\$\s*/, ""));
+    if (n == null || !(n > 0) || n > 100000) { dropped += 1; continue; }
+    values.push(Math.round(n * 100) / 100);
+  }
+  if (values.length > 12) dropped += values.length - 12;
+  return { values: values.slice(0, 12), dropped };
 }
 
 function cadenceCopy(value: ClientFormValue, en = false): string {
@@ -1223,12 +1242,7 @@ export function PricePresets({
             type="button"
             size="sm"
             onClick={() => {
-              const next = draft
-                .split("\n")
-                .map((line) => Number(line.trim().replace("$", "")))
-                .filter((n) => Number.isFinite(n) && n > 0 && n <= 100000)
-                .map((n) => Math.round(n * 100) / 100)
-                .slice(0, 12);
+              const { values: next, dropped } = presetLines(draft);
               if (next.length === 0) {
                 toast.error(tx("Escribe un precio por línea, como 35.", "Write one price per line, like 35."));
                 return;
@@ -1239,7 +1253,9 @@ export function PricePresets({
                 );
                 await qc.invalidateQueries({ queryKey: ["settings"] });
                 setEditing(false);
-                toast.success(tx("Precios guardados", "Prices saved"));
+                // 1.6.12 (R4F-1): lo no entendido se dice, no cae en silencio.
+                if (dropped > 0) toast.warning(tx(`${dropped} ${dropped === 1 ? "línea no se entendió" : "líneas no se entendieron"} y no se guardaron.`, `${dropped} ${dropped === 1 ? "line could not be read" : "lines could not be read"} and were not saved.`));
+                else toast.success(tx("Precios guardados", "Prices saved"));
               });
             }}
           >
@@ -1305,12 +1321,7 @@ export function DebtPresets({
             type="button"
             size="sm"
             onClick={() => {
-              const next = draft
-                .split("\n")
-                .map((line) => Number(line.trim().replace("$", "")))
-                .filter((n) => Number.isFinite(n) && n > 0 && n <= 100000)
-                .map((n) => Math.round(n * 100) / 100)
-                .slice(0, 12);
+              const { values: next, dropped } = presetLines(draft);
               if (next.length === 0) {
                 toast.error(tx("Escribe un monto por línea, como 80.", "Write one amount per line, like 80."));
                 return;
@@ -1321,7 +1332,9 @@ export function DebtPresets({
                 );
                 await qc.invalidateQueries({ queryKey: ["settings"] });
                 setEditing(false);
-                toast.success(tx("Montos guardados", "Amounts saved"));
+                // 1.6.12 (R4F-1): lo no entendido se dice, no cae en silencio.
+                if (dropped > 0) toast.warning(tx(`${dropped} ${dropped === 1 ? "línea no se entendió" : "líneas no se entendieron"} y no se guardaron.`, `${dropped} ${dropped === 1 ? "line could not be read" : "lines could not be read"} and were not saved.`));
+                else toast.success(tx("Montos guardados", "Amounts saved"));
               });
             }}
           >

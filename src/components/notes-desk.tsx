@@ -1,4 +1,5 @@
 import { FolderOpen, PanelLeftClose, Pin, Plus, Search, X } from "lucide-react";
+import { NewNoteButton } from "@/components/new-note-button";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { formatDay } from "@/lib/format";
 import { useTx } from "@/lib/i18n";
@@ -330,11 +331,15 @@ export function NotesListPanel({
           ) : null}
         </div>
       ) : null}
-      <button type="button" onClick={onNew} className={cn("bz-nb-new", drafting && "is-on")} aria-current={drafting ? "true" : undefined}>
-        <Plus className="size-4.5 shrink-0" aria-hidden />
-        <span className="bz-nb-row-title">{drafting ? draftTitle.trim() || tx("Nota nueva", "New note") : tx("Nota nueva", "New note")}</span>
-        {drafting ? <span className="bz-nb-row-day">{tx("Escribiendo", "Writing")}</span> : null}
-      </button>
+      <NewNoteButton
+        variant="row"
+        onPress={onNew}
+        label={tx("Nota nueva", "New note")}
+        drafting={drafting}
+        draftTitle={draftTitle}
+        newLabel={tx("Nota nueva", "New note")}
+        writingLabel={tx("Escribiendo", "Writing")}
+      />
       <div className="bz-nb-scroll">
         {pinned.length ? (
           <div className="bz-nb-group">

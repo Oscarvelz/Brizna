@@ -1,7 +1,9 @@
 export function fold(value: string): string {
   return value
     .normalize("NFD")
-    .replace(/\p{M}/gu, "")
+    // 1.6.12 (R4F-3): Mn+Me, como foldText — los signos Mc (las vocales
+    // devanagari) son letras y se quedan; los dos pliegues siguen de acuerdo.
+    .replace(/[\p{Mn}\p{Me}]/gu, "")
     .toLowerCase();
 }
 
@@ -36,6 +38,12 @@ export function smartHit(query: string, text: string): boolean {
   const words = t.split(/[^a-z0-9]+/).filter((word) => word.length > 1);
   return q.split(/\s+/).filter(Boolean).every((part) =>
     words.some((word) => {
+      // 1.6.12 (Prejuicio R3, R4F-4): una parte de UNA letra casa como
+      // PREFIJO de palabra — la inicial («j perez», «perez j») es un
+      // prefijo, no una subcadena cualquiera. El suelo de 2 de R3F-8 sigue
+      // cerrando la subcadena libre (la «a» que casaba con todo), y la
+      // inicial vuelve a buscar.
+      if (part.length === 1 && word.startsWith(part)) return true;
       if (part.length >= 2 && (word.includes(part) || part.includes(word))) return true;
       const limit = part.length >= 7 ? 2 : part.length >= 4 ? 1 : 0;
       return limit > 0 && Math.abs(word.length - part.length) <= limit && distance(part, word) <= limit;

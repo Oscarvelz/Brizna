@@ -20,9 +20,15 @@ export function foldText(s: string | null | undefined): string {
   // nombre vocalizado y sin vocalizar partía su identidad en dos claves, y
   // dos nombres distintos se leían «near». Así este pliegue y el de fuzzy.ts
   // (que ya usaba \p{M}) pliegan igual.
+  // 1.6.12 (Prejuicio R3, R4F-3): la tira se refina a Mn+Me. Los signos
+  // vocálicos devanagari son Mc — letras plenas que siempre se escriben
+  // (ि corta contra ी larga distinguen personas) — y \p{M} entero los
+  // fundía: दिनेश y दीनेश salían la misma clave y la tanda fundía a la
+  // segunda persona en silencio. El niqqud y las harakat son Mn (vocali-
+  // zación opcional): siguen cayendo, y los dos pliegues siguen de acuerdo.
   return String(s ?? "")
     .normalize("NFD")
-    .replace(/\p{M}/gu, "")
+    .replace(/[\p{Mn}\p{Me}]/gu, "")
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .replace(/\s+/g, " ")
@@ -51,16 +57,23 @@ function tokens(name: string): string[] {
 /** Levenshtein distance, capped (returns cap+1 once it is clearly over). */
 function lev(a: string, b: string, cap = 2): number {
   if (Math.abs(a.length - b.length) > cap) return cap + 1;
+  let prev2: number[] | null = null;
   let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
   for (let i = 1; i <= a.length; i++) {
     const cur = [i];
     let best = cur[0];
     for (let j = 1; j <= b.length; j++) {
-      const v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      let v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      // 1.6.12 (Prejuicio R3, R4F-5): la transposición adyacente cuesta 1
+      // (Damerau) — es EL typo de la mano («Jonh» por «John») y la distancia
+      // clásica lo cobraba como 2, invisible bajo el tope de los nombres
+      // medianos: la revisión perdía el duplicado más probable.
+      if (prev2 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, prev2[j - 2] + 1);
       cur.push(v);
       if (v < best) best = v;
     }
     if (best > cap) return cap + 1;
+    prev2 = prev;
     prev = cur;
   }
   return prev[b.length];

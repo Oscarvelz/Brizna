@@ -175,15 +175,26 @@ function vcardRawValue(block: string, key: string): string {
  *  viniera vacío (un FAX vacío delante dejaba el móvil sin leer) — y un
  *  valor URI de vCard 4.0 («tel:+1-…») se guarda sin el prefijo. */
 function vcardPhone(block: string): string {
-  const values: string[] = [];
+  // 1.6.12 (Prejuicio R3, R4F-6): el TYPE de la tarjeta manda — un FAX con
+  // número delante del móvil ganaba por orden, aunque la tarjeta declara
+  // el bueno TYPE=CELL. Se prefiere el declarado celular; luego cualquiera
+  // que no sea fax; el fax solo si no hay otra cosa con número.
+  const entries: { v: string; fax: boolean; cell: boolean }[] = [];
   const re = new RegExp(`^${GROUP_PREFIX}TEL(;[^:]*)?:(.*)$`, "gim");
   let m: RegExpExecArray | null;
   while ((m = re.exec(block)) !== null) {
     let v = m[2]!;
-    if (/QUOTED-PRINTABLE/i.test(m[1] ?? "")) v = decodeQuotedPrintable(v);
-    values.push(v.replace(/^tel:/i, "").trim());
+    const params = (m[1] ?? "").toUpperCase();
+    if (/QUOTED-PRINTABLE/i.test(params)) v = decodeQuotedPrintable(v);
+    entries.push({
+      v: v.replace(/^tel:/i, "").trim(),
+      fax: /(^|[;:,"'])FAX([;:,"']|$)/.test(params),
+      cell: /(^|[;:,"'])(CELL|MOBILE)([;:,"']|$)/.test(params),
+    });
   }
-  return values.find((v) => v.replace(/\D/g, "").length >= 7) ?? values.find((v) => v !== "") ?? "";
+  const real = entries.filter((e) => e.v.replace(/\D/g, "").length >= 7);
+  const pick = real.find((e) => e.cell) ?? real.find((e) => !e.fax) ?? real[0];
+  return pick?.v ?? entries.find((e) => e.v !== "")?.v ?? "";
 }
 
 /** Parte por «;» respetando los escapes: un «\;» dentro de la calle es un
@@ -313,7 +324,7 @@ const HEADER_WORDS: Record<string, "name" | "phone" | "address" | "first" | "las
 // los exportadores reales usan — «Client Name» no estaba y la columna del
 // nombre jamás se leía: cada contacto nacía nombrado por su teléfono.
 for (const w of ["name", "nombre", "nombre completo", "full name", "contacto", "contact", "client name", "customer name", "contact name", "nombre y apellido", "nombre del cliente", "client", "customer"]) HEADER_WORDS[w] = "name";
-for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone"]) HEADER_WORDS[w] = "phone";
+for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone", "phone 1 value", "phone 2 value", "mobile phone", "cell phone", "telefono movil", "numero de celular"]) HEADER_WORDS[w] = "phone";
 for (const w of ["address", "direccion", "domicilio", "addr"]) HEADER_WORDS[w] = "address";
 // 1.6.08 (Prejuicio R3, R3F-3): el nombre partido en dos columnas (la forma
 // de Outlook: «First Name,Last Name,Phone») — sin estas dos palabras el
@@ -326,11 +337,14 @@ function foldHead(cell: string): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
+    // 1.6.12 (Prejuicio R3, R4F-2): la puntuación INTERIOR también se
+    // normaliza a espacios — «Phone 1 - Value» (el export de Google
+    // Contacts) pliega a «phone 1 value», palabra de vocabulario; antes
+    // solo se limpiaban los bordes (R3F-5b) y ese encabezado no existía
+    // para el lector.
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim()
-    // 1.6.08 (R3F-5b): la puntuación pegada al encabezado no lo esconde —
-    // «Name:» y «Phone:» SÍ son encabezados; antes nacían como clientes.
-    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
 }
 
 function parseCsv(text: string): PickedContact[] {
@@ -365,7 +379,13 @@ function parseCsv(text: string): PickedContact[] {
   const hasHeader = headAt >= 0 && (nameCol >= 0 || phoneCol >= 0 || firstCol >= 0 || lastCol >= 0);
   const idx = {
     name: hasHeader && nameCol >= 0 ? nameCol : 0,
-    phone: hasHeader && phoneCol >= 0 ? phoneCol : 1,
+    // 1.6.12 (R4F-2): con encabezado reconocido y columna de teléfono NO
+    // reconocida, el teléfono honesto es «ninguno» (phoneCol = −1 y la
+    // lectura da "") — la caída posicional a la columna 1 FABRICABA un
+    // teléfono con el nombre de pila en los exports cuyo encabezado de
+    // teléfono el vocabulario no conocía. La posición solo vale sin
+    // encabezado, donde es la única pista que hay.
+    phone: hasHeader ? phoneCol : 1,
     address: hasHeader ? addrCol : 2,
   };
   const out: PickedContact[] = [];
