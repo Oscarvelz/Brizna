@@ -225,6 +225,85 @@ function CobrosPage() {
     return p.kind === "waived" && d >= monthStart && d <= monthEnd;
   });
 
+  // 1.6.33 (Oscar): la vista se nombra sobre sus propios datos. Al
+  // bajar, las tarjetas quedan atrás y nada decía si se estaba
+  // viendo la semana, el mes o el año. La banda abre la lista con
+  // el nombre de la lente, su periodo y su cifra, en el tono de su
+  // tarjeta — diseñada dentro de su envoltorio, no texto suelto.
+  const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+  const monthName = cap(formatDay(today, "MMMM yyyy"));
+  const weekRange = tx(
+    `Semana del ${formatDay(weekStart, "d MMM")} al ${formatDay(weekEnd, "d MMM")}`,
+    `Week of ${formatDay(weekStart, "MMM d")} to ${formatDay(weekEnd, "MMM d")}`,
+  );
+  const cutsLine = (n: number) => `${n} ${n === 1 ? tx("corte", "cut") : tx("cortes", "cuts")}`;
+  const esperaCount = (data?.clients ?? []).filter((c) => inEspera(c)).length;
+  const viewBand: Partial<Record<CobrosView, { icon: ReactNode; cls: string; title: string; sub: string; value: string }>> = {
+    abonos: {
+      icon: <Wallet className="size-5 shrink-0" />,
+      cls: "border-due bg-due-bg",
+      title: tx("Abonado", "Partial paid"),
+      sub: `${abonoPeople} ${abonoPeople === 1 ? tx("persona con abono", "person with a partial payment") : tx("personas con abono", "people with partial payments")}`,
+      value: data ? money(abonoSum) : "—",
+    },
+    collectedWeek: {
+      icon: <BadgeCheck className="size-5 shrink-0" />,
+      cls: "border-done bg-done-bg",
+      title: tx("Cobrado de la semana", "Collected this week"),
+      sub: weekRange,
+      value: data ? money(data.totals.collectedWeek) : "—",
+    },
+    collectedMonth: {
+      icon: <BadgeCheck className="size-5 shrink-0" />,
+      cls: "border-done bg-done-bg",
+      title: tx("Cobrado del mes", "Collected this month"),
+      sub: monthName,
+      value: data ? money(data.totals.collectedMonth) : "—",
+    },
+    collectedYear: {
+      icon: <BadgeCheck className="size-5 shrink-0" />,
+      cls: "border-done bg-done-bg",
+      title: tx("Cobrado del año", "Collected this year"),
+      sub: `${year}`,
+      value: data ? money(data.totals.collectedYear) : "—",
+    },
+    doneWeek: {
+      icon: <Check className="size-5 shrink-0" />,
+      cls: "border-soil bg-soil-bg",
+      title: tx("Trabajo ya hecho", "Work already done"),
+      sub: `${weekRange} · ${cutsLine(data?.totals.cutsWeek ?? 0)}`,
+      value: data ? money(data.totals.completedWeek) : "—",
+    },
+    doneMonth: {
+      icon: <Check className="size-5 shrink-0" />,
+      cls: "border-soil bg-soil-bg",
+      title: tx("Trabajo ya hecho", "Work already done"),
+      sub: `${monthName} · ${cutsLine(data?.totals.cutsMonth ?? 0)}`,
+      value: data ? money(data.totals.completedMonth) : "—",
+    },
+    doneYear: {
+      icon: <Check className="size-5 shrink-0" />,
+      cls: "border-soil bg-soil-bg",
+      title: tx("Trabajo ya hecho", "Work already done"),
+      sub: `${year} · ${cutsLine(data?.totals.cutsYear ?? 0)}`,
+      value: data ? money(data.totals.completedYear) : "—",
+    },
+    waived: {
+      icon: <HandHeart className="size-5 shrink-0" />,
+      cls: "border-late bg-late-bg",
+      title: tx("Perdonado este mes", "Forgiven this month"),
+      sub: monthName,
+      value: data ? money(data.totals.waivedMonth) : "—",
+    },
+    espera: {
+      icon: <Hourglass className="size-5 shrink-0" />,
+      cls: "border-hold bg-hold-bg",
+      title: tx("En espera", "Waiting"),
+      sub: tx("Su dinero sin pagar sigue en Por cobrar", "Their unpaid money stays in To collect"),
+      value: `${esperaCount}`,
+    },
+  };
+
   return (
     <AppShell
       title={tx("Cobros", "Payments")}
@@ -383,6 +462,16 @@ function CobrosPage() {
           página para deslizarse hasta el encabezado y el toque se ahoga a
           los pocos píxeles, aunque la guardia ya deje pasar el gesto. */}
       <div id="lista" className="min-h-[calc(100dvh-8rem)] scroll-mt-20">
+        {view !== "owing" && viewBand[view] ? (
+          <div className={cn("mb-3 flex items-center gap-3 rounded-xl border-l-4 p-3", viewBand[view]!.cls)}>
+            {viewBand[view]!.icon}
+            <div className="min-w-0">
+              <p className="font-display text-base font-semibold leading-tight">{viewBand[view]!.title}</p>
+              <p className="text-xs leading-snug text-muted">{viewBand[view]!.sub}</p>
+            </div>
+            <p className="ml-auto shrink-0 font-display text-lg font-semibold tabular-nums">{viewBand[view]!.value}</p>
+          </div>
+        ) : null}
         {view !== "owing" ? (
           <div className="mb-3">
             <DensityToggle />

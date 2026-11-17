@@ -614,7 +614,11 @@ function AgendaPage() {
                 `Week of ${formatDay(startOfWeekISO(weekCursor), "d MMM")} to ${formatDay(endOfWeekISO(weekCursor), "d MMM")}.`,
               )}
             </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            {/* 1.6.33 (Oscar, Dirección A del 14 nov, su veredicto del
+                17 nov): la semana como una sola fila de calendario —
+                día arriba en pequeño, número debajo en su pastilla;
+                la tarjeta respira y deja de ser una pared de burbujas. */}
+            <div className="mt-2 grid grid-cols-7 gap-1">
               {Array.from({ length: 7 }, (_, i) => addDaysISO(startOfWeekISO(weekCursor), i)).map((date) => {
                 const on = (offQ.data?.offDates ?? []).includes(date);
                 const wd = weekdayOptions().find((item) => item.value === new Date(`${date}T12:00:00Z`).getUTCDay());
@@ -624,9 +628,10 @@ function AgendaPage() {
                     type="button"
                     data-present="agenda-dia-libre-chip"
                     onClick={() => askDate(date, `${wd?.short ?? ""} ${date.slice(8)}`)}
-                    className={cn("bz-ag-daychip h-10 min-w-12 rounded-full px-3 text-sm font-semibold", on && "is-on", date === today && "is-today", on ? "bg-late-bg text-late" : "bg-sun text-muted")}
+                    className={cn("bz-ag-daychip bz-ag-daycell", on && "is-on", date === today && "is-today")}
                   >
-                    {wd?.short} {date.slice(8)}
+                    <span className="bz-ag-dow">{wd?.short}</span>
+                    <span className="bz-ag-dnum">{date.slice(8)}</span>
                   </button>
                 );
               })}
@@ -635,7 +640,7 @@ function AgendaPage() {
               {tx("Días que casi nunca se trabajan", "Days that are almost never worked")}
               <Hint topic="dia-casi-nunca" />
             </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            <div className="mt-2 grid grid-cols-7 gap-1">
               {weekdayOptions().map((day) => {
                 const on = excluded.includes(day.value);
                 return (
@@ -643,7 +648,7 @@ function AgendaPage() {
                     key={day.value}
                     type="button"
                     onClick={() => askWeekday(day.value, day.short)}
-                    className={cn("bz-ag-daychip h-10 min-w-12 rounded-full px-3 text-sm font-semibold", on ? "bz-pick" : "bg-sun text-muted")}
+                    className={cn("bz-ag-daychip bz-ag-wkcell", on && "bz-pick")}
                   >
                     {day.short}
                   </button>
