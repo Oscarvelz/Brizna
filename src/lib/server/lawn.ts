@@ -2702,7 +2702,12 @@ const extraInput = z.object({
   clientId: z.coerce.number().int(),
   title: z.string().trim().min(1).max(120),
   amount: z.coerce.number().min(0).max(100000),
-  date: z.string().min(8),
+  // 1.6.20 (Prejuicio R6, R7B-2): isoDate, como en todas las demás
+  // puertas de fecha del servidor — con min(8) una fecha imposible
+  // moría sin nombre en el ::date y una sin ceros («2026-9-1») se
+  // juzgaba por comparación léxica cruda y podía nacer pending
+  // debiendo nacer done.
+  date: isoDate,
   notes: z.string().trim().max(500).optional().default(""),
   arrivalTime: z.string().trim().max(8).optional().default(""),
   markDone: z.boolean().optional().default(false),
@@ -4008,6 +4013,17 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
   await sql.query(`delete from payments where user_id = $1`, [userId]);
   await sql.query(`delete from jobs where user_id = $1`, [userId]);
   await sql.query(`delete from clients where user_id = $1`, [userId]);
+  // 1.6.20 (Prejuicio R6, R7B-1): una copia SIN sección de ajustes
+  // (formato < 5, o settings null — collectBackup escribe null cuando
+  // el libro no tiene fila) no trae bandera de vacaciones, pero la del
+  // libro vivo sobrevivía sobre un libro cuyos trabajos — y con ellos
+  // los sellos — acaban de borrarse: viaje fantasma que Ajustes
+  // anunciaba y que cerraba los nacimientos de esa ventana en
+  // silencio. Sin ajustes en la copia, la bandera se retira con los
+  // trabajos; con ajustes, manda la de la copia.
+  if (!payload.settings) {
+    await sql.query(`update app_settings set vacation_start = null, vacation_end = null, vacation_shift = 0 where user_id = $1`, [userId]);
+  }
 
   const idMap = new Map<number, number>();
   for (const row of payload.clients ?? []) {

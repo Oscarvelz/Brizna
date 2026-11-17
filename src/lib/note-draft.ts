@@ -70,7 +70,15 @@ export function readDraftRaw(key: string): string | null {
       } catch {
         /* si no cabe, se lee igual esta vez */
       }
-      legacy?.removeItem(key);
+      // 1.6.20 (Prejuicio R6, R7C-1): la copia legada se retira SOLO si
+      // la adopción aterrizó — con el almacén lleno, el setItem falla
+      // en silencio y retirar la legada destruía la ÚNICA copia: abrir
+      // la ficha leía el borrador una vez y lo perdía para siempre.
+      try {
+        if (store.getItem(key) === old) legacy?.removeItem(key);
+      } catch {
+        /* ignore */
+      }
       return old;
     }
     return null;
@@ -85,8 +93,9 @@ export function writeDraftRaw(key: string, value: string): void {
   } catch {
     /* el llamador decide su repliegue */
   }
+  // 1.6.20 (R7C-1): la legada se retira solo si el valor aterrizó.
   try {
-    legacyStore()?.removeItem(key);
+    if (draftStore()?.getItem(key) === value) legacyStore()?.removeItem(key);
   } catch {
     /* ignore */
   }
@@ -133,18 +142,22 @@ function writeSlot(key: string, note: UnsavedNote | null) {
     return;
   }
   const store = draftStore();
+  let landed: string | null = null;
   try {
-    store?.setItem(key, JSON.stringify(note));
+    landed = JSON.stringify(note);
+    store?.setItem(key, landed);
   } catch {
     try {
       const { shots: _shots, ...rest } = note;
-      store?.setItem(key, JSON.stringify(rest));
+      landed = JSON.stringify(rest);
+      store?.setItem(key, landed);
     } catch {
-      /* ignore */
+      landed = null;
     }
   }
+  // 1.6.20 (R7C-1): la legada se retira solo si el valor aterrizó.
   try {
-    legacyStore()?.removeItem(key);
+    if (landed !== null && store?.getItem(key) === landed) legacyStore()?.removeItem(key);
   } catch {
     /* ignore */
   }

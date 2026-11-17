@@ -724,7 +724,7 @@ function drawPagos(ctx: Ctx) {
   }
   spanTable(ctx);
   subhead(ctx, tx("Quién más pagó", "Who paid the most"));
-  note(ctx, tx(`Son ${p.rows.length} pagos: aquí van resumidos. La lista completa, fila por fila, está en la hoja de cálculo (pestaña Pagos).`, `There are ${p.rows.length} payments: summed up here. The full list, row by row, is in the worksheet (Payments tab).`));
+  note(ctx, tx(`Son ${p.rows.length} pagos: aquí van resumidos. La lista completa, fila por fila, está en la hoja de cálculo (pestaña Pagos).${p.byClient.length > 15 ? ` Aquí van los 15 que más pagaron, de ${p.byClient.length}.` : ""}`, `There are ${p.rows.length} payments: summed up here. The full list, row by row, is in the worksheet (Payments tab).${p.byClient.length > 15 ? ` Here are the top 15 payers, of ${p.byClient.length}.` : ""}`));
   table(
     ctx,
     [{ label: tx("Cliente", "Client"), w: 200, bold: true }, { label: tx("Pagos", "Payments"), w: 60, align: "right" }, { label: tx("Total", "Total"), w: 80, align: "right" }, { label: tx("Parte del total", "Share"), w: 188 }],
@@ -1003,7 +1003,7 @@ function drawHoras(ctx: Ctx) {
     { label: tx("$ POR HORA (COBRADO)", "$ AN HOUR (COLLECTED)"), value: m.amounts ? usd(h.perHourCollected) : "", color: C.money },
   ]);
   // 1.6.00 (BZ-51): la sección lo declara en su propia cara, no solo la portada.
-  note(ctx, tx("Horas es siempre el negocio entero: el registro de horas es por día, no por cliente. El «$ por hora» de arriba cuenta el valor de los días con horas, dividido entre las horas.", "Hours always covers the whole business: the hours log is per day, not per client. The $ an hour above counts the value of days with hours, divided by the hours."));
+  note(ctx, tx("Horas es siempre el negocio entero: el registro de horas es por día, no por cliente. El «$ por hora» de arriba cuenta el valor de los días con horas, dividido entre las horas. El «$ por hora (cobrado)» cuenta todo lo cobrado en el periodo, dividido entre las horas.", "Hours always covers the whole business: the hours log is per day, not per client. The $ an hour above counts the value of days with hours, divided by the hours. The $ an hour (collected) counts everything collected in the period, divided by the hours."));
   const rows = h.rows.filter((r) => r.hours > 0 || r.stopped);
   if (!rows.length) return;
   if (rows.length <= 120) {
