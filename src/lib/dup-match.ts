@@ -13,9 +13,16 @@ export function foldText(s: string | null | undefined): string {
   // (la tanda lo fundía con otro, el servidor no lo fundía consigo mismo y la
   // revisión de duplicados ni lo miraba). El comportamiento latino no cambia:
   // NFD + quitar diacríticos ya resolvía acentos y ñ antes de esta clase.
+  // 1.6.08 (Prejuicio R3, R3F-7): las marcas se quitan con \p{M} — TODAS las
+  // marcas combinantes, no solo el rango latino U+0300–U+036F. El niqqud
+  // hebreo, las harakat árabes y los signos vocálicos devanagari quedaban
+  // fuera del rango y la clase final los volvía separadores: el mismo
+  // nombre vocalizado y sin vocalizar partía su identidad en dos claves, y
+  // dos nombres distintos se leían «near». Así este pliegue y el de fuzzy.ts
+  // (que ya usaba \p{M}) pliegan igual.
   return String(s ?? "")
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\p{M}/gu, "")
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .replace(/\s+/g, " ")

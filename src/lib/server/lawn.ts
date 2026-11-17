@@ -1824,6 +1824,14 @@ export const createClientsBulk = createServerFn({ method: "POST" })
         skipped += 1;
         continue;
       }
+      // 1.6.08 (Prejuicio R3, R3F-4): la cerca de nacimiento también en el
+      // servidor — un nombre sin una letra de verdad no nace por ninguna
+      // puerta, y cuenta como fundido en la respuesta, como un duplicado.
+      if (!/\p{L}/u.test(c.name)) {
+        ids.push(0);
+        skipped += 1;
+        continue;
+      }
       seenBatch.add(batchKey);
       const startDate =
         c.kind === "one_time"

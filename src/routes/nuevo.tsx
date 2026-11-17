@@ -255,6 +255,11 @@ function NuevoPage() {
       // nombre sin clave plegada ya no ocupa el hueco de todos los demás.
       const key = batchKeyOf(name);
       if (!name || seen.has(key)) continue;
+      // 1.6.08 (Prejuicio R3, R3F-4): la puerta de pegar recibe la cerca de
+      // nacimiento de R2F-15 — un nombre sin UNA letra de verdad (un número
+      // de teléfono pegado, «🌿🌿», «!!!») no nace como cliente. La cerca
+      // vivía solo en la puerta CSV; esta es la puerta viva.
+      if (!/\p{L}/u.test(name)) continue;
       seen.add(key);
       names.push(name);
     }

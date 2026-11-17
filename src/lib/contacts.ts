@@ -113,7 +113,12 @@ export async function pickPhoneContacts(multiple = false): Promise<PickedContact
 }
 
 function unfoldVcard(raw: string): string {
-  return raw.replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
+  // 1.6.08 (Prejuicio R3, R3F-6): un corte suave QP («=\n») siempre coincide
+  // con un pliegue de línea en vCard — se retira JUNTO con el pliegue, antes
+  // de unir. Antes el desplegado pegaba el «=» contra la continuación y el
+  // decodificador lo leía como escape («=Fe» → «þ») o lo dejaba colgando
+  // («=Garcia») según las dos letras siguientes.
+  return raw.replace(/\r\n/g, "\n").replace(/=\n[ \t]/g, "").replace(/\n[ \t]/g, "");
 }
 
 /** vCard 2.1 QUOTED-PRINTABLE: «Jos=C3=A9» es «José» (bytes UTF-8 en =XX,
@@ -129,7 +134,10 @@ function decodeQuotedPrintable(value: string): string {
   const joined = value
     .replace(/=\r?\n/g, "")
     .replace(/%(?![0-9A-Fa-f]{2})/g, "%25")
-    .replace(/=(?==[0-9A-Fa-f]{2})/g, "");
+    .replace(/=(?==[0-9A-Fa-f]{2})/g, "")
+    // 1.6.08 (R3F-6): un «=» que no abre un escape no es dato en QP (el «=»
+    // literal viaja como =3D): es resto de un corte suave — se retira.
+    .replace(/=(?![0-9A-Fa-f]{2})/g, "");
   try {
     return decodeURIComponent(joined.replace(/=([0-9A-Fa-f]{2})/g, "%$1"));
   } catch {
@@ -137,8 +145,13 @@ function decodeQuotedPrintable(value: string): string {
   }
 }
 
+/** 1.6.08 (Prejuicio R3, R3F-2): los exportadores de Apple agrupan las
+ *  propiedades («item1.TEL», «item1.ADR») — el ancla admite el prefijo de
+ *  grupo, o el teléfono y la dirección de esas tarjetas jamás se leían. */
+const GROUP_PREFIX = "(?:[A-Za-z0-9-]+\\.)?";
+
 function vcardValue(block: string, key: string): string {
-  const re = new RegExp(`^${key}(;[^:]*)?:(.*)$`, "im");
+  const re = new RegExp(`^${GROUP_PREFIX}${key}(;[^:]*)?:(.*)$`, "im");
   const m = re.exec(block);
   if (!m) return "";
   let v = m[2]!;
@@ -149,7 +162,7 @@ function vcardValue(block: string, key: string): string {
 /** El valor con los escapes INTACTOS (solo QP decodificado): ADR lo parte
  *  por sus «;» de verdad antes de desescapar cada componente. */
 function vcardRawValue(block: string, key: string): string {
-  const re = new RegExp(`^${key}(;[^:]*)?:(.*)$`, "im");
+  const re = new RegExp(`^${GROUP_PREFIX}${key}(;[^:]*)?:(.*)$`, "im");
   const m = re.exec(block);
   if (!m) return "";
   let v = m[2]!;
@@ -163,7 +176,7 @@ function vcardRawValue(block: string, key: string): string {
  *  valor URI de vCard 4.0 («tel:+1-…») se guarda sin el prefijo. */
 function vcardPhone(block: string): string {
   const values: string[] = [];
-  const re = /^TEL(;[^:]*)?:(.*)$/gim;
+  const re = new RegExp(`^${GROUP_PREFIX}TEL(;[^:]*)?:(.*)$`, "gim");
   let m: RegExpExecArray | null;
   while ((m = re.exec(block)) !== null) {
     let v = m[2]!;
@@ -295,13 +308,18 @@ function splitCsvRows(text: string): string[][] {
 /** El encabezado se reconoce por la fila COMPLETA: una celda ES una palabra
  *  de encabezado (plegada), no «la contiene» — una clienta llamada Telma no
  *  es un encabezado por llevar «tel» dentro. */
-const HEADER_WORDS: Record<string, "name" | "phone" | "address"> = {};
+const HEADER_WORDS: Record<string, "name" | "phone" | "address" | "first" | "last"> = {};
 // 1.6.04 (Prejuicio R2, R2F-6): el vocabulario crece con los encabezados que
 // los exportadores reales usan — «Client Name» no estaba y la columna del
 // nombre jamás se leía: cada contacto nacía nombrado por su teléfono.
 for (const w of ["name", "nombre", "nombre completo", "full name", "contacto", "contact", "client name", "customer name", "contact name", "nombre y apellido", "nombre del cliente", "client", "customer"]) HEADER_WORDS[w] = "name";
 for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone"]) HEADER_WORDS[w] = "phone";
 for (const w of ["address", "direccion", "domicilio", "addr"]) HEADER_WORDS[w] = "address";
+// 1.6.08 (Prejuicio R3, R3F-3): el nombre partido en dos columnas (la forma
+// de Outlook: «First Name,Last Name,Phone») — sin estas dos palabras el
+// apellido jamás se leía y cada contacto nacía con medio nombre.
+for (const w of ["first name", "nombre de pila", "given name"]) HEADER_WORDS[w] = "first";
+for (const w of ["last name", "apellido", "apellidos", "family name", "surname"]) HEADER_WORDS[w] = "last";
 
 function foldHead(cell: string): string {
   return cell
@@ -309,7 +327,10 @@ function foldHead(cell: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    // 1.6.08 (R3F-5b): la puntuación pegada al encabezado no lo esconde —
+    // «Name:» y «Phone:» SÍ son encabezados; antes nacían como clientes.
+    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
 }
 
 function parseCsv(text: string): PickedContact[] {
@@ -322,7 +343,10 @@ function parseCsv(text: string): PickedContact[] {
   // sus celdas son palabras de encabezado, o una lo es y la fila no trae
   // ningún número con pinta de teléfono que la delate como dato.
   let headAt = -1;
-  for (let i = 0; i < Math.min(rows.length, 5); i += 1) {
+  // 1.6.08 (R3F-5a): la ventana de búsqueda sube a 10 filas — con cinco
+  // líneas de título delante, el encabezado real caía fuera de la ventana
+  // de 5 y nacía como un cliente llamado «Nombre».
+  for (let i = 0; i < Math.min(rows.length, 10); i += 1) {
     const cells = rows[i]!.map(foldHead);
     const known = cells.filter((c) => HEADER_WORDS[c]).length;
     const phoneLike = cells.some((c) => c.replace(/\D/g, "").length >= 7);
@@ -332,11 +356,13 @@ function parseCsv(text: string): PickedContact[] {
     }
   }
   const head = headAt >= 0 ? rows[headAt]!.map(foldHead) : [];
-  const colOf = (kind: "name" | "phone" | "address") => head.findIndex((h) => HEADER_WORDS[h] === kind);
+  const colOf = (kind: "name" | "phone" | "address" | "first" | "last") => head.findIndex((h) => HEADER_WORDS[h] === kind);
   const nameCol = colOf("name");
+  const firstCol = colOf("first");
+  const lastCol = colOf("last");
   const phoneCol = colOf("phone");
   const addrCol = colOf("address");
-  const hasHeader = headAt >= 0 && (nameCol >= 0 || phoneCol >= 0);
+  const hasHeader = headAt >= 0 && (nameCol >= 0 || phoneCol >= 0 || firstCol >= 0 || lastCol >= 0);
   const idx = {
     name: hasHeader && nameCol >= 0 ? nameCol : 0,
     phone: hasHeader && phoneCol >= 0 ? phoneCol : 1,
@@ -347,7 +373,13 @@ function parseCsv(text: string): PickedContact[] {
     // Una fila de una sola celda en un archivo de varias columnas es una
     // línea suelta (un título, una nota), no una persona: no nace.
     if (cols.length < 2) continue;
-    const name = (cols[idx.name] ?? "").trim();
+    // 1.6.08 (R3F-3): sin columna de nombre completo pero con nombre y
+    // apellido partidos, el nombre nace entero de las dos columnas.
+    const name = (
+      hasHeader && nameCol < 0 && (firstCol >= 0 || lastCol >= 0)
+        ? [firstCol >= 0 ? cols[firstCol] : "", lastCol >= 0 ? cols[lastCol] : ""].filter(Boolean).join(" ")
+        : (cols[idx.name] ?? "")
+    ).trim();
     const phone = (cols[idx.phone] ?? "").trim();
     const address = idx.address >= 0 ? (cols[idx.address] ?? "").trim() : "";
     // Cerca de cordura (BZ-52, endurecida en 1.6.04 por R2F-15): la fila
