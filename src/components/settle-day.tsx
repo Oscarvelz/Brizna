@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { tipFromText } from "@/components/money-calc";
 import { invalidateLawn } from "@/components/job-card";
 import { Input } from "@/components/ui/input";
 import { money } from "@/lib/format";
@@ -72,7 +73,7 @@ export function SettleDay({
             id: job.id,
             settlement: mode,
             abono: mode === "abono" ? Math.round((Number(row?.abono) || 0) * 100) / 100 : undefined,
-            tip: Math.round((Number(row?.tip) || 0) * 100) / 100,
+            tip: tipFromText(row?.tip ?? ""),
           },
         });
         if (res && res.ok && !res.skipped) marked++;

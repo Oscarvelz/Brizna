@@ -26,7 +26,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { smartHit } from "@/lib/fuzzy";
 import { backupContentChecksum, checksumMatches, idsToKeep, withChecksum } from "@/lib/backup-plan";
 import { applyLocalStore, collectLocalStore, collectLocalStoreOmissions, sanitizeLocalStore } from "@/lib/local-store-backup";
-import { nameKey } from "@/lib/dup-match";
+import { batchKeyOf, nameKey } from "@/lib/dup-match";
 import { reconcileBalance } from "@/lib/balance-reconcile";
 import { sealedOn } from "@/lib/presentation/seal-flag";
 import { buildReportPdf } from "@/lib/report-pdf";
@@ -1796,13 +1796,18 @@ export const createClientsBulk = createServerFn({ method: "POST" })
     const seenBatch = new Set<string>();
     let skipped = 0;
     for (const c of data.contacts) {
-      const batchKey = nameKey(c.name);
-      if (batchKey && seenBatch.has(batchKey)) {
+      // 1.6.04 (Prejuicio R2, R2F-3): la identidad de tanda es la de
+      // dup-match (batchKeyOf) — la misma que usa la capa de pegar. La cerca
+      // vieja exigía clave no vacía para fundir, así que el duplicado exacto
+      // de un nombre sin clave latina entraba dos veces mientras la otra
+      // capa lo fundía: las dos capas de BZ-53 se contradecían.
+      const batchKey = batchKeyOf(c.name);
+      if (seenBatch.has(batchKey)) {
         ids.push(0);
         skipped += 1;
         continue;
       }
-      if (batchKey) seenBatch.add(batchKey);
+      seenBatch.add(batchKey);
       const startDate =
         c.kind === "one_time"
           ? null

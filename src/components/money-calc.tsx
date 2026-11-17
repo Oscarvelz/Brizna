@@ -22,6 +22,15 @@ function evalAmount(expr: string): number | null {
   }
 }
 
+/** 1.6.04 (Prejuicio R2, R2F-5): la propina escrita a mano se lee con la
+ *  MISMA ley que los montos — la coma es decimal. Los flujos de pago la
+ *  convertían con Number(tip): «2,50» daba NaN y la propina nacía $0 en
+ *  silencio, con el pago hecho y el trabajo saldado. Un texto ilegible vale
+ *  0, como un campo vacío; «2,50» ya no se pierde. */
+export function tipFromText(text: string): number {
+  return evalAmount(text) ?? 0;
+}
+
 const CALC_KEYS = ["7", "8", "9", "÷", "×", "4", "5", "6", "-", "+", "1", "2", "3", "C", "⌫", "0", ".", "="];
 
 function applyKey(expr: string, ch: string, preview: number | null) {

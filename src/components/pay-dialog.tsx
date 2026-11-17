@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { invalidateLawn } from "@/components/job-card";
 import { MethodField } from "@/components/method-field";
-import { MoneyCalc } from "@/components/money-calc";
+import { MoneyCalc, tipFromText } from "@/components/money-calc";
 import { Input, Label } from "@/components/ui/input";
 import { money } from "@/lib/format";
 import { useTx } from "@/lib/i18n";
@@ -77,7 +77,7 @@ export function PayDialog({
                 ? "Abono"
                 : "Pagado",
           method,
-          tip: Math.round((Number(tip) || 0) * 100) / 100,
+          tip: tipFromText(tip),
         },
       }),
     onSuccess: async (res) => {
@@ -111,7 +111,7 @@ export function PayDialog({
               amount: n,
               note: mode === "prepaid" ? "Pago por adelantado" : mode === "abono" ? "Abono" : "Pagado",
               method,
-              tip: Math.round((Number(tip) || 0) * 100) / 100,
+              tip: tipFromText(tip),
             },
           });
           await invalidateLawn(qc);

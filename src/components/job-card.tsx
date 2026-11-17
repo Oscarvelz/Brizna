@@ -12,7 +12,7 @@ import { useDensity, useQuadCols } from "@/components/density-toggle";
 import { MessageComposer, WhatsAppButton } from "@/components/message-composer";
 import { MethodField } from "@/components/method-field";
 import { OffDayDialog, shiftToMonday, useRareDay } from "@/components/off-day-ask";
-import { MoneyCalc } from "@/components/money-calc";
+import { MoneyCalc, tipFromText } from "@/components/money-calc";
 import { PhotoPicker } from "@/components/photo-picker";
 import { ReasonChips } from "@/components/reason-chips";
 import { StatusBadge } from "@/components/ui/badge";
@@ -427,7 +427,7 @@ export function JobCard({
               settlement: "paid",
               method,
               photo: photo ?? undefined,
-              tip: Math.round((Number(tip) || 0) * 100) / 100,
+              tip: tipFromText(tip),
             });
             return;
           }
@@ -494,7 +494,7 @@ export function JobCard({
               abono: n,
               method,
               photo: photo ?? undefined,
-              tip: Math.round((Number(tip) || 0) * 100) / 100,
+              tip: tipFromText(tip),
             });
             return;
           }
@@ -535,14 +535,14 @@ export function JobCard({
               abono: n,
               method,
               photo: photo ?? undefined,
-              tip: Math.round((Number(tip) || 0) * 100) / 100,
+              tip: tipFromText(tip),
             });
           } else {
             complete.mutate({
               settlement: "paid",
               method,
               photo: photo ?? undefined,
-              tip: Math.round((Number(tip) || 0) * 100) / 100,
+              tip: tipFromText(tip),
             });
           }
         }}

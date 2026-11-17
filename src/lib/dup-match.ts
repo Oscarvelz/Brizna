@@ -7,17 +7,34 @@
 export type DupWhy = "name" | "near" | "phone" | "address";
 
 export function foldText(s: string | null | undefined): string {
+  // 1.6.04 (Prejuicio R2, R2F-1): la clase final conserva TODA letra y dígito
+  // Unicode, no solo el latín. Antes un nombre en chino, árabe o cirílico se
+  // plegaba a "" y su identidad desaparecía para cada consumidor de la clave
+  // (la tanda lo fundía con otro, el servidor no lo fundía consigo mismo y la
+  // revisión de duplicados ni lo miraba). El comportamiento latino no cambia:
+  // NFD + quitar diacríticos ya resolvía acentos y ñ antes de esta clase.
   return String(s ?? "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/[^a-z0-9ñ]+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
 export function nameKey(name: string): string {
   return foldText(name);
+}
+
+/** La identidad de un nombre dentro de una tanda (pegar varios, crear en
+ *  lote): la clave plegada cuando el nombre tiene una; si no tiene ninguna
+ *  (un nombre sin letras ni dígitos, p. ej. solo un símbolo), el nombre
+ *  crudo normalizado — dos nombres DISTINTOS sin clave jamás se funden, y
+ *  el mismo nombre sin clave sí se funde consigo mismo (BZ-53 en ambas
+ *  capas, R2F-2/R2F-3). */
+export function batchKeyOf(name: string): string {
+  const key = nameKey(name);
+  return key ? `k:${key}` : `r:${String(name ?? "").replace(/\s+/g, " ").trim().toLowerCase()}`;
 }
 
 function tokens(name: string): string[] {

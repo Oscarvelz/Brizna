@@ -22,7 +22,7 @@ import { todayISO } from "@/lib/dates";
 import { frequencyLabel, money, weekdayLabel } from "@/lib/format";
 import { createClient, createClientsBulk, addClientPhoto, getSettings } from "@/lib/server/lawn";
 import { checkClientDupes, checkClientDupesBatch, markNotDuplicate, mergeClients, undoMerge, type DupClient, type DupMatch } from "@/lib/server/dups";
-import { nameKey, nameMatch, phoneTail } from "@/lib/dup-match";
+import { batchKeyOf, nameKey, nameMatch, phoneTail } from "@/lib/dup-match";
 import { DEFAULT_DEBT_PRESETS, DEFAULT_PRICE_PRESETS } from "@/lib/types";
 import { useTx } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -251,7 +251,9 @@ function NuevoPage() {
       const name = line.replace(/\s+/g, " ").trim();
       // 1.6.00 (BZ-53): la clave plegada de dup-match — «José Pérez» y
       // «Jose Perez» son el mismo nombre al pegar, como en el resto de la app.
-      const key = nameKey(name);
+      // 1.6.04 (R2F-2): la identidad de tanda de dup-match (batchKeyOf) — un
+      // nombre sin clave plegada ya no ocupa el hueco de todos los demás.
+      const key = batchKeyOf(name);
       if (!name || seen.has(key)) continue;
       seen.add(key);
       names.push(name);
