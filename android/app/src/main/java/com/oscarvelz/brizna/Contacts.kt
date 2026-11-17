@@ -119,9 +119,16 @@ class ContactPicker(private val ctx: Context, private val reply: (JSONObject) ->
     }
 
     /** The host resumed and the picker is gone without an answer (BZ-7):
-     *  the shell says so itself instead of leaving the page waiting. */
+     *  the shell says so itself instead of leaving the page waiting.
+     *  android-21 (Prejuicio R12, R13E-1): this exit inherits its
+     *  sisters' law — what was already gathered still counts. In
+     *  multi mode, picks gathered before the picker vanished are
+     *  delivered, not read as a pure cancellation: the back-out and
+     *  the failed read already did exactly that. */
     fun closedWithoutChoice() {
-        if (id != null) finish("closed")
+        if (id != null) {
+            if (picked.length() > 0) finish(null) else finish("closed")
+        }
     }
 
     private fun openPicker(): Boolean {
