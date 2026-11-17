@@ -1003,7 +1003,7 @@ function drawHoras(ctx: Ctx) {
     { label: tx("$ POR HORA (COBRADO)", "$ AN HOUR (COLLECTED)"), value: m.amounts ? usd(h.perHourCollected) : "", color: C.money },
   ]);
   // 1.6.00 (BZ-51): la sección lo declara en su propia cara, no solo la portada.
-  note(ctx, tx("Horas es siempre el negocio entero: el registro de horas es por día, no por cliente.", "Hours always covers the whole business: the hours log is per day, not per client."));
+  note(ctx, tx("Horas es siempre el negocio entero: el registro de horas es por día, no por cliente. El «$ por hora» de arriba cuenta el valor de los días con horas, dividido entre las horas.", "Hours always covers the whole business: the hours log is per day, not per client. The $ an hour above counts the value of days with hours, divided by the hours."));
   const rows = h.rows.filter((r) => r.hours > 0 || r.stopped);
   if (!rows.length) return;
   if (rows.length <= 120) {
@@ -1027,7 +1027,11 @@ function drawHoras(ctx: Ctx) {
         ...(m.amounts ? [usd0(r.value), r.hours ? { text: usd0(r.value / r.hours), color: C.money } : "—"] : []),
         r.stopped ? { chip: r.stopped, fg: C.pending, bg: C.pendingSoft } : "",
       ]),
-      { totals: [tx("Total", "Total"), "", "", fmtHours(hours), String(rows.reduce((a, r) => a + r.jobs, 0)), ...(m.amounts ? [usd0(rows.reduce((a, r) => a + r.value, 0)), usd0(h.perHour)] : []), ""] },
+      // 1.6.17 (Prejuicio R5, R6A-2): el $ por hora DE LA FILA sale de la
+      // fila (su valor entre sus horas) — antes estampaba perHour, que
+      // cuenta solo los días con horas, y la fila no cuadraba consigo
+      // misma ($130 ÷ 8 h no daba los $10 impresos).
+      { totals: [tx("Total", "Total"), "", "", fmtHours(hours), String(rows.reduce((a, r) => a + r.jobs, 0)), ...(m.amounts ? [usd0(rows.reduce((a, r) => a + r.value, 0)), rows.reduce((a, r) => a + r.hours, 0) > 0 ? usd0(rows.reduce((a, r) => a + r.value, 0) / rows.reduce((a, r) => a + r.hours, 0)) : "—"] : []), ""] },
     );
     return;
   }
@@ -1104,6 +1108,10 @@ function drawPospuestos(ctx: Ctx) {
   if (p.offDays.length) {
     subhead(ctx, tx("Días libres y paradas", "Days off and early stops"));
     table(ctx, [{ label: tx("Fecha", "Date"), w: 110 }, { label: tx("Motivo", "Reason"), w: 418 }], p.offDays.slice(-120).map((d) => [dayShort(d.date, m.locale), d.reason]));
+    // 1.6.17 (Prejuicio R5, R6A-3): el corte a 120 se declara, como su
+    // hermano de los pospuestos — antes el papel perdía los días viejos
+    // en silencio y dejaba de contar lo mismo que la hoja de cálculo.
+    if (p.offDays.length > 120) note(ctx, tx(`Aquí van los últimos 120 de ${p.offDays.length}. Todos están en la hoja de cálculo.`, `These are the last 120 of ${p.offDays.length}. All of them are in the worksheet.`));
   }
 }
 

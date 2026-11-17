@@ -5414,8 +5414,14 @@ export const applyVacation = createServerFn({ method: "POST" })
     // quedaban DENTRO de las vacaciones mientras el aviso decía otra cosa.
     // Un viaje más largo se niega en voz alta, antes de tocar nada — ni
     // siquiera se deshace el corrimiento anterior.
-    let span = 0;
-    for (let c = data.start; c <= data.end; c = addDaysISO(c, 1)) span += 1;
+    // 1.6.17 (Prejuicio R5, R6B-1): el tramo se calcula, no se cuenta
+    // día a día — el conteo iteraba una vez por día y con un fin en el
+    // año 9999 (válido para el validador) el paso «10000-01-01» se leía
+    // MENOR que «9999-12-31» y el bucle giraba decenas de millones de
+    // veces, congelando la página minutos antes de negarse.
+    const [sy, sm, sd] = data.start.split("-").map(Number);
+    const [ey, em, ed] = data.end.split("-").map(Number);
+    const span = Math.round((Date.UTC(ey!, em! - 1, ed!) - Date.UTC(sy!, sm! - 1, sd!)) / 86400000) + 1;
     if (span > 180) return { ok: false as const, reason: "too-long" as const, moved: 0 };
     const sql = await getSql();
     const prefs = await loadPrefs(context.userId);

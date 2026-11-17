@@ -507,7 +507,13 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   // fuera del «rango» declarado. Lo típico, el promedio y el mes siguen
   // siendo de los fijos, que es lo que sus rótulos dicen.
   const allPrices = priced.map((c) => c.pricePerCut).sort((a, b) => a - b);
-  const median = prices.length ? (prices.length % 2 ? prices[(prices.length - 1) / 2]! : (prices[prices.length / 2 - 1]! + prices[prices.length / 2]!) / 2) : 0;
+  // 1.6.17 (Prejuicio R5, R6A-1): lo típico y el promedio miran a los
+  // fijos — pero si el libro aún no tiene fijos (el arranque típico:
+  // solo trabajos de una vez), imprimir $0 sobre la tabla de precios
+  // reales era mentir en la misma cara. Sin fijos, típico y promedio
+  // se leen sobre toda la tabla; con fijos, nada cambia.
+  const typicalBase = prices.length ? prices : allPrices;
+  const median = typicalBase.length ? (typicalBase.length % 2 ? typicalBase[(typicalBase.length - 1) / 2]! : (typicalBase[typicalBase.length / 2 - 1]! + typicalBase[typicalBase.length / 2]!) / 2) : 0;
   const bandEdges = [0, 30, 40, 50, 60, 80, Infinity];
   const bands = bandEdges.slice(0, -1).map((lo, i) => {
     const hi = bandEdges[i + 1]!;
@@ -520,10 +526,10 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
       .map((c) => ({ name: nameOf(c.id), price: c.pricePerCut, visits: c.kind === "one_time" ? 0 : visitsOf(c), monthly: c.kind === "one_time" ? 0 : r2(c.pricePerCut * visitsOf(c)), every: everyOf(c), group: groupWord(groupOf(c)) }))
       .sort((a, b) => b.price - a.price || a.name.localeCompare(b.name)),
     typical: r2(median),
-    average: prices.length ? r2(sum(prices) / prices.length) : 0,
+    average: typicalBase.length ? r2(sum(typicalBase) / typicalBase.length) : 0,
     low: allPrices[0] ?? 0,
     high: allPrices[allPrices.length - 1] ?? 0,
-    below: prices.filter((p) => p < median * 0.8).length,
+    below: typicalBase.filter((p) => p < median * 0.8).length,
     monthlyTotal: sum(regular.map((c) => c.pricePerCut * visitsOf(c))),
     bands: bands.filter((b) => b.n > 0),
   };
@@ -683,12 +689,17 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
     `${kpi.activeClients} ${plural(kpi.activeClients, "cliente fijo", "clientes fijos")}, ${kpi.oneTimeClients} de una vez y ${kpi.archivedClients} ${plural(kpi.archivedClients, "archivado", "archivados")}.${topDay ? ` El día con más patios es el ${weekdayName(topDay[0], locale)} (${topDay[1]}).` : ""}`,
     `${kpi.activeClients} regular ${plural(kpi.activeClients, "client", "clients")}, ${kpi.oneTimeClients} one-time and ${kpi.archivedClients} archived.${topDay ? ` Your busiest day is ${weekdayName(topDay[0], locale)} (${topDay[1]}).` : ""}`,
   );
-  takeaway.precios = prices.length
-    ? tx(
-        `El corte típico vale ${m(precios.typical)} (de ${m(precios.low)} a ${m(precios.high)}). ${precios.below ? `${precios.below} ${plural(precios.below, "cliente paga", "clientes pagan")} bastante menos.` : "Nadie paga muy por debajo."} Tus fijos dejan unos ${m(Math.round(precios.monthlyTotal))} al mes.`,
-        `A typical cut is ${m(precios.typical)} (from ${m(precios.low)} to ${m(precios.high)}). ${precios.below ? `${precios.below} ${plural(precios.below, "client pays", "clients pay")} well below that.` : "Nobody pays far below it."} Your regulars bring about ${m(Math.round(precios.monthlyTotal))} a month.`,
-      )
-    : tx("Aún no hay precios anotados.", "No prices recorded yet.");
+  takeaway.precios = priced.length === 0
+    ? tx("Aún no hay precios anotados.", "No prices recorded yet.")
+    : prices.length
+      ? tx(
+          `El corte típico vale ${m(precios.typical)} (de ${m(precios.low)} a ${m(precios.high)}). ${precios.below ? `${precios.below} ${plural(precios.below, "cliente paga", "clientes pagan")} bastante menos.` : "Nadie paga muy por debajo."} Tus fijos dejan unos ${m(Math.round(precios.monthlyTotal))} al mes.`,
+          `A typical cut is ${m(precios.typical)} (from ${m(precios.low)} to ${m(precios.high)}). ${precios.below ? `${precios.below} ${plural(precios.below, "client pays", "clients pay")} well below that.` : "Nobody pays far below it."} Your regulars bring about ${m(Math.round(precios.monthlyTotal))} a month.`,
+        )
+      : tx(
+          `El corte típico vale ${m(precios.typical)} (de ${m(precios.low)} a ${m(precios.high)}). Todos los precios son de trabajos de una vez; aún no hay clientes fijos.`,
+          `A typical cut is ${m(precios.typical)} (from ${m(precios.low)} to ${m(precios.high)}). Every price is a one-time job; there are no regular clients yet.`,
+        );
   takeaway.horas = hoursTotal
     ? tx(
         `Trabajaste ${fmtHours(hoursTotal)} horas en ${kpi.workDays} ${plural(kpi.workDays, "día", "días")} (${fmtHours(horas.avgDay)} por día).${amounts && horas.perHour ? ` Cada hora dejó ${m(horas.perHour)} de trabajo hecho.` : ""}`,
