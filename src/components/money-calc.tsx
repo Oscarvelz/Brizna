@@ -22,7 +22,10 @@ function evalAmount(expr: string): number | null {
   // 1.6.28 (Prejuicio R9, R10F-8): la puntuación de ancho completo
   // acompaña a sus dígitos — U+FF0E es un punto y U+FF0C una coma
   // (que la casa lee como decimal, como la ASCII).
-  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/\uFF0E/g, ".").replace(/\uFF0C/g, ",").replace(/,/g, ".").replace(/\s/g, "");
+  // 1.6.32 (Prejuicio R10, R11F-10): los operadores del mismo teclado
+  // viajan también — U+FF0B +, U+FF0D -, U+FF0A *, U+FF0F / y los
+  // paréntesis U+FF08/U+FF09; sin ellos «４＋５» se negaba o nacía $0.
+  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/\uFF0E/g, ".").replace(/\uFF0C/g, ",").replace(/\uFF0B/g, "+").replace(/\uFF0D/g, "-").replace(/\uFF0A/g, "*").replace(/\uFF0F/g, "/").replace(/\uFF08/g, "(").replace(/\uFF09/g, ")").replace(/,/g, ".").replace(/\s/g, "");
   if (!cleaned || !/^[\d.+\-*/()]+$/.test(cleaned)) return null;
   if (/[+\-*/.]{2,}/.test(cleaned.replace(/\.\d/g, "0"))) return null;
   try {

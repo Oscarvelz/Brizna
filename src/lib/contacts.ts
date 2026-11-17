@@ -368,7 +368,11 @@ function splitCsvRows(text: string): string[][] {
       return out;
     };
     let tabLines = 0, commaLines = 0, pipeLines = 0, tabTotal = 0, commaTotal = 0, pipeTotal = 0;
-    for (const line of text.split("\n").slice(0, 10)) {
+    // 1.6.32 (Prejuicio R10, R11F-1/R11F-5): la cuenta mira 40 líneas,
+    // como los testigos y el lector — en 10, el empate de declarantes
+    // se decidía sobre un mundo que nadie más veía, y un preámbulo de
+    // 25 llenaba las tres ventanas a la vez. El borde nuevo es 40.
+    for (const line of text.split("\n").slice(0, 40)) {
       const b = bareLine(line);
       const t = (b.match(/\t/g) ?? []).length;
       const c = (b.match(/[,;]/g) ?? []).length;
@@ -400,7 +404,9 @@ function splitCsvRows(text: string): string[][] {
     // 1.6.28 (Prejuicio R9, R10F-1/R10F-2): la muestra de los testigos
     // sube a 25 líneas, la misma ventana que el lector da a su
     // búsqueda de encabezado — un preámbulo de diez ya no la llena.
-    const sample = text.split("\n").slice(0, 25);
+    // 1.6.32 (Prejuicio R10, R11F-5): la muestra sube a 40, alineada
+    // con la cuenta y con el lector.
+    const sample = text.split("\n").slice(0, 40);
     const splitFor = (line: string, d: string): string[] => {
       const cells: string[] = [];
       let cur = "";
@@ -431,16 +437,36 @@ function splitCsvRows(text: string): string[][] {
     // manda el que más palabras ve, porque el preámbulo
     // «Origen⇥Telefono» declara con una y el encabezado real con
     // dos o tres.
+    const allRows = text.split("\n");
     const headerInfo = (d: string): number => {
       const rowsD = sample.map((line) => splitFor(line, d));
+      const fullD = allRows.map((line) => splitFor(line, d));
       for (let i = 0; i < rowsD.length; i += 1) {
         const cells = rowsD[i]!.map(foldHead);
         const known = cells.filter((c) => HEADER_WORDS[c]).length;
         if (known === 0) continue;
         const phoneLike = rowsD[i]!.some((c) => digitsOf(c).replace(/\D/g, "").length >= 7);
         if (!(known >= 2 || (known === 1 && !phoneLike))) continue;
-        const dataBelow = rowsD.slice(i + 1).some((r) => r.filter((c) => c.trim() !== "").length >= 2);
-        if (dataBelow) return known;
+        // 1.6.32 (Prejuicio R10, R11F-2/R11F-3/R11F-4): «datos debajo»
+        // ya no es UNA fila cualquiera dentro de la muestra — es un
+        // CUERPO: al menos dos filas que parten en ≥2 celdas, y la
+        // mayoría (≥60%) de las filas no vacías que quedan en el
+        // ARCHIVO ENTERO bajo la declarada. Un rótulo de preámbulo
+        // con su eco en una dirección ya no sostiene una coronación;
+        // una tabla verdadera sostiene la suya hasta el final.
+        const below = fullD.slice(i + 1).filter((r) => r.some((c) => c.trim() !== ""));
+        const bodyRows = below.filter((r) => r.filter((c) => c.trim() !== "").length >= 2);
+        if (!(bodyRows.length >= 2 && bodyRows.length * 5 >= below.length * 3)) continue;
+        // 1.6.32 (Prejuicio R10, R11F-1): la promesa del teléfono —
+        // si la fila declarada NOMBRA una columna de teléfonos, el
+        // cuerpo debe traer al menos un número con pinta de teléfono
+        // en esa columna. El preámbulo «Origen⇥Telefono» promete una
+        // y su cuerpo trae «Valor1…Valor11»: promesa vacía, no
+        // declara. Un encabezado que no nombra teléfonos no promete
+        // nada y no se le exige.
+        const phoneColsD = cells.map((c, j) => (HEADER_WORDS[c] === "phone" ? j : -1)).filter((j) => j >= 0);
+        if (phoneColsD.length > 0 && !bodyRows.some((r) => phoneColsD.some((j) => digitsOf(r[j] ?? "").replace(/\D/g, "").length >= 7))) continue;
+        return known;
       }
       return -1;
     };
@@ -462,13 +488,50 @@ function splitCsvRows(text: string): string[][] {
       }
       return [...counts.values()].some((v) => v >= 2);
     };
+    // 1.6.32 (Prejuicio R10, R11F-6): la certificación del teléfono
+    // se anula cuando las celdas del candidato llevan TABULADORES
+    // dentro en ≥2 filas — partir un archivo de tabuladores por
+    // comas deja los tabuladores enteros dentro de las celdas, y un
+    // número desnudo dentro de una dirección aprobaba el examen
+    // estricto en la columna equivocada. (La inversa no corre: las
+    // comas dentro de un archivo de tabuladores son prosa inocente.)
+    const certified = (d: string): boolean => {
+      if (!phoneColWith(d)) return false;
+      if (d === "\t") return true;
+      // Los tabuladores se cuentan en el CUERPO (bajo la fila que el
+      // candidato declara, si declara): el preámbulo de tabuladores
+      // sobre una tabla de comas no envenena a la coma — sus datos,
+      // sí (R11F-6: allí ninguna fila declara y cuenta todo).
+      let from = 0;
+      const rowsD = sample.map((line) => splitFor(line, d));
+      for (let i = 0; i < rowsD.length; i += 1) {
+        const cells = rowsD[i]!.map(foldHead);
+        const known = cells.filter((c) => HEADER_WORDS[c]).length;
+        if (known === 0) continue;
+        const phoneLike = rowsD[i]!.some((c) => digitsOf(c).replace(/\D/g, "").length >= 7);
+        if (known >= 2 || (known === 1 && !phoneLike)) { from = i + 1; break; }
+      }
+      let tabbed = 0;
+      for (const line of sample.slice(from)) if (splitFor(line, d).some((c) => c.includes("\t"))) tabbed += 1;
+      return tabbed < 2;
+    };
     const cands = ["\t", "|", ","] as const;
     const headInfo = new Map<string, number>(cands.map((d) => [d, headerInfo(d)]));
     const bestHead = Math.max(...cands.map((d) => headInfo.get(d) ?? -1));
-    if (bestHead >= 0 && (headInfo.get(delim) ?? -1) < bestHead) {
-      delim = cands.filter((d) => (headInfo.get(d) ?? -1) === bestHead).sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0))[0]!;
-    } else if (bestHead < 0 && !phoneColWith(delim)) {
-      const phoneCands = cands.filter((d) => phoneColWith(d));
+    if (bestHead >= 0) {
+      // 1.6.32 (Prejuicio R10, R11F-1): en el EMPATE de declarantes
+      // manda el que además certifica una columna de teléfonos — un
+      // preámbulo etiqueta⇥valor declara tan bonito como el
+      // encabezado real, pero su «tabla» no trae un solo teléfono; si
+      // ninguno o todos certifican, desempata la cuenta (ya en 40).
+      let pool = cands.filter((d) => (headInfo.get(d) ?? -1) === bestHead);
+      const withPhone = pool.filter((d) => certified(d));
+      if (withPhone.length > 0) pool = withPhone;
+      const chosen = pool.sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0))[0]!;
+      if ((headInfo.get(delim) ?? -1) < bestHead || !(pool as readonly string[]).includes(delim)) delim = chosen;
+      else if (chosen !== delim && withPhone.includes(chosen)) delim = chosen;
+    } else if (bestHead < 0 && !certified(delim)) {
+      const phoneCands = cands.filter((d) => certified(d));
       if (phoneCands.length === 1) delim = phoneCands[0]!;
     }
   }
@@ -564,14 +627,23 @@ function parseCsv(text: string): PickedContact[] {
   // 1.6.28 (Prejuicio R9, R10F-2): la ventana sube a 25 filas, la
   // misma que miran los testigos de la olida — alineadas otra vez,
   // y un preámbulo de informe ordinario ya no la llena.
-  for (let i = 0; i < Math.min(rows.length, 25); i += 1) {
+  // 1.6.32 (Prejuicio R10, R11F-5/R11F-7): la ventana sube a 40,
+  // alineada con la cuenta y los testigos; y una fila solo se corona
+  // si la tabla aún no ha empezado — si una fila de datos de verdad
+  // (≥2 celdas, una con pinta de teléfono) ya pasó por encima, la
+  // candidata es un dato, no un encabezado: «Cliente,pendiente» en
+  // mitad del archivo ya no se come a las personas de arriba ni deja
+  // sin teléfono a las de abajo.
+  let dataSeen = false;
+  for (let i = 0; i < Math.min(rows.length, 40); i += 1) {
     const cells = rows[i]!.map(foldHead);
     const known = cells.filter((c) => HEADER_WORDS[c]).length;
     const phoneLike = cells.some((c) => digitsOf(c).replace(/\D/g, "").length >= 7);
-    if (known >= 2 || (known === 1 && !phoneLike)) {
+    if (!dataSeen && (known >= 2 || (known === 1 && !phoneLike))) {
       headAt = i;
       break;
     }
+    if (rows[i]!.length >= 2 && phoneLike) dataSeen = true;
   }
   const head = headAt >= 0 ? rows[headAt]!.map(foldHead) : [];
   const colOf = (kind: "name" | "phone" | "address" | "first" | "last") => head.findIndex((h) => HEADER_WORDS[h] === kind);

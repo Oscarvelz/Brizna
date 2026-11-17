@@ -251,8 +251,20 @@ export function phoneTail(phone: string | null | undefined): string {
   const rawPhone = String(phone ?? "");
   let bare = rawPhone.replace(/(?:\bext(?:ensi[oó]n)?\)?\.?\s*[-:]?\s*|\bposte\s+)\d{1,10}\s*\)?\s*$/i, "");
   if (bare === rawPhone) {
-    const mx = rawPhone.match(/[x#]\s*\d{1,10}\s*$/);
-    if (mx && digitsOf(rawPhone.slice(0, mx.index)).replace(/\D/g, "").length >= 7) bare = rawPhone.slice(0, mx.index);
+    // 1.6.32 (Prejuicio R10, R11F-8/R11F-9): la rama recobra su /i
+    // («X89» corta como «x89» — la reestructura de 1.6.28 lo perdió),
+    // y cuando ni el prefijo ni el sufijo llegan a número (los dos
+    // cortos: «550142x89»), el sufijo es una extensión de un número
+    // que no es teléfono: la cola es "" como en la rama de palabra,
+    // en vez de fabricarse con los dígitos de la extensión. Si el
+    // sufijo trae ≥7 dígitos, la «x» es separador interno del propio
+    // número («305x5550142») y no se corta — la línea de R10F-7.
+    const mx = rawPhone.match(/[x#]\s*\d{1,10}\s*$/i);
+    if (mx) {
+      const pre = digitsOf(rawPhone.slice(0, mx.index)).replace(/\D/g, "").length;
+      const suf = digitsOf(mx[0]).replace(/\D/g, "").length;
+      if (pre >= 7 || suf < 7) bare = rawPhone.slice(0, mx.index);
+    }
   }
   const digits = digitsOf(bare).replace(/\D/g, "");
   return digits.length >= 7 ? digits.slice(-10) : "";
