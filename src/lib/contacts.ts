@@ -367,12 +367,39 @@ function splitCsvRows(text: string): string[][] {
       }
       return out;
     };
+    // 1.6.42 (Prejuicio R11, R12F-3/R12F-4): las tres ventanas
+    // cuentan FILAS, como el lector — una celda citada multilínea
+    // es una fila en varias líneas físicas, y contando líneas el
+    // encabezado de la fila 40 caía en la línea 42, fuera de cuenta
+    // y muestra. Y la ventana sube a 200 filas: el borde de 40 lo
+    // llenaba cualquier preámbulo de informe entero. El borde
+    // nuevo es 200, declarado como el anterior.
+    const rowGroups = (t: string): string[] => {
+      const groups: string[] = [];
+      let cur = "";
+      let q = false;
+      let fieldStart = true;
+      for (let i = 0; i < t.length; i += 1) {
+        const ch = t[i]!;
+        if (ch === "\n" && !q) { groups.push(cur); cur = ""; fieldStart = true; continue; }
+        cur += ch;
+        if (q) {
+          if (ch === '"') { if (t[i + 1] === '"') { cur += '"'; i += 1; } else q = false; }
+        } else if (ch === '"' && fieldStart) q = true;
+        else if (ch === "\t" || ch === "," || ch === ";" || ch === "|") fieldStart = true;
+        else if (ch !== "\r") fieldStart = false;
+      }
+      groups.push(cur);
+      return groups;
+    };
+    const allGroups = rowGroups(text);
     let tabLines = 0, commaLines = 0, pipeLines = 0, tabTotal = 0, commaTotal = 0, pipeTotal = 0;
     // 1.6.32 (Prejuicio R10, R11F-1/R11F-5): la cuenta mira 40 líneas,
     // como los testigos y el lector — en 10, el empate de declarantes
     // se decidía sobre un mundo que nadie más veía, y un preámbulo de
     // 25 llenaba las tres ventanas a la vez. El borde nuevo es 40.
-    for (const line of text.split("\n").slice(0, 40)) {
+    // 1.6.42: la cuenta mira las primeras 200 FILAS (rowGroups).
+    for (const line of allGroups.slice(0, 200)) {
       const b = bareLine(line);
       const t = (b.match(/\t/g) ?? []).length;
       const c = (b.match(/[,;]/g) ?? []).length;
@@ -406,7 +433,8 @@ function splitCsvRows(text: string): string[][] {
     // búsqueda de encabezado — un preámbulo de diez ya no la llena.
     // 1.6.32 (Prejuicio R10, R11F-5): la muestra sube a 40, alineada
     // con la cuenta y con el lector.
-    const sample = text.split("\n").slice(0, 40);
+    // 1.6.42: la muestra son las primeras 200 FILAS (rowGroups).
+    const sample = allGroups.slice(0, 200);
     const splitFor = (line: string, d: string): string[] => {
       const cells: string[] = [];
       let cur = "";
@@ -437,7 +465,7 @@ function splitCsvRows(text: string): string[][] {
     // manda el que más palabras ve, porque el preámbulo
     // «Origen⇥Telefono» declara con una y el encabezado real con
     // dos o tres.
-    const allRows = text.split("\n");
+    const allRows = allGroups;
     const headerInfo = (d: string): number => {
       const rowsD = sample.map((line) => splitFor(line, d));
       const fullD = allRows.map((line) => splitFor(line, d));
@@ -454,8 +482,29 @@ function splitCsvRows(text: string): string[][] {
         // ARCHIVO ENTERO bajo la declarada. Un rótulo de preámbulo
         // con su eco en una dirección ya no sostiene una coronación;
         // una tabla verdadera sostiene la suya hasta el final.
-        const below = fullD.slice(i + 1).filter((r) => r.some((c) => c.trim() !== ""));
-        const bodyRows = below.filter((r) => r.filter((c) => c.trim() !== "").length >= 2);
+        // 1.6.42 (Prejuicio R11, R12F-1/R12F-2): el cuerpo se juzga
+        // fila a fila, no por el corte a secas. (a) Una fila cuyas
+        // celdas llevan TABULADORES dentro no es de esta tabla —
+        // es una fila de la tabla de tabuladores partida por la
+        // puntuación de sus datos (los apellidos invertidos
+        // «Torres, Ana»): para todo candidato que no sea el
+        // tabulador, esas filas salen del cuerpo Y del denominador.
+        // (b) Una fila de cuerpo tiene forma de PERSONA: trae un
+        // número con pinta de teléfono, o un nombre de dos palabras,
+        // o tres celdas con contenido. Las líneas etiqueta⇥valor de
+        // un preámbulo («Clave5⇥Valor5») parten en dos y no son
+        // ninguna de las tres cosas: el preámbulo ya no se da
+        // cuerpo a sí mismo.
+        const belowAll = fullD.slice(i + 1).filter((r) => r.some((c) => c.trim() !== ""));
+        const below = d === "\t" ? belowAll : belowAll.filter((r) => !r.some((c) => c.includes("\t")));
+        const personRow = (r: string[]): boolean => {
+          const cells = r.filter((c) => c.trim() !== "");
+          if (cells.length < 2) return false;
+          if (cells.length >= 3) return true;
+          if (r.some((c) => digitsOf(c).replace(/\D/g, "").length >= 7)) return true;
+          return (r[0] ?? "").trim().split(/\s+/).length >= 2;
+        };
+        const bodyRows = below.filter(personRow);
         if (!(bodyRows.length >= 2 && bodyRows.length * 5 >= below.length * 3)) continue;
         // 1.6.32 (Prejuicio R10, R11F-1): la promesa del teléfono —
         // si la fila declarada NOMBRA una columna de teléfonos, el
@@ -478,7 +527,14 @@ function splitCsvRows(text: string): string[][] {
     const phoneColWith = (d: string): boolean => {
       const counts = new Map<number, number>();
       for (const line of sample) {
-        splitFor(line, d).forEach((c, j) => {
+        // 1.6.42 (Prejuicio R11, R12F-1): una fila encabezada por
+        // una palabra del vocabulario («Contacto⇥3055550199», la
+        // línea del teléfono del dueño en el preámbulo) no es una
+        // fila de la tabla y no certifica su columna: el preámbulo
+        // ya no se certifica a sí mismo.
+        const cells0 = splitFor(line, d);
+        if (cells0.length > 0 && HEADER_WORDS[foldHead(cells0[0]!)]) continue;
+        cells0.forEach((c, j) => {
           const t = c.trim();
           if (/^[+\d][\d\s().-]*$/.test(t)) {
             const n = t.replace(/\D/g, "").length;
@@ -635,7 +691,9 @@ function parseCsv(text: string): PickedContact[] {
   // mitad del archivo ya no se come a las personas de arriba ni deja
   // sin teléfono a las de abajo.
   let dataSeen = false;
-  for (let i = 0; i < Math.min(rows.length, 40); i += 1) {
+  // 1.6.42: la ventana de la corona sube a 200 filas, alineada con
+  // la cuenta y la muestra (R12F-4).
+  for (let i = 0; i < Math.min(rows.length, 200); i += 1) {
     const cells = rows[i]!.map(foldHead);
     const known = cells.filter((c) => HEADER_WORDS[c]).length;
     const phoneLike = cells.some((c) => digitsOf(c).replace(/\D/g, "").length >= 7);
@@ -643,7 +701,15 @@ function parseCsv(text: string): PickedContact[] {
       headAt = i;
       break;
     }
-    if (rows[i]!.length >= 2 && phoneLike) dataSeen = true;
+    // 1.6.42 (Prejuicio R11, R12F-5/R12F-6): «dato» es una fila de
+    // PERSONA, traiga o no teléfono — «Ana Torres,Calle Sol 1»
+    // enciende la guarda como manda (nombre y dirección bastan).
+    // Y una fila cuya primera celda es una palabra del vocabulario
+    // («Telefono,3055550199», la línea del negocio en el
+    // preámbulo) NO es un dato aunque traiga el teléfono: es una
+    // etiqueta, y ya no apaga la corona del encabezado verdadero.
+    const firstVocab = cells.length > 0 && !!HEADER_WORDS[cells[0]!];
+    if (rows[i]!.length >= 2 && !firstVocab && (phoneLike || (known === 0 && rows[i]!.some((c) => /\d/.test(c))))) dataSeen = true;
   }
   const head = headAt >= 0 ? rows[headAt]!.map(foldHead) : [];
   const colOf = (kind: "name" | "phone" | "address" | "first" | "last") => head.findIndex((h) => HEADER_WORDS[h] === kind);
@@ -706,6 +772,14 @@ function parseCsv(text: string): PickedContact[] {
     // una lista de solo teléfonos ya no pare contactos llamados como un
     // número, y una fila sin nombre no se bautiza con su teléfono.
     if (!/\p{L}/u.test(name)) continue;
+    // 1.6.42 (Prejuicio R11, R12F-5): una fila cuyo «nombre» es una
+    // palabra del vocabulario de encabezados («Cliente») y que no
+    // trae ningún número con pinta de teléfono no es una persona —
+    // es una fila de estado o un encabezado repetido («Cliente,
+    // pendiente», «Nombre,Telefono» a mitad de archivo). Con un
+    // teléfono de verdad sí nace: la duda se resuelve a favor de la
+    // persona.
+    if (HEADER_WORDS[foldHead(name)] && !cols.some((c) => digitsOf(c).replace(/\D/g, "").length >= 7)) continue;
     out.push({ name, phone, address });
   }
   return out;

@@ -25,7 +25,14 @@ function evalAmount(expr: string): number | null {
   // 1.6.32 (Prejuicio R10, R11F-10): los operadores del mismo teclado
   // viajan también — U+FF0B +, U+FF0D -, U+FF0A *, U+FF0F / y los
   // paréntesis U+FF08/U+FF09; sin ellos «４＋５» se negaba o nacía $0.
-  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/\uFF0E/g, ".").replace(/\uFF0C/g, ",").replace(/\uFF0B/g, "+").replace(/\uFF0D/g, "-").replace(/\uFF0A/g, "*").replace(/\uFF0F/g, "/").replace(/\uFF08/g, "(").replace(/\uFF09/g, ")").replace(/,/g, ".").replace(/\s/g, "");
+  // 1.6.42 (Prejuicio R11, R12F-9/F-10/F-11): la familia se completa
+  // con los miembros que faltaban — el signo de dólar de ancho
+  // completo U+FF04 se retira como signo de moneda que es (la
+  // propina «＄5» nacía $0), la coma árabe U+060C viaja como su
+  // gemela U+066B (a la coma que la casa lee decimal), y «×»/«÷»
+  // pegados se traducen como las teclas de la propia calculadora
+  // ya hacían al pulsarlas («45×5» se negaba; al pegar, no).
+  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/\u060C/g, ",").replace(/\uFF04/g, "").replace(/\uFF0E/g, ".").replace(/\uFF0C/g, ",").replace(/\uFF0B/g, "+").replace(/\uFF0D/g, "-").replace(/\uFF0A/g, "*").replace(/\uFF0F/g, "/").replace(/\uFF08/g, "(").replace(/\uFF09/g, ")").replace(/\u00D7/g, "*").replace(/\u00F7/g, "/").replace(/,/g, ".").replace(/\s/g, "");
   if (!cleaned || !/^[\d.+\-*/()]+$/.test(cleaned)) return null;
   if (/[+\-*/.]{2,}/.test(cleaned.replace(/\.\d/g, "0"))) return null;
   try {

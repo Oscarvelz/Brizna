@@ -249,7 +249,22 @@ export function phoneTail(phone: string | null | undefined): string {
   // dígitos) — en «305x5550142» la x es el separador interno del
   // propio número, y cortarla dejaba la cola vacía.
   const rawPhone = String(phone ?? "");
-  let bare = rawPhone.replace(/(?:\bext(?:ensi[oó]n)?\)?\.?\s*[-:]?\s*|\bposte\s+)\d{1,10}\s*\)?\s*$/i, "");
+  // 1.6.42 (Prejuicio R11, R12F-7/R12F-8): la familia de palabra
+  // aprende «anexo» — la palabra corriente en español para la
+  // extensión, que faltaba: «3055550142 anexo 89» no casaba con el
+  // número desnudo. Y la rama entera hereda la guarda de la rama
+  // x/#: solo corta cuando delante queda un número entero (≥7) o
+  // el sufijo no llega a número (<7); con prefijo corto y sufijo
+  // de ≥7, la «extensión» ES el número («550142 ext 3055550142»)
+  // y cortarla dejaba la cola vacía donde su gemela con «x» daba
+  // el número entero.
+  const wordExt = rawPhone.match(/(?:\bext(?:ensi[oó]n)?\)?\.?\s*[-:]?\s*|\bposte\s+|\banexo\s*[-:]?\s*)\d{1,10}\s*\)?\s*$/i);
+  let bare = rawPhone;
+  if (wordExt) {
+    const pre = digitsOf(rawPhone.slice(0, wordExt.index)).replace(/\D/g, "").length;
+    const suf = digitsOf(wordExt[0]).replace(/\D/g, "").length;
+    if (pre >= 7 || suf < 7) bare = rawPhone.slice(0, wordExt.index);
+  }
   if (bare === rawPhone) {
     // 1.6.32 (Prejuicio R10, R11F-8/R11F-9): la rama recobra su /i
     // («X89» corta como «x89» — la reestructura de 1.6.28 lo perdió),
