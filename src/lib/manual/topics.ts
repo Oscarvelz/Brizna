@@ -300,8 +300,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Saturday: you cut half a day because the blade broke. 5 yards are left. Move today's jobs to Monday with the reason Broken blade: the 5 show on Monday and Saturday is clear. If one didn't belong there, Undo postpone sends it back.",
         ],
         cases: [
-          "Ya marcaste Hecho a algunos: no se mueven.\nEliges un domingo o un día libre: se respeta tu elección; el día libre solo bloquea la agenda automática.\nUn corte movido no se vuelve a crear en su fecha original.",
-          "Some are already Done: they do not move.\nYou pick a Sunday or a day off: your choice is kept; a day off only blocks the automatic schedule.\nA moved cut is not created again on its original date.",
+          "Ya marcaste Hecho a algunos: no se mueven.\nEliges un domingo o un día libre: la app pregunta antes, y si lo confirmas se respeta tu elección; el día libre solo bloquea la agenda automática.\nUn corte movido no se vuelve a crear en su fecha original.",
+          "Some are already Done: they do not move.\nYou pick a Sunday or a day off: the app asks first, and if you confirm, your choice is kept; a day off only blocks the automatic schedule.\nA moved cut is not created again on its original date.",
         ],
         mistake: [
           "Usar Todos para cerrar el día antes de pasar lo que no hiciste: quedaría como hecho y con deuda.",

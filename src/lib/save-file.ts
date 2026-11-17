@@ -358,10 +358,20 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
   // entera se rechazaba y Ajustes cantaba «No se pudo guardar la
   // copia» sobre un paquete completo y válido ya en la carpeta.
   try {
-  const names: string[] = [];
+  const entries: { name: string; mtime: number }[] = [];
   for await (const [entryName, entry] of dir.entries()) {
     if (entry.kind !== "file") continue;
-    if (entryName.startsWith("Brizna_") || entryName.startsWith("Podalia_") || entryName.startsWith("oscar-copia-")) names.push(entryName);
+    if (entryName.startsWith("Brizna_") || entryName.startsWith("Podalia_") || entryName.startsWith("oscar-copia-")) {
+      // 1.6.26 (Prejuicio R8, R9C-1): la poda ordena por el tiempo
+      // REAL del archivo, no por el nombre — el nombre trae el
+      // reloj del aparato al escribir, y tras una corrección de
+      // reloj nombre y tiempo se divorcian: la copia real anterior
+      // caía bajo cinco sellos de un año imposible. Sin hora
+      // legible queda 0 y el nombre desempata, como antes.
+      let mtime = 0;
+      try { mtime = (await (entry as FileSystemFileHandle).getFile()).lastModified; } catch { mtime = 0; }
+      entries.push({ name: entryName, mtime });
+    }
   }
   // 1.6.15 (Prejuicio R4, R5C-2): la poda rota DENTRO de cada familia de
   // prefijo — ordenar mezclando épocas ponía cualquier nombre legado
@@ -378,12 +388,21 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
   const keep = (ext: string) => {
     const doomed: string[] = [];
     for (const prefix of ["Brizna_", "Podalia_", "oscar-copia-"]) {
-      const group = names.filter((name) => name.startsWith(prefix) && name.endsWith(ext) && !fresh.has(name)).sort();
-      doomed.push(...group.slice(0, Math.max(0, group.length - 5)));
+      const group = entries
+        .filter((e) => e.name.startsWith(prefix) && e.name.endsWith(ext) && !fresh.has(e.name))
+        .sort((a, b) => a.mtime - b.mtime || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+      doomed.push(...group.slice(0, Math.max(0, group.length - 5)).map((e) => e.name));
     }
     return doomed;
   };
-  for (const old of [...keep(".json"), ...keep(".pdf"), ...keep(".xls")]) await dir.removeEntry(old);
+  // 1.6.26 (Prejuicio R8, R9C-2): los «.tmp» de escrituras cortadas
+  // fuera de todo catch (la app cerrada a mitad, el aparato
+  // apagado) se recogen al cumplir una hora: un temporal vivo es
+  // cosa de segundos; uno de hace una hora es de escritura muerta.
+  const tmpDoomed = entries
+    .filter((e) => e.name.endsWith(".tmp") && e.mtime > 0 && e.mtime < Date.now() - 3_600_000)
+    .map((e) => e.name);
+  for (const old of [...keep(".json"), ...keep(".pdf"), ...keep(".xls"), ...tmpDoomed]) await dir.removeEntry(old);
   } catch {
     // La poda no pudo con la carpeta; el paquete quedó escrito.
   }

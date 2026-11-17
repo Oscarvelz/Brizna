@@ -541,7 +541,11 @@ function drawCover(ctx: Ctx, known: Partial<Record<SectionId, number>> | null) {
   const facts: { label: string; value: string; sub: string; color: RGB }[] = [];
   const best = m.trabajos.byClient[0];
   if (best) facts.push({ label: tx("CLIENTE CON MÁS TRABAJO", "CLIENT WITH THE MOST WORK"), value: best.name, sub: m.amounts ? tx(`${usd0(best.value)} en ${best.jobs} ${best.jobs === 1 ? "trabajo" : "trabajos"}`, `${usd0(best.value)} over ${best.jobs} ${best.jobs === 1 ? "job" : "jobs"}`) : tx(`${best.jobs} trabajos`, `${best.jobs} jobs`), color: C.green });
-  if (k.minutes > 0) facts.push({ label: m.amounts ? tx("CADA HORA DEJÓ", "EACH HOUR BROUGHT") : tx("HORAS TRABAJADAS", "HOURS WORKED"), value: m.amounts ? usd0(m.horas.perHour) : fmtHours(k.minutes / 60), sub: tx(`${fmtHours(k.minutes / 60)} horas en ${k.workDays} ${k.workDays === 1 ? "día" : "días"}`, `${fmtHours(k.minutes / 60)} hours over ${k.workDays} ${k.workDays === 1 ? "day" : "days"}`), color: C.money });
+  // 1.6.26 (Prejuicio R8, R9A-1): el hecho de portada afirma la tasa
+  // solo cuando la tasa existe (trabajo hecho EN días con horas);
+  // sin esa población la portada dice las horas, como la frase del
+  // modelo, la XLSX y el Leeme ya hacían — nunca «CADA HORA DEJÓ $0».
+  if (k.minutes > 0) facts.push({ label: m.amounts && m.horas.perHour > 0 ? tx("CADA HORA DEJÓ", "EACH HOUR BROUGHT") : tx("HORAS TRABAJADAS", "HOURS WORKED"), value: m.amounts && m.horas.perHour > 0 ? usd0(m.horas.perHour) : fmtHours(k.minutes / 60), sub: tx(`${fmtHours(k.minutes / 60)} horas en ${k.workDays} ${k.workDays === 1 ? "día" : "días"}`, `${fmtHours(k.minutes / 60)} hours over ${k.workDays} ${k.workDays === 1 ? "day" : "days"}`), color: C.money });
   const old = m.cobros.buckets.filter((b) => b.key === "b61" || b.key === "b91");
   const oldAmt = old.reduce((a, b) => a + b.amount, 0);
   if (m.amounts && m.cobros.rows.length) {
@@ -1011,7 +1015,7 @@ function drawHoras(ctx: Ctx) {
     { label: tx("HORAS", "HOURS"), value: fmtHours(hours), color: C.green },
     { label: tx("DÍAS", "DAYS"), value: String(m.kpi.workDays) },
     { label: tx("HORAS POR DÍA", "HOURS A DAY"), value: fmtHours(h.avgDay) },
-    { label: tx("$ POR HORA (TRABAJO)", "$ AN HOUR (WORK)"), value: m.amounts ? (hours > 0 ? usd(h.perHour) : "—") : "", color: C.money },
+    { label: tx("$ POR HORA (TRABAJO)", "$ AN HOUR (WORK)"), value: m.amounts ? (hours > 0 && h.perHour > 0 ? usd(h.perHour) : "—") : "", color: C.money },
     { label: tx("$ POR HORA (COBRADO)", "$ AN HOUR (COLLECTED)"), value: m.amounts ? (hours > 0 ? usd(h.perHourCollected) : "—") : "", color: C.money },
   ]);
   // 1.6.00 (BZ-51): la sección lo declara en su propia cara, no solo la portada.

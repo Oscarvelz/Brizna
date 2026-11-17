@@ -515,9 +515,12 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   const typicalBase = prices.length ? prices : allPrices;
   const median = typicalBase.length ? (typicalBase.length % 2 ? typicalBase[(typicalBase.length - 1) / 2]! : (typicalBase[typicalBase.length / 2 - 1]! + typicalBase[typicalBase.length / 2]!) / 2) : 0;
   const bandEdges = [0, 30, 40, 50, 60, 80, Infinity];
+  // 1.6.26 (Prejuicio R8, R9A-3): las bandas cuentan la MISMA tabla
+  // que la sección imprime (allPrices: fijos y de una vez) — antes
+  // contaban solo los fijos, y un precio de una vez no tenía banda.
   const bands = bandEdges.slice(0, -1).map((lo, i) => {
     const hi = bandEdges[i + 1]!;
-    const n = prices.filter((p) => p >= lo && p < hi).length;
+    const n = allPrices.filter((p) => p >= lo && p < hi).length;
     const lab = hi === Infinity ? `$${lo}+` : lo === 0 ? tx(`menos de $${hi}`, `under $${hi}`) : `$${lo}–${hi - 1}`;
     return { label: lab, n };
   });
@@ -571,12 +574,16 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
 
   /* ---------- tips */
   const tipRows = pays.filter((p) => p.tip > 0).map((p) => ({ date: p.date, name: nameOf(p.clientId), tip: p.tip, method: methodLabel(p.method) ?? "" }));
-  const tipClient = new Map<string, { name: string; tip: number; n: number }>();
-  for (const t of tipRows) {
-    const row = tipClient.get(t.name) ?? { name: t.name, tip: 0, n: 0 };
-    row.tip += t.tip;
+  // 1.6.26 (Prejuicio R8, R9A-2): «por cliente» se llavea por el ID
+  // del cliente, como pagos y trabajos — llaveado por el nombre
+  // visible, dos clientes homónimos se fundían en una sola fila.
+  const tipClient = new Map<number, { name: string; tip: number; n: number }>();
+  for (const p of pays) {
+    if (p.tip <= 0) continue;
+    const row = tipClient.get(p.clientId) ?? { name: nameOf(p.clientId), tip: 0, n: 0 };
+    row.tip += p.tip;
     row.n += 1;
-    tipClient.set(t.name, row);
+    tipClient.set(p.clientId, row);
   }
   const propinas: Model["propinas"] = {
     rows: tipRows,

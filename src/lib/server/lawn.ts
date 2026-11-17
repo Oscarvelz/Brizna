@@ -1129,6 +1129,10 @@ function parseExcluded(raw: unknown): number[] {
 
 function nextOpenDate(iso: string, excluded: number[], offDates?: Set<string>): string | null {
   const offs = offDates ?? new Set<string>();
+  // 1.6.26 (Prejuicio R8, R9B-2): pasado 9999-12-31 no hay día
+  // abierto que devolver — null, como cuando la ventana se agota;
+  // los llamadores ya saben no mover nada con null.
+  if (iso.length > 10) return null;
   if ((excluded.length === 0 || excluded.length >= 7) && offs.size === 0) return iso;
   let d = iso;
   for (let i = 0; i < 28; i += 1) {
@@ -1136,6 +1140,7 @@ function nextOpenDate(iso: string, excluded: number[], offDates?: Set<string>): 
       excluded.length > 0 && excluded.length < 7 && excluded.includes(weekdayFromISO(d));
     if (!closedWeekday && !offs.has(d)) return d;
     d = addDaysISO(d, 1);
+    if (d.length > 10) return null;
   }
   // 1.5.96 (campaña Prejuicio, BZ-60): sin día abierto en la ventana de 28 días
   // NO hay fecha: antes se devolvía la fecha original — un día cerrado disfrazado
@@ -1210,6 +1215,10 @@ async function moveJobToDate(
   opts?: { keepVacMark?: boolean },
 ): Promise<string | null> {
   const sql = await getSql();
+  // 1.6.26 (Prejuicio R8, R9B-1/R9B-2): el calendario representable
+  // termina en 9999-12-31 — un destino fuera de él no aterriza:
+  // null, como cuando el trabajo ya no está pendiente.
+  if (target.length > 10) return null;
   let d = target;
   for (let i = 0; i < 21; i += 1) {
     try {
@@ -1230,6 +1239,11 @@ async function moveJobToDate(
       return rows.length === 1 ? d : null;
     } catch {
       d = addDaysISO(d, 1);
+      // La caminata de choques tampoco cruza la orilla: sin esta
+      // guarda, el segundo trabajo en chocar aterrizaba en el año
+      // 10000 y la base lo leía truncado — la enfermedad de R8B-1
+      // por la puerta hermana.
+      if (d.length > 10) return null;
     }
   }
   return null;

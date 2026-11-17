@@ -11,6 +11,7 @@ import { HoyLayout } from "@/components/hoy-clients";
 import { SampleTryButton } from "@/components/sample-data";
 import { AppShell } from "@/components/app-shell";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { OffDayDialog, shiftToMonday, useRareDay } from "@/components/off-day-ask";
 import { DensityScope, DensityToggle, useDensity, useQuadCols } from "@/components/density-toggle";
 import { Hint } from "@/components/hint";
 import { ScrollTop } from "@/components/scroll-top";
@@ -68,6 +69,8 @@ function Home() {
   const [accDate, setAccDate] = useState(addDaysISO(today, 1));
   const [accReason, setAccReason] = useState("");
   const [askAcc, setAskAcc] = useState<"overdue" | "today" | null>(null);
+  const rare = useRareDay();
+  const [rareMove, setRareMove] = useState<null | { iso: string; kind: "sunday" | "free"; run: (iso: string) => void }>(null);
   const [jumpToday, setJumpToday] = useState(0);
   const [jumpLate, setJumpLate] = useState(0);
   const [jumpDone, setJumpDone] = useState(0);
@@ -97,8 +100,8 @@ function Home() {
   }, [data, settings.data]);
 
   const accMut = useMutation({
-    mutationFn: (scope: "overdue" | "today") =>
-      postponeAccumulated({ data: { date: accDate, scope, reason: accReason } }),
+    mutationFn: (v: { scope: "overdue" | "today"; date: string }) =>
+      postponeAccumulated({ data: { date: v.date, scope: v.scope, reason: accReason } }),
     onSuccess: async (res) => {
       // 1.5.96 (BZ-33): agrupado por la fecha REAL de cada trabajo.
       const byDate = new Map<string, string[]>();
@@ -456,8 +459,37 @@ function Home() {
         }
         confirmLabel={tx("Sí, pasar", "Yes, move")}
         pending={accMut.isPending}
-        onConfirm={() => askAcc && accMut.mutate(askAcc)}
+        onConfirm={() => {
+          if (!askAcc) return;
+          // 1.6.26 (Prejuicio R8, R9B-3): la guardia del día raro
+          // vive también en Hoy — la misma pregunta que Agenda hace
+          // desde su puerta gemela antes de caer en un domingo o
+          // día libre; desde aquí se pasaba todo sin preguntar.
+          const kind = rare.kindOf(accDate);
+          const scope = askAcc;
+          if (kind) {
+            setRareMove({ iso: accDate, kind, run: (iso) => accMut.mutate({ scope, date: iso }) });
+            return;
+          }
+          accMut.mutate({ scope, date: accDate });
+        }}
         onCancel={() => setAskAcc(null)}
+      />
+      <OffDayDialog
+        iso={rareMove?.iso ?? null}
+        kind={rareMove?.kind ?? null}
+        pending={accMut.isPending}
+        onKeep={() => {
+          const job = rareMove;
+          setRareMove(null);
+          if (job) job.run(job.iso);
+        }}
+        onMonday={() => {
+          const job = rareMove;
+          setRareMove(null);
+          if (job) job.run(shiftToMonday(job.iso));
+        }}
+        onClose={() => setRareMove(null)}
       />
       <ConfirmDialog
         open={askRain}
