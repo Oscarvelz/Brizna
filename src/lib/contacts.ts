@@ -389,6 +389,15 @@ function splitCsvRows(text: string): string[][] {
         else if (ch === "\t" || ch === "," || ch === ";" || ch === "|") fieldStart = true;
         else if (ch !== "\r") fieldStart = false;
       }
+      // 1.6.46 (Prejuicio R12, R13F-8): si el texto termina con una
+      // comilla aún abierta, la agrupación entera es sospechosa —
+      // una comilla huérfana tras un delimitador ajeno («Nota|"sin
+      // cerrar») cosía el archivo en un solo grupo y bareLine
+      // descartaba todo lo «citado»: el archivo entero, y la cuenta
+      // quedaba ciega. Una comilla que no cierra es entrada
+      // malformada: se cae a las líneas físicas y el daño queda
+      // confinado a su línea, como antes de contar por filas.
+      if (q) return t.split("\n");
       groups.push(cur);
       return groups;
     };
@@ -399,7 +408,13 @@ function splitCsvRows(text: string): string[][] {
     // se decidía sobre un mundo que nadie más veía, y un preámbulo de
     // 25 llenaba las tres ventanas a la vez. El borde nuevo es 40.
     // 1.6.42: la cuenta mira las primeras 200 FILAS (rowGroups).
-    for (const line of allGroups.slice(0, 200)) {
+    // 1.6.46 (Prejuicio R12, R13F-4): la ventana ya no existe — la
+    // cuenta, la muestra y la corona leen el archivo ENTERO. El
+    // borde de 200 se corrió como el de 40: declarado y mordiendo
+    // igual a las 205 filas. Sin ventana no hay fila donde el
+    // encabezado pueda esconderse; el coste es una pasada lineal
+    // más sobre un texto que ya está en memoria.
+    for (const line of allGroups) {
       const b = bareLine(line);
       const t = (b.match(/\t/g) ?? []).length;
       const c = (b.match(/[,;]/g) ?? []).length;
@@ -434,7 +449,8 @@ function splitCsvRows(text: string): string[][] {
     // 1.6.32 (Prejuicio R10, R11F-5): la muestra sube a 40, alineada
     // con la cuenta y con el lector.
     // 1.6.42: la muestra son las primeras 200 FILAS (rowGroups).
-    const sample = allGroups.slice(0, 200);
+    // 1.6.46: la muestra es el archivo entero (R13F-4, arriba).
+    const sample = allGroups;
     const splitFor = (line: string, d: string): string[] => {
       const cells: string[] = [];
       let cur = "";
@@ -500,9 +516,22 @@ function splitCsvRows(text: string): string[][] {
         const personRow = (r: string[]): boolean => {
           const cells = r.filter((c) => c.trim() !== "");
           if (cells.length < 2) return false;
-          if (cells.length >= 3) return true;
           if (r.some((c) => digitsOf(c).replace(/\D/g, "").length >= 7)) return true;
-          return (r[0] ?? "").trim().split(/\s+/).length >= 2;
+          const words = (c: string) => c.trim().split(/\s+/).filter(Boolean).length;
+          // 1.6.46 (Prejuicio R12, R13F-2): la rama «tres celdas» ya
+          // no basta por el conteo — una fila etiqueta,valor,nota
+          // («Clave1,Valor1,Nota1») tiene tres celdas y ninguna es
+          // una persona: hace falta una celda con dos palabras (la
+          // dirección, el nombre completo) o el teléfono de arriba.
+          if (cells.length >= 3) return cells.some((c) => words(c) >= 2);
+          // 1.6.46 (Prejuicio R12, R13F-1): la tabla de dos celdas
+          // nombre+dirección con nombres de pila («Ana,Calle Sol 1»)
+          // SÍ es un cuerpo: la segunda celda con dos palabras (la
+          // dirección) la sostiene, siempre que la primera no sea
+          // una palabra del vocabulario — el par etiqueta⇥valor
+          // («Direccion,Calle Sol 1») sigue sin darse cuerpo.
+          if (words(r[0] ?? "") >= 2) return true;
+          return !HEADER_WORDS[foldHead(r[0] ?? "")] && words(r[1] ?? "") >= 2;
         };
         const bodyRows = below.filter(personRow);
         if (!(bodyRows.length >= 2 && bodyRows.length * 5 >= below.length * 3)) continue;
@@ -693,7 +722,10 @@ function parseCsv(text: string): PickedContact[] {
   let dataSeen = false;
   // 1.6.42: la ventana de la corona sube a 200 filas, alineada con
   // la cuenta y la muestra (R12F-4).
-  for (let i = 0; i < Math.min(rows.length, 200); i += 1) {
+  // 1.6.46: la corona también lee el archivo entero (R13F-4) — la
+  // guarda dataSeen, no una ventana, es lo que impide que una fila
+  // de encabezado tardía corone sobre datos ya vistos.
+  for (let i = 0; i < rows.length; i += 1) {
     const cells = rows[i]!.map(foldHead);
     const known = cells.filter((c) => HEADER_WORDS[c]).length;
     const phoneLike = cells.some((c) => digitsOf(c).replace(/\D/g, "").length >= 7);
@@ -709,7 +741,15 @@ function parseCsv(text: string): PickedContact[] {
     // preámbulo) NO es un dato aunque traiga el teléfono: es una
     // etiqueta, y ya no apaga la corona del encabezado verdadero.
     const firstVocab = cells.length > 0 && !!HEADER_WORDS[cells[0]!];
-    if (rows[i]!.length >= 2 && !firstVocab && (phoneLike || (known === 0 && rows[i]!.some((c) => /\d/.test(c))))) dataSeen = true;
+    // 1.6.46 (Prejuicio R12, R13F-3): la luz de «dato sin teléfono»
+    // ya no se enciende con cualquier dígito — el título del
+    // informe («Informe de clientes, 2026», «Pagina 1, de 3») la
+    // encendía y apagaba la corona del encabezado verdadero. El
+    // dígito debe vivir dentro de una celda con dos palabras más:
+    // el número de la casa dentro de su dirección («Calle Sol 1»).
+    // Un año suelto o una paginación no son un dato.
+    const addrDigit = rows[i]!.some((c) => /\d/.test(c) && c.split(/\s+/).filter((w) => /[^\d]/.test(w)).length >= 2);
+    if (rows[i]!.length >= 2 && !firstVocab && (phoneLike || (known === 0 && addrDigit))) dataSeen = true;
   }
   const head = headAt >= 0 ? rows[headAt]!.map(foldHead) : [];
   const colOf = (kind: "name" | "phone" | "address" | "first" | "last") => head.findIndex((h) => HEADER_WORDS[h] === kind);

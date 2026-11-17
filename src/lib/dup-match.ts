@@ -258,12 +258,26 @@ export function phoneTail(phone: string | null | undefined): string {
   // de ≥7, la «extensión» ES el número («550142 ext 3055550142»)
   // y cortarla dejaba la cola vacía donde su gemela con «x» daba
   // el número entero.
-  const wordExt = rawPhone.match(/(?:\bext(?:ensi[oó]n)?\)?\.?\s*[-:]?\s*|\bposte\s+|\banexo\s*[-:]?\s*)\d{1,10}\s*\)?\s*$/i);
+  const wordExt = rawPhone.match(/(?:\bext(?:ensi[oó]n)?\)?\.?\s*[-:]?\s*|\bposte\s+|\banexo\s*[-:]?\s*|\binterno\s*[-:]?\s*|\bramal\s*[-:]?\s*)\d{1,10}\s*\)?\s*$/i);
   let bare = rawPhone;
   if (wordExt) {
     const pre = digitsOf(rawPhone.slice(0, wordExt.index)).replace(/\D/g, "").length;
     const suf = digitsOf(wordExt[0]).replace(/\D/g, "").length;
     if (pre >= 7 || suf < 7) bare = rawPhone.slice(0, wordExt.index);
+  }
+  if (bare === rawPhone) {
+    // 1.6.46 (Prejuicio R12, R13F-6): la escritura PEGADA — entre un
+    // dígito y la «e» de «ext» no hay frontera de palabra, y la
+    // rama de palabra no cortaba «…0142ext89» (la de «x» sí corta
+    // la suya pegada). La palabra pegada tras un dígito corta con
+    // la misma guarda: el dígito de la costura es del número.
+    const glued = rawPhone.match(/\d(ext(?:ensi[oó]n)?|anexo|interno|ramal|poste)\s*[-:]?\s*(\d{1,10})\s*\)?\s*$/i);
+    if (glued) {
+      const cutAt = glued.index! + 1;
+      const pre = digitsOf(rawPhone.slice(0, cutAt)).replace(/\D/g, "").length;
+      const suf = digitsOf(glued[2]!).replace(/\D/g, "").length;
+      if (pre >= 7 || suf < 7) bare = rawPhone.slice(0, cutAt);
+    }
   }
   if (bare === rawPhone) {
     // 1.6.32 (Prejuicio R10, R11F-8/R11F-9): la rama recobra su /i

@@ -32,7 +32,10 @@ function evalAmount(expr: string): number | null {
   // gemela U+066B (a la coma que la casa lee decimal), y «×»/«÷»
   // pegados se traducen como las teclas de la propia calculadora
   // ya hacían al pulsarlas («45×5» se negaba; al pegar, no).
-  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/\u060C/g, ",").replace(/\uFF04/g, "").replace(/\uFF0E/g, ".").replace(/\uFF0C/g, ",").replace(/\uFF0B/g, "+").replace(/\uFF0D/g, "-").replace(/\uFF0A/g, "*").replace(/\uFF0F/g, "/").replace(/\uFF08/g, "(").replace(/\uFF09/g, ")").replace(/\u00D7/g, "*").replace(/\u00F7/g, "/").replace(/,/g, ".").replace(/\s/g, "");
+  // 1.6.46 (Prejuicio R12, R13F-7): el menos matemático U+2212 —
+  // el que traen los PDF y las webs al pegar — viaja como su
+  // hermano ASCII: «45−5» vale 40, no silencio.
+  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/\u060C/g, ",").replace(/\uFF04/g, "").replace(/\uFF0E/g, ".").replace(/\uFF0C/g, ",").replace(/\uFF0B/g, "+").replace(/\uFF0D/g, "-").replace(/\uFF0A/g, "*").replace(/\uFF0F/g, "/").replace(/\uFF08/g, "(").replace(/\uFF09/g, ")").replace(/\u00D7/g, "*").replace(/\u00F7/g, "/").replace(/\u2212/g, "-").replace(/,/g, ".").replace(/\s/g, "");
   if (!cleaned || !/^[\d.+\-*/()]+$/.test(cleaned)) return null;
   if (/[+\-*/.]{2,}/.test(cleaned.replace(/\.\d/g, "0"))) return null;
   try {
