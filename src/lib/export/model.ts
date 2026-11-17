@@ -260,6 +260,35 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
     o: "[oó]", ó: "[oó]", O: "[OÓ]", Ó: "[OÓ]",
     u: "[uúü]", ú: "[uú]", ü: "[uü]", U: "[UÚÜ]", Ú: "[UÚ]", Ü: "[UÜ]",
   };
+  // 1.6.47 (Prejuicio R12, R13A-5): la tabla crece a las gemelas
+  // que un nombre real trae más allá del agudo español — cada
+  // variante mapea a la clase ENTERA de su familia, en las dos
+  // direcciones (la escritura pelada caza la guardada con
+  // diacrítico y al revés), y la «u» queda simétrica: ú y ü se
+  // cazan entre sí como la «u» pelada caza a ambas. La ñ no entra:
+  // en español es otra letra, no una gemela de la n.
+  const swapFoldWide: Record<string, string> = {
+    à: "[aáàäâãå]", ä: "[aáàäâãå]", â: "[aáàäâãå]", ã: "[aáàäâãå]", å: "[aáàäâãå]",
+    À: "[AÁÀÄÂÃÅ]", Ä: "[AÁÀÄÂÃÅ]", Â: "[AÁÀÄÂÃÅ]", Ã: "[AÁÀÄÂÃÅ]", Å: "[AÁÀÄÂÃÅ]",
+    è: "[eéèëê]", ë: "[eéèëê]", ê: "[eéèëê]",
+    È: "[EÉÈËÊ]", Ë: "[EÉÈËÊ]", Ê: "[EÉÈËÊ]",
+    ì: "[iíìïî]", ï: "[iíìïî]", î: "[iíìïî]",
+    Ì: "[IÍÌÏÎ]", Ï: "[IÍÌÏÎ]", Î: "[IÍÌÏÎ]",
+    ò: "[oóòöôõ]", ö: "[oóòöôõ]", ô: "[oóòöôõ]", õ: "[oóòöôõ]",
+    Ò: "[OÓÒÖÔÕ]", Ö: "[OÓÒÖÔÕ]", Ô: "[OÓÒÖÔÕ]", Õ: "[OÓÒÖÔÕ]",
+    ù: "[uúùüû]", û: "[uúùüû]",
+    Ù: "[UÚÙÜÛ]", Û: "[UÚÙÜÛ]",
+    ç: "[cç]", Ç: "[CÇ]",
+    ÿ: "[yÿý]", ý: "[yÿý]", Ÿ: "[YŸÝ]", Ý: "[YŸÝ]",
+  };
+  for (const [ch, cls] of Object.entries(swapFoldWide)) swapFold[ch] = cls;
+  swapFold.a = "[aáàäâãå]"; swapFold.á = "[aáàäâãå]"; swapFold.A = "[AÁÀÄÂÃÅ]"; swapFold.Á = "[AÁÀÄÂÃÅ]";
+  swapFold.e = "[eéèëê]"; swapFold.é = "[eéèëê]"; swapFold.E = "[EÉÈËÊ]"; swapFold.É = "[EÉÈËÊ]";
+  swapFold.i = "[iíìïî]"; swapFold.í = "[iíìïî]"; swapFold.I = "[IÍÌÏÎ]"; swapFold.Í = "[IÍÌÏÎ]";
+  swapFold.o = "[oóòöôõ]"; swapFold.ó = "[oóòöôõ]"; swapFold.O = "[OÓÒÖÔÕ]"; swapFold.Ó = "[OÓÒÖÔÕ]";
+  swapFold.u = "[uúùüû]"; swapFold.ú = "[uúùüû]"; swapFold.ü = "[uúùüû]"; swapFold.U = "[UÚÙÜÛ]"; swapFold.Ú = "[UÚÙÜÛ]"; swapFold.Ü = "[UÚÙÜÛ]";
+  swapFold.c = "[cç]"; swapFold.C = "[CÇ]";
+  swapFold.y = "[yÿý]"; swapFold.Y = "[YŸÝ]";
   // 1.6.40 (Prejuicio R11, R12A-1/A-2): el nombre se compone a NFC
   // antes de patrullarlo (un nombre guardado descompuesto no cazaba
   // su mención compuesta, y la mención descompuesta dejaba la tilde
@@ -269,9 +298,9 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
     name
       .normalize("NFC")
       .trim()
-      .split(/[\s-]+/)
-      .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/[aáeéiíoóuúüAÁEÉIÍOÓUÚÜ]/g, (ch) => swapFold[ch] ?? ch))
-      .join("[\\s-]+");
+      .split(/[\s\-\u2010\u2011\u2013\u2014]+/)
+      .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/[aáàäâãåeéèëêiíìïîoóòöôõuúùüûcçyÿýAÁÀÄÂÃÅEÉÈËÊIÍÌÏÎOÓÒÖÔÕUÚÙÜÛCÇYŸÝ]/g, (ch) => swapFold[ch] ?? ch).replace(/['\u2019]/g, "['\u2019]"))
+      .join("[\\s\\-\\u2010\\u2011\\u2013\\u2014]+");
   const nameSwaps = o.names
     ? []
     : raw.clients
@@ -590,7 +619,7 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
       jobs: dj?.n ?? 0,
       value: r2(dj?.v ?? 0),
       collected: r2(inByDay.get(w.date) ?? 0),
-      stopped: w.stopped ? reasonLabel(locale, w.stopped) : "",
+      stopped: w.stopped ? clean(reasonLabel(locale, w.stopped)) : "",
     };
   });
   const hoursTotal = r2(kpi.minutes / 60);
@@ -623,13 +652,18 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   };
 
   /* ---------- postponed */
+  // 1.6.47 (Prejuicio R12, R13A-2): el motivo es TEXTO LIBRE (el
+  // «Otro» tecleado del selector), no un rótulo de enum — los
+  // cuatro asientos que lo imprimen (la fila y el grupo de
+  // Pospuestos, el día libre, el paro en Horas y su eco «Paró
+  // temprano») pasan por clean() como todo texto del usuario.
   const moved = jobs.filter((j) => j.originDate && j.originDate !== j.date);
-  const posRows = moved.map((j) => ({ from: j.originDate!, to: j.date, name: nameOf(j.clientId), job: jobWord(j), reason: j.postponeReason?.trim() ? reasonLabel(locale, j.postponeReason.trim()) : tx("Sin motivo", "No reason") }));
+  const posRows = moved.map((j) => ({ from: j.originDate!, to: j.date, name: nameOf(j.clientId), job: jobWord(j), reason: j.postponeReason?.trim() ? clean(reasonLabel(locale, j.postponeReason.trim())) : tx("Sin motivo", "No reason") }));
   const reasonMap = new Map<string, number>();
   for (const r of posRows) reasonMap.set(r.reason, (reasonMap.get(r.reason) ?? 0) + 1);
   const offDays = [
-    ...raw.offDays.map((d) => ({ date: d.date, reason: [reasonLabel(locale, d.reason), d.detail ? clean(d.detail) : d.detail].filter(Boolean).join(" · ") })),
-    ...raw.work.filter((w) => w.stopped).map((w) => ({ date: w.date, reason: `${tx("Paró temprano", "Stopped early")}: ${reasonLabel(locale, w.stopped!)}` })),
+    ...raw.offDays.map((d) => ({ date: d.date, reason: [clean(reasonLabel(locale, d.reason)), d.detail ? clean(d.detail) : d.detail].filter(Boolean).join(" · ") })),
+    ...raw.work.filter((w) => w.stopped).map((w) => ({ date: w.date, reason: `${tx("Paró temprano", "Stopped early")}: ${clean(reasonLabel(locale, w.stopped!))}` })),
   ].sort((a, b) => a.date.localeCompare(b.date));
   const pospuestos: Model["pospuestos"] = {
     rows: posRows,
@@ -638,10 +672,13 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   };
 
   /* ---------- notes */
+  // 1.6.47 (Prejuicio R12, R13A-1): la carpeta de la nota también
+  // es texto libre del usuario y también pasa por clean() — se
+  // imprime como chip en el PDF y como columna en el XLSX.
   const pagesKept = raw.notes.filter((n) => o.period === "all" || n.pinned || (stampDay(n.updated) >= from && stampDay(n.updated) <= to) || (n.due != null && inRange(n.due)));
   const notas: Model["notas"] = {
     day: raw.dayNotes.map((d) => ({ date: d.date, text: clean(d.body) })).filter((d) => d.text),
-    pages: pagesKept.map((n) => ({ title: clean(n.title) || tx("Nota", "Note"), folder: n.folder, due: n.due ?? "", text: clean(n.body), pinned: n.pinned })).filter((n) => n.text || n.title),
+    pages: pagesKept.map((n) => ({ title: clean(n.title) || tx("Nota", "Note"), folder: clean(n.folder), due: n.due ?? "", text: clean(n.body), pinned: n.pinned })).filter((n) => n.text || n.title),
   };
 
   /* ---------- advisor */
