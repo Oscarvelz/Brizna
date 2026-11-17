@@ -78,6 +78,16 @@ export function Hint({
     if (typeof document !== "undefined" && document.querySelector(".pres-root[role='dialog'], .pres-root:has(.pres-parked)")) {
       pendingHintReopen = null;
       setOpen(true);
+    } else {
+      // 1.6.43 (Prejuicio R12, R13D-1): la vuelta sin lección viva
+      // CIERRA la salida — la marca muere aquí, en la primera
+      // pantalla que la puede juzgar. Antes el borrado vivía solo
+      // dentro de la guarda que abría, así que si la lección
+      // terminaba durante la visita (o la vuelta caía en otra
+      // pantalla), la marca quedaba huérfana para siempre y la
+      // burbuja se abría sola en una lección posterior del mismo
+      // tema, incluso sobre la tarjeta final.
+      pendingHintReopen = null;
     }
   }, [pathname, myTopic]);
 

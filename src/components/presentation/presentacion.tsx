@@ -251,7 +251,19 @@ export function Presentacion() {
     const onLaunch = () => {
       const intent = peekLaunch();
       const m = intent ? moduleById(intent.moduleId) : undefined;
-      if (m && m.ready) setIntro({ mod: m });
+      if (m && m.ready) {
+        // 1.6.43 (Prejuicio R12, R13D-2): un lanzamiento nuevo nace
+        // con la salida anterior olvidada. `leaving` solo moría en
+        // el efecto de la corrida nueva, pero la ventana de intro
+        // se pinta ANTES de que exista corrida: tras cualquier
+        // salida, el siguiente lanzamiento mostraba su preparación
+        // dentro de una raíz is-leaving — velo a opacidad 0 con
+        // pointer-events que se comía todos los toques hasta que
+        // la corrida nacía.
+        leavingRef.current = false;
+        setLeaving(false);
+        setIntro({ mod: m });
+      }
     };
     window.addEventListener(LAUNCH_EVENT, onLaunch);
     return () => window.removeEventListener(LAUNCH_EVENT, onLaunch);
@@ -263,9 +275,18 @@ export function Presentacion() {
   useEffect(() => {
     const onRefused = () => {
       if (runRef.current) return;
+      // 1.6.43 (Prejuicio R12, R13D-4): también esta retirada pasa
+      // por el fundido de la casa, como su propio comentario
+      // promete («como cuando el alumno cancela la entrada») —
+      // era la única de las cuatro que cortaba la ventana en seco.
+      if (leavingRef.current) return;
+      leavingRef.current = true;
       cancelledLaunchRef.current = true;
-      clearLaunch();
-      setIntro(null);
+      setLeaving(true);
+      window.setTimeout(() => {
+        clearLaunch();
+        setIntro(null);
+      }, leaveDelay());
     };
     window.addEventListener(REFUSED_EVENT, onRefused);
     return () => window.removeEventListener(REFUSED_EVENT, onRefused);
@@ -385,6 +406,15 @@ export function Presentacion() {
       firstGo && firstGo.kind === "go" ? resolveScreen(firstGo.screen) : "/";
     void navigate({ to: startPath as never });
     later(() => {
+      // 1.6.43 (Prejuicio R12, R13D-3): el nacimiento se re-juzga
+      // contra el SELLO antes de nacer. Cancelar con «Ahora no» en
+      // los últimos 650 ms tomaba la rama sin-corrida, cuyo
+      // desmontaje salía del escenario a los 200 ms pero no apagaba
+      // este reloj: la corrida nacía sobre el libro REAL, sin raíz
+      // ni salida, y el motor sembraba la ficción del guion en el
+      // libro verdadero. Sin escenario, no hay nacimiento — y
+      // cancelIntro ahora además apaga los relojes en su rama.
+      if (!stageOn()) return;
       setRun({
         mod, sceneIdx: road ? 0 : startIdx, stepIdx: 0, replayUntil: road ? startIdx : undefined,
         mode: prefs.mode, speed: prefs.speed,
@@ -556,13 +586,18 @@ export function Presentacion() {
     leavingRef.current = true;
     cancelledLaunchRef.current = true;
     setLeaving(true);
+    // 1.6.43 (Prejuicio R12, R13D-3): esta rama apaga también los
+    // relojes del conductor — el del nacimiento (650 ms) entre
+    // ellos. Sin esto, el nacimiento sobrevivía a la cancelación
+    // y disparaba tras el desmontaje, ya fuera del escenario.
+    clearTimers();
     window.setTimeout(() => {
       clearLaunch();
       setIntro(null);
       setStay({ path: "/ajustes", openPres: true });
       if (stageOn()) void exitStage();
     }, leaveDelay());
-  }, [exitToIndex]);
+  }, [clearTimers, exitToIndex]);
 
   /** «Quedarme aquí» PRIMERO pregunta (ley de Oscar, 2026-11-14): una
    * ventana emergente le dice al alumno qué pasa después — podrá continuar
