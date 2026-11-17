@@ -650,6 +650,15 @@ class MainActivity : Activity() {
 
         @JavascriptInterface fun saveBegin(name: String, mime: String): String {
             if (!trusted) return "error"
+            // android-19 (Prejuicio R7, R8E-3): desde que el insert tiene
+            // éxito, la fila ya existe en Descargas con IS_PENDING=1, y
+            // las salidas tempranas viejas (openOutputStream nulo, una
+            // consulta del nombre que lanzaba) la huérfanaban para
+            // siempre: invisible para las demás apps y fuera del mapa
+            // `saves`, nadie la recogía jamás. Ahora toda salida entre
+            // el insert y el registro cierra el flujo y borra la fila.
+            var pendingUri: android.net.Uri? = null
+            var pendingOut: java.io.OutputStream? = null
             return try {
                 val clean = cleanName(name)
                 val v = ContentValues().apply {
@@ -659,13 +668,21 @@ class MainActivity : Activity() {
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
                 }
                 val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v) ?: return "error"
-                val out = contentResolver.openOutputStream(uri, "w") ?: return "error"
+                pendingUri = uri
+                val out = contentResolver.openOutputStream(uri, "w") ?: throw IllegalStateException("sin flujo de salida")
+                pendingOut = out
                 var shown = clean
                 contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) shown = c.getString(0) ?: clean }
                 val id = java.util.UUID.randomUUID().toString()
                 saves[id] = Save(uri, out, shown)
+                pendingUri = null
+                pendingOut = null
                 id
-            } catch (e: Exception) { "error" }
+            } catch (e: Exception) {
+                pendingOut?.let { runCatching { it.close() } }
+                pendingUri?.let { runCatching { contentResolver.delete(it, null, null) } }
+                "error"
+            }
         }
 
         @JavascriptInterface fun saveChunk(id: String, b64: String): String {

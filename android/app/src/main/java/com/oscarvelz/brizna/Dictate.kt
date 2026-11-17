@@ -46,6 +46,14 @@ import org.json.JSONObject
  * so once an offline step reports the language unavailable (12/13) the remaining offline steps are
  * poisoned and skipped — the ladder reaches the online service and the system screen sooner.
  *
+ * android-19 (Prejuicio R7, R8E-1/R8E-2): two quiet holes in the ladder's timing. (a) The busy retry was
+ * keyed by step LABEL, but the plan repeats labels ("google" offline and online, "default" offline and
+ * online): when the second same-named step met a busy recognizer, its retry was already spent and the
+ * session died "busy" with rungs unclimbed. The retry is keyed by the step's plan index now. (b) The
+ * delayed continuations (the busy retry and later()) checked only the session id, so after an explicit
+ * stop() they could still start the next recognizer and resurrect a dictation the user had ended. They
+ * check `stopping` now, as ERROR_CLIENT already did.
+ *
  * Order of recognizers, best first; the next one is tried only when one fails before it heard anything
  * (language pack missing, service gone):
  *   1. Android 12+: the on-device recognizer (createOnDeviceSpeechRecognizer), nothing leaves the phone.
@@ -64,7 +72,7 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
     private var id: String? = null
     private var lang = "es-US"
     /** One attempt: an explicit service component (null = the phone's default), on-device, or plain; whether it is asked to stay offline; and its name for the attempts record. */
-    private data class Step(val comp: ComponentName?, val onDevice: Boolean, val offline: Boolean, val label: String)
+    private data class Step(val comp: ComponentName?, val onDevice: Boolean, val offline: Boolean, val label: String, val idx: Int)
     private var plan = ArrayList<Step>()
     private var heard = false
     private var stopping = false
@@ -73,7 +81,13 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
     // toda la cascada: un segundo ERROR_RECOGNIZER_BUSY en cualquier
     // paso posterior terminaba en «busy» al instante, saltándose los
     // pasos restantes y el peldaño de la pantalla del sistema.
-    private var busyRetryStep: String? = null
+    // android-19 (Prejuicio R7, R8E-1): «por paso» se medía por el
+    // NOMBRE del paso, y el plan repite nombres («google» sin red y
+    // con red, «default» sin red y con red): el segundo paso del
+    // mismo nombre encontraba su reintento ya gastado y la sesión
+    // moría «busy» con peldaños sin subir. La llave es ahora el
+    // ÍNDICE del paso en el plan, único por construcción.
+    private var busyRetryIdx = -1
     /** android-7: the last SpeechRecognizer error code seen this session (0 = none); it rides in the failure reply. */
     private var lastCode = 0
     /** android-8: every step's error, in plan order ("google:11"), so a failure shows the whole chain. */
@@ -94,18 +108,18 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
         cancel()
         id = newId
         lang = language.ifBlank { "es-US" }
-        heard = false; stopping = false; busyRetryStep = null; lastCode = 0; attempts.clear(); triedSystem = false; offlinePoisoned = false
+        heard = false; stopping = false; busyRetryIdx = -1; lastCode = 0; attempts.clear(); triedSystem = false; offlinePoisoned = false
         plan = ArrayList()
-        if (Build.VERSION.SDK_INT >= 31 && runCatching { SpeechRecognizer.isOnDeviceRecognitionAvailable(ctx) }.getOrDefault(false)) plan.add(Step(null, onDevice = true, offline = true, label = "device"))
+        if (Build.VERSION.SDK_INT >= 31 && runCatching { SpeechRecognizer.isOnDeviceRecognitionAvailable(ctx) }.getOrDefault(false)) plan.add(Step(null, onDevice = true, offline = true, label = "device", idx = plan.size))
         if (SpeechRecognizer.isRecognitionAvailable(ctx)) {
             // Google's service explicitly, ahead of the default — unless it already is the default (see header).
             val google = recognitionServices().firstOrNull { it.packageName == "com.google.android.googlequicksearchbox" }
             if (google != null && google != defaultService()) {
-                plan.add(Step(google, onDevice = false, offline = true, label = "google"))
-                if (online()) plan.add(Step(google, onDevice = false, offline = false, label = "google"))
+                plan.add(Step(google, onDevice = false, offline = true, label = "google", idx = plan.size))
+                if (online()) plan.add(Step(google, onDevice = false, offline = false, label = "google", idx = plan.size))
             }
-            plan.add(Step(null, onDevice = false, offline = true, label = "default"))
-            if (online()) plan.add(Step(null, onDevice = false, offline = false, label = "default"))
+            plan.add(Step(null, onDevice = false, offline = true, label = "default", idx = plan.size))
+            if (online()) plan.add(Step(null, onDevice = false, offline = false, label = "default", idx = plan.size))
         }
         if (plan.isEmpty()) { finish(fail("none")); return }
         next()
@@ -209,7 +223,11 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
                     SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> finish(fail("denied"))
                     SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> {
                         // another app (or our last session) still holds it: try once more after a moment
-                        if (busyRetryStep != step.label) { busyRetryStep = step.label; plan.add(0, step); runCatching { rec?.cancel() }; main.postDelayed({ if (id == cur) next() }, 400) }
+                        // android-19 (R8E-1/R8E-2): la llave es el índice del paso
+                        // (los nombres se repiten en el plan) y la continuación
+                        // diferida respeta una parada explícita: sin !stopping, el
+                        // reintento resucitaba un dictado que el usuario ya cerró.
+                        if (busyRetryIdx != step.idx) { busyRetryIdx = step.idx; plan.add(0, step); runCatching { rec?.cancel() }; main.postDelayed({ if (id == cur && !stopping) next() }, 400) }
                         else finish(fail("busy"))
                     }
                     SpeechRecognizer.ERROR_CLIENT -> if (stopping) finish(fail("no-speech")) else if (!heard) later(cur) else finish(fail("failed"))
@@ -245,8 +263,11 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
         try { r.startListening(i) } catch (e: Exception) { next() }
     }
 
-    /** The next recognizer, after this callback returns (never destroy a recognizer inside its own callback). */
-    private fun later(cur: String) = main.post { if (id == cur) next() }
+    /** The next recognizer, after this callback returns (never destroy a recognizer inside its own callback).
+     *  android-19 (Prejuicio R7, R8E-2): la continuación diferida también
+     *  respeta `stopping` — tras una parada explícita no arranca el
+     *  siguiente reconocedor. */
+    private fun later(cur: String) = main.post { if (id == cur && !stopping) next() }
 
     private fun finish(j: JSONObject) {
         if (id == null) return
