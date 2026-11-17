@@ -397,7 +397,10 @@ function splitCsvRows(text: string): string[][] {
     // el bueno — es la lectura posicional que el importador hará.
     // Si ningún testigo habla, manda la cuenta de siempre.
     const scores: Record<string, number> = { "\t": score(tabLines, tabTotal), "|": score(pipeLines, pipeTotal), ",": score(commaLines, commaTotal) };
-    const sample = text.split("\n").slice(0, 10);
+    // 1.6.28 (Prejuicio R9, R10F-1/R10F-2): la muestra de los testigos
+    // sube a 25 líneas, la misma ventana que el lector da a su
+    // búsqueda de encabezado — un preámbulo de diez ya no la llena.
+    const sample = text.split("\n").slice(0, 25);
     const splitFor = (line: string, d: string): string[] => {
       const cells: string[] = [];
       let cur = "";
@@ -416,24 +419,55 @@ function splitCsvRows(text: string): string[][] {
       cells.push(cur);
       return cells;
     };
-    const headerWith = (d: string): boolean => sample.some((line) => {
-      const cells = splitFor(line, d).map(foldHead);
-      const known = cells.filter((c) => HEADER_WORDS[c]).length;
-      // El testigo pide DOS palabras conocidas, más que la regla
-      // del lector: una sola es justo la forma del preámbulo de
-      // informe («Origen⇥Telefono»), que no debe coronar al
-      // tabulador como delimitador del archivo.
-      return known >= 2;
-    });
-    const phoneColWith = (d: string): boolean => sample.some((line) => {
-      const cells = splitFor(line, d);
-      return cells.length >= 2 && digitsOf(cells[1]!).replace(/\D/g, "").length >= 7;
-    });
+    // 1.6.28 (Prejuicio R9, R10F-1/R10F-3): el testigo del encabezado
+    // aplica LA REGLA DEL LECTOR, no una prima suya (≥2 conocidas, o
+    // 1 sin teléfono a la vista — antes pedía 2 y la rendija entre
+    // las dos reglas volvía a perder archivos), y exige DATOS debajo
+    // de la fila declarada: una línea de portada que lista columnas
+    // con barras («Telefono | Direccion») declara en el vacío —
+    // ninguna fila posterior parte en ≥2 celdas con ese delimitador
+    // — y ya no corona a nadie. Devuelve cuántas palabras conocidas
+    // trae la fila declarada (−1: no declara): entre declarantes
+    // manda el que más palabras ve, porque el preámbulo
+    // «Origen⇥Telefono» declara con una y el encabezado real con
+    // dos o tres.
+    const headerInfo = (d: string): number => {
+      const rowsD = sample.map((line) => splitFor(line, d));
+      for (let i = 0; i < rowsD.length; i += 1) {
+        const cells = rowsD[i]!.map(foldHead);
+        const known = cells.filter((c) => HEADER_WORDS[c]).length;
+        if (known === 0) continue;
+        const phoneLike = rowsD[i]!.some((c) => digitsOf(c).replace(/\D/g, "").length >= 7);
+        if (!(known >= 2 || (known === 1 && !phoneLike))) continue;
+        const dataBelow = rowsD.slice(i + 1).some((r) => r.filter((c) => c.trim() !== "").length >= 2);
+        if (dataBelow) return known;
+      }
+      return -1;
+    };
+    // 1.6.28 (Prejuicio R9, R10F-4): el testigo del teléfono exige una
+    // columna CONSISTENTE de teléfonos de verdad — la misma posición
+    // trae un teléfono (solo dígitos y su puntuación, 7–15) en al
+    // menos dos filas. Un fragmento de dirección (« Apt 1234567»)
+    // trae letras y ya no certifica al delimitador equivocado.
+    const phoneColWith = (d: string): boolean => {
+      const counts = new Map<number, number>();
+      for (const line of sample) {
+        splitFor(line, d).forEach((c, j) => {
+          const t = c.trim();
+          if (/^[+\d][\d\s().-]*$/.test(t)) {
+            const n = t.replace(/\D/g, "").length;
+            if (n >= 7 && n <= 15) counts.set(j, (counts.get(j) ?? 0) + 1);
+          }
+        });
+      }
+      return [...counts.values()].some((v) => v >= 2);
+    };
     const cands = ["\t", "|", ","] as const;
-    const headCands = cands.filter((d) => headerWith(d));
-    if (headCands.length > 0 && !headCands.some((d) => d === delim)) {
-      delim = [...headCands].sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0))[0]!;
-    } else if (headCands.length === 0 && !phoneColWith(delim)) {
+    const headInfo = new Map<string, number>(cands.map((d) => [d, headerInfo(d)]));
+    const bestHead = Math.max(...cands.map((d) => headInfo.get(d) ?? -1));
+    if (bestHead >= 0 && (headInfo.get(delim) ?? -1) < bestHead) {
+      delim = cands.filter((d) => (headInfo.get(d) ?? -1) === bestHead).sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0))[0]!;
+    } else if (bestHead < 0 && !phoneColWith(delim)) {
       const phoneCands = cands.filter((d) => phoneColWith(d));
       if (phoneCands.length === 1) delim = phoneCands[0]!;
     }
@@ -490,9 +524,9 @@ const HEADER_WORDS: Record<string, "name" | "phone" | "address" | "first" | "las
 // 1.6.04 (Prejuicio R2, R2F-6): el vocabulario crece con los encabezados que
 // los exportadores reales usan — «Client Name» no estaba y la columna del
 // nombre jamás se leía: cada contacto nacía nombrado por su teléfono.
-for (const w of ["name", "nombre", "nombre completo", "full name", "contacto", "contact", "client name", "customer name", "contact name", "nombre y apellido", "nombre del cliente", "client", "customer", "naam", "nome"]) HEADER_WORDS[w] = "name";
-for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone", "phone 1 value", "phone 2 value", "mobile phone", "cell phone", "telefono movil", "numero de celular", "telefono 1 valor", "telefono 2 valor", "home phone", "work phone", "business phone", "primary phone", "telefono casa", "telefono trabajo", "telefono de casa", "telefon", "telefoon", "telefonnummer", "mobiltelefon", "rufnummer", "handynummer", "telefone", "telefone 1 valor", "telefone 2 valor", "telefon 1 wert", "telefon 2 wert", "telephone 1 valeur", "telephone 2 valeur", "telemovel"]) HEADER_WORDS[w] = "phone";
-for (const w of ["address", "direccion", "domicilio", "addr", "address 1 formatted", "direccion 1 formateada", "address 1", "direccion 1", "adresse", "adres", "anschrift", "endereco", "morada", "endereco 1 formatado", "adresse 1 formatiert", "adresse 1 formatee", "indirizzo"]) HEADER_WORDS[w] = "address";
+for (const w of ["name", "nombre", "nombre completo", "full name", "contacto", "contact", "client name", "customer name", "contact name", "nombre y apellido", "nombre del cliente", "client", "customer", "naam", "nome", "cliente"]) HEADER_WORDS[w] = "name";
+for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone", "phone 1 value", "phone 2 value", "mobile phone", "cell phone", "telefono movil", "numero de celular", "telefono 1 valor", "telefono 2 valor", "home phone", "work phone", "business phone", "primary phone", "telefono casa", "telefono trabajo", "telefono de casa", "telefon", "telefoon", "telefonnummer", "mobiltelefon", "rufnummer", "handynummer", "telefone", "telefone 1 valor", "telefone 2 valor", "telefon 1 wert", "telefon 2 wert", "telephone 1 valeur", "telephone 2 valeur", "telemovel", "telefono 1 valore", "telefoon 1 waarde"]) HEADER_WORDS[w] = "phone";
+for (const w of ["address", "direccion", "domicilio", "addr", "address 1 formatted", "direccion 1 formateada", "address 1", "direccion 1", "adresse", "adres", "anschrift", "endereco", "morada", "endereco 1 formatado", "adresse 1 formatiert", "adresse 1 formatee", "indirizzo", "indirizzo 1 formattato", "adres 1 opgemaakt"]) HEADER_WORDS[w] = "address";
 // 1.6.08 (Prejuicio R3, R3F-3): el nombre partido en dos columnas (la forma
 // de Outlook: «First Name,Last Name,Phone») — sin estas dos palabras el
 // apellido jamás se leía y cada contacto nacía con medio nombre.
@@ -527,7 +561,10 @@ function parseCsv(text: string): PickedContact[] {
   // 1.6.08 (R3F-5a): la ventana de búsqueda sube a 10 filas — con cinco
   // líneas de título delante, el encabezado real caía fuera de la ventana
   // de 5 y nacía como un cliente llamado «Nombre».
-  for (let i = 0; i < Math.min(rows.length, 10); i += 1) {
+  // 1.6.28 (Prejuicio R9, R10F-2): la ventana sube a 25 filas, la
+  // misma que miran los testigos de la olida — alineadas otra vez,
+  // y un preámbulo de informe ordinario ya no la llena.
+  for (let i = 0; i < Math.min(rows.length, 25); i += 1) {
     const cells = rows[i]!.map(foldHead);
     const known = cells.filter((c) => HEADER_WORDS[c]).length;
     const phoneLike = cells.some((c) => digitsOf(c).replace(/\D/g, "").length >= 7);

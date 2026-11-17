@@ -19,7 +19,10 @@ function evalAmount(expr: string): number | null {
   // dígitos — el separador decimal U+066B es un punto y el de miles
   // U+066C se retira; sin traducirlos, «٤٫٥» de propina nacía $0 en
   // silencio, la forma exacta que R8F-3 vino a matar.
-  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/,/g, ".").replace(/\s/g, "");
+  // 1.6.28 (Prejuicio R9, R10F-8): la puntuación de ancho completo
+  // acompaña a sus dígitos — U+FF0E es un punto y U+FF0C una coma
+  // (que la casa lee como decimal, como la ASCII).
+  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/\uFF0E/g, ".").replace(/\uFF0C/g, ",").replace(/,/g, ".").replace(/\s/g, "");
   if (!cleaned || !/^[\d.+\-*/()]+$/.test(cleaned)) return null;
   if (/[+\-*/.]{2,}/.test(cleaned.replace(/\.\d/g, "0"))) return null;
   try {

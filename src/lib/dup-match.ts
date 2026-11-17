@@ -242,7 +242,18 @@ export function phoneTail(phone: string | null | undefined): string {
   // dos puntos, «ext-» con guion, la palabra española entera
   // «extensión», extensiones de hasta diez dígitos y el paréntesis
   // de cierre tras los dígitos ya no envenenan la cola.
-  const bare = String(phone ?? "").replace(/(?:\bext(?:ensi[oó]n)?\.?\s*[-:]?\s*|[x#]\s*)\d{1,10}\s*\)?\s*$/i, "");
+  // 1.6.28 (Prejuicio R9, R10F-6/R10F-7): la familia crece por un
+  // lado y se acota por el otro. Crece: «poste 89» (francés) y
+  // «(ext) 89» (el paréntesis de cierre tras la palabra). Se acota:
+  // la «x»/«#» solo corta si delante queda un número entero (≥7
+  // dígitos) — en «305x5550142» la x es el separador interno del
+  // propio número, y cortarla dejaba la cola vacía.
+  const rawPhone = String(phone ?? "");
+  let bare = rawPhone.replace(/(?:\bext(?:ensi[oó]n)?\)?\.?\s*[-:]?\s*|\bposte\s+)\d{1,10}\s*\)?\s*$/i, "");
+  if (bare === rawPhone) {
+    const mx = rawPhone.match(/[x#]\s*\d{1,10}\s*$/);
+    if (mx && digitsOf(rawPhone.slice(0, mx.index)).replace(/\D/g, "").length >= 7) bare = rawPhone.slice(0, mx.index);
+  }
   const digits = digitsOf(bare).replace(/\D/g, "");
   return digits.length >= 7 ? digits.slice(-10) : "";
 }
