@@ -373,6 +373,8 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
       // y baja a la clase más vieja (nada en la carpeta puede ser
       // más nuevo que la copia que se está escribiendo ahora); si
       // la hora no se lee, la copia hereda la que su nombre declara.
+      // 1.6.36 (Prejuicio R10, R11C-1): refinado abajo en «effOf» —
+      // la sospecha es por MARCA, no por copia.
       let mtime = 0;
       try { mtime = (await (entry as FileSystemFileHandle).getFile()).lastModified; } catch { mtime = 0; }
       entries.push({ name: entryName, mtime });
@@ -393,12 +395,27 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
   const nowMs = Date.now();
   const stampOf = (name: string): number => {
     const m = name.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})/);
-    return m ? new Date(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!).getTime() : 0;
+    if (m) return new Date(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!).getTime();
+    // 1.6.36 (Prejuicio R10, R11C-3): el nombre legado de la familia
+    // «oscar-copia-» declara solo la fecha — la herencia la oye como
+    // la medianoche de ese día, no como 1970.
+    const d = name.match(/(\d{4})-(\d{2})-(\d{2})/);
+    return d ? new Date(+d[1]!, +d[2]! - 1, +d[3]!).getTime() : 0;
   };
+  // 1.6.36 (Prejuicio R10, R11C-1): se desconfía de la MARCA, no de
+  // la copia. Cada marca se juzga por separado: la hora real manda
+  // si no miente; si miente, manda el sello del nombre si él no
+  // miente. Solo cuando TODA marca legible cae en el futuro baja la
+  // copia a la clase sospechosa (−1): una sola marca mentirosa ya no
+  // entierra la veraz que la acompaña.
   const effOf = (e: { name: string; mtime: number }): number => {
     const stamp = stampOf(e.name);
-    if (stamp > nowMs || e.mtime > nowMs) return -1;
-    return e.mtime > 0 ? e.mtime : stamp;
+    const mtimeTrue = e.mtime > 0 && e.mtime <= nowMs ? e.mtime : 0;
+    const stampTrue = stamp > 0 && stamp <= nowMs ? stamp : 0;
+    const truth = mtimeTrue || stampTrue;
+    if (truth > 0) return truth;
+    if (e.mtime === 0 && stamp === 0) return 0;
+    return -1;
   };
   const keep = (ext: string) => {
     const doomed: string[] = [];
@@ -408,7 +425,19 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
         // 1.6.29 (Prejuicio R9, R10C-3): en el empate de horas manda
         // el sello más cercano a «ahora», no el nombre mayor — el
         // mayor era sistemáticamente el sello futuro.
-        .sort((a, b) => effOf(a) - effOf(b) || (Math.abs(stampOf(b.name) - nowMs) - Math.abs(stampOf(a.name) - nowMs)) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+        // 1.6.36 (Prejuicio R10, R11C-2): la distancia se mide con el
+        // sello ACOTADO a «ahora»: en el lado futuro la distancia sin
+        // acotar crece con la recencia y la rotación de la clase
+        // sospechosa corría al revés (moría la más nueva de la era
+        // rota); acotados, todos los futuros empatan a cero y el
+        // nombre — que en la familia ordena como el tiempo — hace
+        // morir primero a la más vieja de la era.
+        // 1.6.36 (Prejuicio R10, W2 de la caza 10): a igualdad de
+        // hora veraz, el nombre que miente (sello futuro) pierde
+        // contra el que no miente — en el empate por lotes de una
+        // sincronización, todas las horas son la del lote y solo el
+        // nombre distingue a la copia real de las que dicen 2999.
+        .sort((a, b) => effOf(a) - effOf(b) || ((stampOf(a.name) > nowMs ? 0 : 1) - (stampOf(b.name) > nowMs ? 0 : 1)) || (Math.abs(Math.min(stampOf(b.name), nowMs) - nowMs) - Math.abs(Math.min(stampOf(a.name), nowMs) - nowMs)) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
       doomed.push(...group.slice(0, Math.max(0, group.length - 5)).map((e) => e.name));
     }
     return doomed;
@@ -421,8 +450,14 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
   // «eff» — el temporal sin hora legible hereda la de su nombre, y
   // el de sello futuro es de la clase sospechosa: ninguno es ya
   // inmortal, y un temporal vivo (su hora es «ahora») no se toca.
+  // 1.6.36 (Prejuicio R10, R11C-4): pero un temporal con la hora
+  // LEGIBLE fresca — de hace menos de una hora, o en el futuro por
+  // un reloj que patina — puede estar escribiéndose en otra
+  // pestaña en este instante: la recogida no lo toca aunque su
+  // sello lo haga sospechoso. La clase sospechosa de la poda de
+  // paquetes no es la de la recogida de temporales.
   const tmpDoomed = entries
-    .filter((e) => e.name.endsWith(".tmp") && effOf(e) < nowMs - 3_600_000)
+    .filter((e) => e.name.endsWith(".tmp") && effOf(e) < nowMs - 3_600_000 && !(e.mtime > nowMs - 3_600_000))
     .map((e) => e.name);
   for (const old of [...keep(".json"), ...keep(".pdf"), ...keep(".xls"), ...tmpDoomed]) await dir.removeEntry(old);
   } catch {
