@@ -1170,11 +1170,20 @@ async function loadPrefs(userId: string) {
   const r = rows[0];
   const horizon = Number(r?.horizon_months);
   const every = Number(r?.season_every);
+  // 1.6.37 (Prejuicio R10, R11B-3): the vacation flag is read with
+  // the same bounds its writer enforces (applyVacation: end not
+  // before start, span ≤ 180 days). A planted flag outside those
+  // bounds — an old backup's 9999 end — used to close the whole
+  // generation horizon and silently stop every client's seeding;
+  // read as no vacation instead, like the other clamped fields.
+  const vacStart = r?.vacation_start ? asIsoDate(r.vacation_start) : null;
+  const vacEnd = r?.vacation_end ? asIsoDate(r.vacation_end) : null;
+  const vacOk = vacStart && vacEnd && vacEnd >= vacStart && daysBetween(vacStart, vacEnd) <= 180;
   return {
     weekGoals: parseWeekGoals(r?.week_goals),
     abonoPresets: parseNumList(r?.abono_presets, DEFAULT_ABONO_PRESETS),
-    vacationStart: r?.vacation_start ? asIsoDate(r.vacation_start) : null,
-    vacationEnd: r?.vacation_end ? asIsoDate(r.vacation_end) : null,
+    vacationStart: vacOk ? vacStart : null,
+    vacationEnd: vacOk ? vacEnd : null,
     vacationShift: Number(r?.vacation_shift) || 0,
     excludedWeekdays: parseExcluded(r?.excluded_weekdays),
     horizonMonths: horizon >= 4 && horizon <= 18 ? horizon : 12,

@@ -89,6 +89,12 @@ export function isRealISODate(value: string): boolean {
 export function addDaysISO(iso: string, days: number): string {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d + days));
+  // 1.6.37 (Prejuicio R10, R11B-2): Date.UTC reads years 0–99 as
+  // 1900+year, so a restored anchor in that band walked ~1,900
+  // years past the range and the client silently never seeded
+  // again. Shifting the built date back 1,900 years restores the
+  // literal year, boundary crossings included.
+  if (y < 100) dt.setUTCFullYear(dt.getUTCFullYear() - 1900);
   return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`;
 }
 
@@ -309,13 +315,20 @@ export function payDueISO(dueDay: number, fromISO: string): string {
  * empieza al día siguiente del vencimiento que manda. */
 export function governingDueISO(dueDay: number, today: string, unpaidSince?: string | null): string {
   if (unpaidSince) {
+    // 1.6.37 (Prejuicio R10, R11B-1): the governing date is computed
+    // as always — the first due date on or after the debt's birth —
+    // but it is never allowed past the calendar's edge: a restored
+    // birth in December 9999 used to make this function answer
+    // «10000-01-10», a string string-comparison reads as OLDER than
+    // today (a future debt collected as late) and Date.parse reads
+    // as NaN. Clamped to 9999-12-31 the debt is simply not late yet.
     let due = payDueISO(dueDay, unpaidSince);
     if (due < unpaidSince) {
       const { year, month } = monthParts(unpaidSince);
       const next = month === 12 ? `${year + 1}-01-15` : `${year}-${pad(month + 1)}-15`;
       due = payDueISO(dueDay, next);
     }
-    return due;
+    return due.length > 10 ? "9999-12-31" : due;
   }
   const thisDue = payDueISO(dueDay, today);
   if (today > thisDue) return thisDue;

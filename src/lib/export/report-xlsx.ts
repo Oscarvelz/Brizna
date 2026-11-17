@@ -993,7 +993,12 @@ export function reportXlsxBytes(m: Model): Uint8Array {
           { key: "visits", h: tx("Visitas al mes", "Visits a month"), type: "num1", min: 11 },
           { key: "monthly", h: tx("Al mes", "A month"), type: "money", total: "sum", money: true, color: MONEY, bold: true, bar: MONEY_BAR, min: 13 },
         ],
-        rows: m.precios.rows.map((r) => (L, row) => ({ name: r.name, group: r.group, every: r.every, price: r.price, visits: r.visits || null, monthly: r.visits ? { f: `${L("price")}${row}*${L("visits")}${row}`, v: r.monthly } : null })),
+        // 1.6.37 (Prejuicio R10, R11A-3): the cached value of the
+        // «Al mes» cell is the formula's OWN product, unrounded —
+        // with the rounded r.monthly the column's cached SUBTOTAL
+        // (289.98) contradicted its formula and the model (289.97)
+        // for any reader that does not recalculate.
+        rows: m.precios.rows.map((r) => (L, row) => ({ name: r.name, group: r.group, every: r.every, price: r.price, visits: r.visits || null, monthly: r.visits ? { f: `${L("price")}${row}*${L("visits")}${row}`, v: r.price * r.visits } : null })),
         tab,
         extra: [3, 22],
       });

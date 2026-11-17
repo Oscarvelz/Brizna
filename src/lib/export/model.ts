@@ -249,12 +249,29 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   }
   const nameOf = (id: number) => label.get(id) ?? "?";
   // Free text (notes) with names swapped for initials when names are off.
+  // 1.6.37 (Prejuicio R10, R11A-1): the swap hunts whole words only —
+  // letter-bounded on both sides, so «Ana» no longer eats «mañana» —
+  // and every vowel carries its accented twin in a class, so «Jose»
+  // no longer slips past a client named «José» (nor the reverse).
+  const swapFold: Record<string, string> = {
+    a: "[aá]", á: "[aá]", A: "[AÁ]", Á: "[AÁ]",
+    e: "[eé]", é: "[eé]", E: "[EÉ]", É: "[EÉ]",
+    i: "[ií]", í: "[ií]", I: "[IÍ]", Í: "[IÍ]",
+    o: "[oó]", ó: "[oó]", O: "[OÓ]", Ó: "[OÓ]",
+    u: "[uúü]", ú: "[uú]", ü: "[uü]", U: "[UÚÜ]", Ú: "[UÚ]", Ü: "[UÜ]",
+  };
+  const swapPattern = (name: string) =>
+    name
+      .trim()
+      .split(/\s+/)
+      .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/[aáeéiíoóuúüAÁEÉIÍOÓUÚÜ]/g, (ch) => swapFold[ch] ?? ch))
+      .join("\\s+");
   const nameSwaps = o.names
     ? []
     : raw.clients
         .filter((c) => c.name.trim().length >= 3)
         .sort((a, b) => b.name.length - a.name.length)
-        .map((c) => [new RegExp(c.name.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), nameOf(c.id)] as const);
+        .map((c) => [new RegExp(`(?<![\\p{L}\\p{N}_])${swapPattern(c.name)}(?![\\p{L}\\p{N}_])`, "giu"), nameOf(c.id)] as const);
   const clean = (text: string) => nameSwaps.reduce((t, [re, to2]) => t.replace(re, to2), stripHtml(text));
   const phoneOf = (c: ClientRow | undefined) => (o.phones && c?.phone ? c.phone : "");
   const byId = new Map(raw.clients.map((c) => [c.id, c]));
@@ -268,7 +285,11 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   const done = jobs.filter((j) => j.status === "done");
   const pays = raw.payments.filter((p) => keptIds.has(p.clientId) && inRange(p.date));
   const money_in = pays.filter((p) => p.kind === "paid" || p.kind === "prepaid");
-  const firstData = [raw.jobs.find((j) => j.status === "done")?.date, raw.payments[0]?.date].filter(Boolean).sort()[0] ?? from;
+  // 1.6.37 (Prejuicio R10, R11A-4): the first datum never sits after
+  // today — a job marked done ahead of its date would otherwise
+  // invert the declared range («desde» after «hasta»).
+  const firstRaw = [raw.jobs.find((j) => j.status === "done")?.date, raw.payments[0]?.date].filter(Boolean).sort()[0];
+  const firstData = firstRaw ? (firstRaw > to ? to : firstRaw) : from;
 
   const groupWord = (g: Group) => (g === "active" ? tx("Activo", "Active") : g === "oneTime" ? tx("Una vez", "One-time") : tx("Archivado", "Archived"));
   const kindWord = (k: string) => (k === "extra" ? tx("Extra", "Extra") : k === "one_time" ? tx("Una vez", "One-time") : tx("Corte", "Cut"));
@@ -646,6 +667,16 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   const per = periodLabel(from, to, o.period, locale, tx, firstData);
   const perIn = o.period === "all" ? tx("en total", "in all") : o.period === "week" ? tx("esta semana", "this week") : o.period === "month" ? tx("este mes", "this month") : o.period === "lastMonth" ? tx("el mes pasado", "last month") : o.period === "year" ? tx("este año", "this year") : o.period === "lastYear" ? tx("el año pasado", "last year") : tx("en esas fechas", "in those dates");
   const m = (n: number) => money(n);
+  // 1.6.37 (Prejuicio R10, R11A-2): the Pagos table also lists the
+  // forgiven rows and the tip-only rows; when those are the ONLY
+  // movement of the period, the sentences name them instead of
+  // denying the table they open.
+  const movesParts = [
+    kpi.forgiven > 0 ? tx(`perdonaste ${m(kpi.forgiven)}`, `you forgave ${m(kpi.forgiven)}`) : "",
+    kpi.tipCount > 0 ? tx(`recibiste ${m(kpi.tips)} en ${kpi.tipCount} ${plural(kpi.tipCount, "propina", "propinas")}`, `you got ${m(kpi.tips)} in ${kpi.tipCount} ${plural(kpi.tipCount, "tip", "tips")}`) : "",
+  ].filter(Boolean);
+  const movesLine = movesParts.length ? movesParts.join(tx(" y ", " and ")) : "";
+  const movesHead = movesLine ? movesLine.charAt(0).toUpperCase() + movesLine.slice(1) : "";
   const takeaway: Partial<Record<SectionId, string>> = {};
   const bestBar = [...bars].sort((a, b) => b.a - a.a)[0];
   takeaway.resumen = amounts
@@ -654,7 +685,9 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
           `Cobraste ${m(kpi.collected)} ${perIn} por ${kpi.jobsDone} ${plural(kpi.jobsDone, "trabajo", "trabajos")} hechos${kpi.owed > 0 ? `, y te deben ${m(kpi.owed)} entre ${kpi.owedPeople} ${plural(kpi.owedPeople, "cliente", "clientes")}` : ", y nadie te debe"}.${bestBar && bars.length > 2 && bestBar.a > 0 ? ` ${unit === "week" ? "La mejor semana" : unit === "month" ? "El mejor mes" : "El mejor año"} fue ${bestBar.label} (${m(bestBar.a)}).` : ""}`,
           `You collected ${m(kpi.collected)} ${perIn} for ${kpi.jobsDone} ${plural(kpi.jobsDone, "job", "jobs")} done${kpi.owed > 0 ? `, and ${kpi.owedPeople} ${plural(kpi.owedPeople, "client owes", "clients owe")} you ${m(kpi.owed)}` : ", and nobody owes you"}.${bestBar && bars.length > 2 && bestBar.a > 0 ? ` The best ${unit} was ${bestBar.label} (${m(bestBar.a)}).` : ""}`,
         )
-      : tx(`No hay trabajos ni pagos anotados ${perIn}.`, `No jobs or payments recorded ${perIn}.`)
+      : pagos.rows.length && movesLine
+        ? tx(`Sin trabajos ni cobros ${perIn}; ${movesLine}.`, `No jobs or collections ${perIn}; ${movesLine}.`)
+        : tx(`No hay trabajos ni pagos anotados ${perIn}.`, `No jobs or payments recorded ${perIn}.`)
     : tx(`Hiciste ${kpi.jobsDone} ${plural(kpi.jobsDone, "trabajo", "trabajos")} ${perIn}: ${kpi.cuts} ${plural(kpi.cuts, "corte", "cortes")}, ${kpi.extras} ${plural(kpi.extras, "extra", "extras")} y ${kpi.once} de una vez.`, `You did ${kpi.jobsDone} ${plural(kpi.jobsDone, "job", "jobs")} ${perIn}: ${kpi.cuts} ${plural(kpi.cuts, "cut", "cuts")}, ${kpi.extras} ${plural(kpi.extras, "extra", "extras")} and ${kpi.once} one-time.`);
   const old60 = r2(cobros.buckets.filter((b) => b.key === "b61" || b.key === "b91").reduce((a, b) => a + b.amount, 0));
   const topOwe = cobros.rows[0];
@@ -675,7 +708,9 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
         `Entraron ${m(kpi.collected)} en ${kpi.payments} ${plural(kpi.payments, "pago", "pagos")}.${topMethod && kpi.collected > 0 ? methodLineEs : ""}${kpi.forgiven > 0 ? ` Perdonaste ${m(kpi.forgiven)}.` : ""}`,
         `${m(kpi.collected)} came in over ${kpi.payments} ${plural(kpi.payments, "payment", "payments")}.${topMethod && kpi.collected > 0 ? methodLineEn : ""}${kpi.forgiven > 0 ? ` You forgave ${m(kpi.forgiven)}.` : ""}`,
       )
-    : tx(`No entraron pagos ${perIn}.`, `No payments came in ${perIn}.`);
+    : pagos.rows.length && movesLine
+      ? `${movesHead} ${perIn}.`
+      : tx(`No entraron pagos ${perIn}.`, `No payments came in ${perIn}.`);
   takeaway.trabajos = kpi.jobsDone
     ? tx(
         `Hiciste ${kpi.jobsDone} ${plural(kpi.jobsDone, "trabajo", "trabajos")}${amounts ? ` que valen ${m(kpi.doneValue)}` : ""}: ${kpi.cuts} ${plural(kpi.cuts, "corte", "cortes")}, ${kpi.extras} ${plural(kpi.extras, "extra", "extras")} y ${kpi.once} de una vez.${kpi.pendingInPeriod ? ` ${kpi.pendingInPeriod} ${plural(kpi.pendingInPeriod, "quedó", "quedaron")} sin hacer.` : ""}`,
