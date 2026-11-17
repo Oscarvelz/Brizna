@@ -933,6 +933,11 @@ class MainActivity : Activity() {
             val askedAt = prefs.getLong("asked-$best", 0L)
             if (System.currentTimeMillis() - askedAt < 86_400_000L) return@Thread
             runOnUiThread {
+                // android-16 (Prejuicio R4, R5E-1): si el usuario salió
+                // mientras la red respondía, mostrar el diálogo sobre una
+                // actividad muerta revienta (BadTokenException) — el
+                // try/catch del hilo no cubre este Runnable.
+                if (isFinishing || isDestroyed) return@runOnUiThread
                 prefs.edit().putLong("asked-$best", System.currentTimeMillis()).apply()
                 AlertDialog.Builder(this).setTitle("Nueva versión de la app Brizna")
                     .setMessage("Hay una versión nueva de la app. ¿Instalarla ahora? Tus clientes, tu cuenta y tus avisos se quedan igual.")
