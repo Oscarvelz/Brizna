@@ -264,7 +264,15 @@ export function phoneTail(phone: string | null | undefined): string {
   // «(interno) 89», «poste: 89» y «poste89» cortan como «ext. 89».
   // Y la familia queda entera: «int» (la abreviatura de interno,
   // gemela de «ext») y «extensão» (el portugués entero) entran.
-  const wordExt = rawPhone.match(/(?:\b(?:ext(?:ensi[oó]n|ensão|ensao)?|interno|int|anexo|ramal|poste)\)?\.?\s*[-:]?\s*)\d{1,10}\s*\)?\s*$/i);
+  // 1.6.53 (Prejuicio R14, R15F-7): el tope de diez dígitos muere
+  // en las tres ramas — una «extensión» de 11+ dígitos es un
+  // segundo número escrito tras la palabra, y con el tope ninguna
+  // rama casaba: los 21 dígitos entraban enteros en la ventana y
+  // la cola nacía del número equivocado, sin casar jamás con su
+  // gemelo desnudo. Sin tope, la palabra marca la frontera y la
+  // guarda de siempre decide (delante queda un número entero, o
+  // el sufijo no llega a número y la «extensión» es el número).
+  const wordExt = rawPhone.match(/(?:\b(?:ext(?:ensi[oó]n|ensão|ensao)?|interno|int|anexo|ramal|poste)\)?\.?\s*[-:]?\s*)\d+\s*\)?\s*$/i);
   let bare = rawPhone;
   if (wordExt) {
     const pre = digitsOf(rawPhone.slice(0, wordExt.index)).replace(/\D/g, "").length;
@@ -277,7 +285,7 @@ export function phoneTail(phone: string | null | undefined): string {
     // rama de palabra no cortaba «…0142ext89» (la de «x» sí corta
     // la suya pegada). La palabra pegada tras un dígito corta con
     // la misma guarda: el dígito de la costura es del número.
-    const glued = rawPhone.match(/\d(ext(?:ensi[oó]n|ensão|ensao)?|anexo|interno|ramal|poste|int)\s*[-:]?\s*(\d{1,10})\s*\)?\s*$/i);
+    const glued = rawPhone.match(/\d(ext(?:ensi[oó]n|ensão|ensao)?|anexo|interno|ramal|poste|int)\s*[-:]?\s*(\d+)\s*\)?\s*$/i);
     if (glued) {
       const cutAt = glued.index! + 1;
       const pre = digitsOf(rawPhone.slice(0, cutAt)).replace(/\D/g, "").length;
@@ -294,7 +302,7 @@ export function phoneTail(phone: string | null | undefined): string {
     // en vez de fabricarse con los dígitos de la extensión. Si el
     // sufijo trae ≥7 dígitos, la «x» es separador interno del propio
     // número («305x5550142») y no se corta — la línea de R10F-7.
-    const mx = rawPhone.match(/[x#]\s*\d{1,10}\s*$/i);
+    const mx = rawPhone.match(/[x#]\s*\d+\s*$/i);
     if (mx) {
       const pre = digitsOf(rawPhone.slice(0, mx.index)).replace(/\D/g, "").length;
       const suf = digitsOf(mx[0]).replace(/\D/g, "").length;

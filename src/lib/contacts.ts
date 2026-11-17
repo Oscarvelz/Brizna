@@ -653,7 +653,21 @@ function splitCsvRows(text: string): string[][] {
       // encabezado real, pero su «tabla» no trae un solo teléfono; si
       // ninguno o todos certifican, desempata la cuenta (ya en 40).
       let pool = cands.filter((d) => (headInfo.get(d) ?? -1) === bestHead);
-      const withPhone = pool.filter((d) => certified(d));
+      let withPhone = pool.filter((d) => certified(d));
+      // 1.6.53 (Prejuicio R14, R15F-1/R15F-2): la preferencia del
+      // teléfono ya no vive solo en el empate — si NINGÚN declarante
+      // de la cima certifica una columna de teléfonos y otro
+      // declarante sí, manda el que certifica, declare con las
+      // palabras que declare. El preámbulo de etiquetas («Concepto,
+      // Sin saldo, Nota…») certifica fila a fila por los asientos de
+      // personRow y gana la cuenta de conocidas (3 contra 2), pero
+      // su cuerpo no trae un solo teléfono; la tabla verdadera trae
+      // diez. Cuando ningún candidato certifica, manda la cuenta,
+      // como siempre.
+      if (withPhone.length === 0) {
+        const certBelow = cands.filter((d) => (headInfo.get(d) ?? -1) >= 0 && certified(d));
+        if (certBelow.length > 0) { pool = certBelow; withPhone = certBelow; }
+      }
       if (withPhone.length > 0) pool = withPhone;
       const chosen = pool.sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0))[0]!;
       if ((headInfo.get(delim) ?? -1) < bestHead || !(pool as readonly string[]).includes(delim)) delim = chosen;
@@ -768,6 +782,14 @@ function parseCsv(text: string): PickedContact[] {
   // mitad del archivo ya no se come a las personas de arriba ni deja
   // sin teléfono a las de abajo.
   let dataSeen = false;
+  // 1.6.53 (Prejuicio R14, R15F-6): el dato DÉBIL — la fila que solo
+  // enciende por addrDigit, sin teléfono — se cuenta aparte. UNA
+  // fila débil es un membrete («Oscar Lawn,Calle 8», la dirección
+  // del propio negocio sobre su export) y no puede matar la corona
+  // de un encabezado verdadero; DOS o más son un bloque de datos
+  // sin teléfono y la corona sigue muerta sobre ellos, como manda
+  // la ley de R13F-3.
+  let weakData = 0;
   // 1.6.42: la ventana de la corona sube a 200 filas, alineada con
   // la cuenta y la muestra (R12F-4).
   // 1.6.46: la corona también lee el archivo entero (R13F-4) — la
@@ -777,7 +799,7 @@ function parseCsv(text: string): PickedContact[] {
     const cells = rows[i]!.map(foldHead);
     const known = cells.filter((c) => HEADER_WORDS[c]).length;
     const phoneLike = cells.some((c) => digitsOf(c).replace(/\D/g, "").length >= 7);
-    if (!dataSeen && (known >= 2 || (known === 1 && !phoneLike))) {
+    if (!dataSeen && weakData < 2 && (known >= 2 || (known === 1 && !phoneLike))) {
       headAt = i;
       break;
     }
@@ -803,7 +825,10 @@ function parseCsv(text: string): PickedContact[] {
     // merced de la corona. Una celda que abre con un tipo de vía y
     // trae su número también es una dirección.
     const addrDigit = rows[i]!.some((c) => /\d/.test(c) && (c.split(/\s+/).filter((w) => /[^\d]/.test(w)).length >= 2 || STREET_HEADS.has(foldHead(c).split(" ")[0]!)));
-    if (rows[i]!.length >= 2 && !firstVocab && (phoneLike || (known === 0 && addrDigit))) dataSeen = true;
+    if (rows[i]!.length >= 2 && !firstVocab) {
+      if (phoneLike) dataSeen = true;
+      else if (known === 0 && addrDigit) weakData += 1;
+    }
   }
   const head = headAt >= 0 ? rows[headAt]!.map(foldHead) : [];
   const colOf = (kind: "name" | "phone" | "address" | "first" | "last") => head.findIndex((h) => HEADER_WORDS[h] === kind);
@@ -815,9 +840,33 @@ function parseCsv(text: string): PickedContact[] {
   // en orden — por fila manda la primera que traiga número. Antes mandaba
   // la primera del vocabulario aunque viniera vacía («Mobile Phone» vacía
   // tapaba a «Phone 2 - Value» llena), y «Home Phone» ni existía.
-  const phoneCols = head.map((h, i) => (HEADER_WORDS[h] === "phone" ? i : -1)).filter((i) => i >= 0);
+  let phoneCols = head.map((h, i) => (HEADER_WORDS[h] === "phone" ? i : -1)).filter((i) => i >= 0);
   const addrCol = colOf("address");
   const hasHeader = headAt >= 0 && (nameCol >= 0 || phoneCol >= 0 || firstCol >= 0 || lastCol >= 0);
+  // 1.6.53 (Prejuicio R14, R15F-4): una celda de encabezado VACÍA
+  // en medio («Nombre,,Direccion») dejaba su columna sin nombre y
+  // la ley de R4F-2 la juzgaba «no reconocida»: los teléfonos que
+  // la columna trae delante se perdían enteros. Una columna sin
+  // nombre cuyo cuerpo ES de teléfonos (≥2 con forma de teléfono
+  // y la mayoría de sus valores no vacíos) se sienta como columna
+  // de teléfonos — la forma del cuerpo la nombra; no se fabrica
+  // nada. Una columna con nombre desconocido («Fax») sigue sin
+  // sentarse, como manda R4F-2.
+  if (hasHeader && phoneCols.length === 0) {
+    for (let j = 0; j < head.length; j += 1) {
+      if (head[j] !== "") continue;
+      let shaped = 0;
+      let filled = 0;
+      for (const r of rows.slice(headAt + 1)) {
+        const v = (r[j] ?? "").trim();
+        if (v === "") continue;
+        filled += 1;
+        const n = digitsOf(v).replace(/\D/g, "").length;
+        if (/^[+\d][\d\s().-]*$/.test(v) && n >= 7 && n <= 15) shaped += 1;
+      }
+      if (shaped >= 2 && shaped * 2 >= filled) { phoneCols = [j]; break; }
+    }
+  }
   const idx = {
     name: hasHeader && nameCol >= 0 ? nameCol : 0,
     // 1.6.12 (R4F-2): con encabezado reconocido y columna de teléfono NO
@@ -848,7 +897,20 @@ function parseCsv(text: string): PickedContact[] {
     // juzga. Una fila del ancho del encabezado se lee posicional
     // siempre: su vacío en medio es un valor vacío de verdad.
     const compacted = rawCols.filter((c) => c.trim() !== "");
-    const cols = headAt >= 0 && head.length >= 2 && rawCols.length > head.length && compacted.length === head.length ? compacted : rawCols;
+    let cols = headAt >= 0 && head.length >= 2 && rawCols.length > head.length && compacted.length === head.length ? compacted : rawCols;
+    // 1.6.53 (Prejuicio R14, R15F-3/R15F-5): la compactación asigna
+    // por ORDEN, no por forma — cuando el vacío es la celda del
+    // teléfono y el número vive más allá del encabezado, la lectura
+    // compactada cruza los asientos (la dirección nace como
+    // teléfono y el teléfono como dirección). Si el encabezado
+    // coronado trae columna de teléfono y el valor que la lectura
+    // compactada sienta en ella no tiene forma de teléfono, la
+    // compactación miente: se vuelve a la lectura posicional, que
+    // con el vacío en su sitio era estrictamente mejor.
+    if (cols === compacted && hasHeader && phoneCols.length > 0) {
+      const pv = phoneCols.map((c) => (cols[c] ?? "").trim()).find((v) => v !== "") ?? "";
+      if (digitsOf(pv).replace(/\D/g, "").length < 7) cols = rawCols;
+    }
     // 1.6.08 (R3F-3): sin columna de nombre completo pero con nombre y
     // apellido partidos, el nombre nace entero de las dos columnas.
     // 1.6.14 (Prejuicio R4, R5F-7): el export español de Google trae

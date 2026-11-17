@@ -39,7 +39,10 @@ function evalAmount(expr: string): number | null {
   // viaja como «-», como la junta del canje de nombres aprendió la
   // misma ronda (R13A-3): U+2010–U+2015 y U+FE58 ya no se niegan
   // como precio ni nacen $0 como propina.
-  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/\u060C/g, ",").replace(/\uFF04/g, "").replace(/\uFF0E/g, ".").replace(/\uFF0C/g, ",").replace(/\uFF0B/g, "+").replace(/\uFF0D/g, "-").replace(/\uFF0A/g, "*").replace(/\uFF0F/g, "/").replace(/\uFF08/g, "(").replace(/\uFF09/g, ")").replace(/\u00D7/g, "*").replace(/\u00F7/g, "/").replace(/\u2212/g, "-").replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\uFE58]/g, "-").replace(/,/g, ".").replace(/\s/g, "");
+  // 1.6.53 (Prejuicio R14, R15F-8): el guion suave U+00AD — el
+  // invisible que las webs y los PDF pegan dentro de la palabra —
+  // se retira como el espacio: «45­5» vale 455, no silencio ni $0.
+  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/\u060C/g, ",").replace(/\uFF04/g, "").replace(/\uFF0E/g, ".").replace(/\uFF0C/g, ",").replace(/\uFF0B/g, "+").replace(/\uFF0D/g, "-").replace(/\uFF0A/g, "*").replace(/\uFF0F/g, "/").replace(/\uFF08/g, "(").replace(/\uFF09/g, ")").replace(/\u00D7/g, "*").replace(/\u00F7/g, "/").replace(/\u2212/g, "-").replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\uFE58]/g, "-").replace(/\u00AD/g, "").replace(/,/g, ".").replace(/\s/g, "");
   if (!cleaned || !/^[\d.+\-*/()]+$/.test(cleaned)) return null;
   if (/[+\-*/.]{2,}/.test(cleaned.replace(/\.\d/g, "0"))) return null;
   try {
