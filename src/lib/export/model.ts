@@ -266,21 +266,30 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
     const cls = `[${chars}]`;
     for (const ch of chars) swapFold[ch] = cls;
   };
-  foldFam("aáàäâãåāăą"); foldFam("AÁÀÄÂÃÅĀĂĄ");
-  foldFam("eéèëêēĕėęě"); foldFam("EÉÈËÊĒĔĖĘĚ");
-  foldFam("iíìïîīĭįı"); foldFam("IÍÌÏÎĪĬĮİ");
-  foldFam("oóòöôõøōŏő"); foldFam("OÓÒÖÔÕØŌŎŐ");
-  foldFam("uúùüûūŭůűų"); foldFam("UÚÙÜÛŪŬŮŰŲ");
+  foldFam("aáàäâãåāăąảạấầẩẫậắằẳẵặ"); foldFam("AÁÀÄÂÃÅĀĂĄẢẠẤẦẨẪẬẮẰẲẴẶ");
+  foldFam("eéèëêēĕėęěẻẽẹếềểễệ"); foldFam("EÉÈËÊĒĔĖĘĚẺẼẸẾỀỂỄỆ");
+  foldFam("iíìïîīĭįıỉĩị"); foldFam("IÍÌÏÎĪĬĮİỈĨỊ");
+  foldFam("oóòöôõøōŏőỏọốồổỗộơớờởỡợ"); foldFam("OÓÒÖÔÕØŌŎŐỎỌỐỒỔỖỘƠỚỜỞỠỢ");
+  foldFam("uúùüûūŭůűųủụưứừửữự"); foldFam("UÚÙÜÛŪŬŮŰŲỦỤƯỨỪỬỮỰ");
   foldFam("cçćĉċč"); foldFam("CÇĆĈĊČ");
   foldFam("gğĝġģ"); foldFam("GĞĜĠĢ");
-  foldFam("lł"); foldFam("LŁ");
+  foldFam("lłĺľ"); foldFam("LŁĹĽ");
   foldFam("nńņň"); foldFam("NŃŅŇ");
   foldFam("rŕŗř"); foldFam("RŔŖŘ");
   foldFam("sşšśŝș"); foldFam("SŞŠŚŜȘ");
   foldFam("tţťț"); foldFam("TŢŤȚ");
   foldFam("zžźż"); foldFam("ZŽŹŻ");
-  foldFam("dďđ"); foldFam("DĎĐ");
-  foldFam("yÿý"); foldFam("YŸÝ");
+  foldFam("dďđð"); foldFam("DĎĐÐ");
+  foldFam("yÿýỳỵỷỹ"); foldFam("YŸÝỲỴỶỸ");
+  // 1.6.55 (Prejuicio R14, R15A-1): las dos letras sin gemela de
+  // un solo carácter — la þ islandesa se escribe «th» pelada y la
+  // ð se escribe «d» — no caben en una clase: su plegado es una
+  // alternancia. La ð además entra en la familia de la d (arriba)
+  // para que el nombre guardado pelado cace la mención con ð, y
+  // la t aprende a cazar la þ de la mención.
+  swapFold["þ"] = "(?:þ|th)"; swapFold["Þ"] = "(?:Þ|th)";
+  swapFold["ð"] = "(?:ð|d)"; swapFold["Ð"] = "(?:Ð|d)";
+  swapFold["t"] = "(?:[tţťț]|þ)"; swapFold["T"] = "(?:[TŤŢȚ]|Þ)";
   // 1.6.40 (Prejuicio R11, R12A-1/A-2): el nombre se compone a NFC
   // antes de patrullarlo (un nombre guardado descompuesto no cazaba
   // su mención compuesta, y la mención descompuesta dejaba la tilde
@@ -296,19 +305,27 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   // acento grave U+0060. El plegado va letra a letra sobre la
   // tabla (sin lista de caracteres paralela que pueda quedarse
   // corta otra vez).
+  // 1.6.55 (Prejuicio R14, R15A-2/A-3): la junta aprende a sus dos
+  // primos invisibles del copiar-pegar — el espacio de ancho cero
+  // U+200B y el unidor de palabras U+2060 parten y cazan como el
+  // guión suave — y la frontera del canje deja de tratar como
+  // letras a los dos apóstrofos que SÍ son letras: U+02BC y
+  // U+02BB pegados por fuera del nombre (el posesivo «Maríaʼs»,
+  // la okina de apertura «ʻAna») son frontera, como su gemelo
+  // recto, no continuación de la palabra.
   const swapPattern = (name: string) =>
     name
       .normalize("NFC")
       .trim()
-      .split(/[\s\-\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFF0D\uFE63\u00AD]+/)
+      .split(/[\s\-\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFF0D\uFE63\u00AD\u200B\u2060]+/)
       .map((w) => [...w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")].map((ch) => swapFold[ch] ?? ch).join("").replace(/['\u2019\u2018\u02BC\u02BB\uFF07\u0060]/g, "['\u2019\u2018\u02BC\u02BB\uFF07\u0060]"))
-      .join("[\\s\\-\\u2010\\u2011\\u2012\\u2013\\u2014\\u2015\\u2212\\uFF0D\\uFE63\\u00AD]+");
+      .join("[\\s\\-\\u2010\\u2011\\u2012\\u2013\\u2014\\u2015\\u2212\\uFF0D\\uFE63\\u00AD\\u200B\\u2060]+");
   const nameSwaps = o.names
     ? []
     : raw.clients
         .filter((c) => c.name.trim().length >= 3)
         .sort((a, b) => b.name.length - a.name.length)
-        .map((c) => [new RegExp(`(?<![\\p{L}\\p{N}_])${swapPattern(c.name)}(?![\\p{L}\\p{N}_])`, "giu"), nameOf(c.id)] as const);
+        .map((c) => [new RegExp(`(?:(?<![\\p{L}\\p{N}_])|(?<=[\\u02BB\\u02BC]))${swapPattern(c.name)}(?:(?![\\p{L}\\p{N}_])|(?=[\\u02BB\\u02BC]))`, "giu"), nameOf(c.id)] as const);
   const clean = (text: string) => nameSwaps.reduce((t, [re, to2]) => t.replace(re, to2), stripHtml(text).normalize("NFC"));
   const phoneOf = (c: ClientRow | undefined) => (o.phones && c?.phone ? c.phone : "");
   const byId = new Map(raw.clients.map((c) => [c.id, c]));
