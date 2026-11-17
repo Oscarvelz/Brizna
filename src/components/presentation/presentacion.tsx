@@ -549,11 +549,19 @@ export function Presentacion() {
    * usuario en el índice, donde estaba. */
   const cancelIntro = useCallback(() => {
     if (runRef.current) { exitToIndex(); return; }
+    // 1.6.39 (Prejuicio R11, R12D-1): también esta salida pasa por
+    // el fundido de la casa — la raíz de solo-intro era la tercera
+    // raíz y la única sin is-leaving: «Ahora no» se cortaba en seco.
+    if (leavingRef.current) return;
+    leavingRef.current = true;
     cancelledLaunchRef.current = true;
-    clearLaunch();
-    setIntro(null);
-    setStay({ path: "/ajustes", openPres: true });
-    if (stageOn()) void exitStage();
+    setLeaving(true);
+    window.setTimeout(() => {
+      clearLaunch();
+      setIntro(null);
+      setStay({ path: "/ajustes", openPres: true });
+      if (stageOn()) void exitStage();
+    }, leaveDelay());
   }, [exitToIndex]);
 
   /** «Quedarme aquí» PRIMERO pregunta (ley de Oscar, 2026-11-14): una
@@ -1286,7 +1294,7 @@ export function Presentacion() {
   if (intro && !run) {
     // La fase de la intención: el escenario aún entra y la ventana ya
     // está — el toque recibió su respuesta en el mismo fotograma.
-    return <div className="pres-root is-introonly">{renderIntroWindow(false)}</div>;
+    return <div className={`pres-root is-introonly${leaving ? " is-leaving" : ""}`}>{renderIntroWindow(false)}</div>;
   }
   if (!stageActive || !run) return null;
   if (inManual && !manualScene) {

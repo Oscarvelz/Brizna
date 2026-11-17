@@ -9,6 +9,17 @@ import { findHint, pick } from "@/lib/manual/topics";
 import { rememberOrigin } from "@/lib/manual/nav";
 import { cn } from "@/lib/utils";
 
+/* 1.6.39 (Prejuicio R11, R12D-2 — la cura de 1.6.38 nació ROTA y la
+ * caza la probó): la marca de «esta burbuja mandó al alumno al
+ * Manual» vive en el MÓDULO, no en la instancia. La versión anterior
+ * la guardaba en un useRef de la burbuja, pero el clic navega a
+ * /manual y el <Outlet/> desmonta la pantalla de origen: la
+ * instancia moría con su ref y al volver nacía otra que no sabía
+ * nada. El módulo no se recarga al navegar dentro de la SPA, así
+ * que la marca sobrevive a la visita y la consume la burbuja del
+ * mismo tema al remontar, solo con una lección viva en pantalla. */
+let pendingHintReopen: string | null = null;
+
 /** Manual/hint text: [[Term]] is an explicit link to that place in the app; known names get emphasis. */
 export function richText(text: string): ReactNode {
   if (!text.includes("[[")) return emphasize(text);
@@ -56,17 +67,19 @@ export function Hint({
   const id = useId();
   const btn = useRef<HTMLButtonElement>(null);
   const aria = label ?? t("hint.label");
-  // 1.6.38 (Prejuicio R10, R11D-2): si el alumno sigue el enlace
-  // «Más en el manual» de ESTA burbuja durante una lección, la
-  // burbuja se reabre al volver — la visita nació de ella, y el
-  // paso que la enseña (show pista-burbuja) la espera viva; sin
-  // esto la escena moría saltada en q6-pista y q6-mas.
-  const reopenRef = useRef(false);
+  // 1.6.39 (R12D-2): al volver del Manual, la burbuja cuyo tema
+  // coincide con la marca del módulo se reabre si hay una lección
+  // viva (la raíz con diálogo o la barra aparcada) — el paso que
+  // la enseña (show pista-burbuja) la espera viva; sin esto la
+  // escena moría saltada en q6-pista y q6-mas.
+  const myTopic = entry?.topic.id;
   useEffect(() => {
-    if (pathname === "/manual" || !reopenRef.current) return;
-    reopenRef.current = false;
-    if (typeof document !== "undefined" && document.querySelector(".pres-root")) setOpen(true);
-  }, [pathname]);
+    if (pathname === "/manual" || !pendingHintReopen || pendingHintReopen !== myTopic) return;
+    if (typeof document !== "undefined" && document.querySelector(".pres-root[role='dialog'], .pres-root:has(.pres-parked)")) {
+      pendingHintReopen = null;
+      setOpen(true);
+    }
+  }, [pathname, myTopic]);
 
   useLayoutEffect(() => {
     if (!open || !btn.current) return;
@@ -167,7 +180,7 @@ export function Hint({
                         e.stopPropagation();
                       }}
                       onClick={() => {
-                        reopenRef.current = true;
+                        if (entry) pendingHintReopen = entry.topic.id;
                         setOpen(false);
                         rememberOrigin(pathname);
                         closeAllSheets(() => void navigate({ to: "/manual", search: { t: entry.topic.id }, resetScroll: false }));
