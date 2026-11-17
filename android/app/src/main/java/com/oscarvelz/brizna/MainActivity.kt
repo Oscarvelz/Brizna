@@ -132,7 +132,13 @@ class MainActivity : Activity() {
     private var fileLostPending = false
 
     private class Save(val uri: Uri, val out: OutputStream, val name: String)
-    private class Share(val files: MutableList<Pair<File, String>>, var cur: OutputStream?)
+    private class Share(val files: MutableList<Pair<File, String>>, var cur: OutputStream?) {
+        // android-15 (Prejuicio R3, R4E-2): el último toque del envío — la
+        // exención del segador caduca una hora después del último chunk:
+        // un envío abandonado (la página murió entre begin y end) deja de
+        // contar como vivo, y uno lento pero activo se renueva al escribir.
+        var touchedAt: Long = System.currentTimeMillis()
+    }
 
     companion object {
         private const val RQ_FILES = 7
@@ -691,7 +697,13 @@ class MainActivity : Activity() {
             // más de una hora se borraba a mitad de vuelo. Los directorios de
             // los envíos VIVOS (en el mapa `shares`) no se tocan: el segador
             // recoge huérfanos, no envíos en curso.
-            val liveDirs = shares.keys.map { it.take(8) }.toSet()
+            // android-15 (Prejuicio R3, R4E-2): la exención CADUCA — «vivo»
+            // no puede ser solo «estar en el mapa», porque un envío cuya
+            // página murió no sale del mapa jamás y su directorio quedaba
+            // exento para siempre. Vivo = tocado en la última hora: cada
+            // chunk renueva el toque; el abandonado expira solo.
+            val nowMs = System.currentTimeMillis()
+            val liveDirs = shares.entries.filter { nowMs - it.value.touchedAt <= 3_600_000L }.map { it.key.take(8) }.toSet()
             dir.listFiles()?.forEach { if (it.name !in liveDirs && System.currentTimeMillis() - it.lastModified() > 3_600_000L) runCatching { it.deleteRecursively() } }
             val id = java.util.UUID.randomUUID().toString()
             shares[id] = Share(ArrayList(), null)
@@ -707,6 +719,7 @@ class MainActivity : Activity() {
                 val f = File(dir, cleanName(name))
                 s.cur = f.outputStream()
                 s.files.add(f to mime.ifBlank { "application/octet-stream" })
+                s.touchedAt = System.currentTimeMillis() // android-15 (R4E-2): escribir renueva la vida del envío
                 "ok"
             } catch (e: Exception) { dropShare(id); "error" }
         }
@@ -714,7 +727,7 @@ class MainActivity : Activity() {
         @JavascriptInterface fun shareChunk(id: String, b64: String): String {
             if (!trusted) return "error"
             val s = shares[id] ?: return "error"
-            return try { s.cur!!.write(Base64.decode(b64, Base64.DEFAULT)); "ok" } catch (e: Exception) { dropShare(id); "error" }
+            return try { s.cur!!.write(Base64.decode(b64, Base64.DEFAULT)); s.touchedAt = System.currentTimeMillis(); "ok" } catch (e: Exception) { dropShare(id); "error" }
         }
 
         @JavascriptInterface fun shareEnd(id: String, title: String, text: String): String {

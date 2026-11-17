@@ -133,11 +133,41 @@ object Notify {
      *  android-13 (Prejuicio R2, R2E-1): `floorMs` es el respiro mínimo antes
      *  de reintentar — cuando un aviso no pudo mostrarse (notificaciones
      *  apagadas), fireDue pide el respiro largo: con el piso de 3 s la cura
-     *  de BZ-63 se volvía un bucle de alarmas de ~7 200 despertares en 6 h. */
+     *  de BZ-63 se volvía un bucle de alarmas de ~7 200 despertares en 6 h.
+     *  android-15 (Prejuicio R3, R4E-1): arm() también conoce la DEUDA del
+     *  resumen perdido — antes armaba solo desde nextAt(), que excluye lo
+     *  perdido por construcción, y cualquier llamada (store al abrir,
+     *  onCreate, el propio permiso concedido) cancelaba el reintento de
+     *  fireDue o lo posponía más allá del retiro del resumen. La alarma es
+     *  la más temprana de las dos candidatas: el próximo aviso y la deuda. */
     fun arm(ctx: Context, floorMs: Long = 3000) {
         val next = nextAt(ctx)
-        if (next <= 0) { armAt(ctx, 0); return }
-        armAt(ctx, maxOf(next, System.currentTimeMillis() + floorMs))
+        val owed = summaryRetryAt(ctx)
+        val target = listOf(next, owed).filter { it > 0 }.minOrNull() ?: 0L
+        if (target <= 0) { armAt(ctx, 0); return }
+        armAt(ctx, maxOf(target, System.currentTimeMillis() + floorMs))
+    }
+
+    /** El instante en que el resumen de avisos perdidos debe intentarse, o 0
+     *  si no se debe ninguno. La deuda existe mientras un aviso perdido sin
+     *  marcar siga dentro de su día de gracia (la ventana de acarreo de
+     *  store). Con las notificaciones ENCENDIDAS la deuda vence ya — el
+     *  resumen se intenta en cuanto algo arma (así, conceder el permiso lo
+     *  entrega, no lo pospone); apagadas, manda el instante persistido por
+     *  fireDue (la cadencia de 30 min de R2E-1), y si no hay ninguno — la
+     *  deuda nació en silencio, con el teléfono apagado — también vence ya. */
+    private fun summaryRetryAt(ctx: Context): Long {
+        val now = System.currentTimeMillis()
+        val done = fired(ctx)
+        val owed = read(ctx).any { it.id !in done && it.at <= now - LATE_LIMIT && it.at > now - LATE_LIMIT - 24 * 60 * 60 * 1000L }
+        if (!owed) {
+            if (prefs(ctx).contains("retryAt")) prefs(ctx).edit().remove("retryAt").apply()
+            return 0L
+        }
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        if (nm != null && nm.areNotificationsEnabled()) return now
+        val at = prefs(ctx).getLong("retryAt", 0L)
+        return if (at > now) at else now
     }
 
     /** Arms the one alarm for an explicit instant (or clears it when atMs <= 0).
@@ -193,7 +223,13 @@ object Notify {
                 if (missed.size == 1) "Mientras el teléfono estaba apagado: 1 aviso" else "Mientras el teléfono estaba apagado: ${missed.size} avisos",
                 titles, "/",
             )
-            if (show(ctx, summary)) missed.forEach { done.add(it.id) } else blocked = true
+            if (show(ctx, summary)) missed.forEach { done.add(it.id) } else {
+                blocked = true
+                // android-15 (R4E-1): la deuda queda PERSISTIDA con su
+                // instante — cualquier arm() posterior la respeta en vez de
+                // cancelarla o posponerla (ver summaryRetryAt).
+                prefs(ctx).edit().putLong("retryAt", now + BLOCKED_RETRY_MS).apply()
+            }
         }
         prefs(ctx).edit().putStringSet("fired", done).apply()
         // android-14 (R3E-1/R3E-2): la alarma final es la más temprana de dos
