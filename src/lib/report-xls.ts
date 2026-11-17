@@ -68,6 +68,17 @@ export function buildReportXls(pack: WorkbookPack) {
     [cell("Horas"), cell("Horas confirmadas.")],
     [cell("Resumen"), cell("Cobrado y saldo por cobrar son las cifras del libro, las mismas del PDF. Horas y pendientes son fórmulas de sus hojas.")],
   ];
+  // 1.6.05 (Prejuicio R2, R2A-3): los topes del paquete se declaran en el
+  // Leeme — a escala, la hoja dejaba de ser «la misma del PDF» en silencio.
+  if (pack.caps) {
+    const parts: string[] = [];
+    if (pack.caps.clients > pack.clients.length) parts.push(`clientes: trae ${pack.clients.length} de ${pack.caps.clients}`);
+    if (pack.caps.jobs > pack.jobs.length) parts.push(`trabajos: trae ${pack.jobs.length} de ${pack.caps.jobs}`);
+    if (pack.caps.payments > pack.payments.length) parts.push(`pagos: trae ${pack.payments.length} de ${pack.caps.payments} (los más recientes)`);
+    if (parts.length) {
+      leeme.push([cell("Alcance"), cell(`El libro es más grande que el paquete: ${parts.join(" · ")}. Las cifras de cada hoja salen de lo que el paquete trae.`)]);
+    }
+  }
   const sumifIn = pays.length ? `=SUMIF(Pagos!D2:D${pays.length + 1},"paid",Pagos!C2:C${pays.length + 1})+SUMIF(Pagos!D2:D${pays.length + 1},"prepaid",Pagos!C2:C${pays.length + 1})` : "0";
   const countifIn = pays.length ? `COUNTIF(Pagos!D2:D${pays.length + 1},"paid")+COUNTIF(Pagos!D2:D${pays.length + 1},"prepaid")` : "0";
   const resumen = [

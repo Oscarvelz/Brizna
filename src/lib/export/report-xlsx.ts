@@ -954,7 +954,14 @@ export function reportXlsxBytes(m: Model): Uint8Array {
           { key: "price", h: tx("Precio", "Price"), type: "money", money: true },
           { key: "next", h: tx("Próximo corte", "Next cut"), type: "date", optional: true },
           { key: "last", h: tx("Último corte", "Last cut"), type: "date", optional: true },
-          { key: "balance", h: tx("Debe", "Owes"), type: "money", total: "sum", money: true, owe: true },
+          // 1.6.05 (Prejuicio R2, R2A-2): «Debe» ya no totaliza en el
+          // directorio. La suma corría sobre los saldos CRUDOS de todos los
+          // clientes en alcance — el vetado y el archivado resucitaban en el
+          // total — mientras Cobros y el Resumen del mismo archivo cantan la
+          // regla única (activo y no vetado): dos «Debe» distintos en un
+          // mismo libro. El directorio nombra el saldo de cada cliente como
+          // hecho; el total oficial de deuda vive en Cobros y el Resumen.
+          { key: "balance", h: tx("Debe", "Owes"), type: "money", money: true, owe: true },
           { key: "credit", h: tx("A su favor", "Credit"), type: "money", total: "sum", money: true, optional: true, color: MONEY },
           { key: "since", h: tx("Cliente desde", "Client since"), type: "date", optional: true },
           { key: "notes", h: tx("Notas", "Notes"), type: "text", optional: true, max: 44 },

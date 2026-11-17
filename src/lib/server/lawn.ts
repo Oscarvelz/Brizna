@@ -5278,6 +5278,17 @@ export const exportReport = createServerFn({ method: "GET" })
         limit 4000`,
       [context.userId, yearStart],
     );
+    // 1.6.05 (Prejuicio R2, R2A-3): los totales SIN tope de las mismas tres
+    // consultas — el paquete declara sus cortes en vez de callarlos.
+    const totals = await sql.query<{ clients: unknown; jobs: unknown; payments: unknown }>(
+      `select
+         (select count(*) from clients where user_id = $1) as clients,
+         (select count(*) from jobs j join clients c on c.id = j.client_id
+           where j.user_id = $1 and (j.scheduled_date >= $2::date or j.status = 'pending')) as jobs,
+         (select count(*) from payments p join clients c on c.id = p.client_id
+           where p.user_id = $1 and p.paid_at >= $2::date) as payments`,
+      [context.userId, yearStart],
+    );
     const hours = await sql.query<{ work_date: unknown; clock_in: string | null; clock_out: string | null }>(
       `select work_date, clock_in, clock_out from work_days
         where user_id = $1 and confirmed and work_date >= $2::date
@@ -5305,11 +5316,20 @@ export const exportReport = createServerFn({ method: "GET" })
     const pack: WorkbookPack = {
       business: settings[0]?.business_name?.trim() || "Oscar's Lawn Service",
       today,
+      caps: {
+        clients: Number(totals[0]?.clients ?? 0),
+        jobs: Number(totals[0]?.jobs ?? 0),
+        payments: Number(totals[0]?.payments ?? 0),
+      },
       weekCollected: weeks[weeks.length - 1]?.collected ?? 0,
       owingPeople: owing.length,
       owingTotal: owing.reduce((n, row) => n + row.balance, 0),
       weeks,
-      owing: owing.slice(0, 24),
+      // 1.6.05 (Prejuicio R2, R2A-1): el paquete lleva a TODOS los deudores;
+      // la página del PDF nombra a los primeros 24 y DECLARA el resto con su
+      // conteo y su suma — antes el corte vivía aquí y en el builder, y el
+      // papel callaba a los deudores menores que la portada sí contaba.
+      owing,
       clients: clientRows,
       jobs: jobs.map((row) => ({
         date: asIsoDate(row.scheduled_date),

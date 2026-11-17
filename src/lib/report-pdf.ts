@@ -8,6 +8,11 @@ export type ReportPack = {
   owingTotal: number;
   weeks: ReportWeek[];
   owing: ReportClient[];
+  /** 1.6.05 (Prejuicio R2, R2A-3): cuántos hay en el libro de cada clase
+   *  que el paquete corta (clientes 2000, trabajos 4000, pagos 4000). Los
+   *  builders declaran el corte cuando el total pasa de lo mostrado; sin
+   *  esta cifra el paquete dejaba de ser «el mismo del PDF» en silencio. */
+  caps?: { clients: number; jobs: number; payments: number };
 };
 
 const WIN: Record<string, number> = {
@@ -74,6 +79,13 @@ export function buildReportPdf(pack: ReportPack): Uint8Array {
     cover.push(`0.2 0.18 0.14 rg BT /F1 12 Tf 36 ${y} Td ${pdfText(line)} Tj ET`);
     y -= 18;
   }
+  // 1.6.05 (Prejuicio R2, R2A-3): si el tope de clientes cortó el libro, la
+  // portada lo declara — la población de deudores nace de esa consulta.
+  if (pack.caps && pack.caps.clients > 2000) {
+    y -= 4;
+    cover.push("0.45 0.4 0.34 rg BT /F1 9 Tf 36 " + y + " Td " + pdfText(`Nota: el libro tiene ${pack.caps.clients} clientes; los deudores se cuentan entre los 2 000 de mayor saldo.`) + " Tj ET");
+    y -= 14;
+  }
   y -= 8;
   cover.push("0.22 0.45 0.28 rg BT /F1 12 Tf 36 " + y + " Td " + pdfText("Cobrado por semana") + " Tj ET");
   y -= 28;
@@ -110,6 +122,16 @@ export function buildReportPdf(pack: ReportPack): Uint8Array {
     table.push("BT /F1 11 Tf 470 " + rowY + " Td " + pdfText(money(row.balance)) + " Tj ET");
     rowY -= 20;
   });
+  // 1.6.05 (Prejuicio R2, R2A-1): la página nombra a los primeros 24; el
+  // resto se DECLARA con su conteo y su suma, para que lo impreso sume lo
+  // que la portada promete — cortar en silencio dejaba fuera justo a los
+  // deudores menores.
+  if (pack.owing.length > rows.length) {
+    const rest = pack.owing.slice(rows.length);
+    const restTotal = rest.reduce((n, row) => n + row.balance, 0);
+    rowY -= 2;
+    table.push("0.35 0.32 0.28 rg BT /F1 11 Tf 36 " + rowY + " Td " + pdfText(`…y ${rest.length} más, que deben ${money(restTotal)}`) + " Tj ET");
+  }
   table.push("0.45 0.4 0.34 rg BT /F1 9 Tf 36 36 Td " + pdfText("Brizna  ·  " + pack.today) + " Tj ET");
   pages.push(table.join("\n"));
 

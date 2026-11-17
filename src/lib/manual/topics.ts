@@ -321,8 +321,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "The usual hours are 8:00 to 5:30; change them in Settings, Work hours.\nOn Today you can clock in or out: choose now or the usual hours.\nAt day's end, Yes, I worked them confirms the day.\nStop the day sets clock-out to the time you stopped.",
         ],
         calc: [
-          "$ por hora usa solo días confirmados. Un día sin confirmar de antes de ayer se confirma solo con el horario de Ajustes. Un turno de más de 18 horas no cuenta.",
-          "$ per hour uses confirmed days only. An unconfirmed day from before yesterday is confirmed on its own with the Settings hours. A shift longer than 18 hours does not count.",
+          "$ por hora usa solo días confirmados. Un día sin confirmar de antes de ayer se confirma solo con el horario de Ajustes. Un turno de 18 horas o más no cuenta.",
+          "$ per hour uses confirmed days only. An unconfirmed day from before yesterday is confirmed on its own with the Settings hours. A shift of 18 hours or more does not count.",
         ],
         example: [
           "Entras a las 7:15 en vez de 8:00 y sales a las 4:00. Marcas entrada ahora a las 7:15 y salida ahora a las 4:00: son 8 h 45 min. Si ese día cobraste $350, tu día dejó unos $40 por hora.",
@@ -1418,8 +1418,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "Pedro owes $135. His last cuts: 10 days ago ($45), 24 days ago ($45), and 38 days ago ($45). The $135 splits into $90 in 0–30 and $45 in 31–60. If he owed $50 from before the app and never paid it, that sits in Opening balance.",
         ],
         cases: [
-          "Te paga una parte: se cubren los trabajos más viejos y la franja de 31–60 se vacía antes que la de 0–30.\nUn cliente archivado que debe: sigue aquí.",
-          "They pay part: the oldest jobs are covered and the 31–60 band empties before 0–30.\nAn archived client who owes: still here.",
+          "Te paga una parte: se cubren los trabajos más viejos y la franja de 31–60 se vacía antes que la de 0–30.\nUn cliente archivado que debe: no aparece aquí; su deuda se ve en su tarjeta, en el Fichero.",
+          "They pay part: the oldest jobs are covered and the 31–60 band empties before 0–30.\nAn archived client who owes: not listed here; their debt shows on their card, in the File.",
         ],
         related: ["por-cobrar", "espera", "deuda-anterior", "asesor-grupos"],
         go: { to: "/estadisticas", view: "estudio", focus: "cif-fiabilidad", where: ["Estudio, Quién debe", "Stats, Who owes"] },
@@ -1835,8 +1835,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "In Settings, Screen, pick a day theme and a night theme.\nAutomatic follows the hour: night before 6:30 in the morning and from 6:30 in the evening.\nThe sun/moon button on top switches between them by hand.",
         ],
         calc: [
-          "De día: Jardín, Costa, Barro, Pino, Cielo, Lima, Arena y Flor. De noche: Noche, Medianoche, Ciruela, Grafito, Luciérnaga y AMOLED (negro puro, ahorra batería en pantallas OLED).",
-          "Day: Garden, Coast, Clay, Pine, Sky, Lime, Sand, and Bloom. Night: Night, Midnight, Plum, Graphite, Firefly, and AMOLED (pure black, saves battery on OLED screens).",
+          "De día: Jardín, Costa, Barro, Pino, Cielo, Lima, Arena y Flor. De noche: Noche clara, Medianoche, Ciruela, Grafito, Luciérnaga y AMOLED (negro puro, ahorra batería en pantallas OLED).",
+          "Day: Garden, Coast, Clay, Pine, Sky, Lime, Sand, and Bloom. Night: Clear night, Midnight, Plum, Graphite, Firefly, and AMOLED (pure black, saves battery on OLED screens).",
         ],
         example: [
           "Trabajas al sol de 8 a 5: Arena de día se lee bien con brillo alto. De noche, revisando cobros en la cama, AMOLED no te encandila. Con Automático no tocas nada: a las 6:30 de la tarde cambia solo.",
