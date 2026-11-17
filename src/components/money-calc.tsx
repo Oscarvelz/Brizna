@@ -374,7 +374,7 @@ export function QuickPad({ onClose, present }: { onClose: () => void; /** Presen
  * 1.5.00: the notepad's calculator docked as a panel (tablet/computer side column). Same keys and
  * "En la nota" as the floating pad; the keyboard and caret stay in the note while you tap.
  */
-export function DockCalc({ open, onToggle, onFoldSide, hint }: { open: boolean; onToggle: () => void; onFoldSide?: () => void; hint?: React.ReactNode }) {
+export function DockCalc({ open, onToggle, onFoldSide, hint, present }: { open: boolean; onToggle: () => void; onFoldSide?: () => void; hint?: React.ReactNode; /** Presentación: el ancla de la calculadora del Bloc en su cuerpo acoplado — la emite solo abierta (1.6.15, R5D-4). */ present?: string }) {
   const [expr, setExpr] = useState("");
   const [last, setLast] = useState<string | null>(null);
   const tx = useTx();
@@ -393,7 +393,7 @@ export function DockCalc({ open, onToggle, onFoldSide, hint }: { open: boolean; 
     setExpr((current) => applyKey(current, k, evalAmount(current)));
   }
   return (
-    <section className={cn("bz-nb-calc", !open && "is-shut")} aria-label={tx("Calculadora", "Calculator")}>
+    <section className={cn("bz-nb-calc", !open && "is-shut")} aria-label={tx("Calculadora", "Calculator")} data-present={open ? present : undefined}>
       <div className="bz-nb-head">
         <button type="button" aria-expanded={open} onClick={onToggle} className="bz-nb-headbtn">
           <Calculator className="size-4.5 shrink-0 text-primary" aria-hidden />
@@ -453,13 +453,21 @@ export function DockCalc({ open, onToggle, onFoldSide, hint }: { open: boolean; 
   );
 }
 
-export function CalcButton({ pressed, onClick }: { pressed: boolean; onClick: () => void }) {
+// 1.6.15 (Prejuicio R4, R5D-4): el valor del ancla «nota-calculadora» para
+// el cuerpo acoplado (DockCalc) — el literal vive una sola vez en
+// routes/notas.tsx (la cerca cuenta el archivo del registro); la pastilla
+// flotante y el cuerpo acoplado son dos cuerpos de la misma calculadora,
+// nunca co-presentes (manda el modo del Bloc).
+export const CALC_PRESENT = "nota-calculadora";
+
+export function CalcButton({ pressed, onClick, present }: { pressed: boolean; onClick: () => void; /** Presentación: el ancla del botón que ABRE la calculadora del Bloc (1.6.15, R5D-4). */ present?: string }) {
   const tx = useTx();
   return (
     <button
       type="button"
       aria-pressed={pressed}
       aria-label={tx("Calculadora", "Calculator")}
+      data-present={present}
       onPointerDown={(e) => {
         rememberCaret();
         e.preventDefault();

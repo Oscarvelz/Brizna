@@ -9,6 +9,7 @@ import type React from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { sealedOn } from "@/lib/presentation/seal-flag";
+import { readDraftRaw } from "@/lib/note-draft";
 import { AddressLine } from "@/components/address-line";
 import { AppShell } from "@/components/app-shell";
 import { CueChip } from "@/components/cue-chip";
@@ -1006,14 +1007,14 @@ function ClientNotes({
   const dirty = useRef(false);
   const draftKey = `ols-client-note-${clientId}`;
   const [html, setHtml] = useState(() => {
-    try {
-      const draft = sessionStorage.getItem(draftKey);
-      if (typeof draft === "string" && draft !== initial) {
-        dirty.current = true;
-        return draft;
-      }
-    } catch {
-      /* ignore */
+    // 1.6.15 (Prejuicio R4, R5C-1): el borrador se lee del almacén que
+    // SOBREVIVE a la sesión — writeDraftRaw (BZ-30) escribe ahí desde
+    // 1.6.00 y este lector quedó en sessionStorage: el texto tecleado y
+    // no guardado se perdía en silencio al salir de la ficha.
+    const draft = readDraftRaw(draftKey);
+    if (typeof draft === "string" && draft !== initial) {
+      dirty.current = true;
+      return draft;
     }
     return initial;
   });
@@ -1024,14 +1025,10 @@ function ClientNotes({
     setSeen(clientId);
     let next = initial;
     dirty.current = false;
-    try {
-      const draft = sessionStorage.getItem(`ols-client-note-${clientId}`);
-      if (typeof draft === "string" && draft !== initial) {
-        next = draft;
-        dirty.current = true;
-      }
-    } catch {
-      /* ignore */
+    const draft = readDraftRaw(`ols-client-note-${clientId}`);
+    if (typeof draft === "string" && draft !== initial) {
+      next = draft;
+      dirty.current = true;
     }
     setHtml(next);
     setSaved(next === initial);

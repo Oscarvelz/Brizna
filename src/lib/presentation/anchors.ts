@@ -321,7 +321,8 @@ export const ANCHORS: readonly AnchorRec[] = [
   { id: "nota-fijar", by: "present", value: "nota-fijar", file: "routes/notas.tsx", serves: "AD11 ad11-fijadas (el pin de la nota en el editor)", presence: "siempre" },
   { id: "nota-buscar", by: "present", value: "nota-buscar", file: "routes/notas.tsx", serves: "AD11 ad11-formato (la lupa «Buscar en esta nota»)", presence: "siempre" },
   { id: "nota-mover", by: "present", value: "nota-mover", file: "routes/notas.tsx", serves: "AD11 ad11-fijadas (el botón «Mover a…» del teléfono; en el escritorio, la pastilla de carpeta de la barra del lector)", presence: "estado: una nota abierta (teléfono o escritorio, 1.6.12)" },
-  { id: "nota-calculadora", by: "present", value: "nota-calculadora", file: "routes/notas.tsx", serves: "AD11 ad11-calculadora (la calculadora del bloc; emisión en money-calc QuickPad)", presence: "estado: la calculadora del bloc está abierta" },
+  { id: "nota-calculadora", by: "present", value: "nota-calculadora", file: "routes/notas.tsx", serves: "AD11 ad11-calculadora (la calculadora del bloc; emisión en money-calc QuickPad y, en escritorio, en DockCalc vía CALC_PRESENT)", presence: "estado: la calculadora del bloc está abierta (pastilla flotante o cuerpo acoplado, nunca ambos)" },
+  { id: "nota-calculadora-boton", by: "present", value: "nota-calculadora-boton", file: "routes/notas.tsx", serves: "AD11 ad11-calculadora (el botón que abre la calculadora del bloc; emisión en money-calc CalcButton)", presence: "siempre" },
   { id: "notas-semana", by: "present", value: "notas-semana", file: "routes/notas.tsx", serves: "AD11 ad11-semana (el acordeón de Esta semana)", presence: "siempre" },
   { id: "notas-puerta", by: "present", value: "notas-puerta", file: "components/app-shell.tsx", serves: "AD11 ad11-doble-toque (la puerta Notas del menú: doble toque abre el Fichero)", presence: "siempre" },
   // La ronda de cierre de AD11: nacer, fijar de verdad, la ficha y Hoy.

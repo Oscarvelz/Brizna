@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Hint } from "@/components/hint";
+import { ConfirmLink } from "@/components/confirm-link";
 import { OffDayDialog, shiftToMonday, useRareDay } from "@/components/off-day-ask";
 import { RichNotes } from "@/components/rich-notes";
 import { Button } from "@/components/ui/button";
@@ -484,6 +485,11 @@ export function ClientForm({
         topic="direccion"
       >
         <div className="flex gap-2">
+          {/* 1.6.15 (Prejuicio R4, R5D-1): los dos enlaces a Maps de este
+              campo van por ConfirmLink, como todos los del árbol — eran
+              las únicas anclas crudas con target=_blank, sin sello ni
+              confirmación, y la escena q2-direccion las encendía en el
+              escenario. */}
           <Input
             data-present="alta-direccion"
             value={value.address}
@@ -492,28 +498,27 @@ export function ClientForm({
             className="flex-1"
           />
           {value.address.trim() ? (
-            <Button variant="outline" size="icon" asChild>
-              <a
-                href={mapsHref(value.address)}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={tx("Abrir en Google Maps", "Open in Google Maps")}
-              >
-                <MapPin />
-              </a>
-            </Button>
+            <ConfirmLink
+              href={mapsHref(value.address)}
+              kind="maps"
+              name={value.name || undefined}
+              className="grid size-11 shrink-0 place-items-center rounded-md border border-line bg-card text-fg"
+            >
+              <MapPin className="size-[18px]" />
+              <span className="sr-only">{tx("Abrir en Google Maps", "Open in Google Maps")}</span>
+            </ConfirmLink>
           ) : null}
         </div>
         {value.address.trim() ? (
-          <a
+          <ConfirmLink
             href={mapsHref(value.address)}
-            target="_blank"
-            rel="noreferrer"
+            kind="maps"
+            name={value.name || undefined}
             className="mt-2 flex min-h-11 items-center gap-2 text-sm font-semibold text-primary"
           >
             <MapPin className="size-4" />
             {tx("Abrir esta dirección en Google Maps", "Open this address in Google Maps")}
-          </a>
+          </ConfirmLink>
         ) : (
           <p className="mt-1.5 text-xs text-muted">
             {tx("Si el contacto del teléfono trae dirección, se copia sola.", "If the phone contact has an address, it is copied on its own.")}

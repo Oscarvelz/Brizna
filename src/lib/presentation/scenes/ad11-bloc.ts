@@ -187,9 +187,10 @@ export const AD11: Module = {
       ],
     },
     {
-      id: "ad11-calculadora", chapter: "proteger", anchors: ["nota-calculadora"],
+      id: "ad11-calculadora", chapter: "proteger", anchors: ["nota-calculadora-boton", "nota-calculadora"],
       keys: [["calculadora", "calculator"], ["nota", "note"], ["cuenta", "sum"]],
       steps: [
+        { kind: "do", anchor: "nota-calculadora-boton", caption: ["Toca la calculadora para abrirla junto a la nota.", "Tap the calculator to open it beside the note."] },
         { kind: "show", anchor: "nota-calculadora", caption: ["La calculadora flota, se arrastra y recuerda su sitio y tamaño.", "The calculator floats, drags, and remembers its place and size."] },
         { kind: "show", anchor: "nota-calculadora", caption: ["«En la nota» inserta la cuenta en tu cursor, sin perderlo.", "“Into the note” inserts the sum at your cursor, never losing it."], contexto: ["El Bloc custodia el cursor mientras tocas la calculadora: por eso acierta.", "The Pad guards the cursor while you use the calculator: that is why it works."] },
         { kind: "ref", topic: "notas" },

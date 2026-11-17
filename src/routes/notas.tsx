@@ -1,5 +1,5 @@
 import { usePageWidth, WideSplit } from "@/components/wide-layout";
-import { DeskDivider, DeskStrip, NotesListPanel, useDesk, type DeskMode } from "@/components/notes-desk";
+import { DeskDivider, DeskStrip, NEW_NOTE_PRESENT, NotesListPanel, useDesk, type DeskMode } from "@/components/notes-desk";
 import { NewNoteButton } from "@/components/new-note-button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -14,7 +14,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Hint } from "@/components/hint";
 import { PhotoPicker } from "@/components/photo-picker";
 import { PHOTOS_ENABLED } from "@/lib/photos-flag";
-import { CalcButton, DockCalc, QuickPad } from "@/components/money-calc";
+import { CalcButton, CALC_PRESENT, DockCalc, QuickPad } from "@/components/money-calc";
 import { noteReaderHtml, RichNotes } from "@/components/rich-notes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -513,6 +513,7 @@ function PadBody({
           <Hint topic="notas" />
           <span className="min-w-0 flex-1" />
           <CalcButton
+            present="nota-calculadora-boton"
             pressed={calcDocked ? desk.desk.sideOpen && desk.desk.calcOpen : calcOn}
             onClick={() => {
               if (!calcDocked) {
@@ -798,13 +799,14 @@ function PadBody({
       side="left"
       items={[
         { icon: <NotebookPen className="size-5" />, label: tx("Abrir la lista de notas", "Open the notes list"), onClick: () => desk.update({ listOpen: true }) },
-        { icon: <Plus className="size-5" />, label: tx("Nota nueva", "New note"), onClick: () => startBlank() },
+        { icon: <Plus className="size-5" />, label: tx("Nota nueva", "New note"), onClick: () => startBlank(), present: NEW_NOTE_PRESENT },
       ]}
     />
   );
   const sidePanel = desk.desk.sideOpen ? (
     <div className="bz-nb-side">
       <DockCalc
+        present={CALC_PRESENT}
         open={desk.desk.calcOpen}
         onToggle={() => desk.update({ calcOpen: !desk.desk.calcOpen })}
         onFoldSide={() => desk.update({ sideOpen: false })}

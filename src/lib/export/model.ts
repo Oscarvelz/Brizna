@@ -305,7 +305,12 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   };
 
   /* ---------- series (weeks, months or years) */
-  const end = to < today ? to : today;
+  // 1.6.15 (Prejuicio R4, R5A-1): los cubos cubren el periodo ENTERO, no
+  // solo hasta hoy — cerrar en hoy dejaba fuera a un trabajo completado
+  // antes de su fecha (hecho el 15, fechado el 25): el kpi y «Por mes» lo
+  // contaban y la fila «Total» de esta tabla no, y la misma página del PDF
+  // imprimía dos totales distintos para el mismo periodo.
+  const end = to;
   const spanStart = o.period === "all" ? firstData : from;
   const spanDays = daysBetween(spanStart, end);
   const unit: Model["series"]["unit"] = spanDays <= 70 ? "week" : spanDays <= 800 ? "month" : "year";
@@ -496,6 +501,12 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   const priced = kept.filter((c) => c.isActive && !c.blacklisted && c.pricePerCut > 0);
   const regular = priced.filter((c) => c.kind === "regular");
   const prices = regular.map((c) => c.pricePerCut).sort((a, b) => a - b);
+  // 1.6.15 (Prejuicio R4, R5A-2): los extremos «más bajo / más alto» se
+  // leen sobre TODA la tabla que la hoja imprime (fijos y de una vez) —
+  // antes salían solo de los fijos y la tabla vecina mostraba precios
+  // fuera del «rango» declarado. Lo típico, el promedio y el mes siguen
+  // siendo de los fijos, que es lo que sus rótulos dicen.
+  const allPrices = priced.map((c) => c.pricePerCut).sort((a, b) => a - b);
   const median = prices.length ? (prices.length % 2 ? prices[(prices.length - 1) / 2]! : (prices[prices.length / 2 - 1]! + prices[prices.length / 2]!) / 2) : 0;
   const bandEdges = [0, 30, 40, 50, 60, 80, Infinity];
   const bands = bandEdges.slice(0, -1).map((lo, i) => {
@@ -510,8 +521,8 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
       .sort((a, b) => b.price - a.price || a.name.localeCompare(b.name)),
     typical: r2(median),
     average: prices.length ? r2(sum(prices) / prices.length) : 0,
-    low: prices[0] ?? 0,
-    high: prices[prices.length - 1] ?? 0,
+    low: allPrices[0] ?? 0,
+    high: allPrices[allPrices.length - 1] ?? 0,
     below: prices.filter((p) => p < median * 0.8).length,
     monthlyTotal: sum(regular.map((c) => c.pricePerCut * visitsOf(c))),
     bands: bands.filter((b) => b.n > 0),

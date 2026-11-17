@@ -356,9 +356,19 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
     if (entry.kind !== "file") continue;
     if (entryName.startsWith("Brizna_") || entryName.startsWith("Podalia_") || entryName.startsWith("oscar-copia-")) names.push(entryName);
   }
+  // 1.6.15 (Prejuicio R4, R5C-2): la poda rota DENTRO de cada familia de
+  // prefijo — ordenar mezclando épocas ponía cualquier nombre legado
+  // (Podalia_, oscar-copia-) tras cualquier Brizna_ nuevo, y con 5 legadas
+  // la poda borraba la .json recién escrita cantando éxito. Dentro de una
+  // familia el nombre trae su fecha y el orden lexicográfico es el orden
+  // del tiempo; entre familias nadie desplaza a nadie.
   const keep = (ext: string) => {
-    const group = names.filter((name) => name.endsWith(ext)).sort();
-    return group.slice(0, Math.max(0, group.length - 5));
+    const doomed: string[] = [];
+    for (const prefix of ["Brizna_", "Podalia_", "oscar-copia-"]) {
+      const group = names.filter((name) => name.startsWith(prefix) && name.endsWith(ext)).sort();
+      doomed.push(...group.slice(0, Math.max(0, group.length - 5)));
+    }
+    return doomed;
   };
   for (const old of [...keep(".json"), ...keep(".pdf"), ...keep(".xls")]) await dir.removeEntry(old);
   return "folder";

@@ -218,17 +218,23 @@ export function DeskDivider({
 }
 
 /** The folded strip of a panel: its icons stay, one tap opens it again. */
-export function DeskStrip({ side, items }: { side: "left" | "right"; items: { icon: ReactNode; label: string; onClick: () => void }[] }) {
+export function DeskStrip({ side, items }: { side: "left" | "right"; items: { icon: ReactNode; label: string; onClick: () => void; present?: string }[] }) {
   return (
     <div className={cn("bz-nb-strip", side === "right" && "is-right")}>
       {items.map((it) => (
-        <button key={it.label} type="button" aria-label={it.label} title={it.label} onClick={it.onClick} className="bz-nb-strip-btn">
+        <button key={it.label} type="button" aria-label={it.label} title={it.label} onClick={it.onClick} className="bz-nb-strip-btn" data-present={it.present}>
           {it.icon}
         </button>
       ))}
     </div>
   );
 }
+
+// 1.6.15 (Prejuicio R4, R5D-3): el valor del ancla «nota-nueva» para la
+// franja — el literal vive una sola vez en new-note-button.tsx (la cerca
+// cuenta el archivo del registro); la franja y el panel son dos cuerpos
+// del mismo botón, nunca co-presentes (manda el pliegue de la lista).
+export const NEW_NOTE_PRESENT = "nota-nueva";
 
 function stamp(page: PadPage) {
   return (page.updatedAt || page.createdAt || "").slice(0, 10);

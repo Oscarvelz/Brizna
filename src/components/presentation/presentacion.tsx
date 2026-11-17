@@ -1134,7 +1134,7 @@ export function Presentacion() {
       <div className="pres-stayveil">
         <div className="pres-staynote pres-intro" role="dialog" aria-label={pick(m.title, lang)}>
           <p className="pres-note-title">{pick(m.title, lang)}</p>
-          <p className="pres-intro-sub">{durationLabel(m, lang)} · {tx("La app, en vivo, paso a paso", "The app, live, step by step")}</p>
+          <p className="pres-intro-sub">{durationLabel(m, lang, inAndroidApp())} · {tx("La app, en vivo, paso a paso", "The app, live, step by step")}</p>
           <p>
             {tx(
               "Puedes verla sola o hacerla tú. En Automático, la presentación avanza y toca cada función por ti; en Interactivo, avanzas tú y tocas tú. Puedes cambiar cuando quieras con el botón de modo de la tarjeta.",
