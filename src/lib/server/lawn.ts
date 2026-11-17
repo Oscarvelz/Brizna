@@ -1216,7 +1216,7 @@ async function moveJobToDate(
       const rows = await sql.query<{ id: number }>(
         `update jobs
             set scheduled_date = $3::date,
-                origin_date = coalesce(origin_date, scheduled_date)${opts?.keepVacMark ? "" : ", vacation_shift = 0"}
+                origin_date = coalesce(origin_date, scheduled_date)${opts?.keepVacMark ? "" : ", vacation_shift = 0, vacation_from = null"}
           where user_id = $1 and id = $2 and status = 'pending'
           returning id`,
         [userId, jobId, d],
@@ -1257,10 +1257,16 @@ async function shiftPendingJobs(
     if (real == null) continue;
     moved += 1;
     if (mark) {
-      await sql.query(`update jobs set vacation_shift = $3 where user_id = $1 and id = $2`, [
+      // 1.6.02 (Prejuicio R2, R2B-2): el sello guarda también la fecha que el
+      // trabajo tenía ANTES de este corrimiento. moveJobToDate puede aterrizar
+      // días después por choques, así que la aritmética «scheduled − sello» al
+      // deshacer dejaba la fila corrida para siempre; con la fecha sellada,
+      // deshacer restaura el día exacto.
+      await sql.query(`update jobs set vacation_shift = $3, vacation_from = $4::date where user_id = $1 and id = $2`, [
         userId,
         intId(row.id),
         mark,
+        prev,
       ]);
     }
   }
@@ -1274,11 +1280,16 @@ async function shiftPendingJobs(
  * el inicio de las vacaciones — un año entero de agenda, incluidas visitas que
  * nunca fueron corridas. Una fila que no se puede mover (21 choques) conserva
  * su sello: sigue corrida y un deshacer posterior lo reintenta.
+ * 1.6.02 (Prejuicio R2, R2B-5): el sello muere con el estado terminal — cada
+ * UPDATE que pasa un trabajo a done/cancelled limpia vacation_shift y
+ * vacation_from; sin eso, un trabajo sellado, completado y reabierto era
+ * arrastrado por el deshacer de unas vacaciones POSTERIORES con el conteo
+ * del viaje viejo.
  */
 async function undoVacationShift(userId: string): Promise<number> {
   const sql = await getSql();
-  const rows = await sql.query<{ id: number; client_id: number; scheduled_date: unknown; origin_date: unknown; vacation_shift: number }>(
-    `select id, client_id, scheduled_date, origin_date, vacation_shift from jobs
+  const rows = await sql.query<{ id: number; client_id: number; scheduled_date: unknown; origin_date: unknown; vacation_shift: number; vacation_from: unknown }>(
+    `select id, client_id, scheduled_date, origin_date, vacation_shift, vacation_from from jobs
       where user_id = $1 and status = 'pending' and vacation_shift <> 0
       order by scheduled_date asc, id desc`,
     [userId],
@@ -1286,18 +1297,24 @@ async function undoVacationShift(userId: string): Promise<number> {
   let moved = 0;
   for (const row of rows) {
     const mark = Number(row.vacation_shift);
-    // Sello -1: lo atrasado que el viaje juntó en el día del regreso vuelve a
-    // su fecha de ORIGEN exacta (origin_date la selló el propio movimiento).
-    // Sello > 0: corrimiento dentro de la ventana, hacia atrás por su sello.
+    // 1.6.02 (Prejuicio R2, R2B-1/R2B-2): si el sello trae su fecha
+    // (vacation_from, la que el trabajo tenía al ser recogido), deshacer
+    // vuelve a ESE día exacto. Antes el sello -1 volvía a origin_date — que
+    // sella el PRIMER movimiento de la fila, así que un pospone deliberado
+    // anterior al viaje quedaba revertido en silencio — y el sello > 0
+    // restaba días sobre una fecha ya corrida por los choques. Los sellos
+    // viejos (≤1.6.01, sin vacation_from) conservan la vuelta de antes.
+    const sealedFrom = row.vacation_from ? asIsoDate(row.vacation_from) : null;
     const back =
-      mark < 0
+      sealedFrom ??
+      (mark < 0
         ? row.origin_date
           ? asIsoDate(row.origin_date)
           : addDaysISO(asIsoDate(row.scheduled_date), mark)
-        : addDaysISO(asIsoDate(row.scheduled_date), -mark);
+        : addDaysISO(asIsoDate(row.scheduled_date), -mark));
     const real = await moveJobToDate(userId, intId(row.id), intId(row.client_id), back, { keepVacMark: true });
     if (real == null) continue;
-    await sql.query(`update jobs set vacation_shift = 0 where user_id = $1 and id = $2`, [
+    await sql.query(`update jobs set vacation_shift = 0, vacation_from = null where user_id = $1 and id = $2`, [
       userId,
       intId(row.id),
     ]);
@@ -1971,7 +1988,7 @@ export const updateClient = createServerFn({ method: "POST" })
         // Entrar a regular: el trabajo de una vez pendiente se cancela A LA VISTA
         // (no se evapora) y la agenda se regenera abajo.
         await sql.query(
-          `update jobs set status = 'cancelled',
+          `update jobs set status = 'cancelled', vacation_shift = 0, vacation_from = null,
                   postpone_reason = coalesce(nullif(postpone_reason, ''), 'Pasó a cliente regular')
             where user_id = $1 and client_id = $2 and kind = 'one_time' and status = 'pending'`,
           [context.userId, data.id],
@@ -2084,7 +2101,7 @@ export const setClientActive = createServerFn({ method: "POST" })
         [context.userId, data.id],
       );
       await sql.query(
-        `update jobs set status = 'cancelled',
+        `update jobs set status = 'cancelled', vacation_shift = 0, vacation_from = null,
                 postpone_reason = coalesce(nullif(postpone_reason, ''), 'Cliente archivado')
           where user_id = $1 and client_id = $2 and status = 'pending' and kind <> 'cut'`,
         [context.userId, data.id],
@@ -2199,7 +2216,7 @@ export async function markJobDone(
   // back is the idempotent skip: the winner owns the payment. (No unique index on
   // payments.job_id: a job legitimately gets two rows — the payment and its tip.)
   const flip = await sql.query<{ id: number }>(
-    `update jobs set status = 'done', completed_at = now()
+    `update jobs set status = 'done', vacation_shift = 0, vacation_from = null, completed_at = now()
       where user_id = $1 and id = $2 and status not in ('done', 'cancelled')
       returning id`,
     [userId, jobId],
@@ -2618,7 +2635,7 @@ export const cancelJob = createServerFn({ method: "POST" })
       [context.userId, data.id],
     );
     await sql.query(
-      `update jobs set status = 'cancelled',
+      `update jobs set status = 'cancelled', vacation_shift = 0, vacation_from = null,
               postpone_reason = case when $3 = '' then postpone_reason else $3 end
         where user_id = $1 and id = $2 and status = 'pending'`,
       [context.userId, data.id, data.reason],
@@ -3834,8 +3851,59 @@ async function bulkRestore(table: "jobs" | "payments", rows: Record<string, unkn
   }
 }
 
-async function restoreClientExtras(clientId: number, row: Record<string, unknown>, txSql?: Sql): Promise<void> {
+/** 1.6.02 (Prejuicio R2, R2C-3): bulkRestore for jobs, with the old→new id
+ *  map the payments' job_id remap needs. Each row rides in with its ordinal
+ *  written into sort_order (the transaction emptied this user's jobs first,
+ *  so every row read back is a restored one); once landed, the map is read
+ *  from those ordinals and each row's true sort_order is written back. A
+ *  payment whose job did not come in this copy gets job_id = null — the
+ *  honest pre-0026 state — never an id from another book. */
+async function bulkRestoreJobs(
+  userId: string,
+  pairs: { row: Record<string, unknown>; oldId: number }[],
+  txSql?: Sql,
+): Promise<Map<number, number>> {
+  const map = new Map<number, number>();
+  if (!pairs.length) return map;
   const sql = txSql ?? (await getSql());
+  const tableCols = new Set(await tableColumns("jobs", txSql));
+  const keys = new Set<string>(["sort_order"]);
+  for (const { row } of pairs) for (const k of Object.keys(row)) keys.add(k);
+  const cols = [...keys].filter((k) => k !== "id" && k !== "photo" && tableCols.has(k));
+  const list = cols.map((c) => `"${c}"`).join(", ");
+  for (let i = 0; i < pairs.length; i += 800) {
+    const chunk = pairs.slice(i, i + 800).map((p, j) => ({ ...p.row, sort_order: i + j + 1 }));
+    await sql.query(
+      `insert into jobs (${list}) select ${list} from jsonb_populate_recordset(null::jobs, $1::jsonb)`,
+      [JSON.stringify(chunk)],
+    );
+  }
+  const landed = await sql.query<{ id: number; sort_order: number }>(
+    `select id, sort_order from jobs where user_id = $1`,
+    [userId],
+  );
+  const newIds: number[] = [];
+  const trueSorts: number[] = [];
+  for (const r of landed) {
+    const pair = pairs[Number(r.sort_order) - 1];
+    if (!pair) continue;
+    const nid = intId(r.id);
+    if (pair.oldId) map.set(pair.oldId, nid);
+    newIds.push(nid);
+    trueSorts.push(Number(pair.row.sort_order) || 0);
+  }
+  if (newIds.length) {
+    await sql.query(
+      `update jobs j set sort_order = v.so
+         from (select unnest($1::int[]) as id, unnest($2::int[]) as so) v
+        where j.id = v.id and j.user_id = $3`,
+      [newIds, trueSorts, userId],
+    );
+  }
+  return map;
+}
+
+async function restoreClientExtras(clientId: number, row: Record<string, unknown>, txSql?: Sql): Promise<void> {  const sql = txSql ?? (await getSql());
   const tableCols = new Set(await tableColumns("clients", txSql));
   const skip = new Set(["id", "user_id", "name", "balance", "credit", "rich_notes"]);
   const cols = Object.keys(row).filter((k) => tableCols.has(k) && !skip.has(k));
@@ -3966,24 +4034,31 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
     }
   }
 
+  // 1.6.02 (R2C-3): ambas vías de trabajos se juntan y entran por
+  // bulkRestoreJobs, que devuelve el mapa de ids viejo→nuevo; los pagos de
+  // abajo remapean su job_id contra él.
+  const jobPairs: { row: Record<string, unknown>; oldId: number }[] = [];
   const fullJobs = (payload.jobs ?? []).filter((row) => "user_id" in row && "client_id" in row);
   if (fullJobs.length) {
     const keptJobs = fullJobs
       .map((row) => ({ ...row, user_id: userId, client_id: idMap.get(intId(row.client_id)) }))
       .filter((row) => row.client_id);
     dropped.jobs += fullJobs.length - keptJobs.length;
-    await bulkRestore("jobs", keptJobs, sql);
+    for (const row of keptJobs) jobPairs.push({ row, oldId: intId((row as Record<string, unknown>).id) });
   }
   // Hallazgo 18: legacy rows (no user_id/client_id pair) are normalised to the same
   // DB-shaped rows and go through the SAME bulk path, with exactly the field mapping
   // and defaults the old row-by-row insert applied — no more thousands of single inserts.
   const legacyJobRowsAll = (payload.jobs ?? [])
     .filter((r) => !("user_id" in r && "client_id" in r));
-  const legacyJobRows = legacyJobRowsAll
-    .map((row) => {
-      const clientId = idMap.get(intId(row.client_id ?? row.clientId));
-      if (!clientId) return null;
-      return {
+  let legacyKept = 0;
+  for (const row of legacyJobRowsAll) {
+    const clientId = idMap.get(intId(row.client_id ?? row.clientId));
+    if (!clientId) continue;
+    legacyKept += 1;
+    jobPairs.push({
+      oldId: intId(row.id),
+      row: {
         user_id: userId,
         client_id: clientId,
         scheduled_date: asIsoDate(row.scheduled_date ?? row.scheduledDate) || todayISO(),
@@ -3996,20 +4071,31 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
         // motivo del pase y la fecha de origen, como la vía completa.
         postpone_reason: strField(row, "postpone_reason", "postponeReason"),
         origin_date: asIsoDate(row.origin_date ?? row.originDate) || null,
+        // 1.6.02 (Prejuicio R2, R2C-2): y el sello de vacaciones con su fecha
+        // — sin él, un trabajo corrido por un viaje volvía sin sello y el
+        // deshacer jamás podía devolverlo a su sitio.
+        vacation_shift: Number(row.vacation_shift ?? row.vacationShift) || 0,
+        vacation_from: asIsoDate(row.vacation_from ?? row.vacationFrom) || null,
         completed_at: row.completed_at ?? row.completedAt ?? null,
         arrival_time: strField(row, "arrival_time", "arrivalTime"),
         sort_order: Number(row.sort_order ?? row.sortOrder) || 0,
-      };
-    })
-    .filter((row) => row !== null);
-  dropped.jobs += legacyJobRowsAll.length - legacyJobRows.length;
-  if (legacyJobRows.length) await bulkRestore("jobs", legacyJobRows, sql);
+      },
+    });
+  }
+  dropped.jobs += legacyJobRowsAll.length - legacyKept;
+  const jobIdMap = await bulkRestoreJobs(userId, jobPairs, sql);
 
   const fullPayments = (payload.payments ?? []).filter((row) => "user_id" in row && "client_id" in row);
   if (fullPayments.length) {
     // Keeps kind (opening, prepaid...), method and tip, so totals and balances match the original.
+    // 1.6.02 (R2C-3): el job_id se remapea al id nuevo de su trabajo; el id
+    // viejo, copiado tal cual, apuntaba a otro libro.
     const keptPayments = fullPayments
-      .map((row) => ({ ...row, user_id: userId, client_id: idMap.get(intId(row.client_id)) }))
+      .map((row) => {
+        const base: Record<string, unknown> = { ...row, user_id: userId, client_id: idMap.get(intId(row.client_id)) };
+        if (base.job_id != null) base.job_id = jobIdMap.get(intId(base.job_id)) ?? null;
+        return base;
+      })
       .filter((row) => row.client_id);
     dropped.payments += fullPayments.length - keptPayments.length;
     await bulkRestore("payments", keptPayments, sql);
@@ -4031,6 +4117,14 @@ async function applyBackup(userId: string, payload: BackupPayload): Promise<{ cl
         method: strField(row, "method"),
         tip: money(row.tip),
         note: strField(row, "note"),
+        // 1.6.02 (Prejuicio R2, R2C-3): la vía legacy conserva también el
+        // enlace al trabajo, remapeado al id nuevo — sin él, reabrir y
+        // deshacer caían a la caza por monto y nota sobre un pago que SÍ
+        // traía su enlace escrito.
+        job_id: (() => {
+          const jid = intId(row.job_id ?? row.jobId);
+          return jid ? (jobIdMap.get(jid) ?? null) : null;
+        })(),
         // The old insert used coalesce(paid_at, now()): a legacy row without a date
         // is stamped at restore time, never left null in bulk.
         paid_at: row.paid_at ?? row.paidAt ?? new Date().toISOString(),
@@ -4697,7 +4791,7 @@ export const bulkClients = createServerFn({ method: "POST" })
         [context.userId, data.ids],
       );
       await sql.query(
-        `update jobs set status = 'cancelled',
+        `update jobs set status = 'cancelled', vacation_shift = 0, vacation_from = null,
                 postpone_reason = coalesce(nullif(postpone_reason, ''), 'Cliente archivado')
           where user_id = $1 and client_id = any($2::int[]) and status = 'pending' and kind <> 'cut'`,
         [context.userId, data.ids],
@@ -5250,6 +5344,14 @@ export const applyVacation = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     if (data.end < data.start) return { ok: false as const, reason: "range" as const, moved: 0 };
+    // 1.6.02 (Prejuicio R2, R2B-6): el corrimiento tiene un tope de 180 días;
+    // un rango mayor se cortaba en silencio a 180 y los trabajos de la cola
+    // quedaban DENTRO de las vacaciones mientras el aviso decía otra cosa.
+    // Un viaje más largo se niega en voz alta, antes de tocar nada — ni
+    // siquiera se deshace el corrimiento anterior.
+    let span = 0;
+    for (let c = data.start; c <= data.end; c = addDaysISO(c, 1)) span += 1;
+    if (span > 180) return { ok: false as const, reason: "too-long" as const, moved: 0 };
     const sql = await getSql();
     const prefs = await loadPrefs(context.userId);
     if (prefs.vacationShift) {
@@ -5264,8 +5366,8 @@ export const applyVacation = createServerFn({ method: "POST" })
       cursor = addDaysISO(cursor, 1);
     }
     const moved = await shiftPendingJobs(context.userId, days, data.start, data.end, days);
-    const overdue = await sql.query<{ id: number; client_id: number }>(
-      `select id, client_id from jobs
+    const overdue = await sql.query<{ id: number; client_id: number; scheduled_date: unknown }>(
+      `select id, client_id, scheduled_date from jobs
         where user_id = $1 and status = 'pending' and scheduled_date < $2::date
         order by scheduled_date asc, id asc`,
       [context.userId, data.start],
@@ -5281,9 +5383,14 @@ export const applyVacation = createServerFn({ method: "POST" })
       // en el día del regreso lleva el sello -1 — al quitar las vacaciones
       // vuelve a SU fecha de origen exacta, no a un corrimiento. La ida y
       // vuelta de las vacaciones es byte a byte también para los atrasados.
-      await sql.query(`update jobs set vacation_shift = -1 where user_id = $1 and id = $2`, [
+      // 1.6.02 (Prejuicio R2, R2B-1): «su fecha» es la que tenía al ser
+      // recogido, y queda sellada en vacation_from — origin_date sella el
+      // primer movimiento de la fila (un pospone deliberado anterior) y
+      // deshacer la revertía en silencio.
+      await sql.query(`update jobs set vacation_shift = -1, vacation_from = $3::date where user_id = $1 and id = $2`, [
         context.userId,
         intId(row.id),
+        asIsoDate(row.scheduled_date),
       ]);
     }
     await sql.query(
@@ -5569,7 +5676,7 @@ export const restoreClientChange = createServerFn({ method: "POST" })
         );
       } else {
         await sql.query(
-          `update jobs set status = 'cancelled',
+          `update jobs set status = 'cancelled', vacation_shift = 0, vacation_from = null,
                   postpone_reason = coalesce(nullif(postpone_reason, ''), 'Pasó a cliente regular')
             where user_id = $1 and client_id = $2 and kind = 'one_time' and status = 'pending'`,
           [context.userId, data.clientId],
@@ -5739,7 +5846,7 @@ export const setBlacklist = createServerFn({ method: "POST" })
         [context.userId, data.id, todayISO()],
       );
       await sql.query(
-        `update jobs set status = 'cancelled',
+        `update jobs set status = 'cancelled', vacation_shift = 0, vacation_from = null,
                 postpone_reason = coalesce(nullif(postpone_reason, ''), 'Lista negra')
           where user_id = $1 and client_id = $2 and status = 'pending' and kind <> 'cut' and scheduled_date >= $3::date`,
         [context.userId, data.id, todayISO()],
@@ -5748,7 +5855,7 @@ export const setBlacklist = createServerFn({ method: "POST" })
       // con su razón, para que no quede un trabajo zombi invisible que su ficha sigue
       // contando como vencido mientras su deuda ya no entra en ningún total.
       await sql.query(
-        `update jobs set status = 'cancelled',
+        `update jobs set status = 'cancelled', vacation_shift = 0, vacation_from = null,
                 postpone_reason = coalesce(nullif(postpone_reason, ''), 'Lista negra')
           where user_id = $1 and client_id = $2 and status = 'pending' and scheduled_date < $3::date`,
         [context.userId, data.id, todayISO()],
@@ -5782,7 +5889,7 @@ export const setServicePaused = createServerFn({ method: "POST" })
         [context.userId, data.id],
       );
       await sql.query(
-        `update jobs set status = 'cancelled',
+        `update jobs set status = 'cancelled', vacation_shift = 0, vacation_from = null,
                 postpone_reason = coalesce(nullif(postpone_reason, ''), 'Servicio en pausa')
           where user_id = $1 and client_id = $2 and status = 'pending' and kind <> 'cut'`,
         [context.userId, data.id],

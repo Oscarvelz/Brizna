@@ -1054,8 +1054,8 @@ export const MANUAL_CHAPTERS: Chapter[] = [
           "You fly out December 20 to 26 (7 days). The Pérez cut on the 20th moves to the 27th and Ana's on the 23rd moves to the 30th. A yard late since the 18th shows on the 27th, the day you return.",
         ],
         cases: [
-          "Vuelves antes: acorta la fecha de regreso y los patios se reacomodan.\nUn cliente ya tenía corte el día al que se corre otro: ese patio pasa a su siguiente día libre.\nEl regreso cae en domingo: los patios llegan ahí igual; muévelos con Pasar los de hoy si hace falta.",
-          "You come back early: shorten the return date and the yards rearrange.\nA client already had a cut on the day another shifts to: that yard goes to their next free day.\nThe return lands on a Sunday: the yards still land there; move them with Move today's jobs if needed.",
+          "Vuelves antes: acorta la fecha de regreso y los patios se reacomodan.\nUn cliente ya tenía corte el día al que se corre otro: ese patio pasa a su siguiente día libre.\nEl regreso cae en domingo: los patios llegan ahí igual; muévelos con Pasar los de hoy si hace falta.\nUn viaje puede durar hasta 180 días; si eliges más, Brizna lo dice y no mueve nada: pártelo en dos viajes.",
+          "You come back early: shorten the return date and the yards rearrange.\nA client already had a cut on the day another shifts to: that yard goes to their next free day.\nThe return lands on a Sunday: the yards still land there; move them with Move today's jobs if needed.\nA trip can last up to 180 days; if you pick more, Brizna says so and moves nothing: split it into two trips.",
         ],
         related: ["dias-libres", "pasar-pendientes", "meta-mes"],
         go: { to: "/ajustes", focus: "aj-vacaciones", where: ["Ajustes, Vacaciones", "Settings, Time off"] },

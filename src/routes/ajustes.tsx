@@ -554,6 +554,12 @@ function AjustesPage() {
     mutationFn: (range: { start: string; end: string }) => applyVacation({ data: range }),
     onSuccess: async (res) => {
       if (!res.ok) {
+        // 1.6.02 (R2B-6): un viaje de más de 180 días se niega con su motivo
+        // propio — antes se cortaba a 180 en silencio.
+        if (res.reason === "too-long") {
+          toast.error(tx("Las vacaciones pueden durar hasta 180 días. Parte el viaje en dos si es más largo.", "Time off can span up to 180 days. Split the trip in two if it is longer."));
+          return;
+        }
         toast.error(tx("Revisa las fechas: el fin no puede ser antes del inicio.", "Check the dates: the end cannot be before the start."));
         return;
       }
