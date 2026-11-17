@@ -377,11 +377,12 @@ function splitCsvRows(text: string): string[][] {
     const rowGroups = (t: string): string[] => {
       const groups: string[] = [];
       let cur = "";
+      let curStart = 0;
       let q = false;
       let fieldStart = true;
       for (let i = 0; i < t.length; i += 1) {
         const ch = t[i]!;
-        if (ch === "\n" && !q) { groups.push(cur); cur = ""; fieldStart = true; continue; }
+        if (ch === "\n" && !q) { groups.push(cur); cur = ""; curStart = i + 1; fieldStart = true; continue; }
         cur += ch;
         if (q) {
           if (ch === '"') { if (t[i + 1] === '"') { cur += '"'; i += 1; } else q = false; }
@@ -397,7 +398,14 @@ function splitCsvRows(text: string): string[][] {
       // quedaba ciega. Una comilla que no cierra es entrada
       // malformada: se cae a las líneas físicas y el daño queda
       // confinado a su línea, como antes de contar por filas.
-      if (q) return t.split("\n");
+      // 1.6.48 (Prejuicio R13, R14F-6): la caída ya no vuelca el
+      // archivo entero a líneas físicas — los grupos que SÍ
+      // cerraron conservan su lectura citada, y solo la cola (el
+      // grupo que nunca cerró, desde curStart) cae a líneas: el
+      // daño queda confinado a su línea de verdad, y un archivo de
+      // comas con celdas multilínea no pierde su delimitador por
+      // una huérfana al final.
+      if (q) return [...groups, ...t.slice(curStart).split("\n")];
       groups.push(cur);
       return groups;
     };
@@ -451,7 +459,22 @@ function splitCsvRows(text: string): string[][] {
     // 1.6.42: la muestra son las primeras 200 FILAS (rowGroups).
     // 1.6.46: la muestra es el archivo entero (R13F-4, arriba).
     const sample = allGroups;
+    // 1.6.48 (Prejuicio R13, R14F-7): la olida leía el archivo
+    // entero unas ocho-diez veces (cada candidato reparseaba cada
+    // línea, y headerInfo construía dos parseos por candidato):
+    // 16,5 s de hilo principal con 60 000 filas. El parteo de una
+    // línea por delimitador se cachea — cada par (línea,
+    // delimitador) se parte una sola vez en toda la olida.
+    const splitCache = new Map<string, string[]>();
     const splitFor = (line: string, d: string): string[] => {
+      const key = d + "\u0001" + line;
+      const hit = splitCache.get(key);
+      if (hit) return hit;
+      const out = splitForRaw(line, d);
+      splitCache.set(key, out);
+      return out;
+    };
+    const splitForRaw = (line: string, d: string): string[] => {
       const cells: string[] = [];
       let cur = "";
       let q = false;
@@ -518,20 +541,40 @@ function splitCsvRows(text: string): string[][] {
           if (cells.length < 2) return false;
           if (r.some((c) => digitsOf(c).replace(/\D/g, "").length >= 7)) return true;
           const words = (c: string) => c.trim().split(/\s+/).filter(Boolean).length;
+          const letterWords = (c: string) => c.trim().split(/\s+/).filter((w) => /[^\d]/.test(w)).length;
           // 1.6.46 (Prejuicio R12, R13F-2): la rama «tres celdas» ya
           // no basta por el conteo — una fila etiqueta,valor,nota
           // («Clave1,Valor1,Nota1») tiene tres celdas y ninguna es
           // una persona: hace falta una celda con dos palabras (la
           // dirección, el nombre completo) o el teléfono de arriba.
-          if (cells.length >= 3) return cells.some((c) => words(c) >= 2);
+          // 1.6.48 (Prejuicio R13, R14F-1): las dos palabras testifican
+          // solo en los asientos de una persona — el nombre (primera
+          // celda) o la dirección (la segunda, o cualquier celda con
+          // su número de casa). La nota vive al final y el valor en
+          // medio de la fila etiqueta: «No llamar» y «Sin saldo»
+          // volvían a dar cuerpo al preámbulo contando palabras en
+          // cualquier celda. La dirección sin número en el segundo
+          // asiento testifica solo si el primero es un nombre pelado
+          // (sin dígito, sin vocabulario): «Clave1» es una etiqueta
+          // con serie, no un nombre.
+          if (cells.length >= 3) {
+            if (words(cells[0]!) >= 2) return true;
+            if (cells.some((c) => /\d/.test(c) && letterWords(c) >= 2)) return true;
+            return words(cells[1]!) >= 2 && !/\d/.test(cells[0]!) && !HEADER_WORDS[foldHead(cells[0]!)];
+          }
           // 1.6.46 (Prejuicio R12, R13F-1): la tabla de dos celdas
           // nombre+dirección con nombres de pila («Ana,Calle Sol 1»)
           // SÍ es un cuerpo: la segunda celda con dos palabras (la
           // dirección) la sostiene, siempre que la primera no sea
           // una palabra del vocabulario — el par etiqueta⇥valor
           // («Direccion,Calle Sol 1») sigue sin darse cuerpo.
-          if (words(r[0] ?? "") >= 2) return true;
-          return !HEADER_WORDS[foldHead(r[0] ?? "")] && words(r[1] ?? "") >= 2;
+          // 1.6.48 (Prejuicio R13, R14F-2): la rama lee las celdas
+          // COMPACTADAS (cells), no las posiciones crudas — una
+          // columna Id vacía delante o una celda vacía en medio
+          // movía la dirección fuera de r[1] y la fila perdía su
+          // forma de persona.
+          if (words(cells[0]!) >= 2) return true;
+          return !HEADER_WORDS[foldHead(cells[0]!)] && words(cells[1]!) >= 2;
         };
         const bodyRows = below.filter(personRow);
         if (!(bodyRows.length >= 2 && bodyRows.length * 5 >= below.length * 3)) continue;
@@ -681,6 +724,11 @@ for (const w of ["address", "direccion", "domicilio", "addr", "address 1 formatt
 for (const w of ["first name", "nombre de pila", "given name", "vorname", "voornaam", "prenom"]) HEADER_WORDS[w] = "first";
 for (const w of ["last name", "apellido", "apellidos", "family name", "surname", "nachname", "achternaam", "nom", "nom de famille", "cognome", "sobrenome"]) HEADER_WORDS[w] = "last";
 
+// 1.6.48 (Prejuicio R13, R14F-3): los tipos de vía con que abre
+// una dirección cuyo número ES el nombre de la calle («Calle 8»,
+// «Ruta 66», «Km 5») — en su forma plegada, como foldHead entrega.
+const STREET_HEADS = new Set(["calle", "avenida", "av", "ruta", "km", "camino", "pasaje", "callejon", "carretera", "boulevard", "blvd", "street", "st", "avenue", "ave", "road", "rd", "drive", "dr", "lane", "ln", "court", "ct", "rua", "estrada", "travessa", "alameda", "rodovia", "prolongacion"]);
+
 function foldHead(cell: string): string {
   return cell
     .normalize("NFD")
@@ -748,7 +796,13 @@ function parseCsv(text: string): PickedContact[] {
     // dígito debe vivir dentro de una celda con dos palabras más:
     // el número de la casa dentro de su dirección («Calle Sol 1»).
     // Un año suelto o una paginación no son un dato.
-    const addrDigit = rows[i]!.some((c) => /\d/.test(c) && c.split(/\s+/).filter((w) => /[^\d]/.test(w)).length >= 2);
+    // 1.6.48 (Prejuicio R13, R14F-3): la dirección cuyo único
+    // nombre es el tipo de vía — «Calle 8», «Ruta 66», «Km 5», la
+    // forma corriente de media América Latina — tiene UNA palabra
+    // con letras y no encendía la luz: el bloque entero quedaba a
+    // merced de la corona. Una celda que abre con un tipo de vía y
+    // trae su número también es una dirección.
+    const addrDigit = rows[i]!.some((c) => /\d/.test(c) && (c.split(/\s+/).filter((w) => /[^\d]/.test(w)).length >= 2 || STREET_HEADS.has(foldHead(c).split(" ")[0]!)));
     if (rows[i]!.length >= 2 && !firstVocab && (phoneLike || (known === 0 && addrDigit))) dataSeen = true;
   }
   const head = headAt >= 0 ? rows[headAt]!.map(foldHead) : [];
@@ -782,10 +836,19 @@ function parseCsv(text: string): PickedContact[] {
   // como datos y nacía un cliente llamado «Dirección» con teléfono
   // «Ciudad», y cada fila real entraba girada. Sin columnas leídas,
   // las filas de datos se leen por posición, como sin encabezado.
-  for (const cols of headAt >= 0 ? rows.slice(headAt + 1) : rows) {
+  for (const rawCols of headAt >= 0 ? rows.slice(headAt + 1) : rows) {
     // Una fila de una sola celda en un archivo de varias columnas es una
     // línea suelta (un título, una nota), no una persona: no nace.
-    if (cols.length < 2) continue;
+    if (rawCols.length < 2) continue;
+    // 1.6.48 (Prejuicio R13, R14F-2, el asiento del lector): con
+    // encabezado coronado, una fila MÁS ancha que el encabezado
+    // cuyas celdas no vacías encajan EXACTAS en su ancho trae una
+    // celda vacía de relleno («Ana,,Calle Sol 1» bajo
+    // «Nombre,Direccion») — se lee compactada, como personRow ya
+    // juzga. Una fila del ancho del encabezado se lee posicional
+    // siempre: su vacío en medio es un valor vacío de verdad.
+    const compacted = rawCols.filter((c) => c.trim() !== "");
+    const cols = headAt >= 0 && head.length >= 2 && rawCols.length > head.length && compacted.length === head.length ? compacted : rawCols;
     // 1.6.08 (R3F-3): sin columna de nombre completo pero con nombre y
     // apellido partidos, el nombre nace entero de las dos columnas.
     // 1.6.14 (Prejuicio R4, R5F-7): el export español de Google trae

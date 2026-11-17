@@ -258,7 +258,13 @@ export function phoneTail(phone: string | null | undefined): string {
   // de ≥7, la «extensión» ES el número («550142 ext 3055550142»)
   // y cortarla dejaba la cola vacía donde su gemela con «x» daba
   // el número entero.
-  const wordExt = rawPhone.match(/(?:\bext(?:ensi[oó]n)?\)?\.?\s*[-:]?\s*|\bposte\s+|\banexo\s*[-:]?\s*|\binterno\s*[-:]?\s*|\bramal\s*[-:]?\s*)\d{1,10}\s*\)?\s*$/i);
+  // 1.6.48 (Prejuicio R13, R14F-4): la familia viste UN solo traje
+  // — cada palabra admite el paréntesis de cierre y el punto tras
+  // ella y el separador (o ninguno) antes de los dígitos:
+  // «(interno) 89», «poste: 89» y «poste89» cortan como «ext. 89».
+  // Y la familia queda entera: «int» (la abreviatura de interno,
+  // gemela de «ext») y «extensão» (el portugués entero) entran.
+  const wordExt = rawPhone.match(/(?:\b(?:ext(?:ensi[oó]n|ensão|ensao)?|interno|int|anexo|ramal|poste)\)?\.?\s*[-:]?\s*)\d{1,10}\s*\)?\s*$/i);
   let bare = rawPhone;
   if (wordExt) {
     const pre = digitsOf(rawPhone.slice(0, wordExt.index)).replace(/\D/g, "").length;
@@ -271,7 +277,7 @@ export function phoneTail(phone: string | null | undefined): string {
     // rama de palabra no cortaba «…0142ext89» (la de «x» sí corta
     // la suya pegada). La palabra pegada tras un dígito corta con
     // la misma guarda: el dígito de la costura es del número.
-    const glued = rawPhone.match(/\d(ext(?:ensi[oó]n)?|anexo|interno|ramal|poste)\s*[-:]?\s*(\d{1,10})\s*\)?\s*$/i);
+    const glued = rawPhone.match(/\d(ext(?:ensi[oó]n|ensão|ensao)?|anexo|interno|ramal|poste|int)\s*[-:]?\s*(\d{1,10})\s*\)?\s*$/i);
     if (glued) {
       const cutAt = glued.index! + 1;
       const pre = digitsOf(rawPhone.slice(0, cutAt)).replace(/\D/g, "").length;
