@@ -197,11 +197,18 @@ class MainActivity : Activity() {
     private fun restorePending(state: Bundle) {
         speechAsk = state.getString("bzSpeechAsk")
         dictId = state.getString("bzDictId")
+        // android-13 (R2E-2): la sesión de dictado también revive — el id
+        // restaurado vuelve a ser el dueño de la espera dentro de Dictate,
+        // para que el texto de la pantalla del sistema no se tire.
+        val reviveDict = speechAsk ?: dictId
+        if (reviveDict != null) dictation.restoreSession(reviveDict, speechAsk != null)
         val micId = state.getString("bzMicId")
         val micLang = state.getString("bzMicLang")
         if (micId != null && micLang != null) micAsk = micId to micLang
         state.getString("bzCamUri")?.let { camUri = Uri.parse(it) }
         fileLostPending = state.getBoolean("bzFilePending", false)
+        // android-13 (R2E-3): el id vencido de contactos también vuelve.
+        contactPicker.restoreLast(state.getString("bzContactsLast"))
         val cid = state.getString("bzContactsId")
         if (cid != null) {
             val pickedArr = runCatching { JSONArray(state.getString("bzContactsPicked") ?: "[]") }.getOrDefault(JSONArray())
@@ -670,7 +677,12 @@ class MainActivity : Activity() {
         @JavascriptInterface fun shareBegin(): String {
             if (!trusted) return "error"
             val dir = File(cacheDir, "share").apply { mkdirs() }
-            dir.listFiles()?.forEach { if (System.currentTimeMillis() - it.lastModified() > 3_600_000L) it.delete() }
+            // android-13 (Prejuicio R2, R2E-5): los hijos de share/ son los
+            // directorios por envío (shareFile escribe dentro de share/<id>/),
+            // y delete() sobre un directorio con archivos nunca borra nada —
+            // la limpieza era código muerto y cada envío dejaba sus archivos
+            // para siempre. El borrado recursivo la vuelve real.
+            dir.listFiles()?.forEach { if (System.currentTimeMillis() - it.lastModified() > 3_600_000L) runCatching { it.deleteRecursively() } }
             val id = java.util.UUID.randomUUID().toString()
             shares[id] = Share(ArrayList(), null)
             return id
@@ -975,6 +987,9 @@ class MainActivity : Activity() {
             out.putBoolean("bzContactsMultiple", multi)
             out.putString("bzContactsPicked", contactPicker.pickedSoFar().toString())
         }
+        // android-13 (R2E-3): el id vencido viaja también, aunque ya no haya
+        // pregunta viva — es lo único que una elección tardía necesita.
+        contactPicker.lastExpired()?.let { out.putString("bzContactsLast", it) }
     }
 
     override fun onDestroy() {

@@ -106,15 +106,20 @@ class PanelWidget : AppWidgetProvider() {
             v.setViewVisibility(R.id.alert, if (data?.optString("alertLine").isNullOrBlank()) View.GONE else View.VISIBLE)
 
             // Por cobrar: the top debtors the page sent (nothing when nobody owes).
+            // android-13 (Prejuicio R2, R2E-4): los deudores obedecen la misma
+            // ley que el total (BZ-34) — si hoy ya no está en el paquete se
+            // ocultan, y si el paquete es viejo se atenúan: una cifra vieja
+            // sin fecha sería una mentira con número, también por filas.
             val debtors = data?.optJSONArray("debtors")
+            val debtStale = WidgetLook.packStale(data)
             for (i in DEBTS.indices) {
                 val d = debtors?.optJSONObject(i)
-                v.setViewVisibility(DEBTS[i][0], if (d == null) View.GONE else View.VISIBLE)
+                v.setViewVisibility(DEBTS[i][0], if (d == null || todayIdx == -1) View.GONE else View.VISIBLE)
                 if (d != null) {
                     v.setTextViewText(DEBTS[i][1], d.optString("name"))
                     v.setTextViewText(DEBTS[i][2], d.optString("amt"))
-                    v.setTextColor(DEBTS[i][1], fg)
-                    v.setTextColor(DEBTS[i][2], fg)
+                    v.setTextColor(DEBTS[i][1], if (debtStale) muted else fg)
+                    v.setTextColor(DEBTS[i][2], if (debtStale) muted else fg)
                 }
             }
 

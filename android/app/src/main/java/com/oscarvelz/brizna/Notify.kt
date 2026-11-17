@@ -26,6 +26,7 @@ object Notify {
     const val ACTION_WIDGET = "com.oscarvelz.brizna.WIDGET_TICK"
     const val ACTION_TEST = "com.oscarvelz.brizna.TEST"
     private const val LATE_LIMIT = 6 * 60 * 60 * 1000L // a reminder missed while the phone was off still shows within 6 h
+    private const val BLOCKED_RETRY_MS = 30 * 60 * 1000L // android-13 (R2E-1): respiro cuando un aviso no pudo mostrarse
 
     /* Ola 5: `wall` es la hora de pared elegida ("2026-11-17 19:00") — ante un
      * cambio de zona, el instante se recalcula desde ella (BZ-45); `hash` es la
@@ -111,13 +112,17 @@ object Notify {
         PendingIntent.getBroadcast(ctx, 100, Intent(ctx, AlarmReceiver::class.java).setAction(ACTION_FIRE),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
-    /** Arms the one alarm for the next reminder (or clears it when nothing is left). */
-    fun arm(ctx: Context) {
+    /** Arms the one alarm for the next reminder (or clears it when nothing is left).
+     *  android-13 (Prejuicio R2, R2E-1): `floorMs` es el respiro mínimo antes
+     *  de reintentar — cuando un aviso no pudo mostrarse (notificaciones
+     *  apagadas), fireDue pide el respiro largo: con el piso de 3 s la cura
+     *  de BZ-63 se volvía un bucle de alarmas de ~7 200 despertares en 6 h. */
+    fun arm(ctx: Context, floorMs: Long = 3000) {
         val am = ctx.getSystemService(AlarmManager::class.java) ?: return
         val pi = firePending(ctx)
         val next = nextAt(ctx)
         if (next <= 0) { am.cancel(pi); return }
-        val at = maxOf(next, System.currentTimeMillis() + 3000)
+        val at = maxOf(next, System.currentTimeMillis() + floorMs)
         try {
             if (canExact(ctx)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
             else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
@@ -137,8 +142,13 @@ object Notify {
         val now = System.currentTimeMillis()
         val done = fired(ctx)
         val items = read(ctx)
+        // android-13 (R2E-1): si algo no pudo mostrarse, el reintento respira
+        // 30 min — la marca «ya sonó» sigue intacta (BZ-63 manda), pero la
+        // cáscara ya no gira en vacío cada 3 segundos hasta que el aviso
+        // envejece fuera de la ventana de 6 h.
+        var blocked = false
         val due = items.filter { it.id !in done && it.at <= now + 60_000 && it.at > now - LATE_LIMIT }
-        for (it in due) { if (show(ctx, it)) done.add(it.id) }
+        for (it in due) { if (show(ctx, it)) done.add(it.id) else blocked = true }
         val missed = items.filter { it.id !in done && it.at <= now - LATE_LIMIT }
         if (missed.isNotEmpty()) {
             val titles = missed.joinToString(" · ") { it.title }.take(600)
@@ -147,10 +157,10 @@ object Notify {
                 if (missed.size == 1) "Mientras el teléfono estaba apagado: 1 aviso" else "Mientras el teléfono estaba apagado: ${missed.size} avisos",
                 titles, "/",
             )
-            if (show(ctx, summary)) missed.forEach { done.add(it.id) }
+            if (show(ctx, summary)) missed.forEach { done.add(it.id) } else blocked = true
         }
         prefs(ctx).edit().putStringSet("fired", done).apply()
-        arm(ctx)
+        arm(ctx, if (blocked) BLOCKED_RETRY_MS else 3000L)
     }
 
     /** True only when the notification was actually published. */

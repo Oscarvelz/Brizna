@@ -109,6 +109,15 @@ class ContactPicker(private val ctx: Context, private val reply: (JSONObject) ->
     }
     fun pickedSoFar(): JSONArray = picked
 
+    /* android-13 (Prejuicio R2, R2E-3): el id vencido (BZ-7) también viaja en
+     * el Bundle — vivía solo en memoria y una recreación entre el vencimiento
+     * y la elección tiraba la elección en silencio, la pérdida exacta que
+     * BZ-7 curó en el camino de memoria. */
+    fun lastExpired(): String? = lastId
+    fun restoreLast(saved: String?) {
+        if (lastId == null) lastId = saved
+    }
+
     /** The host resumed and the picker is gone without an answer (BZ-7):
      *  the shell says so itself instead of leaving the page waiting. */
     fun closedWithoutChoice() {

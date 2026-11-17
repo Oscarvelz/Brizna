@@ -113,6 +113,18 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
         finish(if (t.isEmpty()) fail("no-speech") else JSONObject().put("id", forId).put("ok", true).put("text", t))
     }
 
+    /** android-13 (Prejuicio R2, R2E-2): revive la sesión tras una recreación
+     *  de la actividad. BZ-27 guardaba el id en el Bundle, pero la sesión de
+     *  esta instancia nueva nacía con id == null y deliverSystem tiraba en
+     *  silencio el texto que el teléfono sí oyó. Si la espera era la pantalla
+     *  del sistema, ese peldaño ya se usó (triedSystem): su resultado es el
+     *  que viene en camino. */
+    fun restoreSession(savedId: String, onSystemScreen: Boolean) {
+        if (id != null) return
+        id = savedId
+        if (onSystemScreen) triedSystem = true
+    }
+
     /** Every recognition service installed on the phone, as components (Android 11+ needs the manifest <queries> entry, which Brizna has). */
     private fun recognitionServices(): List<ComponentName> = runCatching {
         ctx.packageManager.queryIntentServices(Intent(RecognitionService.SERVICE_INTERFACE), PackageManager.MATCH_ALL)
