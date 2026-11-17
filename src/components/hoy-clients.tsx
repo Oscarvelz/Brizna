@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronRight, Plus, Search, Sprout, Users, X } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { usePageWidth } from "@/components/app-shell";
+import { FigureTap, useFigureInfo } from "@/components/figure-info";
 import { SampleTryButton } from "@/components/sample-data";
 import { formatDay, money } from "@/lib/format";
 import { useTx } from "@/lib/i18n";
@@ -189,6 +190,7 @@ function ClientsPanel() {
 
 function ClientLine({ client }: { client: ClientRow }) {
   const tx = useTx();
+  const { openFigure, figureNode } = useFigureInfo();
   const today = todayISO();
   const late = Boolean(client.overdueDate);
   const owes = client.balance > 0.004;
@@ -216,14 +218,39 @@ function ClientLine({ client }: { client: ClientRow }) {
           <span className="bz-cp-sub">{sub}</span>
         </span>
         {owes ? (
-          <span className="bz-cp-chip is-money">{money(client.balance)}</span>
+          <span className="bz-cp-chip is-money">
+            <FigureTap
+              label={client.name}
+              onTap={() =>
+                openFigure({
+                  title: client.name,
+                  body: tx("Lo que te debe este cliente hoy.", "What this client owes you today."),
+                })
+              }
+            >
+              {money(client.balance)}
+            </FigureTap>
+          </span>
         ) : client.nextCutDate === today ? (
           <span className="bz-cp-chip is-today">{tx("Hoy", "Today")}</span>
         ) : (
-          <span className="bz-cp-price">{money(client.pricePerCut)}</span>
+          <span className="bz-cp-price">
+            <FigureTap
+              label={client.name}
+              onTap={() =>
+                openFigure({
+                  title: client.name,
+                  body: tx("Su precio por corte. Este cliente no te debe nada.", "His price per cut. This client owes you nothing."),
+                })
+              }
+            >
+              {money(client.pricePerCut)}
+            </FigureTap>
+          </span>
         )}
         <ChevronRight className="bz-cp-go" aria-hidden />
       </Link>
+      {figureNode}
     </li>
   );
 }

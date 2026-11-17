@@ -10,6 +10,7 @@ import { ContactIcons } from "@/components/contact-icons";
 import { DensityScope, DensityToggle, useDensity, useQuadCols } from "@/components/density-toggle";
 import { Fold } from "@/components/fold";
 import { Hint } from "@/components/hint";
+import { FigureTap, useFigureInfo, type Figure } from "@/components/figure-info";
 import { ScrollTop } from "@/components/scroll-top";
 import { methodLabel } from "@/components/method-field";
 import { invalidateLawn } from "@/components/job-card";
@@ -86,6 +87,15 @@ function CobrosPage() {
   // ficha no cuadra, Cobros lo dice aquí sin esperar a que la abran.
   const sweepQ = useQuery({ queryKey: ["reconcile-sweep"], queryFn: () => getReconcileSweep() });
   const data = q.data;
+  const { openFigure, figureNode } = useFigureInfo();
+  const balanceFigure = (name: string): Figure => ({
+    title: name,
+    body: tx(
+      "Su cuenta: el saldo con el que empezó, más sus trabajos hechos, menos lo que ha pagado y lo que le perdonaste. Su adelanto, si tiene, va aparte.",
+      "His account: the balance he started with, plus his finished jobs, minus what he has paid and what you forgave him. His credit, if any, is kept apart.",
+    ),
+    topic: "cobro-cliente",
+  });
   const [paying, setPaying] = useState<{ client: ClientRow; mode: PayMode } | null>(null);
   const [sort, setSort] = useState<OwingSort>("amount");
   const [picked, setPicked] = useState<number[]>([]);
@@ -534,6 +544,7 @@ function CobrosPage() {
                       on={on}
                       onToggle={() => toggle(c.id)}
                       onPay={(mode) => setPaying({ client: c, mode })}
+                      onFigure={openFigure}
                       mode={quad ? "quad" : media ? "media" : "grande"}
                       cols={cols}
                     />
@@ -586,7 +597,9 @@ function CobrosPage() {
                             </Button>
                           ) : null}
                           <p className={cn("shrink-0 font-display font-semibold tabular-nums text-due", dense ? "text-sm" : "text-lg")}>
-                            {money(c.balance)}
+                            <FigureTap label={c.name} onTap={() => openFigure(balanceFigure(c.name))}>
+                              {money(c.balance)}
+                            </FigureTap>
                           </p>
                         </div>
                         {!dense && !quad ? (
@@ -686,6 +699,7 @@ function CobrosPage() {
         onConfirm={() => bulk.mutate("waived")}
         onCancel={() => setAskBulk(null)}
       />
+      {figureNode}
     </AppShell>
   );
 }
@@ -903,6 +917,15 @@ function AbonoFollow({
   cols?: 2 | 3 | 4;
 }) {
   const tx = useTx();
+  const { openFigure, figureNode } = useFigureInfo();
+  const balanceFigure = (name: string): Figure => ({
+    title: name,
+    body: tx(
+      "Su cuenta: el saldo con el que empezó, más sus trabajos hechos, menos lo que ha pagado y lo que le perdonaste. Su adelanto, si tiene, va aparte.",
+      "His account: the balance he started with, plus his finished jobs, minus what he has paid and what you forgave him. His credit, if any, is kept apart.",
+    ),
+    topic: "cobro-cliente",
+  });
   if (clients.length === 0) {
     return (
       <p className="rounded-xl bg-sun px-4 py-5 text-sm text-muted">
@@ -914,6 +937,7 @@ function AbonoFollow({
     );
   }
   return (
+    <>
     <ul className={viewGrid(quad ? "quad" : dense ? "dense" : media ? "compact" : "full", cols ?? 2, dense ? "gap-1" : "gap-2")}>
       {clients.map((c) => {
         const paid = payments.filter((p) => p.clientId === c.id).reduce((sum, p) => sum + p.amount, 0);
@@ -932,13 +956,17 @@ function AbonoFollow({
                 ) : null}
               </span>
               <span className={cn("shrink-0 font-semibold tabular-nums text-due", dense || quad ? "text-xs" : "text-base")}>
-                {money(c.balance)}
+                <FigureTap label={c.name} onTap={() => openFigure(balanceFigure(c.name))}>
+                  {money(c.balance)}
+                </FigureTap>
               </span>
             </Link>
           </li>
         );
       })}
     </ul>
+    {figureNode}
+    </>
   );
 }
 
@@ -1105,6 +1133,15 @@ function WaitList({
   cols?: 2 | 3 | 4;
 }) {
   const tx = useTx();
+  const { openFigure, figureNode } = useFigureInfo();
+  const balanceFigure = (name: string): Figure => ({
+    title: name,
+    body: tx(
+      "Su cuenta: el saldo con el que empezó, más sus trabajos hechos, menos lo que ha pagado y lo que le perdonaste. Su adelanto, si tiene, va aparte.",
+      "His account: the balance he started with, plus his finished jobs, minus what he has paid and what you forgave him. His credit, if any, is kept apart.",
+    ),
+    topic: "cobro-cliente",
+  });
   if (clients.length === 0) {
     return (
       <p className="rounded-xl bg-sun px-4 py-5 text-sm text-muted">
@@ -1113,6 +1150,7 @@ function WaitList({
     );
   }
   return (
+    <>
     <ul className={viewGrid(quad ? "quad" : dense ? "dense" : media ? "compact" : "full", cols ?? 2, dense ? "gap-1" : "gap-2")}>
       {clients.map((c) => (
         <li
@@ -1126,7 +1164,9 @@ function WaitList({
           <Link to="/clientes/$id" params={{ id: String(c.id) }} className={cn(quad ? "block min-w-0" : "flex items-start justify-between gap-2")}>
             {quad ? <MeshNameUniform name={c.name} cols={cols ?? 2} /> : <span className={cn("min-w-0 font-semibold", dense ? "text-xs" : "text-base")}>{c.name}</span>}
             <span className={cn("shrink-0 font-semibold tabular-nums text-hold", dense || quad ? "text-xs" : "text-base")}>
-              {money(c.balance)}
+              <FigureTap label={c.name} onTap={() => openFigure(balanceFigure(c.name))}>
+                {money(c.balance)}
+              </FigureTap>
             </span>
           </Link>
           {!dense && (!quad || (cols ?? 2) < 4) ? (
@@ -1139,7 +1179,21 @@ function WaitList({
                     : tx("En espera", "Waiting"),
               )}
               {c.daysSincePay != null ? tx(` · ${c.daysSincePay} días sin pagar`, ` · ${c.daysSincePay} days unpaid`) : ""}
-              {tx(` · fiabilidad ${c.reliability}`, ` · reliability ${c.reliability}`)}
+              {" · "}
+              <FigureTap
+                label={tx("Fiabilidad", "Reliability")}
+                onTap={() =>
+                  openFigure({
+                    title: tx("Fiabilidad", "Reliability"),
+                    body: tx(
+                      "De 0 a 100: qué tan bien paga. Empieza en 100; los primeros 7 días no restan, después baja un punto por día de tardanza, hasta 70 puntos. Si su saldo llega al monto de alto riesgo, pierde 20 más; si está en alto riesgo no pasa de 35, y en espera no pasa de 70.",
+                      "From 0 to 100: how well he pays. It starts at 100; the first 7 days cost nothing, then it drops one point per late day, up to 70. If his balance reaches the high-risk amount, he loses 20 more; if he is high risk it never goes above 35, and while waiting, never above 70.",
+                    ),
+                  })
+                }
+              >
+                {tx(`fiabilidad ${c.reliability}`, `reliability ${c.reliability}`)}
+              </FigureTap>
             </p>
           ) : null}
           {!quad && !dense ? (
@@ -1173,6 +1227,8 @@ function WaitList({
         </li>
       ))}
     </ul>
+    {figureNode}
+    </>
   );
 }
 
@@ -1389,6 +1445,7 @@ function OwingCard({
   on,
   onToggle,
   onPay,
+  onFigure,
   mode,
   cols,
 }: {
@@ -1398,6 +1455,7 @@ function OwingCard({
   on: boolean;
   onToggle: () => void;
   onPay: (mode: PayMode) => void;
+  onFigure: (fig: Figure) => void;
   mode: "grande" | "media" | "quad";
   cols: QuadCols;
 }) {
@@ -1408,12 +1466,21 @@ function OwingCard({
   const pays = c.payDueDay ? payDueLabel(c.payDueDay) : null;
   const paysShort = c.payDueDay ? tx(`Paga el ${c.payDueDay}`, `Pays on ${c.payDueDay}`) : null;
   const forms = [pays ? `${cut} · ${pays}` : cut, ...(paysShort ? [`${cut} · ${paysShort}`] : []), cut];
+  const lateFigure: Figure = {
+    title: tx("Atrasado", "Late"),
+    body: tx(
+      "Los días que lleva atrasado: cuentan desde el primer vencimiento que esta deuda no cumplió, no desde su día de pago ni desde hoy.",
+      "How many days late: counted from the first due date this debt missed — not from his pay day or from today.",
+    ),
+  };
   const chips: React.ReactNode[] = [];
   if (late)
     chips.push(
       <span key="late" className="bz-state is-late is-xs bz-late-pulse">
         <CircleAlert aria-hidden />
-        {quad && cols > 2 ? (days > 0 ? tx(`${days} d`, `${days} d`) : tx("Atrasado", "Late")) : days > 0 ? tx(`Atrasado · ${days} ${days === 1 ? "día" : "días"}`, `Late · ${days} ${days === 1 ? "day" : "days"}`) : tx("Atrasado", "Late")}
+        <FigureTap label={tx("Atrasado", "Late")} onTap={() => onFigure(lateFigure)}>
+          {quad && cols > 2 ? (days > 0 ? tx(`${days} d`, `${days} d`) : tx("Atrasado", "Late")) : days > 0 ? tx(`Atrasado · ${days} ${days === 1 ? "día" : "días"}`, `Late · ${days} ${days === 1 ? "day" : "days"}`) : tx("Atrasado", "Late")}
+        </FigureTap>
       </span>,
     );
   if (c.highRisk && !(quad && cols > 2))
@@ -1444,7 +1511,23 @@ function OwingCard({
     );
   const tone = late ? "border-late" : c.highRisk || c.payTier === "espera" ? "border-hold" : "border-due";
   const balance = (
-    <p className={cn("bz-owe shrink-0 font-display font-semibold tabular-nums text-due", quad ? (cols === 4 ? "text-[12.5px]" : "text-[13.5px]") : "text-lg")}>{money(c.balance)}</p>
+    <p className={cn("bz-owe shrink-0 font-display font-semibold tabular-nums text-due", quad ? (cols === 4 ? "text-[12.5px]" : "text-[13.5px]") : "text-lg")}>
+      <FigureTap
+        label={c.name}
+        onTap={() =>
+          onFigure({
+            title: c.name,
+            body: tx(
+              "Su cuenta: el saldo con el que empezó, más sus trabajos hechos, menos lo que ha pagado y lo que le perdonaste. Su adelanto, si tiene, va aparte.",
+              "His account: the balance he started with, plus his finished jobs, minus what he has paid and what you forgave him. His credit, if any, is kept apart.",
+            ),
+            topic: "cobro-cliente",
+          })
+        }
+      >
+        {money(c.balance)}
+      </FigureTap>
+    </p>
   );
   const pickLabel = tx(`Elegir ${c.name}`, `Select ${c.name}`);
 
@@ -1484,7 +1567,9 @@ function OwingCard({
     const lateChip = late ? (
       <span className="bz-state is-late is-xs bz-late-pulse" title={tx("Atrasado", "Late")}>
         <CircleAlert aria-hidden />
-        {days > 0 ? tx(`${days} ${days === 1 ? "día" : "días"}`, `${days} ${days === 1 ? "day" : "days"}`) : tx("Atrasado", "Late")}
+        <FigureTap label={tx("Atrasado", "Late")} onTap={() => onFigure(lateFigure)}>
+          {days > 0 ? tx(`${days} ${days === 1 ? "día" : "días"}`, `${days} ${days === 1 ? "day" : "days"}`) : tx("Atrasado", "Late")}
+        </FigureTap>
       </span>
     ) : c.highRisk ? (
       <span className="bz-state is-hold is-xs">

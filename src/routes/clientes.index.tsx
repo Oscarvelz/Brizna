@@ -15,6 +15,7 @@ import { ContactIcons } from "@/components/contact-icons";
 import { CueChip } from "@/components/cue-chip";
 import { DensityScope, DensityToggle, useDensity, useQuadCols } from "@/components/density-toggle";
 import { Hint } from "@/components/hint";
+import { FigureTap, useFigureInfo } from "@/components/figure-info";
 import { ScrollTop } from "@/components/scroll-top";
 import { FitLine, invalidateLawn } from "@/components/job-card";
 import { requestFocus } from "@/lib/manual/nav";
@@ -659,6 +660,11 @@ function ClientListCard({
   const [askOff, setAskOff] = useState(false);
   const [askDel, setAskDel] = useState(false);
   const [askOn, setAskOn] = useState(false);
+  const { openFigure, figureNode } = useFigureInfo();
+  const priceFigure = {
+    title: tx("Precio por corte", "Price per cut"),
+    body: tx("Su precio por cada corte.", "His price for each cut."),
+  };
 
   const deactivate = useMutation({
     mutationFn: () => setClientActive({ data: { id: client.id, isActive: false } }),
@@ -867,7 +873,12 @@ function ClientListCard({
                         quad && cols === 4 ? "text-xs" : quad || dense ? "text-xs" : media ? "text-sm" : "font-display text-lg",
                       )}
                     >
-                      {money(client.pricePerCut)}
+                      <FigureTap label={tx("Precio por corte", "Price per cut")} onTap={() => openFigure(priceFigure)}>
+                        {money(client.pricePerCut)}
+                        {client.kind === "regular" && !dense && !quad ? (
+                          <span className="text-[0.7em] font-medium text-muted"> {tx("/ corte", "/ cut")}</span>
+                        ) : null}
+                      </FigureTap>
                     </p>
                     {quad && cols >= 3 && client.nextCutDate ? (
                       <p className="whitespace-nowrap text-[11px] leading-tight text-muted">{formatDay(client.nextCutDate, "d MMM")}</p>
@@ -1032,6 +1043,7 @@ function ClientListCard({
         onConfirm={() => remove.mutate()}
         onCancel={() => setAskDel(false)}
       />
+      {figureNode}
     </>
   );
 }
@@ -1150,6 +1162,11 @@ function ActChip({
 
 function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "grande" | "media" | "quad"; cols: QuadCols }) {
   const tx = useTx();
+  const { openFigure, figureNode } = useFigureInfo();
+  const priceFigure = {
+    title: tx("Precio por corte", "Price per cut"),
+    body: tx("Su precio por cada corte.", "His price for each cut."),
+  };
   const navigate = useNavigate();
   const freq =
     client.kind === "one_time"
@@ -1186,14 +1203,24 @@ function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "gran
         <Link to="/clientes/$id" params={{ id: String(client.id) }} className="block min-w-0">
           <div className={cn("flex min-w-0 gap-1.5", x3 || x4 ? "" : "items-start justify-between")}>
             {name}
-            {!x3 && !x4 ? <span className="bz-cprice is-quad2 shrink-0 pt-0.5">{money(client.pricePerCut)}</span> : null}
+            {!x3 && !x4 ? (
+              <span className="bz-cprice is-quad2 shrink-0 pt-0.5">
+                <FigureTap label={tx("Precio por corte", "Price per cut")} onTap={() => openFigure(priceFigure)}>
+                  {money(client.pricePerCut)}
+                </FigureTap>
+              </span>
+            ) : null}
           </div>
           {!x3 && !x4 ? <FitLine forms={freq} className="bz-csub is-quad mt-0.5" /> : null}
         </Link>
         <div className="bz-cfoot min-w-0">
           {x3 || x4 ? (
             <Link to="/clientes/$id" params={{ id: String(client.id) }} className="mt-1 flex min-w-0 items-center justify-between gap-1">
-              <span className={cn("bz-cprice", x4 ? "is-quad4" : "is-quad3")}>{money(client.pricePerCut)}</span>
+              <span className={cn("bz-cprice", x4 ? "is-quad4" : "is-quad3")}>
+                <FigureTap label={tx("Precio por corte", "Price per cut")} onTap={() => openFigure(priceFigure)}>
+                  {money(client.pricePerCut)}
+                </FigureTap>
+              </span>
               {client.overdueDate ? null : owesOther(client) || !client.isActive ? (
                 <StateChip client={client} size={x4 ? "dot" : "xs"} />
               ) : client.nextCutDate && !x4 ? (
@@ -1208,6 +1235,7 @@ function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "gran
             </div>
           ) : null}
         </div>
+        {figureNode}
       </div>
     );
   }
@@ -1277,7 +1305,12 @@ function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "gran
           <span className={cn("bz-cname block min-w-0 flex-1 font-semibold", grande ? "font-display is-grande" : "is-media")}>
             <MeshNameUniform name={client.name} cols={2} size={grande ? "grande" : "cmedia"} />
           </span>
-          <span className={cn("bz-cprice shrink-0", grande ? "is-grande" : "is-media")}>{money(client.pricePerCut)}</span>
+          <span className={cn("bz-cprice shrink-0", grande ? "is-grande" : "is-media")}>
+            <FigureTap label={tx("Precio por corte", "Price per cut")} onTap={() => openFigure(priceFigure)}>
+              {money(client.pricePerCut)}
+              {client.kind === "regular" ? <span className="text-[0.7em] font-medium text-muted"> {tx("/ corte", "/ cut")}</span> : null}
+            </FigureTap>
+          </span>
         </div>
         <div className="-ml-2 flex min-w-0 items-center gap-3">
           <span aria-hidden className="grid w-8 shrink-0 place-items-center text-muted">
@@ -1298,6 +1331,7 @@ function ClientCardBody({ client, mode, cols }: { client: ClientRow; mode: "gran
         <StateChip client={client} size={grande ? "md" : "sm"} />
       </div>
       {chips.length > 0 ? <div className="bz-chiprow mt-3">{chips}</div> : null}
+      {figureNode}
     </div>
   );
 }

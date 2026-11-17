@@ -14,6 +14,7 @@ import { OffDayDialog, shiftToMonday, useRareDay } from "@/components/off-day-as
 import { ScrollTop } from "@/components/scroll-top";
 import { UndoBar } from "@/components/undo-bar";
 import { Hint } from "@/components/hint";
+import { FigureTap, useFigureInfo } from "@/components/figure-info";
 import { invalidateLawn, JobCard } from "@/components/job-card";
 import { ReasonChips } from "@/components/reason-chips";
 import { ReorderableJobs } from "@/components/reorder-jobs";
@@ -112,6 +113,7 @@ function AgendaPage() {
   const [accReason, setAccReason] = useState("");
   const [askAcc, setAskAcc] = useState<"overdue" | "today" | null>(null);
   const [weekCursor, setWeekCursor] = useState(today);
+  const { openFigure, figureNode } = useFigureInfo();
   const [offOpen, setOffOpen] = useState(() => {
     try {
       return localStorage.getItem("ols-agenda-off") === "1";
@@ -404,10 +406,23 @@ function AgendaPage() {
       <div className="mb-3">
         <DensityToggle />
         <p className="bz-tally mt-2" data-present="agenda-conteo">
-          {tx(
-            `${jobs.length} ${jobs.length === 1 ? "trabajo" : "trabajos"} · ${money(total)}${filter === "done" ? " realizados" : ""}`,
-            `${jobs.length} ${jobs.length === 1 ? "job" : "jobs"} · ${money(total)}${filter === "done" ? " done" : ""}`,
-          )}
+          <FigureTap
+            label={tx("Este conteo", "This count")}
+            onTap={() =>
+              openFigure({
+                title: tx("Este conteo", "This count"),
+                body: tx(
+                  "La suma de los precios de los trabajos de esta lista, con el filtro que tengas puesto.",
+                  "The sum of the prices of the jobs in this list, under the filter you have on.",
+                ),
+              })
+            }
+          >
+            {tx(
+              `${jobs.length} ${jobs.length === 1 ? "trabajo" : "trabajos"} · ${money(total)}${filter === "done" ? " realizados" : ""}`,
+              `${jobs.length} ${jobs.length === 1 ? "job" : "jobs"} · ${money(total)}${filter === "done" ? " done" : ""}`,
+            )}
+          </FigureTap>
           {range === "all" && !cal && filter !== "done" ? (
             <Hint compact topic="agenda-todo" />
           ) : null}
@@ -919,6 +934,7 @@ function AgendaPage() {
         }}
         onClose={() => setRareMove(null)}
       />
+      {figureNode}
     </AppShell>
   );
 }

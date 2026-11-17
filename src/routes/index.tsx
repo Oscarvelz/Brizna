@@ -14,6 +14,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { OffDayDialog, shiftToMonday, useRareDay } from "@/components/off-day-ask";
 import { DensityScope, DensityToggle, useDensity, useQuadCols } from "@/components/density-toggle";
 import { Hint } from "@/components/hint";
+import { FigureTap, useFigureInfo, type Figure } from "@/components/figure-info";
 import { ScrollTop } from "@/components/scroll-top";
 import { JobCard, invalidateLawn } from "@/components/job-card";
 import { ReorderableJobs } from "@/components/reorder-jobs";
@@ -73,6 +74,7 @@ function Home() {
   const [rareMove, setRareMove] = useState<null | { iso: string; kind: "sunday" | "free"; run: (iso: string) => void }>(null);
   const [jumpToday, setJumpToday] = useState(0);
   const [jumpLate, setJumpLate] = useState(0);
+  const { openFigure, figureNode } = useFigureInfo();
   const [jumpDone, setJumpDone] = useState(0);
   const [askRain, setAskRain] = useState(false);
   const [stopReason, setStopReason] = useState("Lluvia");
@@ -229,6 +231,15 @@ function Home() {
           }}
           label={tx("Atrasados", "Late")}
           value={String(data?.stats.overdueCount ?? "—")}
+          figure={{
+            title: tx("Atrasados", "Late"),
+            body: tx(
+              "Trabajos que ya pasaron su día y siguen sin hacerse. Se quedan fijos arriba en Hoy hasta que los haces o los mueves.",
+              "Jobs whose day has passed and are still not done. They stay pinned at the top of Today until you do them or move them.",
+            ),
+            topic: "hoy",
+          }}
+          onFigure={openFigure}
           hint={tx("Se quedan fijos arriba en Hoy", "They stay pinned at the top of Today")}
           tone="late"
           warn={(data?.stats.overdueCount ?? 0) > 0}
@@ -240,6 +251,15 @@ function Home() {
           hash="lista"
           label={tx("Por cobrar", "To collect")}
           value={data ? money(data.stats.outstanding) : "—"}
+          figure={{
+            title: tx("Por cobrar", "To collect"),
+            body: tx(
+              "Todo lo que te deben hoy: la suma de los saldos de tus clientes activos. Los archivados y los de la lista negra no cuentan.",
+              "Everything you are owed today: the sum of your active clients' balances. Archived clients and the blacklist do not count.",
+            ),
+            topic: "por-cobrar",
+          }}
+          onFigure={openFigure}
           hint={tx("Toca para ver esos clientes", "Tap to see those clients")}
           tone="cut"
           icon={<Wallet className="size-4" />}
@@ -505,6 +525,7 @@ function Home() {
         onConfirm={() => rainMut.mutate()}
         onCancel={() => setAskRain(false)}
       />
+      {figureNode}
     </AppShell>
   );
 }
@@ -814,6 +835,8 @@ function StatLink({
   tone,
   warn,
   icon,
+  figure,
+  onFigure,
 }: {
   to?: "/agenda" | "/cobros" | "/clientes";
   search?: Record<string, string>;
@@ -825,6 +848,8 @@ function StatLink({
   tone: "today" | "late" | "money" | "done" | "due" | "soil" | "cut";
   warn?: boolean;
   icon: ReactNode;
+  figure?: Figure;
+  onFigure?: (fig: Figure) => void;
 }) {
   // Stat skin: the old 4px left bar stays as a transparent spacer (same metrics);
   // the tone rides in --stat-tone (hairline contour, icon chip, label ink).
@@ -861,11 +886,33 @@ function StatLink({
           tone === "today" && "text-today",
         )}
       >
-        {value}
+        {figure && onFigure ? (
+          <FigureTap label={label} onTap={() => onFigure(figure)} className="pointer-events-auto">
+            {value}
+          </FigureTap>
+        ) : (
+          value
+        )}
       </p>
       <p className="bz-stat-sub mt-1 text-xs leading-snug text-muted">{hint}</p>
     </>
   );
+  // 1.6.34 (censo A.1/A.2): con cifra que se explica, la tarjeta se
+  // parte en dos gestos — el fondo entero sigue llevando a su sitio
+  // (enlace estirado) y la cifra, encima, abre su tarjeta. Sin cifra,
+  // la tarjeta es la de siempre, intacta.
+  if (figure && onFigure) {
+    return (
+      <div className={cn(className, "relative")}>
+        {to ? (
+          <Link to={to} search={search as never} hash={hash} className="absolute inset-0 z-0 rounded-xl" aria-label={label} />
+        ) : (
+          <button type="button" onClick={onPress} className="absolute inset-0 z-0 rounded-xl" aria-label={label} />
+        )}
+        <div className="pointer-events-none relative z-10">{inner}</div>
+      </div>
+    );
+  }
   if (onPress || !to) {
     return (
       <button type="button" onClick={onPress} className={className}>

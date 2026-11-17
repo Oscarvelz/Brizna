@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ConfirmLink } from "@/components/confirm-link";
 import { ContactIcons } from "@/components/contact-icons";
 import { CueChip } from "@/components/cue-chip";
+import { FigureTap, useFigureInfo } from "@/components/figure-info";
 import { useDensity, useQuadCols } from "@/components/density-toggle";
 import { MessageComposer, WhatsAppButton } from "@/components/message-composer";
 import { MethodField } from "@/components/method-field";
@@ -48,6 +49,15 @@ export function JobCard({
   const today = todayISO();
   const push = useUndo((s) => s.push);
   const rare = useRareDay();
+  const { openFigure, figureNode } = useFigureInfo();
+  const priceFigure = {
+    title: tx("Precio del trabajo", "Job price"),
+    body: tx(
+      "El precio de este trabajo: el que tenía el cliente cuando se creó. Si le cambias el precio después, los cortes pendientes de hoy en adelante toman el nuevo; los atrasados y los ya hechos guardan el de entonces.",
+      "This job's price: the one the client had when it was created. If you change his price later, pending cuts from today on take the new one; overdue and finished jobs keep the old one.",
+    ),
+    topic: "precio",
+  };
   const [sure, setSure] = useState<null | "paid" | "owe" | "abono">(null);
   const [rarePost, setRarePost] = useState<null | { iso: string; kind: "sunday" | "free" }>(null);
   const [askDone, setAskDone] = useState(false);
@@ -709,7 +719,11 @@ export function JobCard({
                 {live.status === "done" ? <Check className="size-3.5 shrink-0 text-done" strokeWidth={3} aria-label={tx("Hecho", "Done")} /> : null}
                 {job.scheduledDate ? formatDay(job.scheduledDate, "d MMM") : ""}
               </span>
-              <span className="bz-jq-price">{money(job.amount)}</span>
+              <span className="bz-jq-price">
+                <FigureTap label={tx("Precio del trabajo", "Job price")} onTap={() => openFigure(priceFigure)}>
+                  {money(job.amount)}
+                </FigureTap>
+              </span>
             </p>
             {cols === 2 && postponed ? (
               <Button size="sm" variant="outline" className="mt-1.5 h-8 w-full px-1 text-xs" onClick={() => setAskReturn(true)}>
@@ -867,7 +881,9 @@ export function JobCard({
               media ? "text-[1.0625rem] -translate-y-px" : "text-[1.1875rem]",
             )}
           >
-            {money(job.amount)}
+            <FigureTap label={tx("Precio del trabajo", "Job price")} onTap={() => openFigure(priceFigure)}>
+              {money(job.amount)}
+            </FigureTap>
           </span>
         </div>
         {/* 1.5.25 (Oscar): the line opens with a super-tiny scissors, quiet (fg/50), «no llamativo,
@@ -1008,6 +1024,7 @@ export function JobCard({
     <div className={cn("absolute -top-4 z-20", media ? "right-0.5" : "right-2")}>{pinButton}</div>
     </div>
     {dialogs}
+    {figureNode}
     {showStatus ? <StatusInfoCard job={job} today={today} onClose={() => setShowStatus(false)} /> : null}
     </>
   );

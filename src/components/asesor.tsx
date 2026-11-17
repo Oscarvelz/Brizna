@@ -26,6 +26,7 @@ import {
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CountUp, useArrived } from "@/components/cifras-visuals";
 import { MessageComposer } from "@/components/message-composer";
+import { FigureTap, useFigureInfo, type Figure } from "@/components/figure-info";
 import { money } from "@/lib/format";
 import { useTx } from "@/lib/i18n";
 import {
@@ -124,6 +125,8 @@ const TONE_CLASS = { good: "is-good", warn: "is-warn", bad: "is-bad" } as const;
  *  at the value and a static soft glow inside. The arc draws once from 0 (ease-out, no overshoot); reduced motion
  *  shows it drawn. The big serif number, "/100" and the band pill sit inside. */
 function ScoreGauge({ score, tone, word }: { score: number; tone: "good" | "warn" | "bad"; word: string }) {
+  const tx = useTx();
+  const { openFigure, figureNode } = useFigureInfo();
   const uid = useId().replace(/:/g, "");
   const size = 148;
   const c = size / 2;
@@ -170,10 +173,25 @@ function ScoreGauge({ score, tone, word }: { score: number; tone: "good" | "warn
         </g>
       </svg>
       <div className="as-dial-center">
-        <CountUp className="as-dial-num" value={score} duration={950} format={(n) => String(n)} />
-        <span className="as-dial-of">/100</span>
+        <FigureTap
+          label={tx("Puntaje", "Score")}
+          onTap={() =>
+            openFigure({
+              title: tx("Puntaje", "Score"),
+              body: tx(
+                "Tu nota del negocio, de 0 a 100. Sale de cinco chequeos: Cobro pesa 30%, Clientes 25%, Precios 15%, Agenda 15% e Ingreso fijo 15%. Con 75 o más, el negocio va bien.",
+                "Your business grade, from 0 to 100. It comes from five checks: Collecting weighs 30%, Clients 25%, Prices 15%, Schedule 15%, and Steady income 15%. At 75 or more, the business is doing well.",
+              ),
+              topic: "asesor",
+            })
+          }
+        >
+          <CountUp className="as-dial-num" value={score} duration={950} format={(n) => String(n)} />
+          <span className="as-dial-of">/100</span>
+        </FigureTap>
         <span className="as-dial-word">{word}</span>
       </div>
+      {figureNode}
     </div>
   );
 }
@@ -553,7 +571,7 @@ function PlanViz() {
   );
 }
 
-function ActionViz({ a }: { a: AdvisorAction }) {
+function ActionViz({ a, onFigure }: { a: AdvisorAction; onFigure: (fig: Figure) => void }) {
   const tx = useTx();
   if (a.kind === "collect") {
     return (
@@ -577,7 +595,23 @@ function ActionViz({ a }: { a: AdvisorAction }) {
             <span className="as-bars-name">{p.name}</span>
             <span className="as-price is-old">{usd(p.price)}</span>
             <ChevronRight aria-hidden className="as-steps-arrow" />
-            <span className="as-price is-new">{usd(p.suggested ?? p.price)}</span>
+            <span className="as-price is-new">
+              <FigureTap
+                label={tx("Precio sugerido", "Suggested price")}
+                onTap={() =>
+                  onFigure({
+                    title: tx("Precio sugerido", "Suggested price"),
+                    body: tx(
+                      "Un 15% más que su precio, redondeado a 5 y sin pasar el precio normal de patios como el suyo. Solo se sugiere a clientes de un año o más que pagan por debajo de lo normal.",
+                      "15% more than his price, rounded to 5 and never above the normal price for yards like his. It is only suggested for clients of a year or more who pay below normal.",
+                    ),
+                    topic: "asesor-pasos",
+                  })
+                }
+              >
+                {usd(p.suggested ?? p.price)}
+              </FigureTap>
+            </span>
           </li>
         ))}
       </ul>
@@ -735,8 +769,37 @@ function PeopleList({ people, r, plan, extra, kind }: { people: AdvisorPerson[];
 
 function ActionCard({ a, i, r }: { a: AdvisorAction; i: number; r: AdvisorReading }) {
   const tx = useTx();
+  const { openFigure, figureNode } = useFigureInfo();
   const [open, setOpen] = useState(false);
   const w = actionWords(a, r, tx);
+  // 1.6.34 (censo A.12–A.14): el dinero de estas tres acciones se
+  // explica al tocarlo, cada una con su cuenta verdadera.
+  const moneyFigure: Figure | null =
+    a.kind === "fill" && !a.emptyOnly
+      ? {
+          title: w.title,
+          body: tx(
+            "Lo que dejaría llenar el hueco de tu día más ligero: los patios que caben ese día cada semana, por tu precio promedio del corte, por las semanas del año.",
+            "What filling the gap on your lightest day would bring: the yards that fit that day each week, times your average cut price, times the weeks in a year.",
+          ),
+        }
+      : a.kind === "fill" && a.emptyOnly
+        ? {
+            title: w.title,
+            body: tx(
+              "Los días vacíos de las próximas dos semanas, por los patios que normalmente terminas en un día trabajado, por tu precio promedio del corte.",
+              "The empty days in the next two weeks, times the yards you usually finish on a worked day, times your average cut price.",
+            ),
+          }
+        : a.kind === "season"
+          ? {
+              title: w.title,
+              body: tx(
+                "Compara tu trabajo hecho de noviembre a febrero con el resto del año, mirando hasta dos años atrás. El dinero en juego es la diferencia entre las dos medias, por los meses de invierno que quedan.",
+                "It compares your finished work from November to February against the rest of the year, looking back up to two years. The money at stake is the difference between the two averages, times the winter months left.",
+              ),
+            }
+          : null;
   const Icon = ACT_ICON[a.kind];
   const listed = a.people.length;
   return (
@@ -747,7 +810,19 @@ function ActionCard({ a, i, r }: { a: AdvisorAction; i: number; r: AdvisorReadin
           <b className="as-act-n">{i + 1}</b>
         </span>
         <div className="as-act-fig">
-          <span className="as-act-money">{w.sign}<CountUp value={a.impact} format={usd} /></span>
+          <span className="as-act-money">
+            {moneyFigure ? (
+              <FigureTap label={w.title} onTap={() => openFigure(moneyFigure)}>
+                {w.sign}
+                <CountUp value={a.impact} format={usd} />
+              </FigureTap>
+            ) : (
+              <>
+                {w.sign}
+                <CountUp value={a.impact} format={usd} />
+              </>
+            )}
+          </span>
           <small>{w.unit}</small>
         </div>
         {/* 1.4.83 (Oscar): the overdue card wears the same tilted "!" sticker as late client cards, in its empty top-right corner. */}
@@ -755,7 +830,7 @@ function ActionCard({ a, i, r }: { a: AdvisorAction; i: number; r: AdvisorReadin
       </div>
       <p className="as-act-title">{w.title}</p>
       <p className="as-act-line">{w.line}</p>
-      <ActionViz a={a} />
+      <ActionViz a={a} onFigure={openFigure} />
       <ActionDo a={a} r={r} />
       {listed > 0 ? (
         <>
@@ -766,6 +841,7 @@ function ActionCard({ a, i, r }: { a: AdvisorAction; i: number; r: AdvisorReadin
           {open ? <PeopleList people={a.people} r={r} plan={a.typical ?? 0} extra={a.count - listed} kind={a.kind} /> : null}
         </>
       ) : null}
+      {figureNode}
     </li>
   );
 }

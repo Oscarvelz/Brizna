@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Fold } from "@/components/fold";
 import { Hint } from "@/components/hint";
+import { FigureTap, useFigureInfo } from "@/components/figure-info";
 import { Button } from "@/components/ui/button";
 import { formatLongDay, weekdayOptions } from "@/lib/format";
 import { smartHit } from "@/lib/fuzzy";
@@ -28,6 +29,7 @@ export function EffortWeek({
   const qc = useQueryClient();
   const tx = useTx();
   const rank = useCifraRank("esfuerzo");
+  const { openFigure, figureNode } = useFigureInfo();
   const [editDate, setEditDate] = useState<string | null>(null);
   const goalByDate = new Map(goals.map((g) => [g.date, g.goal]));
   const editingGoal = editDate ? (goalByDate.get(editDate) ?? null) : null;
@@ -93,6 +95,7 @@ export function EffortWeek({
       </p>
       {/* 1.4.91 (Oscar): one fixed track per day, the planned part in a faint ink, what is done in its tone,
           the goal as a small tick on the track; today = soft wash, the chosen day = primary ring. */}
+      {figureNode}
       <div className="ew-days grid grid-cols-7 gap-1.5">
         {days.map((d) => {
           const label = weekdayOptions().find((w) => w.value === d.weekday)?.short ?? "";
@@ -111,24 +114,26 @@ export function EffortWeek({
                   : "today";
           const goalPct = goal ? Math.min(100, Math.round((goal / max) * 100)) : 0;
           return (
-            <button
-              key={d.date}
-              type="button"
-              onClick={() => setEditDate(d.date)}
-              aria-pressed={editDate === d.date}
-              className={cn("ew-day touch-manipulation", isToday && "is-today", editDate === d.date && "is-sel")}
-            >
-              <span className="ew-track" aria-hidden>
-                {plannedPct ? <span className="ew-plan" style={{ height: `${plannedPct}%` }} /> : null}
-                {donePct ? (
-                  <span
-                    className={cn("ew-done", vsGoal === "below" ? "is-below" : vsGoal === "today" ? "is-today" : "is-ok")}
-                    style={{ height: `${donePct}%` }}
-                  />
-                ) : null}
-                {goal ? <span className={cn("ew-goal", d.date > today && "is-ahead")} style={{ bottom: `${goalPct}%` }} /> : null}
-              </span>
-              <span className="ew-lbl">{label}</span>
+            <div key={d.date} className={cn("ew-day", isToday && "is-today", editDate === d.date && "is-sel")}>
+              <button
+                type="button"
+                onClick={() => setEditDate(d.date)}
+                aria-pressed={editDate === d.date}
+                aria-label={label}
+                className="flex touch-manipulation flex-col items-center gap-[0.3125rem]"
+              >
+                <span className="ew-track" aria-hidden>
+                  {plannedPct ? <span className="ew-plan" style={{ height: `${plannedPct}%` }} /> : null}
+                  {donePct ? (
+                    <span
+                      className={cn("ew-done", vsGoal === "below" ? "is-below" : vsGoal === "today" ? "is-today" : "is-ok")}
+                      style={{ height: `${donePct}%` }}
+                    />
+                  ) : null}
+                  {goal ? <span className={cn("ew-goal", d.date > today && "is-ahead")} style={{ bottom: `${goalPct}%` }} /> : null}
+                </span>
+                <span className="ew-lbl">{label}</span>
+              </button>
               <span
                 className={cn(
                   "ew-num",
@@ -137,10 +142,28 @@ export function EffortWeek({
                   vsGoal === "today" && "text-pending",
                 )}
               >
-                {d.done}
-                {d.pending > 0 ? <span className="ew-of">/{planned}</span> : null}
+                <button type="button" className="touch-manipulation" onClick={() => setEditDate(d.date)} aria-label={label}>
+                  {d.done}
+                </button>
+                {d.pending > 0 ? (
+                  <FigureTap
+                    className="ew-of"
+                    label={tx("Hechos y agendados", "Done and scheduled")}
+                    onTap={() =>
+                      openFigure({
+                        title: tx("Hechos / agendados", "Done / scheduled"),
+                        body: tx(
+                          "El segundo número no es tu meta: son los patios agendados para ese día, hechos y por hacer. Tu meta es la rayita de la barra.",
+                          "The second number is not your goal: it is the yards scheduled for that day, done and pending. Your goal is the little tick on the bar.",
+                        ),
+                      })
+                    }
+                  >
+                    /{planned}
+                  </FigureTap>
+                ) : null}
               </span>
-            </button>
+            </div>
           );
         })}
       </div>
