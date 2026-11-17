@@ -205,6 +205,14 @@ function SortMenu({ value, onChange }: { value: ClientSort; onChange: (next: Cli
 
 function ClientesPage() {
   const tx = useTx();
+  const { openFigure, figureNode } = useFigureInfo();
+  const roundFigure = {
+    title: tx("Por ronda de cortes", "Per round of cuts"),
+    body: tx(
+      "La suma del precio por corte de los clientes que se ven en esta lista: lo que deja una ronda completa de cortes con ellos.",
+      "The sum of the price per cut of the clients shown in this list: what one full round of cuts with them brings.",
+    ),
+  };
   const search = useSearch({ from: "/clientes" });
   const navigate = useNavigate({ from: "/clientes" });
   const density = useDensity();
@@ -545,12 +553,18 @@ function ClientesPage() {
         </div>
       ) : null}
 
+      {figureNode}
       <div className="bz-clientes-tallyrow mb-3 grid gap-2">
         <p className="bz-tally">
           {clients.length} {clients.length === 1 ? tx("cliente", "client") : tx("clientes", "clients")}
-          {filter === "regular" || filter === "active"
-            ? ` · ${money(totalPrice)} ${tx("por ronda de cortes", "per round of cuts")}`
-            : null}
+          {filter === "regular" || filter === "active" ? (
+            <>
+              {" · "}
+              <FigureTap label={roundFigure.title} onTap={() => openFigure(roundFigure)}>
+                {money(totalPrice)} {tx("por ronda de cortes", "per round of cuts")}
+              </FigureTap>
+            </>
+          ) : null}
           {filter === "triple" ? tx(" con 3 o más cortes este mes", " with 3 or more cuts this month") : null}
           <Hint topic={inArchive ? "archivo" : "lista-clientes"} />
         </p>

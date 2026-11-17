@@ -248,13 +248,38 @@ function CobrosPage() {
   );
   const cutsLine = (n: number) => `${n} ${n === 1 ? tx("corte", "cut") : tx("cortes", "cuts")}`;
   const esperaCount = (data?.clients ?? []).filter((c) => inEspera(c)).length;
-  const viewBand: Partial<Record<CobrosView, { icon: ReactNode; cls: string; title: string; sub: string; value: string }>> = {
+  // Census B figures: the band's numbers explain themselves on tap.
+  const cutsFigure = {
+    title: tx("Trabajo ya hecho", "Work already done"),
+    body: tx(
+      "Cuenta todos los trabajos hechos: cortes, extras y de una vez.",
+      "It counts every finished job: cuts, extras, and one-time jobs.",
+    ),
+  };
+  const abonoFigure = {
+    title: tx("Abonado", "Partial paid"),
+    body: tx(
+      "Lo abonado este año por clientes que todavía deben. Se reconoce porque la nota del pago dice «abono».",
+      "What has been partially paid this year by clients who still owe. It counts when the payment's note says \u201Cabono\u201D.",
+    ),
+    topic: "por-cobrar",
+  };
+  const esperaFigure = {
+    title: tx("En espera", "Waiting"),
+    body: tx(
+      "Los clientes que te deben y esperan su día de pago, más los de alto riesgo y los que están en pausa.",
+      "Clients who owe you and are waiting for their pay day, plus the high-risk ones and the paused ones.",
+    ),
+    topic: "espera",
+  };
+  const viewBand: Partial<Record<CobrosView, { icon: ReactNode; cls: string; title: string; sub: string; value: string; subFigure?: typeof cutsFigure; valueFigure?: typeof cutsFigure }>> = {
     abonos: {
       icon: <Wallet className="size-5 shrink-0" />,
       cls: "border-due bg-due-bg",
       title: tx("Abonado", "Partial paid"),
       sub: `${abonoPeople} ${abonoPeople === 1 ? tx("persona con abono", "person with a partial payment") : tx("personas con abono", "people with partial payments")}`,
       value: data ? money(abonoSum) : "—",
+      valueFigure: abonoFigure,
     },
     collectedWeek: {
       icon: <BadgeCheck className="size-5 shrink-0" />,
@@ -283,6 +308,7 @@ function CobrosPage() {
       title: tx("Trabajo ya hecho", "Work already done"),
       sub: `${weekRange} · ${cutsLine(data?.totals.cutsWeek ?? 0)}`,
       value: data ? money(data.totals.completedWeek) : "—",
+      subFigure: cutsFigure,
     },
     doneMonth: {
       icon: <Check className="size-5 shrink-0" />,
@@ -290,6 +316,7 @@ function CobrosPage() {
       title: tx("Trabajo ya hecho", "Work already done"),
       sub: `${monthName} · ${cutsLine(data?.totals.cutsMonth ?? 0)}`,
       value: data ? money(data.totals.completedMonth) : "—",
+      subFigure: cutsFigure,
     },
     doneYear: {
       icon: <Check className="size-5 shrink-0" />,
@@ -297,6 +324,7 @@ function CobrosPage() {
       title: tx("Trabajo ya hecho", "Work already done"),
       sub: `${year} · ${cutsLine(data?.totals.cutsYear ?? 0)}`,
       value: data ? money(data.totals.completedYear) : "—",
+      subFigure: cutsFigure,
     },
     waived: {
       icon: <HandHeart className="size-5 shrink-0" />,
@@ -311,6 +339,7 @@ function CobrosPage() {
       title: tx("En espera", "Waiting"),
       sub: tx("Su dinero sin pagar sigue en Por cobrar", "Their unpaid money stays in To collect"),
       value: `${esperaCount}`,
+      valueFigure: esperaFigure,
     },
   };
 
@@ -368,7 +397,15 @@ function CobrosPage() {
               resetScroll={false}
               className={cn("-mx-1 block rounded-lg px-2 py-1.5 touch-manipulation", view === "abonos" && "bz-due-on bg-surface/70")}
             >
-              <p className="font-display text-base font-semibold tabular-nums text-due">{data ? money(abonoSum) : "—"}</p>
+              <p className="font-display text-base font-semibold tabular-nums text-due">
+                {data ? (
+                  <FigureTap label={abonoFigure.title} onTap={() => openFigure(abonoFigure)}>
+                    {money(abonoSum)}
+                  </FigureTap>
+                ) : (
+                  "—"
+                )}
+              </p>
               <p className="text-[13px] font-semibold text-fg">
                 {abonoPeople} {abonoPeople === 1 ? tx("persona", "person") : tx("personas", "people")}
               </p>
@@ -402,9 +439,13 @@ function CobrosPage() {
             <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
               <span className="bz-fold-fit min-w-0">{tx("En espera", "Waiting")}</span>
               <span className="bz-fold-badge">
-                {data
-                  ? String(data.clients.filter((c) => inEspera(c)).length)
-                  : "—"}
+                {data ? (
+                  <FigureTap label={esperaFigure.title} onTap={() => openFigure(esperaFigure)}>
+                    {String(data.clients.filter((c) => inEspera(c)).length)}
+                  </FigureTap>
+                ) : (
+                  "—"
+                )}
               </span>
             </span>
           }
@@ -446,6 +487,7 @@ function CobrosPage() {
         monthCuts={data?.totals.cutsMonth ?? 0}
         yearCuts={data?.totals.cutsYear ?? 0}
         current={view}
+        onFigure={openFigure}
       />
 
           </>
@@ -477,9 +519,25 @@ function CobrosPage() {
             {viewBand[view]!.icon}
             <div className="min-w-0">
               <p className="font-display text-base font-semibold leading-tight">{viewBand[view]!.title}</p>
-              <p className="text-xs leading-snug text-muted">{viewBand[view]!.sub}</p>
+              <p className="text-xs leading-snug text-muted">
+                {viewBand[view]!.subFigure ? (
+                  <FigureTap label={viewBand[view]!.subFigure!.title} onTap={() => openFigure(viewBand[view]!.subFigure!)}>
+                    {viewBand[view]!.sub}
+                  </FigureTap>
+                ) : (
+                  viewBand[view]!.sub
+                )}
+              </p>
             </div>
-            <p className="ml-auto shrink-0 font-display text-lg font-semibold tabular-nums">{viewBand[view]!.value}</p>
+            <p className="ml-auto shrink-0 font-display text-lg font-semibold tabular-nums">
+              {viewBand[view]!.valueFigure ? (
+                <FigureTap label={viewBand[view]!.valueFigure!.title} onTap={() => openFigure(viewBand[view]!.valueFigure!)}>
+                  {viewBand[view]!.value}
+                </FigureTap>
+              ) : (
+                viewBand[view]!.value
+              )}
+            </p>
           </div>
         ) : null}
         {view !== "owing" ? (
@@ -746,6 +804,7 @@ function WorkNest({
   monthCuts,
   yearCuts,
   current,
+  onFigure,
 }: {
   weekAmount: string;
   monthAmount: string;
@@ -754,8 +813,16 @@ function WorkNest({
   monthCuts: number;
   yearCuts: number;
   current: CobrosView;
+  onFigure: (f: Figure) => void;
 }) {
   const tx = useTx();
+  const cutsFigure = {
+    title: tx("Trabajo ya hecho", "Work already done"),
+    body: tx(
+      "Cuenta todos los trabajos hechos: cortes, extras y de una vez.",
+      "It counts every finished job: cuts, extras, and one-time jobs.",
+    ),
+  };
   return (
     <Fold
       id="cob-hecho"
@@ -775,7 +842,11 @@ function WorkNest({
         label={tx("Semana", "Week")}
         value={
           <>
-            <span className="bz-row-sub">{weekCuts} {weekCuts === 1 ? tx("corte", "cut") : tx("cortes", "cuts")}</span>
+            <span className="bz-row-sub">
+              <FigureTap label={cutsFigure.title} onTap={() => onFigure(cutsFigure)}>
+                {weekCuts} {weekCuts === 1 ? tx("corte", "cut") : tx("cortes", "cuts")}
+              </FigureTap>
+            </span>
             <span className="bz-row-amt">{weekAmount}</span>
           </>
         }
@@ -787,7 +858,11 @@ function WorkNest({
         label={tx("Mes", "Month")}
         value={
           <>
-            <span className="bz-row-sub">{monthCuts} {monthCuts === 1 ? tx("corte", "cut") : tx("cortes", "cuts")}</span>
+            <span className="bz-row-sub">
+              <FigureTap label={cutsFigure.title} onTap={() => onFigure(cutsFigure)}>
+                {monthCuts} {monthCuts === 1 ? tx("corte", "cut") : tx("cortes", "cuts")}
+              </FigureTap>
+            </span>
             <span className="bz-row-amt">{monthAmount}</span>
           </>
         }
@@ -799,7 +874,11 @@ function WorkNest({
         label={tx("Año", "Year")}
         value={
           <>
-            <span className="bz-row-sub">{yearCuts} {yearCuts === 1 ? tx("corte", "cut") : tx("cortes", "cuts")}</span>
+            <span className="bz-row-sub">
+              <FigureTap label={cutsFigure.title} onTap={() => onFigure(cutsFigure)}>
+                {yearCuts} {yearCuts === 1 ? tx("corte", "cut") : tx("cortes", "cuts")}
+              </FigureTap>
+            </span>
             <span className="bz-row-amt">{yearAmount}</span>
           </>
         }

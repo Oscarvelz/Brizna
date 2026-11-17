@@ -1,3 +1,4 @@
+import { FigureTap, useFigureInfo } from "@/components/figure-info";
 import { WideSplit } from "@/components/wide-layout";
 import { moneyFromText } from "@/components/money-calc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -940,6 +941,15 @@ function useFoldMemory(key: string) {
 /** Movimientos (1.4.75): every money movement on this client, closed by default and remembered per client. */
 function MovesBlock({ clientId, payments, paymentsTotal = 0, loading = false }: { clientId: number; payments: PaymentRow[]; paymentsTotal?: number; loading?: boolean }) {
   const tx = useTx();
+  const { openFigure, figureNode } = useFigureInfo();
+  const movesFigure = {
+    title: tx("Movimientos", "Activity"),
+    body: tx(
+      "La suma de los movimientos cargados aquí: la ficha trae hasta 200. Si el cliente tiene más, el total completo es el «Cobrado en total» de arriba.",
+      "The sum of the activity loaded here: the file brings up to 200 entries. If the client has more, the full total is the \u201CCollected in total\u201D above.",
+    ),
+    topic: "movimientos",
+  };
   const [open, toggle] = useFoldMemory(`ols-mov-${clientId}`);
   const cashIn = payments
     .filter((p) => p.kind === "paid" || p.kind === "prepaid")
@@ -953,14 +963,15 @@ function MovesBlock({ clientId, payments, paymentsTotal = 0, loading = false }: 
         icon={<Wallet aria-hidden />}
         chipLoading={loading}
         chip={
-          <>
+          <FigureTap label={movesFigure.title} onTap={() => openFigure(movesFigure)}>
             {payments.length}
             <span className="bz-sep">{FREQ_SEP}</span>
             {money(cashIn)}
-          </>
+          </FigureTap>
         }
         topic="movimientos"
       />
+      {figureNode}
       {open && loading ? (
         <ShimmerRows n={3} />
       ) : open ? (

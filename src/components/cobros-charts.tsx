@@ -1,3 +1,4 @@
+import { FigureTap, useFigureInfo } from "@/components/figure-info";
 import { masonryCols, useMasonry, usePageWidth } from "@/components/wide-layout";
 import { useQuery } from "@tanstack/react-query";
 import { STUDY_GC } from "@/lib/study-warm";
@@ -52,6 +53,15 @@ export function CobrosCharts({
 }) {
   const { t, locale } = useI18n();
   const tx = useTx();
+  const { openFigure, figureNode } = useFigureInfo();
+  const stopsFigure = {
+    title: tx("Días parados", "Stopped days"),
+    body: tx(
+      "Los días que paraste este año, desde el 1 de enero, agrupados por la razón que quedó guardada.",
+      "The days you stopped this year, since January 1, grouped by the reason that was saved.",
+    ),
+    topic: "parar-dia",
+  };
   // Large screens: the sections flow into steady columns (phones keep one column).
   const box = useRef<HTMLDivElement | null>(null);
   // 1.4.98 (Oscar, tablet): "Por qué se pospuso" sits right under "Cada año" (it was alone at the foot of the middle column).
@@ -70,6 +80,7 @@ export function CobrosCharts({
   if (q.isLoading || q.isError || !data) {
     return (
       <div ref={box} className={cn("grid gap-4", !embedded && "mb-6")}>
+        {figureNode}
         {effort}
         {extra}
         {q.isLoading ? (
@@ -141,7 +152,9 @@ export function CobrosCharts({
             </dt>
             <dd className="cif-ht-val">
               <span className="cif-ht-ic" aria-hidden><CloudRain /></span>
-              {String(data.stopReasons.reduce((n, row) => n + row.count, 0))}
+              <FigureTap label={stopsFigure.title} onTap={() => openFigure(stopsFigure)}>
+                {String(data.stopReasons.reduce((n, row) => n + row.count, 0))}
+              </FigureTap>
               {data.stopReasons.map((row) => (
                 <span key={row.reason} className="cif-ht-chip">
                   {data.stopReasons.length > 1 ? `${row.count} ` : ""}

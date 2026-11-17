@@ -490,8 +490,16 @@ function Bars({ rows }: { rows: { key: string | number; label: string; value: nu
   );
 }
 
-function WeekViz({ week, light }: { week: AdvisorWeekday[]; light: AdvisorWeekday }) {
+function WeekViz({ week, light, onFigure }: { week: AdvisorWeekday[]; light: AdvisorWeekday; onFigure?: (f: Figure) => void }) {
   const tx = useTx();
+  const weekFigure = {
+    title: tx("Carga y capacidad", "Load and capacity"),
+    body: tx(
+      "Carga: los trabajos agendados de ese día en las próximas 4 semanas, repartidos por semana. Capacidad: tu meta de ese día — o, si no tienes meta, lo más que has hecho ese día al menos dos veces en 90 días.",
+      "Load: the jobs booked for that weekday over the next 4 weeks, spread per week. Capacity: your goal for that day — or, with no goal, the most you have done on that weekday at least twice in 90 days.",
+    ),
+    topic: "asesor-chequeos",
+  };
   const arrived = useArrived();
   const max = Math.max(1, ...week.map((w) => Math.max(w.capacity, w.load)));
   return (
@@ -500,7 +508,17 @@ function WeekViz({ week, light }: { week: AdvisorWeekday[]; light: AdvisorWeekda
         const on = w.dow === light.dow;
         return (
           <div key={w.dow} className={cn("as-week-col", on && "is-light")}>
-            <span className="as-week-num">{Math.round(w.load)}<small>/{w.capacity}</small></span>
+            <span className="as-week-num">
+              {onFigure ? (
+                <FigureTap label={weekFigure.title} onTap={() => onFigure(weekFigure)}>
+                  {Math.round(w.load)}<small>/{w.capacity}</small>
+                </FigureTap>
+              ) : (
+                <>
+                  {Math.round(w.load)}<small>/{w.capacity}</small>
+                </>
+              )}
+            </span>
             <span className="as-week-bar">
               <span className="as-week-cap" style={{ height: `${(w.capacity / max) * 100}%` }} />
               <span
@@ -657,7 +675,7 @@ function ActionViz({ a, onFigure }: { a: AdvisorAction; onFigure: (fig: Figure) 
     );
   }
   if (a.kind === "trend" && a.weeks) return <TrendViz weeks={a.weeks} />;
-  if (a.kind === "fill" && a.week && a.light) return <WeekViz week={a.week} light={a.light} />;
+  if (a.kind === "fill" && a.week && a.light) return <WeekViz week={a.week} light={a.light} onFigure={onFigure} />;
   if (a.kind === "plans") return <PlanViz />;
   if (a.kind === "season" && a.months) return <SeasonViz months={a.months} />;
   return null;

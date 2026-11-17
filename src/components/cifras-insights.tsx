@@ -1,3 +1,4 @@
+import { FigureTap, useFigureInfo } from "@/components/figure-info";
 import { useQuery } from "@tanstack/react-query";
 import { STUDY_GC } from "@/lib/study-warm";
 import { Link } from "@tanstack/react-router";
@@ -84,6 +85,14 @@ function Ring({ collected, done, planned, empty }: { collected: number; done: nu
 
 function PulseSection({ data, query }: { data: CifrasInsights; query: string }) {
   const tx = useTx();
+  const { openFigure, figureNode } = useFigureInfo();
+  const owedFigure = {
+    title: tx("Te deben", "Owed to you"),
+    body: tx(
+      "Lo que te deben en total: solo saldos a tu favor, de clientes activos y fuera de la lista negra. Lo que alguien tenga de adelanto no resta aquí.",
+      "Everything owed to you: only balances in your favor, from active clients not on the blacklist. Anyone's credit balance does not subtract here.",
+    ),
+  };
   const rank = useCifraRank("pulso");
   const p = data.pulse;
   const title = tx("Este mes", "This month");
@@ -94,6 +103,8 @@ function PulseSection({ data, query }: { data: CifrasInsights; query: string }) 
   const left = p.restValue + p.lateValue;
   const prevName = monthName(addMonthKey(data.today.slice(0, 7), -1));
   return (
+    <>
+    {figureNode}
     <Fold
       id="cif-pulso"
       style={secStyle(rank)}
@@ -150,7 +161,9 @@ function PulseSection({ data, query }: { data: CifrasInsights; query: string }) 
       <div className="cif-tiles cif-rise" style={{ animationDelay: "80ms" }}>
         <Link to="/cobros" className="cif-tile cif-tile-link" data-present="estudio-te-deben">
           <span className="cif-tile-label">{tx("Te deben", "Owed to you")}</span>
-          <CountUp className={cn("cif-tile-value", p.outstanding > 0 && "text-hold")} value={p.outstanding} format={money} />
+          <FigureTap label={owedFigure.title} onTap={() => openFigure(owedFigure)}>
+            <CountUp className={cn("cif-tile-value", p.outstanding > 0 && "text-hold")} value={p.outstanding} format={money} />
+          </FigureTap>
           <span className="cif-tile-note">{p.owingPeople} {tx(p.owingPeople === 1 ? "persona" : "personas", p.owingPeople === 1 ? "person" : "people")}<ChevronRight aria-hidden /></span>
         </Link>
         <div className="cif-tile">
@@ -177,6 +190,7 @@ function PulseSection({ data, query }: { data: CifrasInsights; query: string }) 
       </div>
       </div>
     </Fold>
+    </>
   );
 }
 
@@ -592,6 +606,15 @@ function Spark({ values, className }: { values: number[]; className?: string }) 
 
 function PriceSection({ data, query }: { data: CifrasInsights; query: string }) {
   const tx = useTx();
+  const { openFigure, figureNode } = useFigureInfo();
+  const deltaFigure = {
+    title: tx("Precio por trabajo", "Price per job"),
+    body: tx(
+      "Compara el corte promedio de los últimos 6 meses con el de los 6 anteriores, promediando mes a mes. No es el promedio de arriba partido en dos.",
+      "It compares the average cut of the last 6 months with the 6 before, averaged month by month. It is not the average above split in two.",
+    ),
+    topic: "precio-trabajo",
+  };
   const rank = useCifraRank("precio");
   const pr = data.price;
   const title = tx("Precio por trabajo", "Price per job");
@@ -602,6 +625,8 @@ function PriceSection({ data, query }: { data: CifrasInsights; query: string }) 
   const secondHalf = perMonth.slice(6).filter((v) => v > 0);
   const avg = (a: number[]) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0);
   return (
+    <>
+    {figureNode}
     <Fold
       id="cif-precio"
       style={secStyle(rank)}
@@ -618,7 +643,9 @@ function PriceSection({ data, query }: { data: CifrasInsights; query: string }) 
               <p className="cif-figure"><CountUp value={pr.avgCut} format={money} /></p>
               {firstHalf.length && secondHalf.length ? (
                 <p className="text-xs text-muted">
-                  <Delta now={avg(secondHalf)} before={avg(firstHalf)} tx={tx} note={tx("últimos 6 meses vs anteriores", "last 6 months vs before")} />
+                  <FigureTap label={deltaFigure.title} onTap={() => openFigure(deltaFigure)}>
+                    <Delta now={avg(secondHalf)} before={avg(firstHalf)} tx={tx} note={tx("últimos 6 meses vs anteriores", "last 6 months vs before")} />
+                  </FigureTap>
                 </p>
               ) : null}
             </div>
@@ -634,6 +661,7 @@ function PriceSection({ data, query }: { data: CifrasInsights; query: string }) 
         <Empty text={tx("El precio promedio aparece con los primeros trabajos hechos.", "The average price shows up with the first jobs done.")} />
       )}
     </Fold>
+    </>
   );
 }
 
