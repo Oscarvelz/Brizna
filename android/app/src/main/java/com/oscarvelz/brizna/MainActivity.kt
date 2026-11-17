@@ -282,6 +282,12 @@ class MainActivity : Activity() {
                 if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     cb.invoke(origin, true, false); return
                 }
+                // android-18 (Prejuicio R6, R7E-2): la petición anterior
+                // se retira invocando su callback (denegada), como hacen
+                // fileCb y webMicAsk con las suyas — sobrescribirla sin
+                // invocarla dejaba la geolocalización de aquel origen
+                // esperando para siempre.
+                geoAsk?.let { it.second.invoke(it.first, false, false) }
                 geoAsk = origin to cb
                 requestPermissions(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION), RQ_GEO)
             }

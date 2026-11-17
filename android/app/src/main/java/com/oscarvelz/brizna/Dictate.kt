@@ -68,7 +68,12 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
     private var plan = ArrayList<Step>()
     private var heard = false
     private var stopping = false
-    private var busyRetry = false
+    // android-18 (Prejuicio R6, R7E-1): el reintento por «ocupado» es
+    // POR PASO, no por sesión — antes una sola bandera servía para
+    // toda la cascada: un segundo ERROR_RECOGNIZER_BUSY en cualquier
+    // paso posterior terminaba en «busy» al instante, saltándose los
+    // pasos restantes y el peldaño de la pantalla del sistema.
+    private var busyRetryStep: String? = null
     /** android-7: the last SpeechRecognizer error code seen this session (0 = none); it rides in the failure reply. */
     private var lastCode = 0
     /** android-8: every step's error, in plan order ("google:11"), so a failure shows the whole chain. */
@@ -89,7 +94,7 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
         cancel()
         id = newId
         lang = language.ifBlank { "es-US" }
-        heard = false; stopping = false; busyRetry = false; lastCode = 0; attempts.clear(); triedSystem = false; offlinePoisoned = false
+        heard = false; stopping = false; busyRetryStep = null; lastCode = 0; attempts.clear(); triedSystem = false; offlinePoisoned = false
         plan = ArrayList()
         if (Build.VERSION.SDK_INT >= 31 && runCatching { SpeechRecognizer.isOnDeviceRecognitionAvailable(ctx) }.getOrDefault(false)) plan.add(Step(null, onDevice = true, offline = true, label = "device"))
         if (SpeechRecognizer.isRecognitionAvailable(ctx)) {
@@ -204,7 +209,7 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
                     SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> finish(fail("denied"))
                     SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> {
                         // another app (or our last session) still holds it: try once more after a moment
-                        if (!busyRetry) { busyRetry = true; plan.add(0, step); runCatching { rec?.cancel() }; main.postDelayed({ if (id == cur) next() }, 400) }
+                        if (busyRetryStep != step.label) { busyRetryStep = step.label; plan.add(0, step); runCatching { rec?.cancel() }; main.postDelayed({ if (id == cur) next() }, 400) }
                         else finish(fail("busy"))
                     }
                     SpeechRecognizer.ERROR_CLIENT -> if (stopping) finish(fail("no-speech")) else if (!heard) later(cur) else finish(fail("failed"))
