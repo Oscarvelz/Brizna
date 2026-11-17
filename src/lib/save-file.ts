@@ -201,6 +201,20 @@ function stampBase() {
   return stampBaseAt(new Date());
 }
 
+/* 1.6.45 (Prejuicio R12, R13C-3): la marca de intento — cinco
+ * caracteres al azar que viajan tras los segundos del sello. La
+ * unicidad del sello ya no cuelga solo de mirar la carpeta: dos
+ * aparatos en el mismo segundo de pared, con la sync aún sin
+ * traer los archivos del primero a la vista del segundo, ya no
+ * comparten nombre (la colisión exigiría el mismo segundo Y la
+ * misma marca entre ~60 millones). El sello del nombre se sigue
+ * leyendo igual: stampOf busca la fecha-hora sin anclar, y la
+ * familia de la poda solo pide el prefijo y la extensión. */
+function attemptSuffix() {
+  const n = crypto.getRandomValues(new Uint32Array(1))[0]!;
+  return n.toString(36).slice(0, 5).padStart(5, "0");
+}
+
 function bytesBlob(bytes: Uint8Array, mime: string) {
   const raw = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(raw).set(bytes);
@@ -323,14 +337,37 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
   // de un paquete anterior ya cantado.
   let stamp = stampBase();
   if (dir) {
+    // 1.6.45 (Prejuicio R12, R13C-2/R13C-3): la consulta distingue
+    // sus tres respuestas — un nombre solo está LIBRE cuando la
+    // carpeta dice NotFoundError; «ocupado» y «no pude mirar»
+    // (parpadeo, permiso, sync a medio despertar) hacen avanzar el
+    // sello igual, porque la carpeta que parpadea al mirar es la
+    // misma que falla al escribir. Y el nombre lleva la marca de
+    // intento (attemptSuffix): la vista de otro aparato puede ir
+    // por detrás de la carpeta de verdad sin que nada haya errado,
+    // y contra esa vista ninguna consulta protege — la marca sí.
+    // El avance tiene techo: diez minutos de segundos ocupados o
+    // ilegibles y la copia falla en voz alta en vez de compartir
+    // un sello y arriesgar el paquete ya cantado de otro.
+    const suffix = attemptSuffix();
     const when = new Date();
+    let advances = 0;
     for (;;) {
       let clash = false;
       for (const ext of [".json", ".pdf", ".xls"]) {
-        const taken = await dir.getFileHandle(`${stamp}${ext}`, { create: false }).catch(() => null);
-        if (taken) { clash = true; break; }
+        let state: "free" | "taken" | "unknown" = "free";
+        try {
+          await dir.getFileHandle(`${stamp}-${suffix}${ext}`, { create: false });
+          state = "taken";
+        } catch (e) {
+          const err = e as { name?: string; message?: string };
+          state = err?.name === "NotFoundError" || err?.message === "NotFoundError" ? "free" : "unknown";
+        }
+        if (state !== "free") { clash = true; break; }
       }
-      if (!clash) break;
+      if (!clash) { stamp = `${stamp}-${suffix}`; break; }
+      advances += 1;
+      if (advances > 600) throw new Error("No se pudo encontrar un nombre libre para la copia");
       when.setSeconds(when.getSeconds() + 1);
       stamp = stampBaseAt(when);
     }
@@ -460,7 +497,16 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
     // genuinas. Dentro del mes, la discrepancia es ruido de reloj
     // o de lote de sync y manda la hora, como siempre (el empate
     // por lotes de W2 se deshace luego contra el sello futuro).
-    const truth = mtimeTrue && stampTrue && mtimeTrue - stampTrue > 30 * 86_400_000 ? stampTrue : mtimeTrue || stampTrue;
+    // 1.6.45 (Prejuicio R12, R13C-1): la línea del mes dejaba el
+    // entierro ENTERO un día dentro de ella — la re-copia corriente
+    // de una migración tiene justo menos de un mes. La línea baja
+    // a 24 horas, el ruido verdadero (el huso más extremo del
+    // planeta son 14 h; un lote de sync aterriza en horas): pasado
+    // un día, las dos marcas ya no describen la misma escritura.
+    // La frescura prestada que queda está acotada por esa ventana:
+    // solo una copia re-copiada dentro del día de su nacimiento
+    // puede tomar prestadas horas, nunca la edad de una antigüedad.
+    const truth = mtimeTrue && stampTrue && mtimeTrue - stampTrue > 86_400_000 ? stampTrue : mtimeTrue || stampTrue;
     if (truth > 0) return truth;
     if (e.mtime === 0 && stamp === 0) return 0;
     return -1;
