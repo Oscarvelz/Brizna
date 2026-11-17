@@ -26,14 +26,39 @@ export function foldText(s: string | null | undefined): string {
   // fundía: दिनेश y दीनेश salían la misma clave y la tanda fundía a la
   // segunda persona en silencio. El niqqud y las harakat son Mn (vocali-
   // zación opcional): siguen cayendo, y los dos pliegues siguen de acuerdo.
+  // 1.6.14 (Prejuicio R4, R5F-1): la cura de arriba estaba ROTA — la clase
+  // final [^\p{L}\p{N}]+ borraba las Mc que la tira acababa de salvar (una
+  // Mc no es ni L ni N): दिनेश y दीनेश seguían saliendo la misma clave.
+  // La clase final conserva ahora TODA marca que sobrevivió a la tira.
+  // 1.6.14 (R5F-5): el nukta índico (Mn) SÍ distingue personas (क़ qa ≢ क
+  // ka) — se protege de la tira con un marcador y se restaura tras ella.
+  // 1.6.14 (R5F-4): el «am» tailandés/lao precompuesto (Lo) y su forma
+  // descompuesta (Mn + vocal) se unifican a mano: NFD no lo descompone.
+  // 1.6.14 (R5F-6): el tatweel árabe (ـ, Lm) es alargamiento puro, nunca
+  // distingue a nadie: se quita entero.
   return String(s ?? "")
     .normalize("NFD")
+    .replace(/\u0640/g, "")
+    .replace(/\u0E33/g, "\u0E4D\u0E32")
+    .replace(/\u0EB3/g, "\u0ECD\u0EB2")
+    .replace(/[\u093C\u09BC\u0A3C\u0ABC\u0B3C\u0D3C]/g, (ch) => NUKTA_SLOTS[ch] ?? ch)
     .replace(/[\p{Mn}\p{Me}]/gu, "")
+    .replace(/[\uE000-\uE005]/g, (ch) => NUKTA_BACK[ch] ?? ch)
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/[^\p{L}\p{N}\p{M}]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
+
+// 1.6.14 (R5F-5): los nukta índicos — marcas Mn que distinguen personas.
+// Se esconden tras marcadores de uso privado mientras la tira Mn+Me pasa.
+const NUKTA_SLOTS: Record<string, string> = {
+  "\u093C": "\uE000", "\u09BC": "\uE001", "\u0A3C": "\uE002",
+  "\u0ABC": "\uE003", "\u0B3C": "\uE004", "\u0D3C": "\uE005",
+};
+const NUKTA_BACK: Record<string, string> = Object.fromEntries(
+  Object.entries(NUKTA_SLOTS).map(([k, v]) => [v, k]),
+);
 
 export function nameKey(name: string): string {
   return foldText(name);

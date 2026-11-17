@@ -1,4 +1,5 @@
 import { nativePickContacts } from "@/spa/native";
+import { foldText } from "@/lib/dup-match";
 
 export type PickedContact = {
   name: string;
@@ -179,6 +180,20 @@ function vcardPhone(block: string): string {
   // número delante del móvil ganaba por orden, aunque la tarjeta declara
   // el bueno TYPE=CELL. Se prefiere el declarado celular; luego cualquiera
   // que no sea fax; el fax solo si no hay otra cosa con número.
+  // 1.6.14 (Prejuicio R4, R5F-2): aquella cura estaba ROTA — las banderas
+  // se buscaban con una clase delimitadora sin «=», y en la forma estándar
+  // (TYPE=FAX, TYPE=CELL: Apple, Google, vCard 4.0) el token va pegado al
+  // «=», así que ninguna bandera se leía nunca y el fax ganaba por orden.
+  // Ahora los parámetros se trocean de verdad: cada segmento se lee por
+  // su valor tras el «=» (o el token desnudo 2.1), partido por comas.
+  const tokensOf = (params: string): string[] =>
+    params
+      .split(/[;:]/)
+      .flatMap((p) => {
+        const v = p.includes("=") ? p.slice(p.indexOf("=") + 1) : p;
+        return v.split(",").map((t) => t.trim().replace(/^"|"$/g, ""));
+      })
+      .filter(Boolean);
   const entries: { v: string; fax: boolean; cell: boolean }[] = [];
   const re = new RegExp(`^${GROUP_PREFIX}TEL(;[^:]*)?:(.*)$`, "gim");
   let m: RegExpExecArray | null;
@@ -186,10 +201,11 @@ function vcardPhone(block: string): string {
     let v = m[2]!;
     const params = (m[1] ?? "").toUpperCase();
     if (/QUOTED-PRINTABLE/i.test(params)) v = decodeQuotedPrintable(v);
+    const tokens = tokensOf(params);
     entries.push({
       v: v.replace(/^tel:/i, "").trim(),
-      fax: /(^|[;:,"'])FAX([;:,"']|$)/.test(params),
-      cell: /(^|[;:,"'])(CELL|MOBILE)([;:,"']|$)/.test(params),
+      fax: tokens.includes("FAX"),
+      cell: tokens.some((t) => t === "CELL" || t === "MOBILE" || t === "CELLULAR"),
     });
   }
   const real = entries.filter((e) => e.v.replace(/\D/g, "").length >= 7);
@@ -324,8 +340,8 @@ const HEADER_WORDS: Record<string, "name" | "phone" | "address" | "first" | "las
 // los exportadores reales usan — «Client Name» no estaba y la columna del
 // nombre jamás se leía: cada contacto nacía nombrado por su teléfono.
 for (const w of ["name", "nombre", "nombre completo", "full name", "contacto", "contact", "client name", "customer name", "contact name", "nombre y apellido", "nombre del cliente", "client", "customer"]) HEADER_WORDS[w] = "name";
-for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone", "phone 1 value", "phone 2 value", "mobile phone", "cell phone", "telefono movil", "numero de celular"]) HEADER_WORDS[w] = "phone";
-for (const w of ["address", "direccion", "domicilio", "addr"]) HEADER_WORDS[w] = "address";
+for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone", "phone 1 value", "phone 2 value", "mobile phone", "cell phone", "telefono movil", "numero de celular", "telefono 1 valor", "telefono 2 valor", "home phone", "work phone", "business phone", "primary phone", "telefono casa", "telefono trabajo", "telefono de casa"]) HEADER_WORDS[w] = "phone";
+for (const w of ["address", "direccion", "domicilio", "addr", "address 1 formatted", "direccion 1 formateada", "address 1", "direccion 1"]) HEADER_WORDS[w] = "address";
 // 1.6.08 (Prejuicio R3, R3F-3): el nombre partido en dos columnas (la forma
 // de Outlook: «First Name,Last Name,Phone») — sin estas dos palabras el
 // apellido jamás se leía y cada contacto nacía con medio nombre.
@@ -375,6 +391,11 @@ function parseCsv(text: string): PickedContact[] {
   const firstCol = colOf("first");
   const lastCol = colOf("last");
   const phoneCol = colOf("phone");
+  // 1.6.14 (Prejuicio R4, R5F-8): TODAS las columnas de teléfono conocidas,
+  // en orden — por fila manda la primera que traiga número. Antes mandaba
+  // la primera del vocabulario aunque viniera vacía («Mobile Phone» vacía
+  // tapaba a «Phone 2 - Value» llena), y «Home Phone» ni existía.
+  const phoneCols = head.map((h, i) => (HEADER_WORDS[h] === "phone" ? i : -1)).filter((i) => i >= 0);
   const addrCol = colOf("address");
   const hasHeader = headAt >= 0 && (nameCol >= 0 || phoneCol >= 0 || firstCol >= 0 || lastCol >= 0);
   const idx = {
@@ -395,12 +416,23 @@ function parseCsv(text: string): PickedContact[] {
     if (cols.length < 2) continue;
     // 1.6.08 (R3F-3): sin columna de nombre completo pero con nombre y
     // apellido partidos, el nombre nace entero de las dos columnas.
-    const name = (
+    // 1.6.14 (Prejuicio R4, R5F-7): el export español de Google trae
+    // «Nombre» (solo el nombre de pila) y «Apellidos» aparte — con la
+    // columna de nombre presente, la composición de R3F-3 nunca corría y
+    // el apellido quedaba huérfano. Ahora el apellido se añade siempre
+    // que la columna exista y no esté ya dentro del nombre (sin doblar).
+    const lastVal = hasHeader && lastCol >= 0 ? (cols[lastCol] ?? "").trim() : "";
+    let name = (
       hasHeader && nameCol < 0 && (firstCol >= 0 || lastCol >= 0)
         ? [firstCol >= 0 ? cols[firstCol] : "", lastCol >= 0 ? cols[lastCol] : ""].filter(Boolean).join(" ")
         : (cols[idx.name] ?? "")
     ).trim();
-    const phone = (cols[idx.phone] ?? "").trim();
+    if (lastVal && name && !foldText(name).includes(foldText(lastVal))) name = `${name} ${lastVal}`;
+    // 1.6.14 (R5F-8): entre las columnas de teléfono conocidas, la primera
+    // con número de ESTA fila; sin encabezado, la posición de siempre.
+    const phone = hasHeader
+      ? (phoneCols.map((c) => (cols[c] ?? "").trim()).find((v) => v !== "") ?? "")
+      : (cols[idx.phone] ?? "").trim();
     const address = idx.address >= 0 ? (cols[idx.address] ?? "").trim() : "";
     // Cerca de cordura (BZ-52, endurecida en 1.6.04 por R2F-15): la fila
     // nace solo con un nombre que trae una letra DE VERDAD (cualquier
