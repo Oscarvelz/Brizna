@@ -351,6 +351,13 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
     }
     throw err;
   }
+  // 1.6.23 (Prejuicio R7, R8C-1): la poda entera vive en un
+  // try/catch propio — es limpieza DESPUÉS de escribir el paquete.
+  // Antes, si la lectura de la carpeta o un borrado fallaba (un
+  // archivo bloqueado, una carpeta de red que parpadea), la llamada
+  // entera se rechazaba y Ajustes cantaba «No se pudo guardar la
+  // copia» sobre un paquete completo y válido ya en la carpeta.
+  try {
   const names: string[] = [];
   for await (const [entryName, entry] of dir.entries()) {
     if (entry.kind !== "file") continue;
@@ -377,6 +384,9 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
     return doomed;
   };
   for (const old of [...keep(".json"), ...keep(".pdf"), ...keep(".xls")]) await dir.removeEntry(old);
+  } catch {
+    // La poda no pudo con la carpeta; el paquete quedó escrito.
+  }
   return "folder";
 }
 

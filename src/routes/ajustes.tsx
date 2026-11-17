@@ -574,6 +574,12 @@ function AjustesPage() {
           toast.error(tx("Las vacaciones pueden durar hasta 180 días. Parte el viaje en dos si es más largo.", "Time off can span up to 180 days. Split the trip in two if it is longer."));
           return;
         }
+        // 1.6.23 (Prejuicio R7, R8B-1): el fin del viaje más su
+        // corrimiento se sale del calendario de la app.
+        if (res.reason === "out-of-range") {
+          toast.error(tx("Esa fecha queda fuera del calendario de la app. Elige un fin de viaje más cercano.", "That date falls outside the app's calendar. Pick an earlier trip end."));
+          return;
+        }
         // 1.6.06 (R3B-4): un trabajo del viaje anterior no pudo volver a su
         // fecha — el viaje nuevo no se sella encima y se dice por qué.
         if (res.reason === "stuck") {

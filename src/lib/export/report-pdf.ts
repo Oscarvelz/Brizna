@@ -530,7 +530,11 @@ function drawCover(ctx: Ctx, known: Partial<Record<SectionId, number>> | null) {
     doc.text(L, ctx.y, m.amounts ? `${tx("Cobrado y trabajo hecho", "Collected and work done")} ${unitWord}` : `${tx("Trabajo hecho", "Work done")} ${unitWord}`, { size: 10.5, bold: true, color: C.ink });
     ctx.y += 18;
     if (m.amounts) chart(ctx, m.series.bars, 130, true, tx("Cobrado", "Collected"), tx("Trabajo hecho", "Work done"), kfmt);
-    else chart(ctx, m.series.bars.map((b) => ({ ...b, a: b.b, b: 0 })), 130, false, tx("Valor del trabajo", "Work value"), "", kfmt);
+    // 1.6.23 (Prejuicio R7, R8A-1): sin montos, el gráfico cuenta
+    // TRABAJOS — antes pintaba el valor del trabajo en dólares bajo
+    // la leyenda «Valor del trabajo», la única superficie que
+    // desobedecía el alcance declarado en la misma portada.
+    else chart(ctx, m.series.bars.map((b) => ({ ...b, a: b.n, b: 0 })), 130, false, tx("Trabajos hechos", "Jobs done"), "", (v: number) => String(Math.round(v)));
   }
 
   // Three quick facts, when there is room.
@@ -952,6 +956,14 @@ function drawPrecios(ctx: Ctx) {
   const { doc, m } = ctx;
   const tx = m.tx;
   const p = m.precios;
+  // 1.6.23 (Prejuicio R7, R8A-2): sin precios anotados la sección
+  // dice solo su frase — antes imprimía CORTE TÍPICO/PROMEDIO/MÁS
+  // BAJO/MÁS ALTO a $0 bajo su propia frase «Aún no hay precios
+  // anotados», donde la hoja de cálculo no imprime panel alguno.
+  if (!p.rows.length) {
+    note(ctx, tx("Aún no hay precios anotados.", "No prices have been noted yet."));
+    return;
+  }
   stats(ctx, [
     { label: tx("CORTE TÍPICO", "TYPICAL CUT"), value: usd(p.typical), color: C.green },
     { label: tx("PROMEDIO", "AVERAGE"), value: usd(p.average) },
@@ -999,8 +1011,8 @@ function drawHoras(ctx: Ctx) {
     { label: tx("HORAS", "HOURS"), value: fmtHours(hours), color: C.green },
     { label: tx("DÍAS", "DAYS"), value: String(m.kpi.workDays) },
     { label: tx("HORAS POR DÍA", "HOURS A DAY"), value: fmtHours(h.avgDay) },
-    { label: tx("$ POR HORA (TRABAJO)", "$ AN HOUR (WORK)"), value: m.amounts ? usd(h.perHour) : "", color: C.money },
-    { label: tx("$ POR HORA (COBRADO)", "$ AN HOUR (COLLECTED)"), value: m.amounts ? usd(h.perHourCollected) : "", color: C.money },
+    { label: tx("$ POR HORA (TRABAJO)", "$ AN HOUR (WORK)"), value: m.amounts ? (hours > 0 ? usd(h.perHour) : "—") : "", color: C.money },
+    { label: tx("$ POR HORA (COBRADO)", "$ AN HOUR (COLLECTED)"), value: m.amounts ? (hours > 0 ? usd(h.perHourCollected) : "—") : "", color: C.money },
   ]);
   // 1.6.00 (BZ-51): la sección lo declara en su propia cara, no solo la portada.
   note(ctx, tx("Horas es siempre el negocio entero: el registro de horas es por día, no por cliente. El «$ por hora» de arriba cuenta el valor de los días con horas, dividido entre las horas. El «$ por hora (cobrado)» cuenta todo lo cobrado en el periodo, dividido entre las horas.", "Hours always covers the whole business: the hours log is per day, not per client. The $ an hour above counts the value of days with hours, divided by the hours. The $ an hour (collected) counts everything collected in the period, divided by the hours."));
@@ -1072,7 +1084,7 @@ function drawPropinas(ctx: Ctx) {
   stats(ctx, [
     { label: tx("PROPINAS", "TIPS"), value: usd0(m.kpi.tips), color: C.green },
     { label: tx("CUÁNTAS", "HOW MANY"), value: String(p.rows.length) },
-    { label: tx("PROMEDIO", "AVERAGE"), value: usd(p.avg) },
+    { label: tx("PROMEDIO", "AVERAGE"), value: p.rows.length ? usd(p.avg) : "—" },
     { label: tx("CLIENTES", "CLIENTS"), value: String(p.byClient.length) },
   ]);
   if (!p.rows.length) return;

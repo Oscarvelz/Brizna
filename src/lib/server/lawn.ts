@@ -796,9 +796,15 @@ export async function ensureScheduleForUserInner(userId: string): Promise<void> 
   const closedDates = new Set(offDates);
   if (prefs.vacationStart && prefs.vacationEnd && prefs.vacationEnd >= today) {
     let d = prefs.vacationStart < today ? today : prefs.vacationStart;
-    while (d <= prefs.vacationEnd) {
+    // 1.6.23 (Prejuicio R7, R8B-1): la caminata lleva tope — una
+    // bandera envenenada (una copia con fin en 9999) caminaba ~33
+    // millones de días en CADA generación. 800 días cubren de
+    // sobra el horizonte de generación (18 meses) desde hoy.
+    let walkGuard = 0;
+    while (d <= prefs.vacationEnd && walkGuard < 800) {
       closedDates.add(d);
       d = addDaysISO(d, 1);
+      walkGuard += 1;
     }
   }
   const clients = await sql.query<{
@@ -5439,6 +5445,13 @@ export const applyVacation = createServerFn({ method: "POST" })
     const [ey, em, ed] = data.end.split("-").map(Number);
     const span = Math.round((Date.UTC(ey!, em! - 1, ed!) - Date.UTC(sy!, sm! - 1, sd!)) / 86400000) + 1;
     if (span > 180) return { ok: false as const, reason: "too-long" as const, moved: 0 };
+    // 1.6.23 (Prejuicio R7, R8B-1): el viaje debe caber en el
+    // calendario de cuatro dígitos que la app habla. Una ventana
+    // que termina en 9999 pasaba el tope (su tramo mide 1 o 7) y
+    // el corrimiento aterrizaba los trabajos en años de cinco
+    // dígitos («10000-06-28»), que la lectura corta a «10000-06-2»
+    // para siempre. Se niega en voz alta, antes de tocar nada.
+    if (addDaysISO(data.end, span).length > 10) return { ok: false as const, reason: "out-of-range" as const, moved: 0 };
     const sql = await getSql();
     const prefs = await loadPrefs(context.userId);
     const hadTrip = !!prefs.vacationShift;
@@ -5456,12 +5469,11 @@ export const applyVacation = createServerFn({ method: "POST" })
       const remaining = await sealedPendingCount(context.userId);
       if (remaining > 0) return { ok: false as const, reason: "stuck" as const, moved: 0 };
     }
-    let days = 0;
-    let cursor = data.start;
-    while (cursor <= data.end && days < 180) {
-      days += 1;
-      cursor = addDaysISO(cursor, 1);
-    }
+    // 1.6.23 (Prejuicio R7, R8B-1): el corrimiento ES el tramo ya
+    // medido arriba — la caminata léxica que quedaba aquí contaba
+    // otra cantidad en los bordes (con fin en 9999 contaba 180
+    // para un tramo de 1) y esa cantidad era la que se aplicaba.
+    const days = span;
     const { moved, failed: shiftFailed } = await shiftPendingJobs(context.userId, days, data.start, data.end, days);
     const overdue = await sql.query<{ id: number; client_id: number; scheduled_date: unknown }>(
       `select id, client_id, scheduled_date from jobs
