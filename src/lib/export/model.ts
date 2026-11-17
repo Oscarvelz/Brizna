@@ -253,54 +253,56 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   // letter-bounded on both sides, so «Ana» no longer eats «mañana» —
   // and every vowel carries its accented twin in a class, so «Jose»
   // no longer slips past a client named «José» (nor the reverse).
-  const swapFold: Record<string, string> = {
-    a: "[aá]", á: "[aá]", A: "[AÁ]", Á: "[AÁ]",
-    e: "[eé]", é: "[eé]", E: "[EÉ]", É: "[EÉ]",
-    i: "[ií]", í: "[ií]", I: "[IÍ]", Í: "[IÍ]",
-    o: "[oó]", ó: "[oó]", O: "[OÓ]", Ó: "[OÓ]",
-    u: "[uúü]", ú: "[uú]", ü: "[uü]", U: "[UÚÜ]", Ú: "[UÚ]", Ü: "[UÜ]",
+  // 1.6.50 (Prejuicio R13, R14A-3): la tabla se genera por
+  // FAMILIAS — cada letra latina con sus gemelas de Latin-1 y
+  // Latin Extended-A, cada variante mapeando a la clase entera de
+  // su familia en las dos direcciones. La tabla a mano de 1.6.47
+  // dejó fuera letras tan ordinarias como la ø de «Søren», la ğ
+  // de «Çağla», la ı de «Yılmaz», la ł de «Łukasz», los carones
+  // de «Željko»/«Šime»/«Němec» y la ő de «Őrs». La ñ no entra en
+  // la familia de la n: en español es otra letra, no una gemela.
+  const swapFold: Record<string, string> = {};
+  const foldFam = (chars: string) => {
+    const cls = `[${chars}]`;
+    for (const ch of chars) swapFold[ch] = cls;
   };
-  // 1.6.47 (Prejuicio R12, R13A-5): la tabla crece a las gemelas
-  // que un nombre real trae más allá del agudo español — cada
-  // variante mapea a la clase ENTERA de su familia, en las dos
-  // direcciones (la escritura pelada caza la guardada con
-  // diacrítico y al revés), y la «u» queda simétrica: ú y ü se
-  // cazan entre sí como la «u» pelada caza a ambas. La ñ no entra:
-  // en español es otra letra, no una gemela de la n.
-  const swapFoldWide: Record<string, string> = {
-    à: "[aáàäâãå]", ä: "[aáàäâãå]", â: "[aáàäâãå]", ã: "[aáàäâãå]", å: "[aáàäâãå]",
-    À: "[AÁÀÄÂÃÅ]", Ä: "[AÁÀÄÂÃÅ]", Â: "[AÁÀÄÂÃÅ]", Ã: "[AÁÀÄÂÃÅ]", Å: "[AÁÀÄÂÃÅ]",
-    è: "[eéèëê]", ë: "[eéèëê]", ê: "[eéèëê]",
-    È: "[EÉÈËÊ]", Ë: "[EÉÈËÊ]", Ê: "[EÉÈËÊ]",
-    ì: "[iíìïî]", ï: "[iíìïî]", î: "[iíìïî]",
-    Ì: "[IÍÌÏÎ]", Ï: "[IÍÌÏÎ]", Î: "[IÍÌÏÎ]",
-    ò: "[oóòöôõ]", ö: "[oóòöôõ]", ô: "[oóòöôõ]", õ: "[oóòöôõ]",
-    Ò: "[OÓÒÖÔÕ]", Ö: "[OÓÒÖÔÕ]", Ô: "[OÓÒÖÔÕ]", Õ: "[OÓÒÖÔÕ]",
-    ù: "[uúùüû]", û: "[uúùüû]",
-    Ù: "[UÚÙÜÛ]", Û: "[UÚÙÜÛ]",
-    ç: "[cç]", Ç: "[CÇ]",
-    ÿ: "[yÿý]", ý: "[yÿý]", Ÿ: "[YŸÝ]", Ý: "[YŸÝ]",
-  };
-  for (const [ch, cls] of Object.entries(swapFoldWide)) swapFold[ch] = cls;
-  swapFold.a = "[aáàäâãå]"; swapFold.á = "[aáàäâãå]"; swapFold.A = "[AÁÀÄÂÃÅ]"; swapFold.Á = "[AÁÀÄÂÃÅ]";
-  swapFold.e = "[eéèëê]"; swapFold.é = "[eéèëê]"; swapFold.E = "[EÉÈËÊ]"; swapFold.É = "[EÉÈËÊ]";
-  swapFold.i = "[iíìïî]"; swapFold.í = "[iíìïî]"; swapFold.I = "[IÍÌÏÎ]"; swapFold.Í = "[IÍÌÏÎ]";
-  swapFold.o = "[oóòöôõ]"; swapFold.ó = "[oóòöôõ]"; swapFold.O = "[OÓÒÖÔÕ]"; swapFold.Ó = "[OÓÒÖÔÕ]";
-  swapFold.u = "[uúùüû]"; swapFold.ú = "[uúùüû]"; swapFold.ü = "[uúùüû]"; swapFold.U = "[UÚÙÜÛ]"; swapFold.Ú = "[UÚÙÜÛ]"; swapFold.Ü = "[UÚÙÜÛ]";
-  swapFold.c = "[cç]"; swapFold.C = "[CÇ]";
-  swapFold.y = "[yÿý]"; swapFold.Y = "[YŸÝ]";
+  foldFam("aáàäâãåāăą"); foldFam("AÁÀÄÂÃÅĀĂĄ");
+  foldFam("eéèëêēĕėęě"); foldFam("EÉÈËÊĒĔĖĘĚ");
+  foldFam("iíìïîīĭįı"); foldFam("IÍÌÏÎĪĬĮİ");
+  foldFam("oóòöôõøōŏő"); foldFam("OÓÒÖÔÕØŌŎŐ");
+  foldFam("uúùüûūŭůűų"); foldFam("UÚÙÜÛŪŬŮŰŲ");
+  foldFam("cçćĉċč"); foldFam("CÇĆĈĊČ");
+  foldFam("gğĝġģ"); foldFam("GĞĜĠĢ");
+  foldFam("lł"); foldFam("LŁ");
+  foldFam("nńņň"); foldFam("NŃŅŇ");
+  foldFam("rŕŗř"); foldFam("RŔŖŘ");
+  foldFam("sşšśŝș"); foldFam("SŞŠŚŜȘ");
+  foldFam("tţťț"); foldFam("TŢŤȚ");
+  foldFam("zžźż"); foldFam("ZŽŹŻ");
+  foldFam("dďđ"); foldFam("DĎĐ");
+  foldFam("yÿý"); foldFam("YŸÝ");
   // 1.6.40 (Prejuicio R11, R12A-1/A-2): el nombre se compone a NFC
   // antes de patrullarlo (un nombre guardado descompuesto no cazaba
   // su mención compuesta, y la mención descompuesta dejaba la tilde
   // combinante colgando del reemplazo), y el espacio y el guión son
   // LA MISMA junta («Ana María» caza «Ana-María» y al revés).
+  // 1.6.50 (Prejuicio R13, R14A-1/R14A-2): la junta conoce la
+  // familia ENTERA de rayas — también U+2012, U+2015, el signo
+  // menos U+2212, el guión de ancho completo U+FF0D, el pequeño
+  // U+FE63 y el guión suave U+00AD que siembra el copiar-pegar
+  // desde PDF — y el apóstrofo es su familia entera: el recto, el
+  // curvo, la comilla simple izquierda U+2018, el modificador
+  // U+02BC, la okina U+02BB, el de ancho completo U+FF07 y el
+  // acento grave U+0060. El plegado va letra a letra sobre la
+  // tabla (sin lista de caracteres paralela que pueda quedarse
+  // corta otra vez).
   const swapPattern = (name: string) =>
     name
       .normalize("NFC")
       .trim()
-      .split(/[\s\-\u2010\u2011\u2013\u2014]+/)
-      .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/[aáàäâãåeéèëêiíìïîoóòöôõuúùüûcçyÿýAÁÀÄÂÃÅEÉÈËÊIÍÌÏÎOÓÒÖÔÕUÚÙÜÛCÇYŸÝ]/g, (ch) => swapFold[ch] ?? ch).replace(/['\u2019]/g, "['\u2019]"))
-      .join("[\\s\\-\\u2010\\u2011\\u2013\\u2014]+");
+      .split(/[\s\-\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFF0D\uFE63\u00AD]+/)
+      .map((w) => [...w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")].map((ch) => swapFold[ch] ?? ch).join("").replace(/['\u2019\u2018\u02BC\u02BB\uFF07\u0060]/g, "['\u2019\u2018\u02BC\u02BB\uFF07\u0060]"))
+      .join("[\\s\\-\\u2010\\u2011\\u2012\\u2013\\u2014\\u2015\\u2212\\uFF0D\\uFE63\\u00AD]+");
   const nameSwaps = o.names
     ? []
     : raw.clients
@@ -311,8 +313,13 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   const phoneOf = (c: ClientRow | undefined) => (o.phones && c?.phone ? c.phone : "");
   const byId = new Map(raw.clients.map((c) => [c.id, c]));
 
+  // 1.6.50 (Prejuicio R13, R14A-4): la dirección también es texto
+  // libre del usuario («Casa de Ana, 123 Main St») y también pasa
+  // por clean() en sus tres asientos impresos (directorio, agenda
+  // y filas de clientes) — era el último campo que llegaba crudo
+  // a los bytes del PDF y del XLSX con los nombres apagados.
   const clients: XClient[] = kept
-    .map((c) => ({ id: c.id, name: nameOf(c.id), phone: phoneOf(c), address: c.address ?? "", group: groupOf(c), raw: c }))
+    .map((c) => ({ id: c.id, name: nameOf(c.id), phone: phoneOf(c), address: clean(c.address ?? ""), group: groupOf(c), raw: c }))
     .sort((a, b) => a.name.localeCompare(b.name, locale));
 
   const inRange = (d: string) => d >= from && d <= to;
@@ -505,7 +512,7 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
       order: j.sortOrder,
       name: nameOf(j.clientId),
       phone: phoneOf(c),
-      address: c?.address ?? "",
+      address: clean(c?.address ?? ""),
       time: (j.arrivalTime ?? c?.arrivalTime ?? "").slice(0, 5),
       job: jobWord(j) + (extras && j.kind === "cut" ? ` + ${clean(extras)}` : ""),
       amount: j.amount,
@@ -543,7 +550,7 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
     name: x.name,
     group: groupWord(x.group),
     phone: x.phone,
-    address: x.address,
+    address: clean(x.address),
     day: dayOf(x.raw),
     every: everyOf(x.raw),
     price: x.raw.pricePerCut,
