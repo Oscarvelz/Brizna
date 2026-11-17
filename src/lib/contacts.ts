@@ -119,7 +119,27 @@ function unfoldVcard(raw: string): string {
   // de unir. Antes el desplegado pegaba el «=» contra la continuación y el
   // decodificador lo leía como escape («=Fe» → «þ») o lo dejaba colgando
   // («=Garcia») según las dos letras siguientes.
-  return raw.replace(/\r\n/g, "\n").replace(/=\n[ \t]/g, "").replace(/\n[ \t]/g, "");
+  // 1.6.19 (Prejuicio R6, R7F-11): el dialecto SIN espacio de pliegue —
+  // varios exportadores 2.1 parten la línea tras el «=» y continúan al
+  // margen. La propiedad QP que acaba en «=» une la línea siguiente
+  // ANTES de extraer valores; sin esto, el valor se truncaba en el
+  // corte y lo que seguía se perdía («José García» nacía «JosÃ»).
+  const physical = raw.replace(/\r\n/g, "\n").split("\n");
+  const logical: string[] = [];
+  for (const line of physical) {
+    const prev = logical[logical.length - 1];
+    const prevQp = prev !== undefined && /QUOTED-PRINTABLE/i.test(prev.split(":")[0] ?? "");
+    // 1.6.19 (R7F-11, el otro dialecto): la línea que no tiene forma de
+    // propiedad (no empieza por nombre[;params]:) y sigue a una
+    // propiedad QP ES su continuación, acabe o no la anterior en «=».
+    const looksProperty = /^[A-Za-z][A-Za-z0-9.-]*[;:]/.test(line);
+    if (prev !== undefined && prevQp && !/^[ \t]/.test(line) && (prev.endsWith("=") || !looksProperty)) {
+      logical[logical.length - 1] = (prev.endsWith("=") ? prev.slice(0, -1) : prev) + line;
+    } else {
+      logical.push(line);
+    }
+  }
+  return logical.join("\n").replace(/=\n[ \t]/g, "").replace(/\n[ \t]/g, "");
 }
 
 /** vCard 2.1 QUOTED-PRINTABLE: «Jos=C3=A9» es «José» (bytes UTF-8 en =XX,
@@ -293,8 +313,26 @@ function splitCsvRows(text: string): string[][] {
   // los tabuladores mandan, manda el tabulador en todo el archivo.
   const firstNl = text.indexOf("\n");
   const firstLine = firstNl < 0 ? text : text.slice(0, firstNl);
-  const tabs = (firstLine.match(/\t/g) ?? []).length;
-  const commas = (firstLine.match(/,/g) ?? []).length + (firstLine.match(/;/g) ?? []).length;
+  // 1.6.19 (Prejuicio R6, R7F-5): la olida cuenta FUERA de las comillas —
+  // una celda citada con tabuladores dentro («"Lista\tde\tclientes"»)
+  // inclinaba la cuenta y un CSV de comas entero se partía por
+  // tabulador e importaba cero.
+  let bare = "";
+  let inQ = false;
+  for (let i = 0; i < firstLine.length; i++) {
+    const ch = firstLine[i]!;
+    if (inQ) {
+      if (ch === '"') {
+        if (firstLine[i + 1] === '"') i++;
+        else inQ = false;
+      }
+      continue;
+    }
+    if (ch === '"') { inQ = true; continue; }
+    bare += ch;
+  }
+  const tabs = (bare.match(/\t/g) ?? []).length;
+  const commas = (bare.match(/,/g) ?? []).length + (bare.match(/;/g) ?? []).length;
   const delim = tabs > 0 && tabs >= commas ? "\t" : ",";
   const rows: string[][] = [];
   let row: string[] = [];
@@ -348,14 +386,14 @@ const HEADER_WORDS: Record<string, "name" | "phone" | "address" | "first" | "las
 // 1.6.04 (Prejuicio R2, R2F-6): el vocabulario crece con los encabezados que
 // los exportadores reales usan — «Client Name» no estaba y la columna del
 // nombre jamás se leía: cada contacto nacía nombrado por su teléfono.
-for (const w of ["name", "nombre", "nombre completo", "full name", "contacto", "contact", "client name", "customer name", "contact name", "nombre y apellido", "nombre del cliente", "client", "customer"]) HEADER_WORDS[w] = "name";
-for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone", "phone 1 value", "phone 2 value", "mobile phone", "cell phone", "telefono movil", "numero de celular", "telefono 1 valor", "telefono 2 valor", "home phone", "work phone", "business phone", "primary phone", "telefono casa", "telefono trabajo", "telefono de casa"]) HEADER_WORDS[w] = "phone";
-for (const w of ["address", "direccion", "domicilio", "addr", "address 1 formatted", "direccion 1 formateada", "address 1", "direccion 1"]) HEADER_WORDS[w] = "address";
+for (const w of ["name", "nombre", "nombre completo", "full name", "contacto", "contact", "client name", "customer name", "contact name", "nombre y apellido", "nombre del cliente", "client", "customer", "naam"]) HEADER_WORDS[w] = "name";
+for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone", "phone 1 value", "phone 2 value", "mobile phone", "cell phone", "telefono movil", "numero de celular", "telefono 1 valor", "telefono 2 valor", "home phone", "work phone", "business phone", "primary phone", "telefono casa", "telefono trabajo", "telefono de casa", "telefon", "telefoon", "telefonnummer", "mobiltelefon", "rufnummer", "handynummer"]) HEADER_WORDS[w] = "phone";
+for (const w of ["address", "direccion", "domicilio", "addr", "address 1 formatted", "direccion 1 formateada", "address 1", "direccion 1", "adresse", "adres", "anschrift"]) HEADER_WORDS[w] = "address";
 // 1.6.08 (Prejuicio R3, R3F-3): el nombre partido en dos columnas (la forma
 // de Outlook: «First Name,Last Name,Phone») — sin estas dos palabras el
 // apellido jamás se leía y cada contacto nacía con medio nombre.
-for (const w of ["first name", "nombre de pila", "given name"]) HEADER_WORDS[w] = "first";
-for (const w of ["last name", "apellido", "apellidos", "family name", "surname"]) HEADER_WORDS[w] = "last";
+for (const w of ["first name", "nombre de pila", "given name", "vorname", "voornaam"]) HEADER_WORDS[w] = "first";
+for (const w of ["last name", "apellido", "apellidos", "family name", "surname", "nachname", "achternaam"]) HEADER_WORDS[w] = "last";
 
 function foldHead(cell: string): string {
   return cell

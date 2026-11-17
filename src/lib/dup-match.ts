@@ -58,15 +58,19 @@ export function foldText(s: string | null | undefined): string {
     .replace(/\u0640/g, "")
     .replace(/\u0E33/g, "\u0E4D\u0E32")
     .replace(/\u0EB3/g, "\u0ECD\u0EB2")
-    .replace(/[\u093C\u09BC\u0A3C\u0ABC\u0B3C\u0D3C]/g, (ch) => NUKTA_SLOTS[ch] ?? ch)
+    .replace(/[\u093C\u09BC\u0A3C\u0ABC\u0B3C\u0D3C\u0E4D\u0ECD\u1037]/g, (ch) => NUKTA_SLOTS[ch] ?? ch)
     .replace(/\u06CC/g, "ي")
     .replace(/\u06A9/g, "ك")
     .replace(/\u0649/g, "ي")
+    // 1.6.19 (Prejuicio R6, R7F-12): las letras finales hebreas son la
+    // misma letra al final de la palabra (ך כ, ם מ, ן נ, ף פ, ץ צ) —
+    // sin unificar, אברהם y su grafía no final nacían dos personas.
+    .replace(/[\u05DA\u05DD\u05DF\u05E3\u05E5]/g, (ch) => HEBREW_FINALS[ch] ?? ch)
     .replace(/[‌‍]/g, "")
-    .replace(/([्\u09cd\u0a4d\u0acd\u0b4d\u0bcd\u0c4d\u0ccd\u0d4d])(?=$|[^\p{L}\p{M}\p{N}])/gu, (ch) => VIRAMA_SLOTS[ch] ?? ch)
+    .replace(/([\u094D\u09CD\u0A4D\u0ACD\u0B4D\u0BCD\u0C4D\u0CCD\u0D4D\u1039\u103A\u0DCA\u17CB])(?!\p{M}*[\p{L}\p{N}])/gu, (ch) => VIRAMA_SLOTS[ch] ?? ch)
     .replace(/[\p{Mn}\p{Me}]/gu, "")
-    .replace(/[\uE000-\uE005]/g, (ch) => NUKTA_BACK[ch] ?? ch)
-    .replace(/[\uE010-\uE018]/g, (ch) => VIRAMA_BACK[ch] ?? ch)
+    .replace(/[\uE000-\uE008]/g, (ch) => NUKTA_BACK[ch] ?? ch)
+    .replace(/[\uE010-\uE01C]/g, (ch) => VIRAMA_BACK[ch] ?? ch)
     .toLowerCase()
     .replace(/ς/g, "σ")
     .replace(/[^\p{L}\p{N}\p{M}]+/gu, " ")
@@ -79,7 +83,22 @@ export function foldText(s: string | null | undefined): string {
 const NUKTA_SLOTS: Record<string, string> = {
   "\u093C": "\uE000", "\u09BC": "\uE001", "\u0A3C": "\uE002",
   "\u0ABC": "\uE003", "\u0B3C": "\uE004", "\u0D3C": "\uE005",
+  // 1.6.19 (Prejuicio R6, R7F-10): el nikkhahit del «am» tailandés/lao
+  // — la unificación lo produce y la tira se lo comía, fundiendo «am»
+  // con «aa» (อำนาจ Amnat salía อานาจ). Protegido como el nukta: «am»
+  // es un sonido, no una vocalización opcional.
+  "\u0E4D": "\uE006", "\u0ECD": "\uE007",
+  // 1.6.19 (R7F-2, la mitad que faltaba): el punto inferior birmano
+  // (U+1037) es ortografía plena, no vocalización opcional — မြင့်
+  // (Myint) y မြင် (Myin) solo se distinguen por él.
+  "\u1037": "\uE008",
 };
+// 1.6.19 (R7F-12): la forma final hebrea y su forma corriente.
+const HEBREW_FINALS: Record<string, string> = {
+  "\u05DA": "\u05DB", "\u05DD": "\u05DE", "\u05DF": "\u05E0",
+  "\u05E3": "\u05E4", "\u05E5": "\u05E6",
+};
+
 const NUKTA_BACK: Record<string, string> = Object.fromEntries(
   Object.entries(NUKTA_SLOTS).map(([k, v]) => [v, k]),
 );
@@ -98,6 +117,12 @@ const VIRAMA_SLOTS: Record<string, string> = {
   "\u094D": "\uE010", "\u09CD": "\uE011", "\u0A4D": "\uE012",
   "\u0ACD": "\uE013", "\u0B4D": "\uE014", "\u0BCD": "\uE015",
   "\u0C4D": "\uE016", "\u0CCD": "\uE017", "\u0D4D": "\uE018",
+  // 1.6.19 (Prejuicio R6, R7F-2/3/4): el mapa llegaba hasta la India —
+  // el asat birmano (U+1039 y su forma U+103A), el al-lakuna cingalés
+  // (U+0DCA) y el bantoc jemer (U+17CB) matan la vocal final igual y
+  // fundían Myint con Myin, Kamal con Kamala y Chann con Chan.
+  "\u1039": "\uE019", "\u103A": "\uE01A", "\u0DCA": "\uE01B",
+  "\u17CB": "\uE01C",
 };
 const VIRAMA_BACK: Record<string, string> = Object.fromEntries(
   Object.entries(VIRAMA_SLOTS).map(([k, v]) => [v, k]),
@@ -171,7 +196,12 @@ export function nameMatch(a: string, b: string): "same" | "near" | null {
 // escritura (arábigo-índicos, de ancho completo, devanagari…) valen
 // como dígitos — \d solo conoce el ASCII y la identidad telefónica
 // de esos números nacía muerta.
-const ND_ZEROS = [0x30, 0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66, 0xae6, 0xb66, 0xbe6, 0xc66, 0xce6, 0xd66, 0xde6, 0xe50, 0xed0, 0xf20, 0x1040, 0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0, 0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0, 0xff10];
+const ND_ZEROS = [0x30, 0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66, 0xae6, 0xb66, 0xbe6, 0xc66, 0xce6, 0xd66, 0xde6, 0xe50, 0xed0, 0xf20, 0x1040, 0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0, 0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0, 0xff10,
+  // 1.6.19 (Prejuicio R6, R7F-8): los bloques Nd vivos que faltaban —
+  // osmanya, sharada, takri, adlam y el resto de escrituras con
+  // dígitos propios; sin su cero, el dígito volvía intacto y el \D
+  // posterior lo borraba: esos teléfonos nacían sin identidad.
+  0x104a0, 0x10d30, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x112f0, 0x11450, 0x114d0, 0x11650, 0x116c0, 0x11730, 0x118e0, 0x11950, 0x11c50, 0x11d50, 0x11da0, 0x11f50, 0x16a60, 0x16ac0, 0x16b50, 0x1d7ce, 0x1d7d8, 0x1d7e2, 0x1d7ec, 0x1d7f6, 0x1e140, 0x1e2f0, 0x1e4f0, 0x1e950, 0x1fbf0];
 
 export function digitsOf(s: string | null | undefined): string {
   return String(s ?? "").replace(/\p{Nd}/gu, (ch) => {
@@ -182,7 +212,11 @@ export function digitsOf(s: string | null | undefined): string {
 }
 
 export function phoneTail(phone: string | null | undefined): string {
-  const digits = digitsOf(phone).replace(/\D/g, "");
+  // 1.6.19 (Prejuicio R6, R7F-7): la extensión anotada («ext 89») sumaba
+  // sus dígitos al final y desplazaba la ventana de 10 fuera del
+  // número — el mismo teléfono con y sin extensión no casaba consigo.
+  const bare = String(phone ?? "").replace(/(?:\bext\.?|\bx|#)\s*\d{1,6}\s*$/i, "");
+  const digits = digitsOf(bare).replace(/\D/g, "");
   return digits.length >= 7 ? digits.slice(-10) : "";
 }
 

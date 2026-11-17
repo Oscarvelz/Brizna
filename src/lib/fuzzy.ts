@@ -13,14 +13,15 @@ export function fold(value: string): string {
     .replace(/ی/g, "ي")
     .replace(/ک/g, "ك")
     .replace(/ى/g, "ي")
+    .replace(/[\u05DA\u05DD\u05DF\u05E3\u05E5]/g, (ch) => FZ_HEBREW[ch] ?? ch)
     .replace(/[‌‍]/g, "")
-    .replace(/[़়া\u09bc\u0a3c\u0abc\u0b3c\u0d3c]/g, (ch) => FZ_NUKTA[ch] ?? ch)
+    .replace(/[़়া\u09bc\u0a3c\u0abc\u0b3c\u0d3c\u0e4d\u0ecd\u1037]/g, (ch) => FZ_NUKTA[ch] ?? ch)
     // 1.6.12 (R4F-3): Mn+Me, como foldText — los signos Mc (las vocales
     // devanagari) son letras y se quedan; los dos pliegues siguen de acuerdo.
-    .replace(/([्\u09cd\u0a4d\u0acd\u0b4d\u0bcd\u0c4d\u0ccd\u0d4d])(?=$|[^\p{L}\p{M}\p{N}])/gu, (ch) => FZ_VIRAMA[ch] ?? ch)
+    .replace(/([\u094D\u09CD\u0A4D\u0ACD\u0B4D\u0BCD\u0C4D\u0CCD\u0D4D\u1039\u103A\u0DCA\u17CB])(?!\p{M}*[\p{L}\p{N}])/gu, (ch) => FZ_VIRAMA[ch] ?? ch)
     .replace(/[\p{Mn}\p{Me}]/gu, "")
-    .replace(/[\ue000\ue001\ue002\ue003\ue004\ue005]/g, (ch) => FZ_NUKTA_BACK[ch] ?? ch)
-    .replace(/[\ue010-\ue018]/g, (ch) => FZ_VIRAMA_BACK[ch] ?? ch)
+    .replace(/[\ue000-\ue008]/g, (ch) => FZ_NUKTA_BACK[ch] ?? ch)
+    .replace(/[\ue010-\ue01c]/g, (ch) => FZ_VIRAMA_BACK[ch] ?? ch)
     .toLowerCase()
     .replace(/ς/g, "σ");
 }
@@ -30,7 +31,15 @@ export function fold(value: string): string {
 const FZ_NUKTA: Record<string, string> = {
   "़": "\ue000", "়": "\ue001", "\u0a3c": "\ue002",
   "\u0abc": "\ue003", "\u0b3c": "\ue004", "\u0d3c": "\ue005",
+  "\u0e4d": "\ue006", "\u0ecd": "\ue007",
+  "\u1037": "\ue008",
 };
+// 1.6.19 (R7F-12): espejo de HEBREW_FINALS en dup-match.ts.
+const FZ_HEBREW: Record<string, string> = {
+  "\u05da": "\u05db", "\u05dd": "\u05de", "\u05df": "\u05e0",
+  "\u05e3": "\u05e4", "\u05e5": "\u05e6",
+};
+
 const FZ_NUKTA_BACK: Record<string, string> = Object.fromEntries(
   Object.entries(FZ_NUKTA).map(([k, v]) => [v, k]),
 );
@@ -45,13 +54,30 @@ const FZ_VIRAMA: Record<string, string> = {
   "\u094D": "\uE010", "\u09CD": "\uE011", "\u0A4D": "\uE012",
   "\u0ACD": "\uE013", "\u0B4D": "\uE014", "\u0BCD": "\uE015",
   "\u0C4D": "\uE016", "\u0CCD": "\uE017", "\u0D4D": "\uE018",
+  "\u1039": "\uE019", "\u103A": "\uE01A", "\u0DCA": "\uE01B",
+  "\u17CB": "\uE01C",
 };
 const FZ_VIRAMA_BACK: Record<string, string> = Object.fromEntries(
   Object.entries(FZ_VIRAMA).map(([k, v]) => [v, k]),
 );
 
+// 1.6.19 (Prejuicio R6, R7F-1): la distancia se mide en GRAFEMAS, no
+// en unidades de código — un typo índico (una sílaba: consonante +
+// signos) costaba 2-3 ediciones y la tolerancia de smartHit no
+// llegaba nunca; en latín un grafema es una letra y nada cambia.
+const SEG: Intl.Segmenter | null = typeof Intl !== "undefined" && "Segmenter" in Intl
+  ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+  : null;
+export function clustersOf(s: string): string[] {
+  return SEG ? Array.from(SEG.segment(s), (x) => x.segment) : Array.from(s);
+}
+
 function distance(a: string, b: string): number {
-  if (a === b) return 0;
+  return distanceClusters(clustersOf(a), clustersOf(b));
+}
+
+function distanceClusters(a: string[], b: string[]): number {
+  if (a.join("") === b.join("")) return 0;
   if (!a.length) return b.length;
   if (!b.length) return a.length;
   // 1.6.16 (Prejuicio R5, R6F-8): Damerau, como el lev de dup-match —
@@ -83,7 +109,7 @@ export function smartHit(query: string, text: string): boolean {
   // por su letra), y el camino difuso ya tenía su suelo (≥4).
   if (t.trim() === q) return true;
   if (q.length >= 2 && t.includes(q)) return true;
-  const words = t.split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 1);
+  const words = t.split(/[^\p{L}\p{N}\p{M}]+/u).filter((word) => word.length > 1);
   const parts = q.split(/\s+/).filter(Boolean);
   return parts.every((part) =>
     words.some((word) => {
@@ -99,10 +125,17 @@ export function smartHit(query: string, text: string): boolean {
       // Y la inicial solo vale CON contexto (consulta de más de una
       // parte): sola, «m» casaba con el «miami» de cada dirección y el
       // filtro no filtraba — la letra sola vuelve a la ley de R3F-8.
-      if (part.length === 1 && parts.length > 1 && !/^[0-9]$/.test(part) && word.startsWith(part)) return true;
+      const pc = clustersOf(part);
+      const wc = clustersOf(word);
+      if (pc.length === 1 && parts.length > 1 && !/^[0-9]$/.test(part) && word.startsWith(part)) return true;
       if (part.length >= 2 && (word.includes(part) || part.includes(word))) return true;
-      const limit = part.length >= 7 ? 2 : part.length >= 4 ? 1 : 0;
-      return limit > 0 && Math.abs(word.length - part.length) <= limit && distance(part, word) <= limit;
+      // El suelo se calibra en puntos de código (la calibración latina
+      // de siempre: 4+ → 1 edición, 7+ → 2); la distancia se mide en
+      // grafemas. Calibrar el suelo en grafemas dejaba un nombre
+      // devanagari de 3 sílabas por debajo del suelo de su propio typo.
+      const cps = Array.from(part).length;
+      const limit = cps >= 7 ? 2 : cps >= 4 ? 1 : 0;
+      return limit > 0 && Math.abs(wc.length - pc.length) <= limit && distanceClusters(pc, wc) <= limit;
     }),
   );
 }

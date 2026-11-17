@@ -28,7 +28,10 @@ function evalAmount(expr: string): number | null {
  *  silencio, con el pago hecho y el trabajo saldado. Un texto ilegible vale
  *  0, como un campo vacío; «2,50» ya no se pierde. */
 export function tipFromText(text: string): number {
-  return evalAmount(text) ?? 0;
+  // 1.6.19 (Prejuicio R6, R7F-9): el «$» inicial se quita aquí, como ya
+  // hacían a mano los editores de listas — el campo de la propina pasa
+  // el texto crudo y «$5» se guardaba como $0 en silencio.
+  return evalAmount(String(text ?? "").replace(/^\s*\$\s*/, "")) ?? 0;
 }
 
 /** 1.6.07 (Prejuicio R3, R3F-1): el lector de dinero para campos donde un
