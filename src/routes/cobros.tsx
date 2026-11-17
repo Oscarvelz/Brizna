@@ -93,6 +93,11 @@ function CobrosPage() {
 
   // Switching views never jumps: no router reset, no hash jump. The list is brought into view
   // only when it is not already there, and the header keeps its state while we glide.
+  // 1.6.31 (Oscar, 2026-11-17): «ya está a la vista» significa EN SU SITIO
+  // (la lista apoyada bajo el encabezado), no asomando por el borde inferior:
+  // el atajo viejo daba la lista por vista con su borde a media pantalla y el
+  // toque en Por cobrar / Abonado / Semana / Mes / Año cambiaba los datos sin
+  // llevarlo a ellos — el toque parecía no hacer nada.
   const firstView = useRef(true);
   useEffect(() => {
     const fromOutside = firstView.current;
@@ -106,8 +111,6 @@ function CobrosPage() {
       const offset = (headerShown ? header.offsetHeight : 0) + 8;
       const top = list.getBoundingClientRect().top;
       const delta = top - offset;
-      const visible = top >= offset - 2 && top < window.innerHeight - 160;
-      if (!fromOutside && visible) return;
       if (Math.abs(delta) < 4) return;
       const root = document.documentElement;
       root.dataset.bzQuiet = "1";
@@ -375,7 +378,11 @@ function CobrosPage() {
 
       {q.isLoading && <div id="lista" className="h-28 animate-pulse rounded-xl bg-surface-2" />}
 
-      <div id="lista" className="scroll-mt-20">
+      {/* 1.6.31 (2ª parte): la lista se garantiza una pantalla de alto —
+          sin ese suelo, una vista corta (Abonado con dos personas) no tiene
+          página para deslizarse hasta el encabezado y el toque se ahoga a
+          los pocos píxeles, aunque la guardia ya deje pasar el gesto. */}
+      <div id="lista" className="min-h-[calc(100dvh-8rem)] scroll-mt-20">
         {view !== "owing" ? (
           <div className="mb-3">
             <DensityToggle />
