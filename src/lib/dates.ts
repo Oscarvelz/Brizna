@@ -118,8 +118,33 @@ export function isRealISODate(value: string): boolean {
  * solo proclaman la bandera que el motor honra (fin ≥ inicio y
  * tramo inclusivo ≤ 180, es decir diff < 180). El editor de
  * Ajustes lee la bandera cruda y conserva su poder de quitarla. */
+/* 1.6.51 (Prejuicio R13, R14B): las fechas se comparan por VALOR
+ * (año, mes, día como números), nunca por cadena — la cadena de
+ * cinco dígitos del año 10000 ordena antes que cualquier «9999-…»
+ * («1» < «9») y cada comparación lexicográfica de la familia
+ * mentía en el borde superior como mintió en el inferior antes
+ * del relleno: vacationHonored negaba toda vacación que tocaba
+ * el año 10000, la vista previa perdía ese año entero y maxISO
+ * devolvía la menor por mayor. padYear rellena; compareISO acota
+ * la comparación a la verdad. */
+export function compareISO(a: string, b: string): number {
+  // La grafía negativa de la propia familia («00-1-12-31» es el
+  // año −1 de padYear) también se lee por valor: cuatro partes
+  // son año negativo con su signo dentro, y el signo delante
+  // niega el año entero.
+  const parse = (s: string): [number, number, number] => {
+    const neg = s.startsWith("-");
+    const p = (neg ? s.slice(1) : s).split("-").map(Number);
+    if (p.length === 4) return [-(p[1] ?? 0), p[2] ?? 0, p[3] ?? 0];
+    return [(neg ? -1 : 1) * (p[0] ?? 0), p[1] ?? 0, p[2] ?? 0];
+  };
+  const [ay, am, ad] = parse(a);
+  const [by, bm, bd] = parse(b);
+  return ay - by || am - bm || ad - bd;
+}
+
 export function vacationHonored(start: string | null | undefined, end: string | null | undefined): boolean {
-  return !!start && !!end && end >= start && addDaysISO(start, 180) > end;
+  return !!start && !!end && compareISO(end, start) >= 0 && compareISO(addDaysISO(start, 180), end) > 0;
 }
 
 export function addDaysISO(iso: string, days: number): string {
@@ -199,7 +224,7 @@ export function everyNDaysInRange(
   // enumeration, so a daily client anchored more than 800 days ago spent the whole
   // guard jumping and got ZERO dates back — silently: no future visits, no error, no
   // trace, and the client quietly stopped being scheduled.
-  if (cursor < rangeStart) {
+  if (compareISO(cursor, rangeStart) < 0) {
     const diffDays = Math.round((Date.parse(rangeStart) - Date.parse(cursor)) / 86_400_000);
     if (Number.isFinite(diffDays) && diffDays > 0) {
       cursor = addDaysISO(cursor, Math.ceil(diffDays / step) * step);
@@ -208,7 +233,7 @@ export function everyNDaysInRange(
   // The enumeration keeps its own guard, sized by the range it has to cover.
   const spanDays = Math.max(0, Math.round((Date.parse(rangeEnd) - Date.parse(cursor)) / 86_400_000));
   let guard = Math.floor(spanDays / step) + 2;
-  while (cursor <= rangeEnd && guard > 0) {
+  while (compareISO(cursor, rangeEnd) <= 0 && guard > 0) {
     out.push(cursor);
     cursor = addDaysISO(cursor, step);
     guard -= 1;
@@ -263,7 +288,7 @@ export function scheduleDatesForMonth(opts: {
   const monthStart = `${padYear(opts.year)}-${pad(opts.month)}-01`;
   const monthEnd = lastDayOfMonthISO(opts.year, opts.month);
   const anchor = opts.startDate && opts.startDate.length >= 8 ? opts.startDate : opts.today;
-  const minDate = anchor > opts.today ? anchor : opts.today;
+  const minDate = compareISO(anchor, opts.today) > 0 ? anchor : opts.today;
   const weekday = opts.startDate ? weekdayFromISO(opts.startDate) : opts.weekday;
 
   let dates: string[] = [];
@@ -282,7 +307,7 @@ export function scheduleDatesForMonth(opts: {
     const interval = intervalDaysForCuts(opts.cutsPerMonth) ?? 14;
     dates = everyNDaysInRange(anchor, monthStart, monthEnd, interval);
   }
-  return dates.filter((d) => d >= minDate);
+  return dates.filter((d) => compareISO(d, minDate) >= 0);
 }
 
 export function previewUpcomingCuts(opts: {
@@ -335,7 +360,7 @@ export function lastDayOfMonthISO(year: number, month: number): string {
 }
 
 export function maxISO(a: string, b: string): string {
-  return a > b ? a : b;
+  return compareISO(a, b) > 0 ? a : b;
 }
 
 export function payDueISO(dueDay: number, fromISO: string): string {

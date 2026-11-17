@@ -82,9 +82,13 @@ function intId(v: unknown): number {
 }
 
 function asIsoDate(v: unknown): string {
-  if (typeof v === "string") return v.slice(0, 10);
+  // 1.6.51 (Prejuicio R13, R14B-3): la fecha se corta por su
+  // frontera (la «T» o el espacio de la hora), no a diez
+  // caracteres — la rebanada se comía el último dígito del día
+  // de los años de cinco dígitos y devolvía «10000-01-3».
+  if (typeof v === "string") return v.split(/[T ]/)[0]!;
   if (v instanceof Date) return stampDay(v);
-  return String(v ?? "").slice(0, 10);
+  return String(v ?? "").split(/[T ]/)[0]!;
 }
 
 /** 1.5.50 (auditoría interna, P1): the one date gate for server-fn inputs — it checks
@@ -198,8 +202,21 @@ type JobDb = {
 };
 
 function daysBetween(from: string, to: string): number {
-  const [ay, am, ad] = from.slice(0, 10).split("-").map(Number);
-  const [by, bm, bd] = to.slice(0, 10).split("-").map(Number);
+  // 1.6.51 (R14B-3): sin la rebanada de diez — el año de cinco
+  // dígitos entra entero y el día no se acorta («10000-01-31»
+  // medía como día 3: 216 contra los 244 verdaderos). Y la
+  // grafía negativa de la familia («00-1-12-31», el año −1 de
+  // padYear) se lee por valor, como en compareISO: cuatro
+  // partes son un año negativo con el signo dentro.
+  const parseDay = (s: string): [number, number, number] => {
+    const t = s.split(/[T ]/)[0]!;
+    const neg = t.startsWith("-");
+    const p = (neg ? t.slice(1) : t).split("-").map(Number);
+    if (p.length === 4) return [-(p[1] ?? 0), p[2] ?? 0, p[3] ?? 0];
+    return [(neg ? -1 : 1) * (p[0] ?? 0), p[1] ?? 0, p[2] ?? 0];
+  };
+  const [ay, am, ad] = parseDay(from);
+  const [by, bm, bd] = parseDay(to);
   // 1.6.44 (Prejuicio R12, R13B-4): los años se leen LITERALES,
   // como la familia de dates.ts desde 1.6.40 — Date.UTC leía los
   // años 0–99 como 1900+año, así que un tramo que cruzaba 99→100
@@ -230,7 +247,14 @@ function daysBetween(from: string, to: string): number {
  * no acotaban nada: Hoy proclamaba «el trabajo se movió al
  * regreso» de una bandera que el motor ignoraba. */
 function validVacation(start: string | null, end: string | null): [string, string] | null {
-  return start && end && end >= start && daysBetween(start, end) < 180 ? [start, end] : null;
+  // 1.6.51 (Prejuicio R13, R14B-1): el orden se juzga por los
+  // días verdaderos (el signo de daysBetween), como su espejo
+  // vacationHonored juzga por valor — la comparación de cadenas
+  // `end >= start` negaba todo tramo que cruzara al año 10000 y
+  // los dos espejos discrepaban en la frontera.
+  if (!start || !end) return null;
+  const diff = daysBetween(start, end);
+  return diff >= 0 && diff < 180 ? [start, end] : null;
 }
 
 function parseExtras(raw: string | null | undefined): string[] {
