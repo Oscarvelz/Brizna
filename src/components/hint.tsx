@@ -19,6 +19,22 @@ import { cn } from "@/lib/utils";
  * que la marca sobrevive a la visita y la consume la burbuja del
  * mismo tema al remontar, solo con una lección viva en pantalla. */
 let pendingHintReopen: string | null = null;
+// 1.6.49 (Prejuicio R13, R14D-1): el juicio citado de la marca.
+// La cura de R13D-1 solo juzgaba en la burbuja del MISMO tema: si
+// la vuelta aterrizaba en una pantalla sin esa burbuja (el Manual
+// tiene salidas de primera clase a otras funciones), ninguna
+// jueza se sentaba y la marca — sin caducidad — se disparaba sola
+// en la próxima lección que montara esa burbuja. Ahora cualquier
+// burbuja que monte fuera del Manual con la marca ajena armada
+// cita el juicio: si la del tema no la consume en la ventana del
+// regreso, la marca muere sin dispararse.
+let pendingHintJudge: ReturnType<typeof setTimeout> | null = null;
+const cancelHintJudge = () => {
+  if (pendingHintJudge) {
+    clearTimeout(pendingHintJudge);
+    pendingHintJudge = null;
+  }
+};
 
 /** Manual/hint text: [[Term]] is an explicit link to that place in the app; known names get emphasis. */
 export function richText(text: string): ReactNode {
@@ -74,7 +90,18 @@ export function Hint({
   // escena moría saltada en q6-pista y q6-mas.
   const myTopic = entry?.topic.id;
   useEffect(() => {
-    if (pathname === "/manual" || !pendingHintReopen || pendingHintReopen !== myTopic) return;
+    if (pathname === "/manual" || !pendingHintReopen) return;
+    if (pendingHintReopen !== myTopic) {
+      // 1.6.49 (R14D-1): marca ajena armada — se cita el juicio.
+      if (!pendingHintJudge) {
+        pendingHintJudge = setTimeout(() => {
+          pendingHintReopen = null;
+          pendingHintJudge = null;
+        }, 900);
+      }
+      return;
+    }
+    cancelHintJudge();
     if (typeof document !== "undefined" && document.querySelector(".pres-root[role='dialog'], .pres-root:has(.pres-parked)")) {
       pendingHintReopen = null;
       setOpen(true);
@@ -190,7 +217,7 @@ export function Hint({
                         e.stopPropagation();
                       }}
                       onClick={() => {
-                        if (entry) pendingHintReopen = entry.topic.id;
+                        if (entry) { cancelHintJudge(); pendingHintReopen = entry.topic.id; }
                         setOpen(false);
                         rememberOrigin(pathname);
                         closeAllSheets(() => void navigate({ to: "/manual", search: { t: entry.topic.id }, resetScroll: false }));

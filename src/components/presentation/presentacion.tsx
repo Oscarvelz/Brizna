@@ -742,6 +742,15 @@ export function Presentacion() {
     if (!run || !scene || !step || run.finished || run.chaptersOpen || run.speedOpen || run.stayOpen || run.exitOpen || (inManual && !manualScene)) return;
     const r = run;
     let cancelled = false;
+    // 1.6.49 (Prejuicio R13, R14D-2): los desarmes de ESTE paso.
+    // Los oídos de gesto (y el oyente resize de armRect) se retiran
+    // en la limpieza del efecto, en persona — antes su única
+    // retirada era un temporizador de 120 s guardado en
+    // timers.current, y la limpieza vaciaba ese registro con
+    // clearTimers(): la limpieza mataba al limpiador y los oídos
+    // quedaban armados en document para el resto de la sesión,
+    // disparando sobre la corrida actual.
+    const disarmers: Array<() => void> = [];
     // La velocidad EFECTIVA: la etiqueta del selector por el factor de la
     // escala recalibrada (guion.ts, PACE) — a 1× el motor corre al ritmo
     // que antes corría a 0.5×, como ordenó Oscar.
@@ -755,6 +764,7 @@ export function Presentacion() {
       timers.current.push(iv as unknown as number);
       window.addEventListener("resize", measure);
       const off = () => window.removeEventListener("resize", measure);
+      disarmers.push(off);
       timers.current.push(window.setTimeout(() => { window.clearInterval(iv); off(); }, 60_000) as unknown as number);
     };
 
@@ -1091,6 +1101,7 @@ export function Presentacion() {
             document.removeEventListener("pointercancel", onUp, true);
             if (heldId) window.clearTimeout(heldId);
           };
+          disarmers.push(cleanup);
           const onDown = (e: Event) => {
             if (!el.contains(e.target as Node) || downAt) return;
             downAt = performance.now();
@@ -1158,6 +1169,7 @@ export function Presentacion() {
             document.removeEventListener("pointerup", onUp, true);
             document.removeEventListener("pointercancel", onUp, true);
           };
+          disarmers.push(cleanup);
           const onDown = (e: PointerEvent) => {
             if (!el.contains(e.target as Node) || tracking) return;
             tracking = true;
@@ -1209,6 +1221,7 @@ export function Presentacion() {
           }
         };
         document.addEventListener("pointerdown", onTap, true);
+        disarmers.push(() => document.removeEventListener("pointerdown", onTap, true));
         timers.current.push(window.setTimeout(() => document.removeEventListener("pointerdown", onTap, true), 120_000) as unknown as number);
       } else if (r.playing) {
         const beat = capDwell / speed;
@@ -1228,7 +1241,7 @@ export function Presentacion() {
       }
     };
     void runStep();
-    return () => { cancelled = true; clearTimers(); };
+    return () => { cancelled = true; for (const d of disarmers) d(); clearTimers(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run?.sceneIdx, run?.stepIdx, run?.mode, run?.playing, run?.speed, run?.replayUntil, run?.chaptersOpen, run?.speedOpen, run?.stayOpen, run?.exitOpen, run?.finished, inManual, intro]);
 
