@@ -19,22 +19,30 @@ import { cn } from "@/lib/utils";
  * que la marca sobrevive a la visita y la consume la burbuja del
  * mismo tema al remontar, solo con una lección viva en pantalla. */
 let pendingHintReopen: string | null = null;
-// 1.6.49 (Prejuicio R13, R14D-1): el juicio citado de la marca.
-// La cura de R13D-1 solo juzgaba en la burbuja del MISMO tema: si
-// la vuelta aterrizaba en una pantalla sin esa burbuja (el Manual
-// tiene salidas de primera clase a otras funciones), ninguna
-// jueza se sentaba y la marca — sin caducidad — se disparaba sola
-// en la próxima lección que montara esa burbuja. Ahora cualquier
-// burbuja que monte fuera del Manual con la marca ajena armada
-// cita el juicio: si la del tema no la consume en la ventana del
-// regreso, la marca muere sin dispararse.
-let pendingHintJudge: ReturnType<typeof setTimeout> | null = null;
-const cancelHintJudge = () => {
-  if (pendingHintJudge) {
-    clearTimeout(pendingHintJudge);
-    pendingHintJudge = null;
-  }
-};
+/* 1.6.54 (Prejuicio R14, R15D-1/R15D-2): la marca se ata a la
+ * SESIÓN de la lección que la armó, y la jueza de los 900 ms se
+ * retira. La jueza solo se sentaba donde una burbuja monta: la
+ * vuelta que aterriza en una pantalla sin burbujas (Clima,
+ * Fichero — salidas «go» del propio Manual) no citaba a nadie y
+ * la marca, sin caducidad, se disparaba sola en una lección
+ * posterior; y donde sí se sentaba, su fusible quemaba el
+ * montaje tardío lícito de la burbuja dentro de un pliegue
+ * cerrado, que monta cuando el alumno lo abre, no cuando la
+ * pantalla pinta. La ley nueva no depende de qué monte ni de
+ * cuándo: la marca guarda el número de sesión que la raíz de la
+ * lección lleva estampado (data-pres-session, presentacion.tsx)
+ * y solo puede consumirse con ESA MISMA sesión viva — una
+ * lección posterior trae otro número y la marca muere en su
+ * primer juicio, sin dispararse; dentro de la misma sesión, el
+ * montaje perezoso de un pliegue es lícito a cualquier demora.
+ * Si ninguna burbuja del tema vuelve a montar, la marca queda
+ * armada pero inerte: no tiene ningún otro camino de disparo. */
+let pendingHintSession: string | null = null;
+const livePresRoot = (): Element | null =>
+  typeof document !== "undefined"
+    ? document.querySelector(".pres-root[role='dialog'], .pres-root:has(.pres-parked)")
+    : null;
+const livePresSession = (): string | null => livePresRoot()?.getAttribute("data-pres-session") ?? null;
 
 /** Manual/hint text: [[Term]] is an explicit link to that place in the app; known names get emphasis. */
 export function richText(text: string): ReactNode {
@@ -91,31 +99,21 @@ export function Hint({
   const myTopic = entry?.topic.id;
   useEffect(() => {
     if (pathname === "/manual" || !pendingHintReopen) return;
-    if (pendingHintReopen !== myTopic) {
-      // 1.6.49 (R14D-1): marca ajena armada — se cita el juicio.
-      if (!pendingHintJudge) {
-        pendingHintJudge = setTimeout(() => {
-          pendingHintReopen = null;
-          pendingHintJudge = null;
-        }, 900);
-      }
-      return;
-    }
-    cancelHintJudge();
-    if (typeof document !== "undefined" && document.querySelector(".pres-root[role='dialog'], .pres-root:has(.pres-parked)")) {
-      pendingHintReopen = null;
-      setOpen(true);
-    } else {
-      // 1.6.43 (Prejuicio R12, R13D-1): la vuelta sin lección viva
-      // CIERRA la salida — la marca muere aquí, en la primera
-      // pantalla que la puede juzgar. Antes el borrado vivía solo
-      // dentro de la guarda que abría, así que si la lección
-      // terminaba durante la visita (o la vuelta caía en otra
-      // pantalla), la marca quedaba huérfana para siempre y la
-      // burbuja se abría sola en una lección posterior del mismo
-      // tema, incluso sobre la tarjeta final.
-      pendingHintReopen = null;
-    }
+    if (pendingHintReopen !== myTopic) return;
+    // 1.6.54 (R15D-1/R15D-2): la burbuja del tema juzga la marca
+    // contra la sesión viva: solo abre si la lección que la armó
+    // sigue viva (su raíz trae el mismo número estampado). En
+    // cualquier otro caso — la lección terminó durante la visita,
+    // la que vive es OTRA lección, o no vive ninguna — la marca
+    // muere aquí, sin dispararse (la ley de 1.6.43, ahora con
+    // identidad: antes una lección posterior del mismo tema la
+    // consumía como si fuera la suya).
+    const root = livePresRoot();
+    const session = root?.getAttribute("data-pres-session") ?? null;
+    pendingHintReopen = null;
+    const armedSession = pendingHintSession;
+    pendingHintSession = null;
+    if (root && session === armedSession) setOpen(true);
   }, [pathname, myTopic]);
 
   useLayoutEffect(() => {
@@ -217,7 +215,7 @@ export function Hint({
                         e.stopPropagation();
                       }}
                       onClick={() => {
-                        if (entry) { cancelHintJudge(); pendingHintReopen = entry.topic.id; }
+                        if (entry) { pendingHintReopen = entry.topic.id; pendingHintSession = livePresSession(); }
                         setOpen(false);
                         rememberOrigin(pathname);
                         closeAllSheets(() => void navigate({ to: "/manual", search: { t: entry.topic.id }, resetScroll: false }));

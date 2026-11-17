@@ -109,8 +109,17 @@ export function StageHost({ children }: { children: ReactNode }) {
 
 /* ================================= CONDUCTOR ================================= */
 
+/* 1.6.54 (Prejuicio R14, R15D-1/R15D-2): cada corrida nace con un
+ * número de sesión que no se repite en la vida de la app. La raíz
+ * de la lección lo lleva estampado (data-pres-session) y la marca
+ * de reapertura de las burbujas (hint.tsx) se ata a él: una marca
+ * solo puede dispararse dentro de la MISMA corrida que la armó. */
+let presSessionSeq = 0;
+
 type RunState = {
   mod: Module;
+  /** El número de sesión de esta corrida (ver presSessionSeq). */
+  session: number;
   sceneIdx: number;
   stepIdx: number;
   mode: "auto" | "interactive";
@@ -416,7 +425,7 @@ export function Presentacion() {
       // cancelIntro ahora además apaga los relojes en su rama.
       if (!stageOn()) return;
       setRun({
-        mod, sceneIdx: road ? 0 : startIdx, stepIdx: 0, replayUntil: road ? startIdx : undefined,
+        mod, session: ++presSessionSeq, sceneIdx: road ? 0 : startIdx, stepIdx: 0, replayUntil: road ? startIdx : undefined,
         mode: prefs.mode, speed: prefs.speed,
         playing: true, won: false, finished: false, chaptersOpen: false, speedOpen: false, stayOpen: false, exitOpen: false, skipped: [], back: [],
       });
@@ -1090,6 +1099,14 @@ export function Presentacion() {
       }
       if (step.kind === "press") {
         if (r.mode === "interactive" && !replaying) {
+          // 1.6.54 (Prejuicio R14, R15D-3): el gesto ya cayó antes de
+          // una pausa dentro de su ventana de gracia — el avance
+          // murió con la limpieza del efecto, pero el gesto NO se
+          // repite (principio 14, la guarda que las ramas
+          // automáticas ya tenían y las interactivas no): se
+          // reprograma el avance y el oído no se rearma. En un
+          // objetivo de vaivén, repetir el gesto lo desharía.
+          if (r.won) { later(() => { if (!cancelled) advance(); }, 650); return; }
           // La presión debe ser REAL y durar al menos `ms` de reloj verdadero:
           // el temporizador de la app (550ms en ConfirmLink) no conoce la
           // velocidad de la presentación. Un toque rápido no cuenta: sacude.
@@ -1158,6 +1175,10 @@ export function Presentacion() {
       }
       if (step.kind === "swipe") {
         if (r.mode === "interactive" && !replaying) {
+          // 1.6.54 (R15D-3): la misma guarda que en press — el
+          // deslizamiento ya cayó; rearmar el oído obligaría a
+          // repetirlo y en un vaivén lo desharía (principio 14).
+          if (r.won) { later(() => { if (!cancelled) advance(); }, 650); return; }
           // El arrastre debe ser REAL: se sigue el puntero del usuario sobre
           // la tarjeta y solo cuenta un deslizamiento claro a la izquierda.
           let downX = 0;
@@ -1213,6 +1234,10 @@ export function Presentacion() {
       }
       // do: el compás interactivo
       if (r.mode === "interactive" && !replaying) {
+        // 1.6.54 (R15D-3): la misma guarda — el toque ya cayó antes
+        // de la pausa; en un interruptor, repetirlo lo apagaría
+        // (principio 14, como la rama automática ya declaraba).
+        if (r.won) { later(() => { if (!cancelled) advance(); }, 650); return; }
         const onTap = (e: Event) => {
           if (el.contains(e.target as Node)) {
             document.removeEventListener("pointerdown", onTap, true);
@@ -1353,7 +1378,7 @@ export function Presentacion() {
     // dice que la lección sigue viva y ofrece sus dos salidas de
     // siempre, con sus ventanas enteras.
     return (
-      <div className={`pres-root${entering ? " is-entering" : ""}${leaving ? " is-leaving" : ""}`}>
+      <div className={`pres-root${entering ? " is-entering" : ""}${leaving ? " is-leaving" : ""}`} data-pres-session={run.session}>
         <div className="pres-parked" role="note">
           <span>{tx("Tu lección sigue viva: vuelve atrás para continuarla.", "Your lesson is still live: go back to continue it.")}</span>
           <span className="pres-parked-acts">
@@ -1637,7 +1662,7 @@ export function Presentacion() {
           })();
 
   return (
-    <div className={`pres-root${entering ? " is-entering" : ""}${leaving ? " is-leaving" : ""}${!cardShown ? " is-unplaced" : ""}`} role="dialog" aria-modal="false" aria-label={pick(mod.title, lang)} data-skipped={run.skipped.join(" ")}>
+    <div className={`pres-root${entering ? " is-entering" : ""}${leaving ? " is-leaving" : ""}${!cardShown ? " is-unplaced" : ""}`} role="dialog" aria-modal="false" aria-label={pick(mod.title, lang)} data-skipped={run.skipped.join(" ")} data-pres-session={run.session}>
       {/* el escudo rodea el recorte: ningún toque desvía el guion, y el objetivo del
           compás recibe el suyo de verdad, a través del hueco */}
       {shieldRects.map((style, i) => (
