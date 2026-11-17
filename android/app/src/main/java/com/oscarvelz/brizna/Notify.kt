@@ -21,6 +21,14 @@ import java.util.Calendar
  * Only the next reminder is armed at any time; when it fires, it shows every reminder that is due and arms the next.
  */
 object Notify {
+    // android-17 (Prejuicio R5, R6E-1): el libro de avisos (items/fired)
+    // se lee-modifica-escribe desde DOS hilos — store() llega por el
+    // hilo JavaBridge de la WebView y fireDue()/retime() por el hilo
+    // principal del receptor — y sin candado el escritor tardío
+    // resucitaba marcas viejas o revertía la agenda nueva. Los tres
+    // ciclos enteros se serializan en este candado (synchronized es
+    // reentrante: arm() llamado desde dentro no se bloquea).
+    private val LOCK = Any()
     private const val PREFS = "brizna-notify"
     const val ACTION_FIRE = "com.oscarvelz.brizna.NOTIFY"
     const val ACTION_WIDGET = "com.oscarvelz.brizna.WIDGET_TICK"
@@ -70,6 +78,7 @@ object Notify {
      *  reminder that rang is not the reminder now stored (a yard added to tomorrow at 19:30 must be able
      *  to ring in the corrected notice). */
     fun store(ctx: Context, json: String): Int {
+        synchronized(LOCK) {
         val a = runCatching { JSONArray(json) }.getOrNull() ?: return -1
         val oldHash = read(ctx).associate { it.id to it.hash }
         val clean = JSONArray()
@@ -104,6 +113,7 @@ object Notify {
         prefs(ctx).edit().putString("items", clean.toString()).putStringSet("fired", keep).putLong("storedAt", System.currentTimeMillis()).apply()
         arm(ctx)
         return clean.length()
+        }
     }
 
     private fun readHash(items: JSONArray, id: String): String {
@@ -199,6 +209,7 @@ object Notify {
      *  phone was off are no longer dropped in silence: they collapse into ONE
      *  summary notification («Mientras el teléfono estaba apagado: …»). */
     fun fireDue(ctx: Context) {
+        synchronized(LOCK) {
         val now = System.currentTimeMillis()
         val done = fired(ctx)
         val items = read(ctx)
@@ -240,6 +251,7 @@ object Notify {
         val nextFuture = items.filter { it.id !in done && it.at > now }.minOfOrNull { it.at } ?: 0L
         val retry = if (blocked) now + BLOCKED_RETRY_MS else 0L
         armAt(ctx, listOf(nextFuture, retry).filter { it > 0 }.minOrNull() ?: 0L)
+        }
     }
 
     /** True only when the notification was actually published. */
@@ -274,6 +286,7 @@ object Notify {
      * abra y reconstruya la lista. Los ítems sin `wall` (paquetes viejos)
      * conservan su instante. */
     fun retime(ctx: Context) {
+        synchronized(LOCK) {
         val items = read(ctx)
         if (items.none { it.wall.isNotBlank() }) return
         val arr = JSONArray()
@@ -298,6 +311,7 @@ object Notify {
         if (changed) {
             prefs(ctx).edit().putString("items", arr.toString()).apply()
             arm(ctx)
+        }
         }
     }
 

@@ -210,8 +210,15 @@ class Dictate(private val ctx: Context, private val reply: (JSONObject) -> Unit)
                     SpeechRecognizer.ERROR_CLIENT -> if (stopping) finish(fail("no-speech")) else if (!heard) later(cur) else finish(fail("failed"))
                     else -> {
                         // language pack missing (12/13), service gone (11), network (1/2/4), too many requests (10):
-                        // try the next recognizer if nothing was heard yet
-                        if (!heard && plan.isNotEmpty()) later(cur)
+                        // try the next recognizer if nothing was heard yet.
+                        // android-17 (Prejuicio R5, R6E-2): sin la condición del plan —
+                        // en el último paso el plan YA está vacío por construcción
+                        // (removeAt corre antes de escuchar), así que la puerta
+                        // vieja hacía inalcanzable el último peldaño (la pantalla
+                        // de voz del sistema) justo en la cascada para la que
+                        // existe. later() lleva a next(), y next() con el plan
+                        // vacío ofrece la pantalla, como ERROR_CLIENT ya hacía.
+                        if (!heard) later(cur)
                         else finish(fail(if (code == SpeechRecognizer.ERROR_NETWORK || code == SpeechRecognizer.ERROR_NETWORK_TIMEOUT || !online()) "offline" else "failed"))
                     }
                 }
