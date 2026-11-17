@@ -1,5 +1,5 @@
 import { formatTime } from "@/lib/format";
-import { todayISO } from "@/lib/dates";
+import { deviceTZ, todayISO } from "@/lib/dates";
 import type { JobRow } from "@/lib/types";
 
 const SEEN_KEY = "ols-reminders-seen";
@@ -38,7 +38,11 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return perm === "granted";
 }
 
-function minutesNow(timeZone = "America/New_York"): number {
+// 1.6.03 (Prejuicio R2, R2B-3): el reloj de los avisos es el del aparato
+// (deviceTZ), como el «hoy» de la misma función — el default clavado a
+// Nueva York era el gemelo sin curar de BZ-45: en Central la ventana de
+// aviso corría dos horas corrida y en Pacífico era inalcanzable.
+function minutesNow(timeZone = deviceTZ()): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
     hour: "2-digit",

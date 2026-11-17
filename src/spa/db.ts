@@ -2,6 +2,7 @@
 // and saved in IndexedDB, so every screen works with no internet.
 import { PGlite } from "@electric-sql/pglite";
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
+import { deviceTZ } from "@/lib/dates";
 import { setFlushFailed } from "@/lib/flush-state";
 import { quarantineOutbox } from "@/lib/offline-queue";
 import { warmPglite } from "./pg-warm";
@@ -194,8 +195,14 @@ async function open(): Promise<PGlite> {
   await pg.waitReady;
   realSync = pg.syncToFs.bind(pg);
   (pg as any).syncToFs = async () => undefined; // saved by flushDb() instead
-  // Day boundaries (payments "this month", "last paid") must follow Miami time, not UTC.
-  await pg.exec("set time zone 'America/New_York'").catch(() => undefined);
+  // 1.6.03 (Prejuicio R2, R2B-4): la sesión SQL vive en la zona DEL APARATO,
+  // como todo lo demás desde BZ-45 (un solo reloj). El pin a Miami hacía que
+  // cada ::date y cada cubeta de mes/semana en lawn.ts resolviera en hora de
+  // Nueva York mientras las pantallas leían el mismo pago en la zona del
+  // teléfono: un pago podía ser de noviembre en pantalla y de diciembre en
+  // las sumas. El nombre IANA viene de Intl; se valida antes de interpolar.
+  const sessionTz = /^[A-Za-z0-9_/+-]+$/.test(deviceTZ()) ? deviceTZ() : "America/New_York";
+  await pg.exec(`set time zone '${sessionTz}'`).catch(() => undefined);
   (globalThis as any).__bzTrace?.push(["db-ready", "", Date.now()]);
   await pg.exec("create table if not exists _migrations (name text primary key, applied_at timestamptz not null default now())");
   const migrations = import.meta.glob("../../migrations/*.sql", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
