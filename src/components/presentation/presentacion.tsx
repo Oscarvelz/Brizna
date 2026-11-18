@@ -31,7 +31,7 @@ import {
   clearLaunch, clearStay, peekLaunch, peekStay, readPresState, setLaunch, setStay, takeLaunch, writePresState,
   type PresState,
 } from "@/lib/presentation/state";
-import { enterStage, exitStage, stageOn, STAGE_EVENT } from "@/lib/presentation/stage";
+import { enterStage, exitStage, stageOn, trackSeed, STAGE_EVENT } from "@/lib/presentation/stage";
 import { inAndroidApp } from "@/spa/native";
 import { readStoredLocale } from "@/lib/theme";
 import { toast } from "sonner";
@@ -873,21 +873,17 @@ export function Presentacion() {
           stagedRef.current.add(`${r.mod.id}:${i}:${j}`);
           const sow = STAGE_SEEDS[s.build];
           if (!sow) continue;
-          let landed = false;
-          const seeding = sow()
-            .catch(() => undefined)
-            .then(() => { landed = true; });
+          const seeding = sow().catch(() => undefined);
+          // 1.6.60 (Prejuicio R16, R17D-1/R17D-2): la siembra se
+          // registra con su dueño (stage.ts) — el aviso al aterrizar
+          // y la espera de la salida viven allí, no en esta clausura
+          // cancellable. Aquí queda solo la espera del paso.
+          trackSeed(seeding);
           await Promise.race([
             seeding,
             new Promise((res) => setTimeout(res, 20_000)),
           ]);
           if (cancelled) return;
-          window.dispatchEvent(new Event(STAGE_EVENT));
-          if (!landed) {
-            void seeding.then(() => {
-              if (!cancelled) window.dispatchEvent(new Event(STAGE_EVENT));
-            });
-          }
         }
       }
       /* LA PUERTA SE CIERRA AL CAMBIAR DE ESCENA (2026-11-14, de la ley
@@ -980,31 +976,26 @@ export function Presentacion() {
           sownBuildsRef.current.add(step.build);
           const sow = STAGE_SEEDS[step.build];
           if (sow) {
-            // La siembra se ESPERA y luego se anuncia: las pantallas ya
-            // montadas leyeron el escenario vacío al entrar (caché de React
-            // Query), así que sin este aviso seguirían mostrando el libro
-            // vacío y las anclas de la escena morirían. El StageHost escucha
-            // el mismo evento de siempre: limpia la caché y remonta, y la
-            // escena continúa sobre la ficción ya sembrada. La espera tiene
-            // techo (20 s) y la siembra nunca puede rechazar contra el
-            // conductor: si la ficción tarda más (la siembra regular de un
-            // cliente genera un año de agenda), el aviso se repite cuando
-            // por fin aterriza, y la escena sigue su curso.
-            let landed = false;
-            const seeding = sow()
-              .catch(() => undefined)
-              .then(() => { landed = true; });
+            // La siembra se ESPERA, y su dueño la anuncia al aterrizar:
+            // las pantallas ya montadas leyeron el escenario vacío al
+            // entrar (caché de React Query), así que sin el aviso
+            // seguirían mostrando el libro vacío y las anclas de la
+            // escena morirían. El StageHost escucha el mismo evento de
+            // siempre: limpia la caché y remonta, y la escena continúa
+            // sobre la ficción ya sembrada. La espera tiene techo
+            // (20 s) y la siembra nunca puede rechazar contra el
+            // conductor: si la ficción tarda más (la siembra regular
+            // de un cliente genera un año de agenda), el aviso llega
+            // cuando por fin aterriza — lo despacha el registro de
+            // stage.ts, que no se cancela con esta corrida — y la
+            // escena sigue su curso.
+            const seeding = sow().catch(() => undefined);
+            trackSeed(seeding);
             await Promise.race([
               seeding,
               new Promise((res) => setTimeout(res, 20_000)),
             ]);
             if (cancelled) return;
-            window.dispatchEvent(new Event(STAGE_EVENT));
-            if (!landed) {
-              void seeding.then(() => {
-                if (!cancelled) window.dispatchEvent(new Event(STAGE_EVENT));
-              });
-            }
           }
         }
         later(() => { if (!cancelled) advance(); }, stepMs(step, lang) / r.speed); // stepMs ya trae la escala recalibrada: se divide entre la ETIQUETA, no entre la efectiva
@@ -1066,7 +1057,15 @@ export function Presentacion() {
           : null;
         if (!input && !editable) { if (replaying) { advance(); return; } skipScene(scene.id); return; }
         const dwell = capDwell / speed;
-        later(() => {
+        // 1.6.60 (Prejuicio R16, R17D-3): la disyunción, declarada en
+        // su sitio — en interactivo no hay pausa que obedecer (el
+        // alumno es el reloj: la pareja ‹ › y los gestos) y el efecto
+        // se completa siempre; en automático la pausa manda sobre el
+        // efecto como manda sobre todos sus hermanos: con la pausa en
+        // pie no se teclea, y la re-corrida del efecto al reanudar lo
+        // programa de nuevo. Antes el tecleo solo obedecía a la
+        // cancelación y el campo amanecía escrito con la pausa puesta.
+        if (r.playing || r.mode === "interactive") later(() => {
           if (cancelled) return;
           if (input) {
             input.focus();

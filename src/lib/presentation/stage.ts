@@ -42,6 +42,32 @@ function dispatchSwitch() {
   if (typeof window !== "undefined") window.dispatchEvent(new Event(STAGE_EVENT));
 }
 
+/** Las siembras en vuelo (1.6.60, Prejuicio R16, R17D-1/R17D-2): una
+ *  siembra es una cadena de escrituras contra el libro que el desvío
+ *  nombra EN CADA APERTURA — si el libro cambia a mitad de cadena, el
+ *  resto de la cadena aterriza en el libro nuevo, y salir a mitad de
+ *  una siembra escribía la ficción restante en el LIBRO REAL. Por eso
+ *  la siembra tiene dueño: este registro guarda la PROMESA, no el
+ *  nombre de la construcción. Al aterrizar, la siembra anuncia el
+ *  cambio ella misma — el aviso ya no vive en la clausura cancellable
+ *  que la esperaba, donde un toque invitado durante la espera lo
+ *  huérfanaba y las pantallas se quedaban con el libro vacío — y
+ *  ninguna salida cambia de libro con una siembra en vuelo: la
+ *  espera, para que cada escritura caiga en su propio libro. */
+const inflightSeeds = new Set<Promise<unknown>>();
+
+export function trackSeed(seeding: Promise<unknown>): void {
+  inflightSeeds.add(seeding);
+  void seeding.then(() => {
+    inflightSeeds.delete(seeding);
+    if (stage) dispatchSwitch();
+  });
+}
+
+export async function awaitSeeds(): Promise<void> {
+  while (inflightSeeds.size > 0) await Promise.allSettled([...inflightSeeds]);
+}
+
 /** Delete the stage IndexedDB database whole. Best-effort by design: a blocked
  *  or failing delete resolves anyway (the open PGlite is closed before this
  *  runs on exit, and the boot sweep retries on the next cold boot), so leaving
@@ -91,6 +117,10 @@ export async function enterStage(): Promise<void> {
     refused.name = "GuardRefused";
     throw refused;
   }
+  // 1.6.60 (Prejuicio R16, R17D-1): ninguna cadena de una lección
+  // anterior puede seguir viva al nacer el escenario nuevo — la
+  // espera cierra también la puerta de la ficción contra ficción.
+  await awaitSeeds();
   await deleteStageStore();
   setSealed(true);
   await switchDatabase(STAGE_DB_NAME);
@@ -119,6 +149,10 @@ export async function enterStage(): Promise<void> {
  *  discarded, never merged — and only then lift the seal. */
 export async function exitStage(): Promise<void> {
   if (!stage) return;
+  // 1.6.60 (Prejuicio R16, R17D-1): antes de cambiar de libro se
+  // espera a la última siembra en vuelo — cambiar con la cadena
+  // viva la dejaba escribiendo en el libro real.
+  await awaitSeeds();
   await switchDatabase(null);
   // Las preferencias vuelven a su fotografía ANTES del remontaje, para que
   // la primera pintura sobre el libro real ya las lea como el usuario las
