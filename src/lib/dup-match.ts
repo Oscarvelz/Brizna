@@ -283,8 +283,14 @@ export function phoneTail(phone: string | null | undefined): string {
   // en dígitos arábigo-índicos ya no es invisible para la familia.
   // Las guardas de cada rama no cambian; una sola extensión se
   // comporta exactamente como antes.
+  // 1.6.63 (Prejuicio R17, R18F-4): el techo de pasadas queda
+  // DECLARADO — cada pasada corta como mucho una extensión, y el
+  // techo es OCHO: la pila de cinco (pura o mezclada) excedía el
+  // cuatro silencioso y la cola nacía envenenada con una extensión
+  // viva. Ninguna exportación anota ocho extensiones; el bucle
+  // sigue parando en cuanto una pasada no corta nada.
   let bare = rawPhone;
-  for (let pass = 0; pass < 4; pass++) {
+  for (let pass = 0; pass < 8; pass++) {
     const start = bare;
     const wordExt = bare.match(/(?:\b(?:ext(?:ensi[oó]n|ensão|ensao)?|interno|int|anexo|ramal|poste)\)?\.?\s*[-:]?\s*)\p{Nd}+\s*\)?\s*(?:\([^()\p{Nd}]*\)\s*)?$/iu);
     if (wordExt) {

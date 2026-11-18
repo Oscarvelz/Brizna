@@ -746,7 +746,15 @@ const HEADER_WORDS: Record<string, "name" | "phone" | "address" | "first" | "las
 // nombre jamás se leía: cada contacto nacía nombrado por su teléfono.
 for (const w of ["name", "nombre", "nombre completo", "full name", "contacto", "contact", "client name", "customer name", "contact name", "nombre y apellido", "nombre del cliente", "client", "customer", "naam", "nome", "cliente"]) HEADER_WORDS[w] = "name";
 for (const w of ["phone", "telefono", "tel", "celular", "movil", "mobile", "numero", "numero de telefono", "phone number", "telephone", "phone 1 value", "phone 2 value", "mobile phone", "cell phone", "telefono movil", "numero de celular", "telefono 1 valor", "telefono 2 valor", "home phone", "work phone", "business phone", "primary phone", "telefono casa", "telefono trabajo", "telefono de casa", "telefon", "telefoon", "telefonnummer", "mobiltelefon", "rufnummer", "handynummer", "telefone", "telefone 1 valor", "telefone 2 valor", "telefon 1 wert", "telefon 2 wert", "telephone 1 valeur", "telephone 2 valeur", "telemovel", "telefono 1 valore", "telefoon 1 waarde"]) HEADER_WORDS[w] = "phone";
-for (const w of ["address", "direccion", "domicilio", "addr", "address 1 formatted", "direccion 1 formateada", "address 1", "direccion 1", "adresse", "adres", "anschrift", "endereco", "morada", "endereco 1 formatado", "adresse 1 formatiert", "adresse 1 formatee", "indirizzo", "indirizzo 1 formattato", "adres 1 opgemaakt"]) HEADER_WORDS[w] = "address";
+// 1.6.63 (Prejuicio R17, R18F-2): «street address» entra en el
+// vocabulario por la vía de R2F-6 — sin ella, el encabezado
+// corriente «Name,Street Address» solo traía UNA palabra conocida
+// y la guarda de forma de la 1.6.61 (que juzga cualquier celda,
+// también las de un encabezado) le cerraba la única puerta de la
+// corona: la lectura posicional importaba las direcciones COMO
+// TELÉFONOS. Con la palabra aprendida la fila corona por ≥2 y la
+// columna se sienta como dirección, que es lo que es.
+for (const w of ["address", "direccion", "domicilio", "addr", "street address", "address 1 formatted", "direccion 1 formateada", "address 1", "direccion 1", "adresse", "adres", "anschrift", "endereco", "morada", "endereco 1 formatado", "adresse 1 formatiert", "adresse 1 formatee", "indirizzo", "indirizzo 1 formattato", "adres 1 opgemaakt"]) HEADER_WORDS[w] = "address";
 // 1.6.08 (Prejuicio R3, R3F-3): el nombre partido en dos columnas (la forma
 // de Outlook: «First Name,Last Name,Phone») — sin estas dos palabras el
 // apellido jamás se leía y cada contacto nacía con medio nombre.
@@ -835,7 +843,12 @@ function parseCsv(text: string): PickedContact[] {
     // verdadero — la tabla importaba sin teléfonos ni direcciones, o
     // el archivo entero nacía vacío si la palabra iba primero. La
     // rama de ≥2 palabras no se toca, como siempre.
-    const addrShapeRow = rows[i]!.some((c) => { const words = c.split(/\s+/).filter((w) => /\p{L}/u.test(w)); return words.length >= 2 && STREET_HEADS.has(foldHead(c).split(" ")[0]!); });
+    // 1.6.63 (Prejuicio R17, R18F-3): las palabras se cuentan sobre
+    // la celda PLEGADA, la misma que entrega la cabeza — foldHead
+    // parte la puntuación interior en espacios, y contar sobre la
+    // cruda dejaba «Calle-Sol» en una palabra: la calle unida por
+    // guion escapaba de la guarda y la fila se coronaba igual.
+    const addrShapeRow = rows[i]!.some((c) => { const folded = foldHead(c); const words = folded.split(" ").filter((w) => /\p{L}/u.test(w)); return words.length >= 2 && STREET_HEADS.has(folded.split(" ")[0]!); });
     if (!dataSeen && weakData < 2 && (known >= 2 || (known === 1 && !phoneLike && !addrDigitRow && !addrShapeRow))) {
       headAt = i;
       break;
@@ -919,7 +932,15 @@ function parseCsv(text: string): PickedContact[] {
         // población; «2026.11.17»; «17.11.2026»). Las grafías con
         // barras nunca entraron: la barra está fuera de la clase de
         // forma del teléfono.
-        if (/^[+\d][\d\s().-]*$/.test(v) && n >= 7 && n <= 15 && !/^(\d{4}[-.]\d{1,2}[-.]\d{1,2}|\d{1,2}[-.]\d{1,2}[-.]\d{4})$/.test(v)) shaped += 1;
+        // 1.6.63 (Prejuicio R17, R18F-1): el género se mide con la
+        // misma clase de separadores que la forma de arriba admite
+        // — la forma deja pasar el espacio como separador y el
+        // género solo cerraba guion y punto: «2026 11 17» y los
+        // mezclados («2026-11 17») sentaban como teléfonos con el
+        // daño entero de R16F-3. Ningún teléfono ordinario cae: su
+        // firma es un grupo de cuatro dígitos con grupos cortos al
+        // otro lado, y las formas vivas (3-3-4, 4-3-4) no la traen.
+        if (/^[+\d][\d\s().-]*$/.test(v) && n >= 7 && n <= 15 && !/^(\d{4}[\s.-]\d{1,2}[\s.-]\d{1,2}|\d{1,2}[\s.-]\d{1,2}[\s.-]\d{4})$/.test(v)) shaped += 1;
       }
       // 1.6.57 (Prejuicio R15, R16F-4): la mayoría es mayoría — el
       // empate exacto (2 con forma de 4) ya no sienta la columna,
