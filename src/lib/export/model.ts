@@ -308,6 +308,11 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   // la t aprende a cazar la þ de la mención.
   swapFold["þ"] = "(?:þ|th)"; swapFold["Þ"] = "(?:Þ|th)";
   swapFold["ð"] = "(?:ð|d)"; swapFold["Ð"] = "(?:Ð|d)";
+  // 1.6.62 (Prejuicio R16, R17A-1): la clase de familia de la t, tal
+  // como quedó registrada y ANTES de la alternancia con la þ — el
+  // pase de pares la necesita para componer su alternancia sin
+  // estrechar el plegado de las propias letras del par.
+  const tFamClass = swapFold["t"]!;
   swapFold["t"] = "(?:[tţťțṫṭṯṱẗ]|þ)"; swapFold["T"] = "(?:[TŤŢȚṪṬṮṰ]|Þ)";
   // 1.6.58 (Prejuicio R15, R16A-2): las demás letras-dígrafo de
   // Latin-1 reciben su alternancia como la þ y la ð — la ß se
@@ -327,14 +332,27 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   // con su letra. El sobre-canje posible (un «Michæl» cazado por
   // el «Michael» guardado) cae del lado seguro: se redacta de
   // más, nunca se imprime un nombre.
-  const pairFold: Record<string, string> = { th: "(?:th|þ)", ss: "(?:ss|ß)", ae: "(?:ae|æ)", oe: "(?:oe|œ)" };
+  const pairLetter: Record<string, string> = { th: "þ", ss: "ß", ae: "æ", oe: "œ" };
+  // 1.6.62 (Prejuicio R16, R17A-1): la alternancia del par se
+  // COMPONE con las clases de sus propias letras — la primera
+  // versión sustituía el par por su grafía pelada («(?:th|þ)») y
+  // las gemelas de la t y de la h quedaban fuera: «Thompson» ya no
+  // cazaba «Ţhompson» ni «Ṭhompson», ni «Mael» a «Máel», que el
+  // plegado por carácter anterior a la 1.6.58 sí cazaba. Cada letra
+  // del par aporta su clase de familia (la t, la suya sin la þ, que
+  // ya es la otra rama de la alternancia) y la letra-dígrafo queda
+  // como la rama segunda, como antes.
+  const pairAlt = (pair: string): string => {
+    const cls = (c: string) => (c === "t" ? tFamClass : (swapFold[c] ?? c));
+    return `(?:${cls(pair[0]!)}${cls(pair[1]!)}|${pairLetter[pair]})`;
+  };
   const foldWord = (w: string): string => {
     const chars = [...w];
     let out = "";
     for (let i = 0; i < chars.length; i += 1) {
       const ch = chars[i]!;
-      const pair = i + 1 < chars.length ? pairFold[(ch + chars[i + 1]!).toLowerCase()] : undefined;
-      if (pair) { out += pair; i += 1; continue; }
+      const pairKey = i + 1 < chars.length ? (ch + chars[i + 1]!).toLowerCase() : "";
+      if (pairKey && pairLetter[pairKey]) { out += pairAlt(pairKey); i += 1; continue; }
       out += /[.*+?^${}()|[\]\\]/.test(ch) ? `\\${ch}` : (swapFold[ch] ?? ch);
     }
     return out;
