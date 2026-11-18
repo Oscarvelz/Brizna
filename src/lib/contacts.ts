@@ -825,7 +825,18 @@ function parseCsv(text: string): PickedContact[] {
     // encabezados con dígitos propios — «Phone 1 - Value» — viven
     // ahí).
     const addrDigitRow = rows[i]!.some((c) => /\d/.test(c) && (c.split(/\s+/).filter((w) => /[^\d]/.test(w)).length >= 2 || STREET_HEADS.has(foldHead(c).split(" ")[0]!)));
-    if (!dataSeen && weakData < 2 && (known >= 2 || (known === 1 && !phoneLike && !addrDigitRow))) {
+    // 1.6.61 (Prejuicio R16, R17F-1): la misma forma SIN el dígito —
+    // una celda que abre con un tipo de vía y trae dos o más palabras
+    // («Calle Sol», «Avenida Central») es una dirección aunque la
+    // calle no tenga número, y un encabezado no contiene una
+    // dirección postal: la fila «Ana Torres,Cliente,Calle Sol» se
+    // coronaba a sí misma por su «Cliente» (la guarda exigía el
+    // dígito que la fila no trae) y desplazaba al encabezado
+    // verdadero — la tabla importaba sin teléfonos ni direcciones, o
+    // el archivo entero nacía vacío si la palabra iba primero. La
+    // rama de ≥2 palabras no se toca, como siempre.
+    const addrShapeRow = rows[i]!.some((c) => { const words = c.split(/\s+/).filter((w) => /\p{L}/u.test(w)); return words.length >= 2 && STREET_HEADS.has(foldHead(c).split(" ")[0]!); });
+    if (!dataSeen && weakData < 2 && (known >= 2 || (known === 1 && !phoneLike && !addrDigitRow && !addrShapeRow))) {
       headAt = i;
       break;
     }
@@ -901,7 +912,14 @@ function parseCsv(text: string): PickedContact[] {
         // «colas» idénticas hacían que el detector de duplicados
         // confundiera a dos clientes con la misma fecha. La fecha
         // con su forma completa no es un teléfono.
-        if (/^[+\d][\d\s().-]*$/.test(v) && n >= 7 && n <= 15 && !/^\d{4}-\d{1,2}-\d{1,2}$/.test(v)) shaped += 1;
+        // 1.6.61 (Prejuicio R16, R17F-2): la fecha tiene más grafías
+        // que la ISO con guiones que la 1.6.57 excluyó — el género
+        // entero queda fuera: año primero o día primero, con guiones
+        // o con puntos («17-11-2026», la grafía ordinaria de esta
+        // población; «2026.11.17»; «17.11.2026»). Las grafías con
+        // barras nunca entraron: la barra está fuera de la clase de
+        // forma del teléfono.
+        if (/^[+\d][\d\s().-]*$/.test(v) && n >= 7 && n <= 15 && !/^(\d{4}[-.]\d{1,2}[-.]\d{1,2}|\d{1,2}[-.]\d{1,2}[-.]\d{4})$/.test(v)) shaped += 1;
       }
       // 1.6.57 (Prejuicio R15, R16F-4): la mayoría es mayoría — el
       // empate exacto (2 con forma de 4) ya no sienta la columna,

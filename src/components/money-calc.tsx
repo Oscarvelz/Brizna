@@ -49,7 +49,12 @@ function evalAmount(expr: string): number | null {
   // precio negado y propina $0 en silencio. Se retira el género
   // entero, no la lista de los probados: el próximo invisible de
   // la familia ya nace retirado.
-  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/\u060C/g, ",").replace(/\uFF04/g, "").replace(/\uFF0E/g, ".").replace(/\uFF0C/g, ",").replace(/\uFF0B/g, "+").replace(/\uFF0D/g, "-").replace(/\uFF0A/g, "*").replace(/\uFF0F/g, "/").replace(/\uFF08/g, "(").replace(/\uFF09/g, ")").replace(/\u00D7/g, "*").replace(/\u00F7/g, "/").replace(/\u2212/g, "-").replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\uFE58]/g, "-").replace(/\u00AD/g, "").replace(/\p{Cf}/gu, "").replace(/,/g, ".").replace(/\s/g, "");
+  // 1.6.61 (Prejuicio R16, R17F-5): el otro género invisible — las
+  // marcas combinantes (\p{Mn}: U+034F, el grapheme joiner, y sus
+  // primas) tampoco son \s ni Cf, y partían el importe con la misma
+  // firma. Una marca combinante dentro de un importe no carga valor
+  // jamás: se retira el género entero tras el Cf.
+  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/\u060C/g, ",").replace(/\uFF04/g, "").replace(/\uFF0E/g, ".").replace(/\uFF0C/g, ",").replace(/\uFF0B/g, "+").replace(/\uFF0D/g, "-").replace(/\uFF0A/g, "*").replace(/\uFF0F/g, "/").replace(/\uFF08/g, "(").replace(/\uFF09/g, ")").replace(/\u00D7/g, "*").replace(/\u00F7/g, "/").replace(/\u2212/g, "-").replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\uFE58]/g, "-").replace(/\u00AD/g, "").replace(/\p{Cf}/gu, "").replace(/\p{Mn}/gu, "").replace(/,/g, ".").replace(/\s/g, "");
   if (!cleaned || !/^[\d.+\-*/()]+$/.test(cleaned)) return null;
   if (/[+\-*/.]{2,}/.test(cleaned.replace(/\.\d/g, "0"))) return null;
   try {

@@ -272,56 +272,71 @@ export function phoneTail(phone: string | null | undefined): string {
   // gemelo desnudo. Sin tope, la palabra marca la frontera y la
   // guarda de siempre decide (delante queda un número entero, o
   // el sufijo no llega a número y la «extensión» es el número).
-  const wordExt = rawPhone.match(/(?:\b(?:ext(?:ensi[oó]n|ensão|ensao)?|interno|int|anexo|ramal|poste)\)?\.?\s*[-:]?\s*)\d+\s*\)?\s*$/i);
+  // 1.6.61 (Prejuicio R16, R17F-3/R17F-4): la familia corre en
+  // PASADAS — cada corte deja el resto a la vista de la pasada
+  // siguiente, así la extensión ya no tiene que ser lo último de la
+  // cadena: la doble extensión («ext 89 ext 99») se corta dos veces
+  // y el texto tras la extensión deja de envenenar la ventana,
+  // porque tras los dígitos cabe una anotación entre paréntesis sin
+  // dígitos («ext 89 (oficina)»), que es etiqueta y no número. Y
+  // las regex leen \p{Nd} como digitsOf lee: una extensión escrita
+  // en dígitos arábigo-índicos ya no es invisible para la familia.
+  // Las guardas de cada rama no cambian; una sola extensión se
+  // comporta exactamente como antes.
   let bare = rawPhone;
-  if (wordExt) {
-    const pre = digitsOf(rawPhone.slice(0, wordExt.index)).replace(/\D/g, "").length;
-    const suf = digitsOf(wordExt[0]).replace(/\D/g, "").length;
-    if (pre >= 7 || suf < 7) bare = rawPhone.slice(0, wordExt.index);
-    // 1.6.57 (Prejuicio R15, R16F-5): sin corte y con la suma por
-    // encima de diez dígitos, la concatenación no es ningún número:
-    // la cola nacía mezclando el prefijo corto con el sufijo («550142
-    // ext 5550142» → «1425550142») y no casaba con su gemelo desnudo.
-    // La ley de la casa ya decía que ahí el sufijo ES el número: la
-    // cola es la del sufijo. Con la suma en diez o menos, la palabra
-    // es separador interno y manda la concatenación (R10F-7).
-    else if (pre + suf > 10) bare = rawPhone.slice(wordExt.index);
-  }
-  if (bare === rawPhone) {
-    // 1.6.46 (Prejuicio R12, R13F-6): la escritura PEGADA — entre un
-    // dígito y la «e» de «ext» no hay frontera de palabra, y la
-    // rama de palabra no cortaba «…0142ext89» (la de «x» sí corta
-    // la suya pegada). La palabra pegada tras un dígito corta con
-    // la misma guarda: el dígito de la costura es del número.
-    const glued = rawPhone.match(/\d(ext(?:ensi[oó]n|ensão|ensao)?|anexo|interno|ramal|poste|int)\s*[-:]?\s*(\d+)\s*\)?\s*$/i);
-    if (glued) {
-      const cutAt = glued.index! + 1;
-      const pre = digitsOf(rawPhone.slice(0, cutAt)).replace(/\D/g, "").length;
-      const suf = digitsOf(glued[2]!).replace(/\D/g, "").length;
-      if (pre >= 7 || suf < 7) bare = rawPhone.slice(0, cutAt);
-      // 1.6.57 (Prejuicio R15, R16F-5): la misma ley del sufijo que
-      // en la rama de palabra — sin corte y suma > 10, manda el sufijo.
-      else if (pre + suf > 10) bare = rawPhone.slice(cutAt);
+  for (let pass = 0; pass < 4; pass++) {
+    const start = bare;
+    const wordExt = bare.match(/(?:\b(?:ext(?:ensi[oó]n|ensão|ensao)?|interno|int|anexo|ramal|poste)\)?\.?\s*[-:]?\s*)\p{Nd}+\s*\)?\s*(?:\([^()\p{Nd}]*\)\s*)?$/iu);
+    if (wordExt) {
+      const pre = digitsOf(bare.slice(0, wordExt.index)).replace(/\D/g, "").length;
+      const suf = digitsOf(wordExt[0]).replace(/\D/g, "").length;
+      if (pre >= 7 || suf < 7) bare = bare.slice(0, wordExt.index);
+      // 1.6.57 (Prejuicio R15, R16F-5): sin corte y con la suma por
+      // encima de diez dígitos, la concatenación no es ningún número:
+      // la cola nacía mezclando el prefijo corto con el sufijo («550142
+      // ext 5550142» → «1425550142») y no casaba con su gemelo desnudo.
+      // La ley de la casa ya decía que ahí el sufijo ES el número: la
+      // cola es la del sufijo. Con la suma en diez o menos, la palabra
+      // es separador interno y manda la concatenación (R10F-7).
+      else if (pre + suf > 10) bare = bare.slice(wordExt.index);
     }
-  }
-  if (bare === rawPhone) {
-    // 1.6.32 (Prejuicio R10, R11F-8/R11F-9): la rama recobra su /i
-    // («X89» corta como «x89» — la reestructura de 1.6.28 lo perdió),
-    // y cuando ni el prefijo ni el sufijo llegan a número (los dos
-    // cortos: «550142x89»), el sufijo es una extensión de un número
-    // que no es teléfono: la cola es "" como en la rama de palabra,
-    // en vez de fabricarse con los dígitos de la extensión. Si el
-    // sufijo trae ≥7 dígitos, la «x» es separador interno del propio
-    // número («305x5550142») y no se corta — la línea de R10F-7.
-    const mx = rawPhone.match(/[x#]\s*\d+\s*$/i);
-    if (mx) {
-      const pre = digitsOf(rawPhone.slice(0, mx.index)).replace(/\D/g, "").length;
-      const suf = digitsOf(mx[0]).replace(/\D/g, "").length;
-      if (pre >= 7 || suf < 7) bare = rawPhone.slice(0, mx.index);
-      // 1.6.57 (Prejuicio R15, R16F-5): la misma ley del sufijo —
-      // «550142x5550142» da la cola de su sufijo y casa con su gemelo.
-      else if (pre + suf > 10) bare = rawPhone.slice(mx.index);
+    if (bare === start) {
+      // 1.6.46 (Prejuicio R12, R13F-6): la escritura PEGADA — entre un
+      // dígito y la «e» de «ext» no hay frontera de palabra, y la
+      // rama de palabra no cortaba «…0142ext89» (la de «x» sí corta
+      // la suya pegada). La palabra pegada tras un dígito corta con
+      // la misma guarda: el dígito de la costura es del número.
+      const glued = bare.match(/(\p{Nd})(ext(?:ensi[oó]n|ensão|ensao)?|anexo|interno|ramal|poste|int)\s*[-:]?\s*(\p{Nd}+)\s*\)?\s*(?:\([^()\p{Nd}]*\)\s*)?$/iu);
+      if (glued) {
+        const cutAt = glued.index! + glued[1]!.length;
+        const pre = digitsOf(bare.slice(0, cutAt)).replace(/\D/g, "").length;
+        const suf = digitsOf(glued[3]!).replace(/\D/g, "").length;
+        if (pre >= 7 || suf < 7) bare = bare.slice(0, cutAt);
+        // 1.6.57 (Prejuicio R15, R16F-5): la misma ley del sufijo que
+        // en la rama de palabra — sin corte y suma > 10, manda el sufijo.
+        else if (pre + suf > 10) bare = bare.slice(cutAt);
+      }
     }
+    if (bare === start) {
+      // 1.6.32 (Prejuicio R10, R11F-8/R11F-9): la rama recobra su /i
+      // («X89» corta como «x89» — la reestructura de 1.6.28 lo perdió),
+      // y cuando ni el prefijo ni el sufijo llegan a número (los dos
+      // cortos: «550142x89»), el sufijo es una extensión de un número
+      // que no es teléfono: la cola es "" como en la rama de palabra,
+      // en vez de fabricarse con los dígitos de la extensión. Si el
+      // sufijo trae ≥7 dígitos, la «x» es separador interno del propio
+      // número («305x5550142») y no se corta — la línea de R10F-7.
+      const mx = bare.match(/[x#]\s*\p{Nd}+\s*(?:\([^()\p{Nd}]*\)\s*)?$/iu);
+      if (mx) {
+        const pre = digitsOf(bare.slice(0, mx.index)).replace(/\D/g, "").length;
+        const suf = digitsOf(mx[0]).replace(/\D/g, "").length;
+        if (pre >= 7 || suf < 7) bare = bare.slice(0, mx.index);
+        // 1.6.57 (Prejuicio R15, R16F-5): la misma ley del sufijo —
+        // «550142x5550142» da la cola de su sufijo y casa con su gemelo.
+        else if (pre + suf > 10) bare = bare.slice(mx.index);
+      }
+    }
+    if (bare === start) break;
   }
   const digits = digitsOf(bare).replace(/\D/g, "");
   return digits.length >= 7 ? digits.slice(-10) : "";
