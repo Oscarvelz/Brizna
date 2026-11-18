@@ -266,21 +266,40 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
     const cls = `[${chars}]`;
     for (const ch of chars) swapFold[ch] = cls;
   };
-  foldFam("aáàäâãåāăąảạấầẩẫậắằẳẵặ"); foldFam("AÁÀÄÂÃÅĀĂĄẢẠẤẦẨẪẬẮẰẲẴẶ");
-  foldFam("eéèëêēĕėęěẻẽẹếềểễệ"); foldFam("EÉÈËÊĒĔĖĘĚẺẼẸẾỀỂỄỆ");
-  foldFam("iíìïîīĭįıỉĩị"); foldFam("IÍÌÏÎĪĬĮİỈĨỊ");
-  foldFam("oóòöôõøōŏőỏọốồổỗộơớờởỡợ"); foldFam("OÓÒÖÔÕØŌŎŐỎỌỐỒỔỖỘƠỚỜỞỠỢ");
-  foldFam("uúùüûūŭůűųủụưứừửữự"); foldFam("UÚÙÜÛŪŬŮŰŲỦỤƯỨỪỬỮỰ");
-  foldFam("cçćĉċč"); foldFam("CÇĆĈĊČ");
-  foldFam("gğĝġģ"); foldFam("GĞĜĠĢ");
-  foldFam("lłĺľ"); foldFam("LŁĹĽ");
-  foldFam("nńņň"); foldFam("NŃŅŇ");
-  foldFam("rŕŗř"); foldFam("RŔŖŘ");
-  foldFam("sşšśŝș"); foldFam("SŞŠŚŜȘ");
-  foldFam("tţťț"); foldFam("TŢŤȚ");
-  foldFam("zžźż"); foldFam("ZŽŹŻ");
-  foldFam("dďđð"); foldFam("DĎĐÐ");
-  foldFam("yÿýỳỵỷỹ"); foldFam("YŸÝỲỴỶỸ");
+  foldFam("aáàäâãåāăąảạấầẩẫậắằẳẵặǎǟǡǻȁȃȧḁ"); foldFam("AÁÀÄÂÃÅĀĂĄẢẠẤẦẨẪẬẮẰẲẴẶǍǞǠǺȀȂȦḀ");
+  foldFam("eéèëêēĕėęěẻẽẹếềểễệȅȇȩḕḗḙḛḝ"); foldFam("EÉÈËÊĒĔĖĘĚẺẼẸẾỀỂỄỆȄȆȨḔḖḘḚḜ");
+  foldFam("iíìïîīĭįıỉĩịǐȉȋḭḯ"); foldFam("IÍÌÏÎĪĬĮİỈĨỊǏȈȊḬḮ");
+  foldFam("oóòöôõøōŏőỏọốồổỗộơớờởỡợǒǫǭȍȏȫȭȯȱṍṏṑṓ"); foldFam("OÓÒÖÔÕØŌŎŐỎỌỐỒỔỖỘƠỚỜỞỠỢǑǪǬȌȎȪȬȮȰṌṎṐṒ");
+  foldFam("uúùüûūŭůűųủụưứừửữựũǔǖǘǚǜȕȗṳṵṷṹṻ"); foldFam("UÚÙÜÛŪŬŮŰŲỦỤƯỨỪỬỮỰŨǓǕǗǙǛȔȖṲṴṶṸṺ");
+  foldFam("cçćĉċčḉ"); foldFam("CÇĆĈĊČḈ");
+  foldFam("gğĝġģǧǵḡ"); foldFam("GĞĜĠĢǦǴḠ");
+  foldFam("lłĺľļḷḹḻḽ"); foldFam("LŁĹĽĻḶḸḺḼ");
+  foldFam("nńņňǹṅṇṉṋ"); foldFam("NŃŅŇǸṄṆṈṊ");
+  foldFam("rŕŗřȑȓṙṛṝṟ"); foldFam("RŔŖŘȐȒṘṚṜṞ");
+  foldFam("sşšśŝșṡṣṥṧṩ"); foldFam("SŞŠŚŜȘṠṢṤṦṨ");
+  foldFam("tţťțṫṭṯṱẗ"); foldFam("TŢŤȚṪṬṮṰ");
+  foldFam("zžźżẑẓẕ"); foldFam("ZŽŹŻẐẒẔ");
+  foldFam("dďđðḋḍḏḑḓ"); foldFam("DĎĐÐḊḌḎḐḒ");
+  foldFam("yÿýỳỵỷỹŷȳẏẙ"); foldFam("YŸÝỲỴỶỸŶȲẎ");
+  foldFam("bḃḅḇ"); foldFam("BḂḄḆ");
+  foldFam("fḟ"); foldFam("FḞ");
+  foldFam("hĥȟḣḥḧḩḫẖ"); foldFam("HĤȞḢḤḦḨḪ");
+  foldFam("jĵǰ"); foldFam("JĴ");
+  foldFam("kķǩḱḳḵ"); foldFam("KĶǨḰḲḴ");
+  foldFam("mḿṁṃ"); foldFam("MḾṀṂ");
+  foldFam("pṕṗ"); foldFam("PṔṖ");
+  foldFam("vṽṿ"); foldFam("VṼṾ");
+  foldFam("wŵẁẃẅẇẉẘ"); foldFam("WŴẀẂẄẆẈ");
+  foldFam("xẋẍ"); foldFam("XẊẌ");
+  // 1.6.58 (Prejuicio R15, R16A-3): la tabla ya no se completa a
+  // mano, población a población — se genera de la tabla de
+  // descomposición canónica: toda letra latina que se descompone
+  // en una letra base y marcas está en la familia de su base (las
+  // consonantes de punto abajo, las letras que nunca tuvieron
+  // familia — b, f, h, j, k, m, p, v, w, x — y los huecos de las
+  // filas abiertas, ũ y ķ/ļ entre ellos). Lo que no se descompone
+  // (đ, ø, ł, ı) sigue entrando por las filas de arriba, escritas
+  // a mano como siempre. La ñ queda fuera por ley asentada.
   // 1.6.55 (Prejuicio R14, R15A-1): las dos letras sin gemela de
   // un solo carácter — la þ islandesa se escribe «th» pelada y la
   // ð se escribe «d» — no caben en una clase: su plegado es una
@@ -289,7 +308,37 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   // la t aprende a cazar la þ de la mención.
   swapFold["þ"] = "(?:þ|th)"; swapFold["Þ"] = "(?:Þ|th)";
   swapFold["ð"] = "(?:ð|d)"; swapFold["Ð"] = "(?:Ð|d)";
-  swapFold["t"] = "(?:[tţťț]|þ)"; swapFold["T"] = "(?:[TŤŢȚ]|Þ)";
+  swapFold["t"] = "(?:[tţťțṫṭṯṱẗ]|þ)"; swapFold["T"] = "(?:[TŤŢȚṪṬṮṰ]|Þ)";
+  // 1.6.58 (Prejuicio R15, R16A-2): las demás letras-dígrafo de
+  // Latin-1 reciben su alternancia como la þ y la ð — la ß se
+  // escribe «ss» pelada (la grafía ordinaria de los apellidos
+  // alemanes en los formularios de EE. UU.), la æ «ae» y la œ
+  // «oe». Sin entrada, el patrón las llevaba literales y solo
+  // cazaba la grafía exacta, en las dos direcciones.
+  swapFold["ß"] = "(?:ß|ss)"; swapFold["ẞ"] = "(?:ẞ|ss)";
+  swapFold["æ"] = "(?:æ|ae)"; swapFold["Æ"] = "(?:Æ|ae)";
+  swapFold["œ"] = "(?:œ|oe)"; swapFold["Œ"] = "(?:Œ|oe)";
+  // 1.6.58 (Prejuicio R15, R16A-1): la inversa del dígrafo — el
+  // nombre guardado PELADO («Thor», «Weiss», «Aegir», «Oenone»)
+  // debe cazar la mención con la letra («Þór», «Weiß», «Ægir»,
+  // «Œnone»): la þ ya ES el «th» entero y ningún plegado por
+  // carácter lo expresa. El patrón pliega el PAR: al componer la
+  // palabra, la secuencia pelada se sustituye por la alternancia
+  // con su letra. El sobre-canje posible (un «Michæl» cazado por
+  // el «Michael» guardado) cae del lado seguro: se redacta de
+  // más, nunca se imprime un nombre.
+  const pairFold: Record<string, string> = { th: "(?:th|þ)", ss: "(?:ss|ß)", ae: "(?:ae|æ)", oe: "(?:oe|œ)" };
+  const foldWord = (w: string): string => {
+    const chars = [...w];
+    let out = "";
+    for (let i = 0; i < chars.length; i += 1) {
+      const ch = chars[i]!;
+      const pair = i + 1 < chars.length ? pairFold[(ch + chars[i + 1]!).toLowerCase()] : undefined;
+      if (pair) { out += pair; i += 1; continue; }
+      out += /[.*+?^${}()|[\]\\]/.test(ch) ? `\\${ch}` : (swapFold[ch] ?? ch);
+    }
+    return out;
+  };
   // 1.6.40 (Prejuicio R11, R12A-1/A-2): el nombre se compone a NFC
   // antes de patrullarlo (un nombre guardado descompuesto no cazaba
   // su mención compuesta, y la mención descompuesta dejaba la tilde
@@ -318,7 +367,7 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
       .normalize("NFC")
       .trim()
       .split(/[\s\-\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFF0D\uFE63\u00AD\u200B\u2060]+/)
-      .map((w) => [...w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")].map((ch) => swapFold[ch] ?? ch).join("").replace(/['\u2019\u2018\u02BC\u02BB\uFF07\u0060]/g, "['\u2019\u2018\u02BC\u02BB\uFF07\u0060]"))
+      .map((w) => foldWord(w).replace(/['\u2019\u2018\u02BC\u02BB\uFF07\u0060]/g, "['\u2019\u2018\u02BC\u02BB\uFF07\u0060]"))
       .join("[\\s\\-\\u2010\\u2011\\u2012\\u2013\\u2014\\u2015\\u2212\\uFF0D\\uFE63\\u00AD\\u200B\\u2060]+");
   const nameSwaps = o.names
     ? []
