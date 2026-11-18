@@ -572,14 +572,24 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
         // acotar crece con la recencia y la rotación de la clase
         // sospechosa corría al revés (moría la más nueva de la era
         // rota); acotados, todos los futuros empatan a cero y el
-        // nombre — que en la familia ordena como el tiempo — hace
-        // morir primero a la más vieja de la era.
+        // desempate final hace morir primero a la más vieja de la
+        // era (desde la 1.6.59 ese desempate es el sello numérico,
+        // no el nombre: ver la nota al pie de la ordenación).
         // 1.6.36 (Prejuicio R10, W2 de la caza 10): a igualdad de
         // hora veraz, el nombre que miente (sello futuro) pierde
         // contra el que no miente — en el empate por lotes de una
         // sincronización, todas las horas son la del lote y solo el
         // nombre distingue a la copia real de las que dicen 2999.
-        .sort((a, b) => effOf(a) - effOf(b) || ((stampOf(a.name) > nowMs ? 0 : 1) - (stampOf(b.name) > nowMs ? 0 : 1)) || (Math.abs(Math.min(stampOf(b.name), nowMs) - nowMs) - Math.abs(Math.min(stampOf(a.name), nowMs) - nowMs)) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+        // 1.6.59 (Prejuicio R15, R16C-1): el último desempate ya no
+        // es el nombre a secas — el nombre ordena como el tiempo
+        // solo DENTRO de una era de un ancho: cruzando el borde
+        // 9999→10000, «Brizna_10000-…» precede como cadena a
+        // «Brizna_9999-…» y la más nueva de la era moría antes que
+        // una más vieja. Desempata el sello en su valor numérico
+        // (que la lectura del año entero de la 1.6.56 hace verdad
+        // en las dos eras) y el nombre queda para los sellos
+        // idénticos, donde ya no distingue edades sino copias.
+        .sort((a, b) => effOf(a) - effOf(b) || ((stampOf(a.name) > nowMs ? 0 : 1) - (stampOf(b.name) > nowMs ? 0 : 1)) || (Math.abs(Math.min(stampOf(b.name), nowMs) - nowMs) - Math.abs(Math.min(stampOf(a.name), nowMs) - nowMs)) || (stampOf(a.name) - stampOf(b.name)) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
       doomed.push(...group.slice(0, Math.max(0, group.length - 5)).map((e) => e.name));
     }
     return doomed;
