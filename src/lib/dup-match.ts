@@ -278,6 +278,14 @@ export function phoneTail(phone: string | null | undefined): string {
     const pre = digitsOf(rawPhone.slice(0, wordExt.index)).replace(/\D/g, "").length;
     const suf = digitsOf(wordExt[0]).replace(/\D/g, "").length;
     if (pre >= 7 || suf < 7) bare = rawPhone.slice(0, wordExt.index);
+    // 1.6.57 (Prejuicio R15, R16F-5): sin corte y con la suma por
+    // encima de diez dígitos, la concatenación no es ningún número:
+    // la cola nacía mezclando el prefijo corto con el sufijo («550142
+    // ext 5550142» → «1425550142») y no casaba con su gemelo desnudo.
+    // La ley de la casa ya decía que ahí el sufijo ES el número: la
+    // cola es la del sufijo. Con la suma en diez o menos, la palabra
+    // es separador interno y manda la concatenación (R10F-7).
+    else if (pre + suf > 10) bare = rawPhone.slice(wordExt.index);
   }
   if (bare === rawPhone) {
     // 1.6.46 (Prejuicio R12, R13F-6): la escritura PEGADA — entre un
@@ -291,6 +299,9 @@ export function phoneTail(phone: string | null | undefined): string {
       const pre = digitsOf(rawPhone.slice(0, cutAt)).replace(/\D/g, "").length;
       const suf = digitsOf(glued[2]!).replace(/\D/g, "").length;
       if (pre >= 7 || suf < 7) bare = rawPhone.slice(0, cutAt);
+      // 1.6.57 (Prejuicio R15, R16F-5): la misma ley del sufijo que
+      // en la rama de palabra — sin corte y suma > 10, manda el sufijo.
+      else if (pre + suf > 10) bare = rawPhone.slice(cutAt);
     }
   }
   if (bare === rawPhone) {
@@ -307,6 +318,9 @@ export function phoneTail(phone: string | null | undefined): string {
       const pre = digitsOf(rawPhone.slice(0, mx.index)).replace(/\D/g, "").length;
       const suf = digitsOf(mx[0]).replace(/\D/g, "").length;
       if (pre >= 7 || suf < 7) bare = rawPhone.slice(0, mx.index);
+      // 1.6.57 (Prejuicio R15, R16F-5): la misma ley del sufijo —
+      // «550142x5550142» da la cola de su sufijo y casa con su gemelo.
+      else if (pre + suf > 10) bare = rawPhone.slice(mx.index);
     }
   }
   const digits = digitsOf(bare).replace(/\D/g, "");

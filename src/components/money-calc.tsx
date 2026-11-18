@@ -42,7 +42,14 @@ function evalAmount(expr: string): number | null {
   // 1.6.53 (Prejuicio R14, R15F-8): el guion suave U+00AD — el
   // invisible que las webs y los PDF pegan dentro de la palabra —
   // se retira como el espacio: «45­5» vale 455, no silencio ni $0.
-  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/\u060C/g, ",").replace(/\uFF04/g, "").replace(/\uFF0E/g, ".").replace(/\uFF0C/g, ",").replace(/\uFF0B/g, "+").replace(/\uFF0D/g, "-").replace(/\uFF0A/g, "*").replace(/\uFF0F/g, "/").replace(/\uFF08/g, "(").replace(/\uFF09/g, ")").replace(/\u00D7/g, "*").replace(/\u00F7/g, "/").replace(/\u2212/g, "-").replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\uFE58]/g, "-").replace(/\u00AD/g, "").replace(/,/g, ".").replace(/\s/g, "");
+  // 1.6.57 (Prejuicio R15, R16F-6): la familia invisible entera de
+  // la junta — los caracteres de formato (U+200B y U+200C de ancho
+  // cero, U+2060 el word joiner, y todo su género \p{Cf}) no son
+  // \s en JavaScript y partían el número igual que el guion suave:
+  // precio negado y propina $0 en silencio. Se retira el género
+  // entero, no la lista de los probados: el próximo invisible de
+  // la familia ya nace retirado.
+  const cleaned = digitsOf(expr).replace(/\u066B/g, ".").replace(/\u066C/g, "").replace(/\u060C/g, ",").replace(/\uFF04/g, "").replace(/\uFF0E/g, ".").replace(/\uFF0C/g, ",").replace(/\uFF0B/g, "+").replace(/\uFF0D/g, "-").replace(/\uFF0A/g, "*").replace(/\uFF0F/g, "/").replace(/\uFF08/g, "(").replace(/\uFF09/g, ")").replace(/\u00D7/g, "*").replace(/\u00F7/g, "/").replace(/\u2212/g, "-").replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\uFE58]/g, "-").replace(/\u00AD/g, "").replace(/\p{Cf}/gu, "").replace(/,/g, ".").replace(/\s/g, "");
   if (!cleaned || !/^[\d.+\-*/()]+$/.test(cleaned)) return null;
   if (/[+\-*/.]{2,}/.test(cleaned.replace(/\.\d/g, "0"))) return null;
   try {

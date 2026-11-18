@@ -587,6 +587,10 @@ function splitCsvRows(text: string): string[][] {
         // nada y no se le exige.
         const phoneColsD = cells.map((c, j) => (HEADER_WORDS[c] === "phone" ? j : -1)).filter((j) => j >= 0);
         if (phoneColsD.length > 0 && !bodyRows.some((r) => phoneColsD.some((j) => digitsOf(r[j] ?? "").replace(/\D/g, "").length >= 7))) continue;
+        // 1.6.57 (Prejuicio R15, R16F-1): la fila declarada queda
+        // registrada — el relevo de la certificación necesita saber
+        // qué asientos trae su encabezado, no solo cuántas palabras.
+        headCells.set(d, cells);
         return known;
       }
       return -1;
@@ -644,6 +648,7 @@ function splitCsvRows(text: string): string[][] {
       return tabbed < 2;
     };
     const cands = ["\t", "|", ","] as const;
+    const headCells = new Map<string, string[]>();
     const headInfo = new Map<string, number>(cands.map((d) => [d, headerInfo(d)]));
     const bestHead = Math.max(...cands.map((d) => headInfo.get(d) ?? -1));
     if (bestHead >= 0) {
@@ -665,7 +670,17 @@ function splitCsvRows(text: string): string[][] {
       // diez. Cuando ningún candidato certifica, manda la cuenta,
       // como siempre.
       if (withPhone.length === 0) {
-        const certBelow = cands.filter((d) => (headInfo.get(d) ?? -1) >= 0 && certified(d));
+        // 1.6.57 (Prejuicio R15, R16F-1): el relevo solo rescata a
+        // una TABLA DE CLIENTES — su encabezado sienta una columna
+        // de nombre (o el nombre partido). Un registro de llamadas
+        // («Telefono⇥Notas» y veinte filas de número y nota) declara
+        // y certifica por naturaleza, pero no sienta nombre: es una
+        // lista de teléfonos, no la tabla, y coronarlo partía el
+        // archivo por su delimitador y perdía la tabla verdadera
+        // entera (0 personas) cuando esta no traía teléfonos con que
+        // certificar en la cima.
+        const seatsName = (d: string): boolean => (headCells.get(d) ?? []).some((c) => { const k = HEADER_WORDS[c]; return k === "name" || k === "first" || k === "last"; });
+        const certBelow = cands.filter((d) => (headInfo.get(d) ?? -1) >= 0 && certified(d) && seatsName(d));
         if (certBelow.length > 0) { pool = certBelow; withPhone = certBelow; }
       }
       if (withPhone.length > 0) pool = withPhone;
@@ -799,7 +814,18 @@ function parseCsv(text: string): PickedContact[] {
     const cells = rows[i]!.map(foldHead);
     const known = cells.filter((c) => HEADER_WORDS[c]).length;
     const phoneLike = cells.some((c) => digitsOf(c).replace(/\D/g, "").length >= 7);
-    if (!dataSeen && weakData < 2 && (known >= 2 || (known === 1 && !phoneLike))) {
+    // 1.6.57 (Prejuicio R15, R16F-2): addrDigit se calcula ANTES de
+    // la corona — la rama de una sola palabra conocida no corona a
+    // una fila que trae una dirección con número: «Ana Torres,
+    // Cliente, Calle 8» se coronaba a sí misma (su «Cliente» era la
+    // palabra y su dirección el número), el lector sentaba el nombre
+    // en la columna de «Cliente» y la cerca de R12F-5 se comía el
+    // bloque entero. Una dirección con número de casa no vive en
+    // un encabezado; la rama de ≥2 palabras no se toca (los
+    // encabezados con dígitos propios — «Phone 1 - Value» — viven
+    // ahí).
+    const addrDigitRow = rows[i]!.some((c) => /\d/.test(c) && (c.split(/\s+/).filter((w) => /[^\d]/.test(w)).length >= 2 || STREET_HEADS.has(foldHead(c).split(" ")[0]!)));
+    if (!dataSeen && weakData < 2 && (known >= 2 || (known === 1 && !phoneLike && !addrDigitRow))) {
       headAt = i;
       break;
     }
@@ -827,7 +853,14 @@ function parseCsv(text: string): PickedContact[] {
     const addrDigit = rows[i]!.some((c) => /\d/.test(c) && (c.split(/\s+/).filter((w) => /[^\d]/.test(w)).length >= 2 || STREET_HEADS.has(foldHead(c).split(" ")[0]!)));
     if (rows[i]!.length >= 2 && !firstVocab) {
       if (phoneLike) dataSeen = true;
-      else if (known === 0 && addrDigit) weakData += 1;
+      // 1.6.57 (Prejuicio R15, R16F-2): la fila de datos cuya celda
+      // intermedia ES una palabra del vocabulario («Ana Torres,
+      // Cliente, Calle 8» — la columna de tipo de una exportación
+      // corriente) sumaba known = 1 y quedaba invisible para la
+      // guarda: un bloque entero así, delante de un encabezado
+      // tardío, no protegía nada y se perdía. Una palabra suelta no
+      // hace un encabezado: el encendido débil admite known ≤ 1.
+      else if (known <= 1 && addrDigit) weakData += 1;
     }
   }
   const head = headAt >= 0 ? rows[headAt]!.map(foldHead) : [];
@@ -862,9 +895,18 @@ function parseCsv(text: string): PickedContact[] {
         if (v === "") continue;
         filled += 1;
         const n = digitsOf(v).replace(/\D/g, "").length;
-        if (/^[+\d][\d\s().-]*$/.test(v) && n >= 7 && n <= 15) shaped += 1;
+        // 1.6.57 (Prejuicio R15, R16F-3): una fecha ISO («2026-11-17»)
+        // pasa la forma del teléfono (8 dígitos entre guiones) y la
+        // columna de fechas nacía como columna de teléfonos — y sus
+        // «colas» idénticas hacían que el detector de duplicados
+        // confundiera a dos clientes con la misma fecha. La fecha
+        // con su forma completa no es un teléfono.
+        if (/^[+\d][\d\s().-]*$/.test(v) && n >= 7 && n <= 15 && !/^\d{4}-\d{1,2}-\d{1,2}$/.test(v)) shaped += 1;
       }
-      if (shaped >= 2 && shaped * 2 >= filled) { phoneCols = [j]; break; }
+      // 1.6.57 (Prejuicio R15, R16F-4): la mayoría es mayoría — el
+      // empate exacto (2 con forma de 4) ya no sienta la columna,
+      // como el comentario de la cura prometía desde su nacimiento.
+      if (shaped >= 2 && shaped * 2 > filled) { phoneCols = [j]; break; }
     }
   }
   const idx = {
