@@ -650,25 +650,9 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
   return "folder";
 }
 
-export async function writeRotatingBackup(json: string): Promise<"folder" | "downloaded"> {
-  const name = `${stampBase()}.json`;
-  const blob = new Blob([json], { type: "application/json" });
-  const dir = await usableDir();
-  if (!dir) {
-    await saveBlobFile(name, blob, {
-      description: "Copia de seguridad JSON",
-      accept: { "application/json": [".json"] },
-    });
-    return "downloaded";
-  }
-  // Ola 4 (BZ-70): la copia rotativa gana la misma disciplina — nace como
-  // «.tmp» y solo gana su nombre cuando quedó entera en disco.
-  await writeDirFile(dir, name, blob);
-  const names: string[] = [];
-  for await (const [entryName, entry] of dir.entries()) {
-    if (entry.kind === "file" && entryName.startsWith("oscar-copia-") && entryName.endsWith(".json")) names.push(entryName);
-  }
-  names.sort();
-  for (const old of names.slice(0, Math.max(0, names.length - 5))) await dir.removeEntry(old);
-  return "folder";
-}
+// 1.6.68 (Prejuicio R18): writeRotatingBackup se BORRA — código muerto
+// (cero llamadores en todo el árbol, verificado en la caza 18) cuya
+// rotación interna ordenaba por nombre crudo, la enfermedad que la ley
+// de poda vigente (keep/effOf) curó hace rondas: dejarlo era dejar una
+// resurrección silenciosa a un solo cable de distancia. Si algún día se
+// quiere una escritura rotativa, nace escrita contra la ley vigente.

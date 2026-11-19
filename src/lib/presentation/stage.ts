@@ -58,10 +58,25 @@ const inflightSeeds = new Set<Promise<unknown>>();
 
 export function trackSeed(seeding: Promise<unknown>): void {
   inflightSeeds.add(seeding);
-  void seeding.then(() => {
-    inflightSeeds.delete(seeding);
-    if (stage) dispatchSwitch();
-  });
+  // 1.6.68 (Prejuicio R18, R19D-1): la promesa sale del registro en
+  // AMBOS desenlaces — antes solo salía al cumplirse, y una siembra
+  // rechazada se quedaba en el registro para siempre: awaitSeeds la
+  // volvía a esperar en bucle (allSettled resuelve al instante sobre
+  // una promesa ya asentada) y la app se congelaba en microtareas en
+  // la próxima salida o entrada al escenario. Hoy los dos sitios de
+  // registro envuelven en .catch, así que no hay puerta viva; la
+  // cura cierra la clase entera. El aviso (dispatchSwitch) sigue
+  // siendo solo del éxito: una siembra fallida no anuncia un libro
+  // que no sembró.
+  void seeding.then(
+    () => {
+      inflightSeeds.delete(seeding);
+      if (stage) dispatchSwitch();
+    },
+    () => {
+      inflightSeeds.delete(seeding);
+    },
+  );
 }
 
 export async function awaitSeeds(): Promise<void> {
