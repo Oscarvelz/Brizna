@@ -238,9 +238,19 @@ async function open(): Promise<PGlite> {
   return pg;
 }
 
+/* 1.6.69 (banco de Presentaciones, pedido de Oscar): el libro ya respondió
+ * alguna vez en esta sesión. El juez de arranque de spa/main.tsx se retira
+ * para siempre en cuanto esto es verdad: una base que ya abrió no puede ser
+ * condenada después por lenta — ni siquiera cuando la apertura lenta es la
+ * del libro-escenario de una lección, que nace de fábrica y tarda lo suyo. */
+let everOpened = false;
+export function dbEverOpened(): boolean {
+  return everOpened;
+}
+
 export function getPglite(): Promise<PGlite> {
   pgPromise ??= open()
-    .then((pg) => { noteDbSuccess(); return pg; })
+    .then((pg) => { everOpened = true; noteDbSuccess(); return pg; })
     .catch((err) => { noteDbFailure(); pgPromise = null; throw err; });
   return pgPromise;
 }

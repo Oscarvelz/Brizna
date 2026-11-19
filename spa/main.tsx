@@ -16,7 +16,7 @@ import { APPEARANCE_BOOT_SCRIPT } from "@/lib/theme";
 import { AppErrorComponent } from "@/lib/error-component";
 import { routeTree } from "@/routeTree.gen";
 import { setPaneRouteTree } from "@/lib/pane-context";
-import { clearDbFailures, dbFailureCount, ensureDbReady, getPglite, getSql, localBookOwner, setDbUser, startWithFreshStore } from "@/lib/db";
+import { clearDbFailures, dbEverOpened, dbFailureCount, getPglite, getSql, localBookOwner, setDbUser, startWithFreshStore } from "@/lib/db";
 import { I18nProvider } from "@/lib/i18n";
 import { awayWasInternal, guardInternalTrips, lockDue, markSeen, unlock } from "@/lib/device-lock";
 import { saveBackupNow } from "@/lib/server/lawn";
@@ -198,12 +198,31 @@ function armDbDeadline() {
   // not an error React Query can retry. After 30 s without the database, the stuck
   // screen says so and offers a way out. A fast REJECTION is a different story (the
   // failure count, A3): the app's own error cards show it, so this stays quiet then.
-  void Promise.race([
-    ensureDbReady().then(() => true).catch(() => false),
-    new Promise<boolean>((r) => setTimeout(() => r(false), 30_000)),
-  ]).then((ready) => {
-    if (!ready && dbFailureCount() === 0) root.render(<DbStuck />);
-  });
+  //
+  // 1.6.69 (banco de Presentaciones, pedido de Oscar): the one-shot 30 s race
+  // condemned HEALTHY databases for the crime of being slow. On a loaded or
+  // slow device a cold open legitimately takes longer than 30 s (measured on
+  // the bench: 18 s on a good run, over 30 s on a bad one — and the stage
+  // book of a presentation opens from scratch on top of that), so the race
+  // replaced the whole app — a lesson mid-launch included — with the «did not
+  // answer» screen, and its only door (reload) lost the lesson and re-armed
+  // the same race against the same slow open. The judge is now a standing
+  // one: it checks every 5 s and RETIRES FOREVER the moment any database has
+  // opened in this session (dbEverOpened) or a failure has been counted (A3's
+  // doors own that story). Only a database that has neither opened nor failed
+  // after a full two minutes earns the stuck screen — A2's never-settling
+  // promise, given a fair chance first.
+  const armedAt = Date.now();
+  const judge = () => {
+    if (dbEverOpened()) return;
+    if (dbFailureCount() > 0) return;
+    if (Date.now() - armedAt >= 120_000) {
+      root.render(<DbStuck />);
+      return;
+    }
+    window.setTimeout(judge, 5_000);
+  };
+  window.setTimeout(judge, 5_000);
 }
 
 function start() {

@@ -199,11 +199,24 @@ async function createSql(): Promise<Sql> {
  * Schema comes from `migrations/*.sql`, auto-applied before the first query on
  * both backends — define tables there, never inline in server functions.
  */
+/* Same contract as src/spa/db.ts (1.6.69): whether a database has opened
+ * successfully at least once in this process. The server has no boot judge,
+ * but the export keeps the twin surfaces identical. */
+let everOpened = false;
+export function dbEverOpened(): boolean {
+  return everOpened;
+}
+
 export function getSql(): Promise<Sql> {
-  sqlPromise ??= createSql().catch((err) => {
-    sqlPromise = null; // don't memoize failures — let the next call retry
-    throw err;
-  });
+  sqlPromise ??= createSql()
+    .then((sql) => {
+      everOpened = true;
+      return sql;
+    })
+    .catch((err) => {
+      sqlPromise = null; // don't memoize failures — let the next call retry
+      throw err;
+    });
   return sqlPromise;
 }
 
