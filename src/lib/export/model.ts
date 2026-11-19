@@ -262,9 +262,14 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   // de «Željko»/«Šime»/«Němec» y la ő de «Őrs». La ñ no entra en
   // la familia de la n: en español es otra letra, no una gemela.
   const swapFold: Record<string, string> = {};
+  // 1.6.65 (Prejuicio R17, R18A-2): cada letra recuerda su base —
+  // la primera de su fila, que es la ley de la tabla. El pase de
+  // pares lo lee para reconocer el par también cuando el nombre
+  // guardado lo trae escrito con gemelas («Ṭh…», «Haş…»).
+  const baseOf: Record<string, string> = {};
   const foldFam = (chars: string) => {
     const cls = `[${chars}]`;
-    for (const ch of chars) swapFold[ch] = cls;
+    for (const ch of chars) { swapFold[ch] = cls; baseOf[ch] = chars[0]!; }
   };
   foldFam("aáàäâãåāăąảạấầẩẫậắằẳẵặǎǟǡǻȁȃȧḁ"); foldFam("AÁÀÄÂÃÅĀĂĄẢẠẤẦẨẪẬẮẰẲẴẶǍǞǠǺȀȂȦḀ");
   foldFam("eéèëêēĕėęěẻẽẹếềểễệȅȇȩḕḗḙḛḝ"); foldFam("EÉÈËÊĒĔĖĘĚẺẼẸẾỀỂỄỆȄȆȨḔḖḘḚḜ");
@@ -344,14 +349,31 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   // como la rama segunda, como antes.
   const pairAlt = (pair: string): string => {
     const cls = (c: string) => (c === "t" ? tFamClass : (swapFold[c] ?? c));
-    return `(?:${cls(pair[0]!)}${cls(pair[1]!)}|${pairLetter[pair]})`;
+    // 1.6.65 (Prejuicio R17, R18A-1): la rama de la þ admite la
+    // clase de la h detrás, opcional — la þ es la única
+    // letra-dígrafo que también vive como rama de la alternancia
+    // de su primera letra (la de la t, desde la 1.6.55), y el
+    // plegado viejo componía «þ» seguida de la h: «Þhompson» es
+    // esa composición y escapaba entera, mientras «Þompson» (la
+    // þ sola, el dígrafo inverso de la 1.6.58) ya cazaba. Las
+    // demás letras-dígrafo no traen esa segunda vida: su rama
+    // queda como estaba («Haßsan» y «Mæel» escapan en las dos
+    // eras, frontera declarada y no hallazgo).
+    const digraph = pair === "th" ? `þ${cls("h")}?` : pairLetter[pair]!;
+    return `(?:${cls(pair[0]!)}${cls(pair[1]!)}|${digraph})`;
   };
   const foldWord = (w: string): string => {
     const chars = [...w];
     let out = "";
     for (let i = 0; i < chars.length; i += 1) {
       const ch = chars[i]!;
-      const pairKey = i + 1 < chars.length ? (ch + chars[i + 1]!).toLowerCase() : "";
+      // 1.6.65 (Prejuicio R17, R18A-2): el par se detecta sobre
+      // las letras BASE de las dos letras, no sobre su grafía —
+      // el nombre guardado con gemelas («Ṭhompson», «Haşsan»,
+      // «Máel», «Óel») trae el mismo par y debe plegarlo igual,
+      // para cazar la mención con la letra-dígrafo («Þompson»,
+      // «Haßan», «Mæl», «Œel») como su gemelo pelado ya hacía.
+      const pairKey = i + 1 < chars.length ? ((baseOf[ch] ?? ch) + (baseOf[chars[i + 1]!] ?? chars[i + 1]!)).toLowerCase() : "";
       if (pairKey && pairLetter[pairKey]) { out += pairAlt(pairKey); i += 1; continue; }
       out += /[.*+?^${}()|[\]\\]/.test(ch) ? `\\${ch}` : (swapFold[ch] ?? ch);
     }
