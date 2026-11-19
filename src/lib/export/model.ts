@@ -311,8 +311,8 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   // alternancia. La ð además entra en la familia de la d (arriba)
   // para que el nombre guardado pelado cace la mención con ð, y
   // la t aprende a cazar la þ de la mención.
-  swapFold["þ"] = "(?:þ|th)"; swapFold["Þ"] = "(?:Þ|th)";
   swapFold["ð"] = "(?:ð|d)"; swapFold["Ð"] = "(?:Ð|d)";
+  // (La þ recibe la suya más abajo, compuesta con pairAlt — 1.6.67.)
   // 1.6.62 (Prejuicio R16, R17A-1): la clase de familia de la t, tal
   // como quedó registrada y ANTES de la alternancia con la þ — el
   // pase de pares la necesita para componer su alternancia sin
@@ -324,10 +324,9 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
   // escribe «ss» pelada (la grafía ordinaria de los apellidos
   // alemanes en los formularios de EE. UU.), la æ «ae» y la œ
   // «oe». Sin entrada, el patrón las llevaba literales y solo
-  // cazaba la grafía exacta, en las dos direcciones.
-  swapFold["ß"] = "(?:ß|ss)"; swapFold["ẞ"] = "(?:ẞ|ss)";
-  swapFold["æ"] = "(?:æ|ae)"; swapFold["Æ"] = "(?:Æ|ae)";
-  swapFold["œ"] = "(?:œ|oe)"; swapFold["Œ"] = "(?:Œ|oe)";
+  // cazaba la grafía exacta, en las dos direcciones. (Sus
+  // alternancias se asignan más abajo, compuestas con pairAlt —
+  // 1.6.67.)
   // 1.6.58 (Prejuicio R15, R16A-1): la inversa del dígrafo — el
   // nombre guardado PELADO («Thor», «Weiss», «Aegir», «Oenone»)
   // debe cazar la mención con la letra («Þór», «Weiß», «Ægir»,
@@ -362,6 +361,22 @@ export function buildModel(raw: ExportRaw, advisor: AdvisorReading | null, o: Ex
     const digraph = pair === "th" ? `þ${cls("h")}?` : pairLetter[pair]!;
     return `(?:${cls(pair[0]!)}${cls(pair[1]!)}|${digraph})`;
   };
+  // 1.6.67 (Prejuicio R18, R19A-1): la alternancia de la letra-dígrafo
+  // MISMA se compone con pairAlt, no con el par pelado — el nombre
+  // guardado CON la letra («Þompson», «Weiß», «Ægir», «Œnone») cazaba
+  // la mención pelada («Thompson») pero escapaba toda mención que
+  // escribe el par con gemelas («Ṭhompson», «Weişs», «Áegir»,
+  // «Óenone»), el cruce espejo del que la 1.6.65 curó en el otro
+  // sentido. Las letras-dígrafo no viven en ninguna clase familiar
+  // (sin descomposición NFD), así la frontera declarada se sostiene:
+  // dígrafo + su segunda letra («Weißs») sigue escapando — la rama de
+  // clases no lo caza y la rama del dígrafo muere en el lindero. El
+  // regex es insensible a mayúsculas («giu»): la composición en
+  // minúscula sirve a las dos grafías y se asigna a ambas llaves.
+  swapFold["þ"] = pairAlt("th"); swapFold["Þ"] = pairAlt("th");
+  swapFold["ß"] = pairAlt("ss"); swapFold["ẞ"] = pairAlt("ss");
+  swapFold["æ"] = pairAlt("ae"); swapFold["Æ"] = pairAlt("ae");
+  swapFold["œ"] = pairAlt("oe"); swapFold["Œ"] = pairAlt("oe");
   const foldWord = (w: string): string => {
     const chars = [...w];
     let out = "";
