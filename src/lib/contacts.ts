@@ -948,8 +948,29 @@ function parseCsv(text: string): PickedContact[] {
       if (shaped >= 2 && shaped * 2 > filled) { phoneCols = [j]; break; }
     }
   }
+  // 1.6.66 (Prejuicio R18, R19F-1): con encabezado reconocido y sin
+  // columna de nombre, el asiento posicional (la columna 0) solo vale si
+  // la columna 0 no está ya RECLAMADA por otro papel conocido (dirección,
+  // teléfono, nombre o apellido): sentar una columna que el propio
+  // importador coronó como dirección fabrica clientes llamados por su
+  // calle («1400 Biscayne Blvd» con su teléfono real). La hermana de esta
+  // ley es la R4F-2 (1.6.12): el teléfono honesto sin columna reconocida
+  // es «ninguno», no la posición. El asiento es entonces la primera
+  // columna sin reclamar; si no queda ninguna, el nombre honesto es
+  // «ninguno» (−1) y la fila no nace — la cerca de cordura BZ-52 ya no
+  // bautiza filas sin nombre — y el importador lo dice (contacts-empty)
+  // en vez de inventar clientes. Sin encabezado nada cambia: la posición
+  // es la única pista que hay.
+  const claimed = hasHeader
+    ? new Set([addrCol, phoneCol, firstCol, lastCol, ...phoneCols].filter((c) => c >= 0))
+    : new Set<number>();
+  let nameSeat = 0;
+  if (hasHeader && nameCol < 0) {
+    nameSeat = -1;
+    for (let c = 0; c < head.length; c++) if (!claimed.has(c)) { nameSeat = c; break; }
+  }
   const idx = {
-    name: hasHeader && nameCol >= 0 ? nameCol : 0,
+    name: hasHeader && nameCol >= 0 ? nameCol : nameSeat,
     // 1.6.12 (R4F-2): con encabezado reconocido y columna de teléfono NO
     // reconocida, el teléfono honesto es «ninguno» (phoneCol = −1 y la
     // lectura da "") — la caída posicional a la columna 1 FABRICABA un
