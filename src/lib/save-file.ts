@@ -563,7 +563,33 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
     const doomed: string[] = [];
     for (const prefix of ["Brizna_", "Podalia_", "oscar-copia-"]) {
       const group = entries
-        .filter((e) => e.name.startsWith(prefix) && e.name.endsWith(ext) && !fresh.has(e.name))
+        .filter((e) => e.name.startsWith(prefix) && e.name.endsWith(ext) && !fresh.has(e.name));
+      // 1.6.64 (Prejuicio R17, R18C-1): la ley del lote juzga la
+      // HORA VERAZ, pero su llave solo veía empates de «eff» — y
+      // la re-copia disolvía el empate dentro de effOf: las
+      // genuinas del lote bajaban a su sello y el nombre futuro,
+      // cuyo sello no es usable y cuya única marca era la hora
+      // del lote, quedaba por encima de todas y sobrevivía
+      // enterrando honestas. La llave se corrige donde vive el
+      // lote, en la ordenación: el «eff» de cada entrada se
+      // calcula una vez, y el nombre que miente en el futuro y
+      // pertenece a un lote — honestas de su familia con su misma
+      // hora (la ventana es la duración de una sincronización:
+      // una hora) a las que la re-copia ya rebajó a su sello —
+      // se sienta POR DEBAJO de la más vieja de su lote: dentro
+      // del lote manda el nacimiento, y el suyo es desconocido.
+      // Sin lote no hay rebaja: la llegada solitaria y fresca
+      // (el paquete de 12026 de la 1.6.56, cuya hora es «ahora»
+      // y no comparte con nadie) conserva la hora, y el viajero
+      // legado, cuyas vecinas traen cada una su hora y ninguna
+      // rebaja, se juzga por la suya, como su declaración manda.
+      const effMap = new Map(group.map((e) => [e, effOf(e)] as const));
+      for (const e of group) {
+        if (stampOf(e.name) > nowMs && e.mtime > 0 && e.mtime <= nowMs) {
+          const batch = group.filter((o) => o !== e && stampOf(o.name) <= nowMs && o.mtime > 0 && o.mtime <= nowMs && Math.abs(o.mtime - e.mtime) <= 3_600_000 && effMap.get(o)! < o.mtime);
+          if (batch.length > 0) effMap.set(e, Math.min(...batch.map((o) => effMap.get(o)!)) - 1);
+        }
+      }
         // 1.6.29 (Prejuicio R9, R10C-3): en el empate de horas manda
         // el sello más cercano a «ahora», no el nombre mayor — el
         // mayor era sistemáticamente el sello futuro.
@@ -589,7 +615,7 @@ export async function writeBackupBundle(parts: { json: string; pdf: Uint8Array; 
         // (que la lectura del año entero de la 1.6.56 hace verdad
         // en las dos eras) y el nombre queda para los sellos
         // idénticos, donde ya no distingue edades sino copias.
-        .sort((a, b) => effOf(a) - effOf(b) || ((stampOf(a.name) > nowMs ? 0 : 1) - (stampOf(b.name) > nowMs ? 0 : 1)) || (Math.abs(Math.min(stampOf(b.name), nowMs) - nowMs) - Math.abs(Math.min(stampOf(a.name), nowMs) - nowMs)) || (stampOf(a.name) - stampOf(b.name)) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+      group.sort((a, b) => (effMap.get(a)! - effMap.get(b)!) || ((stampOf(a.name) > nowMs ? 0 : 1) - (stampOf(b.name) > nowMs ? 0 : 1)) || (Math.abs(Math.min(stampOf(b.name), nowMs) - nowMs) - Math.abs(Math.min(stampOf(a.name), nowMs) - nowMs)) || (stampOf(a.name) - stampOf(b.name)) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
       doomed.push(...group.slice(0, Math.max(0, group.length - 5)).map((e) => e.name));
     }
     return doomed;
